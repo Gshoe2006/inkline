@@ -322,8 +322,21 @@ def selftest(win, outdir):
         def preview():
             page.runJavaScript("render(); $('page').toDataURL('image/png').split(',')[1]", lambda b64: (
                 open(os.path.join(outdir, "poster-preview.png"), "wb").write(base64.b64decode(b64)),
-                print("selftest: done"), QApplication.quit()))
+                photo_book()))
         wait_for(js, "poster photo 3x3", preview)
+
+    def photo_book():
+        # three photos: the sample twice (the second zoomed and rotated) plus a drawn one, then a 4-page book
+        path = os.path.join(outdir, "photobook.pdf")
+        js = ("$('poster').checked=false; $('photobook').checked=true; $('photobook').dispatchEvent(new Event('input'));"
+              "$('title').value='Photo book test'; $('style').value='line'; syncOutputs();"
+              "(async () => { const c = document.createElement('canvas'); c.width = 600; c.height = 800; const x = c.getContext('2d');"
+              "  x.fillStyle = '#fff'; x.fillRect(0, 0, 600, 800); x.fillStyle = '#222'; x.beginPath(); x.arc(300, 400, 200, 0, 7); x.fill();"
+              "  const b = await new Promise(r => c.toBlob(r)); await addPhotos([{ blob: b, name: 'circle.png' }], true);"
+              "  loadSample(); for (let i = 0; i < 30 && S.photos.length < 3; i++) await new Promise(r => setTimeout(r, 100));"
+              "  selectPhoto(2); S.rot = 90; $('zoom').value = 180; selectPhoto(0);"
+              f"  window.__job = await runPhotoBook('pdf', {json.dumps(path)}); }})()")
+        wait_for(js, "photo book", lambda: (print("selftest: done"), QApplication.quit()))
 
     win.view.loadFinished.connect(lambda ok: QTimer.singleShot(800, run) if ok else (print("selftest: load failed"), QApplication.quit()))
 
