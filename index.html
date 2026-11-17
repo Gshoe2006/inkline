@@ -70,6 +70,8 @@ input[type="text"], input[type="number"] { font: 13px var(--font-ui); color: var
 .pager { display: flex; align-items: center; gap: 8px; }
 .pager .btn { width: auto; padding: 5px 12px; }
 .pager span { flex: 1; text-align: center; font: 12px var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.presetrow { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.presetrow .btn { width: auto; padding: 7px 12px; }
 .croprow { display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 8px; }
 #page.pannable { cursor: grab; touch-action: none; }
 #page.pannable:active { cursor: grabbing; }
@@ -107,6 +109,18 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; background:
       <button id="tab-make" role="tab" aria-selected="true">Make one up</button>
       <button id="tab-convert" role="tab" aria-selected="false">Convert a photo</button>
     </div>
+
+    <fieldset>
+      <legend>Presets</legend>
+      <div class="presetrow">
+        <select id="preset" data-nopreset aria-label="Apply a preset"><option value="">Choose a preset…</option></select>
+        <button class="btn" id="presetDel" disabled>Delete</button>
+      </div>
+      <div class="presetrow">
+        <input type="text" id="presetName" data-nopreset maxlength="40" placeholder="Name for current settings" aria-label="Preset name">
+        <button class="btn" id="presetSave">Save</button>
+      </div>
+    </fieldset>
 
     <div id="panel-make" class="stack">
     <fieldset>
@@ -981,10 +995,88 @@ $("save-png").onclick = () => bridge ? bridge.request(job("png"), r => msg(r)) :
 $("save-pdf").onclick = () => isPoster() ? runPoster("pdf") : isBook() ? runBook("pdf") : bridge ? bridge.request(job("pdf"), r => msg(r)) : browserDownload("pdf");
 $("print").onclick = () => isPoster() ? runPoster("print") : isBook() ? runBook("print") : bridge ? (msg("Opening the print dialog…"), bridge.request(job("print"), r => msg(r))) : browserDownload("pdf");
 
+/* ---------- presets ----------
+   Built-in presets set only the settings they're about, so "Wall poster 3 × 3" can go on top of any design.
+   Saved presets capture every setting except the photo crop. The desktop app keeps them in
+   ~/.config/inkline/presets.json (its browser storage doesn't survive a restart); a plain browser uses localStorage. */
+const BUILTIN_PRESETS = {
+  "Colouring page, bold lines": { mode: "make", gen: "mandala", complexity: 5, weight: 7, frame: false, booklet: false, poster: false },
+  "Classroom maze worksheet": { mode: "make", gen: "maze", complexity: 4, weight: 4, title: "Maze time", nameLine: true, booklet: false, poster: false },
+  "Maze booklet with answers": { mode: "make", gen: "maze", booklet: true, pages: 10, ramp: true, mix: false, cover: true, pageNums: true, key: true, poster: false },
+  "Newspaper halftone photo": { mode: "convert", style: "halftone", dot: 3, contrast: 120, brightness: 0, invert: false },
+  "Photo colouring page": { mode: "convert", style: "line", threshold: 128, dot: 2, invert: false },
+  "Wall poster 3 × 3": { poster: true, booklet: false, grid: "3x3", overlap: "0.25" },
+};
+S.presets = {};
+const presetStore = {
+  async load() {
+    if (bridge) { try { return JSON.parse(await call("loadPresets")) || {}; } catch { return {}; } }
+    try { return JSON.parse(localStorage.getItem("inkline-presets") || "{}"); } catch { return {}; }
+  },
+  async save(all) {
+    const txt = JSON.stringify(all);
+    if (bridge) return call("savePresets", txt);
+    try { localStorage.setItem("inkline-presets", txt); return "ok"; } catch { return "This browser won't let Inkline save presets."; }
+  },
+};
+const presetFields = () => [...document.querySelectorAll("aside input[id], aside select[id]")].filter(el => el.type !== "file" && !el.hasAttribute("data-nopreset"));
+
+function capturePreset() {
+  const p = { mode: S.mode };
+  for (const el of presetFields()) p[el.id] = el.type === "checkbox" ? el.checked : el.value;
+  return p;
+}
+
+function applyPreset(p) {
+  for (const [k, val] of Object.entries(p)) {
+    if (k === "mode") continue;
+    const el = $(k); if (!el) continue;
+    if (el.type === "checkbox") el.checked = !!val; else el.value = val;
+  }
+  S.bookPage = 0; syncOutputs();
+  if (p.mode && p.mode !== S.mode) setMode(p.mode); else schedule();
+}
+
+function fillPresetMenu(selected = "") {
+  const sel = $("preset"), opt = (name, group) => { const o = document.createElement("option"); o.value = `${group}:${name}`; o.textContent = name; return o; };
+  sel.replaceChildren(new Option("Choose a preset…", ""));
+  const gb = document.createElement("optgroup"); gb.label = "Built-in"; Object.keys(BUILTIN_PRESETS).forEach(n => gb.append(opt(n, "b"))); sel.append(gb);
+  const names = Object.keys(S.presets).sort((a, b) => a.localeCompare(b));
+  if (names.length) { const gs = document.createElement("optgroup"); gs.label = "Saved"; names.forEach(n => gs.append(opt(n, "s"))); sel.append(gs); }
+  sel.value = selected; $("presetDel").disabled = !selected.startsWith("s:");
+}
+
+async function initPresets() { S.presets = await presetStore.load(); fillPresetMenu(); }
+
+$("preset").addEventListener("change", () => {
+  const v_ = $("preset").value; $("presetDel").disabled = !v_.startsWith("s:");
+  if (!v_) return;
+  const name = v_.slice(2), p = v_[0] === "b" ? BUILTIN_PRESETS[name] : S.presets[name];
+  if (p) { applyPreset(p); msg(`Applied “${name}”.`); }
+});
+$("presetSave").onclick = async () => {
+  const name = $("presetName").value.trim();
+  if (!name) { msg("Type a name for the preset first."); $("presetName").focus(); return; }
+  if (BUILTIN_PRESETS[name]) { msg("That name belongs to a built-in preset. Choose another."); return; }
+  const existed = name in S.presets, next = { ...S.presets, [name]: capturePreset() };
+  const r = await presetStore.save(next);
+  if (r !== "ok") { msg(r); return; }
+  S.presets = next; $("presetName").value = ""; fillPresetMenu(`s:${name}`);
+  msg(existed ? `Updated preset “${name}”.` : `Saved preset “${name}”.`);
+};
+$("presetName").addEventListener("keydown", e => { if (e.key === "Enter") $("presetSave").click(); });
+$("presetDel").onclick = async () => {
+  const v_ = $("preset").value; if (!v_.startsWith("s:")) return;
+  const name = v_.slice(2), next = { ...S.presets }; delete next[name];
+  const r = await presetStore.save(next);
+  if (r !== "ok") { msg(r); return; }
+  S.presets = next; fillPresetMenu(); msg(`Deleted preset “${name}”.`);
+};
+
 // The desktop shell injects qwebchannel.js before this page runs.
 if (window.qt && window.qt.webChannelTransport && typeof QWebChannel === "function") {
-  new QWebChannel(qt.webChannelTransport, ch => { bridge = ch.objects.inkline; });
-}
+  new QWebChannel(qt.webChannelTransport, ch => { bridge = ch.objects.inkline; initPresets(); });
+} else initPresets();
 
 syncOutputs(); render();
 </script>
