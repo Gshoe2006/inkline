@@ -221,6 +221,7 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; background:
           <option value="bayer">Dither: pattern (ordered)</option>
           <option value="halftone">Halftone dots</option>
           <option value="engrave">Engraving lines</option>
+          <option value="stipple">Stippling dots</option>
           <option value="threshold">Solid black &amp; white</option>
           <option value="line">Line drawing (colouring page)</option>
         </select></div>
@@ -1136,6 +1137,55 @@ function drawEngraving(ctx, box, g, entry, inv) {
   ctx.restore();
 }
 
+/* Stippling: dots of one size, packed closer where the photo is darker, for pen plotters, laser
+   engravers and a hand-drawn look. Error diffusion over the work grid picks which sites get a dot
+   (it spreads them evenly, with no clumps or gaps); a small wobble in its threshold breaks up the
+   streaks and worms plain error diffusion leaves, and each dot is nudged by a fixed pseudo-random
+   offset so no grid shows. Dots overlap in dark areas, so the share of sites that get a dot is looked
+   up from STIPPLE_COVER: the ink coverage measured by simulation (128 x 128 sites, 10 x 10 samples
+   each) at 0/32 .. 32/32 of sites dotted. Running that backwards keeps tone accurate, like halftone. */
+const STIPPLE_R = 0.75, STIPPLE_JITTER = 0.3, STIPPLE_WOBBLE = 0.15;   // dot radius and largest nudge in grid steps; threshold wobble
+const STIPPLE_COVER = [0, .055, .11, .165, .22, .275, .329, .381, .431, .476, .517, .559, .598, .634, .672, .713, .756,
+  .767, .787, .809, .829, .848, .867, .883, .897, .91, .924, .935, .946, .958, .97, .981, .991];
+const STIPPLE_F = (() => {   // darkness 0..255 -> share of sites to dot (the curve is made never-falling so it inverts)
+  const c = STIPPLE_COVER.map((_, k) => Math.max(...STIPPLE_COVER.slice(0, k + 1))), t = new Float32Array(256), n = c.length - 1;
+  for (let i = 0; i < 256; i++) {
+    const d = Math.min(i / 255, c[n]); let k = 1; while (k < n && c[k] < d) k++;
+    t[i] = (k - 1 + (c[k] > c[k - 1] ? (d - c[k - 1]) / (c[k] - c[k - 1]) : 1)) / n;
+  }
+  t[255] = 1; return t;
+})();
+const stippleNudge = (i, k) => { let h = Math.imul(i, 374761393) ^ Math.imul(k, 668265263); h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h >>> 0) / 2147483648 - 1; };
+// The dotted sites for one conversion, worked out once and kept with it (a poster draws it once per sheet).
+function stippleSites(entry, inv) {
+  const key = inv ? "stippleInv" : "stipple"; if (entry[key]) return entry[key];
+  const { ww, wh, lum, mask } = entry, L = new Float32Array(ww * wh), sites = [];
+  for (let i = 0; i < ww * wh; i++) if (mask[i]) { let d = 1 - Math.min(255, Math.max(0, lum[i])) / 255; if (inv) d = 1 - d; L[i] = STIPPLE_F[Math.round(d * 255)]; }
+  for (let y = 0; y < wh; y++) for (let k = 0; k < ww; k++) {
+    const s = y & 1 ? -1 : 1, x = s > 0 ? k : ww - 1 - k, i = y * ww + x;   // serpentine, as for the smooth dither
+    if (!mask[i]) continue;
+    const o = L[i] >= 0.5 + STIPPLE_WOBBLE * stippleNudge(i, 3) ? 1 : 0, e = L[i] - o; if (o) sites.push(i);
+    const add = (dx, dy, w) => { const X = x + dx * s, Y = y + dy; if (X >= 0 && X < ww && Y < wh && mask[Y * ww + X]) L[Y * ww + X] += e * w; };
+    add(1, 0, 7 / 16); add(-1, 1, 3 / 16); add(0, 1, 5 / 16); add(1, 1, 1 / 16);
+  }
+  return (entry[key] = Int32Array.from(sites.sort((a, b) => a - b)));
+}
+function drawStipple(ctx, box, g, entry, inv) {
+  const { ww } = entry, sites = stippleSites(entry, inv), sx = box.w / ww, sy = box.h / entry.wh, vw = g.view;
+  const r = STIPPLE_R * Math.sqrt(sx * sy), J = STIPPLE_JITTER;
+  ctx.save(); ctx.beginPath(); ctx.rect(box.x, box.y, box.w, box.h); ctx.clip(); ctx.fillStyle = "#000";
+  let row = -1;
+  for (const i of sites) {   // one filled shape per row of dots keeps the SVG small
+    const y = (i / ww) | 0, x = i - y * ww;
+    if (y !== row) { if (row >= 0) ctx.fill(); ctx.beginPath(); row = y; }
+    const cx = box.x + (x + 0.5 + stippleNudge(i, 1) * J) * sx, cy = box.y + (y + 0.5 + stippleNudge(i, 2) * J) * sy;
+    if (vw && (cx + r < vw.x || cx - r > vw.x + vw.w || cy + r < vw.y || cy - r > vw.y + vw.h)) continue;   // poster sheets skip dots off the sheet
+    ctx.moveTo(cx + r, cy); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  }
+  if (row >= 0) ctx.fill();
+  ctx.restore();
+}
+
 // o.style / o.dot override the sidebar (the printer test page shows every style side by side).
 function convert(ctx, box, g = {}, photo = curPhoto(), o = {}) {
   if (!photo) {
@@ -1143,7 +1193,7 @@ function convert(ctx, box, g = {}, photo = curPhoto(), o = {}) {
     ctx.fillText("Open or drop an image to convert it", box.x + box.w / 2, box.y + box.h / 2); return;
   }
   const style = o.style || v("style"), dot = (o.dot ?? num("dot")) * (g.dpi ? g.dpi / num("dpi") : 1);   // dot size stays physical at preview resolution
-  const cell = Math.max(1, style === "halftone" ? dot * 5 : dot);
+  const cell = Math.max(1, style === "halftone" ? dot * 5 : style === "stipple" ? dot * 2 : dot);
   // Converted images are cached (a poster draws the same photo once per sheet). In a dry run (S.collect)
   // this only records what's needed, so the background worker can prepare it before the real draw.
   const key = [photo.imgId, box.w, box.h, cell, style, v("brightness"), v("contrast"), v("threshold"), v("fit"), v("invert"), photo.rot, photo.zoom, photo.panx, photo.pany].join("|");
@@ -1155,6 +1205,7 @@ function convert(ctx, box, g = {}, photo = curPhoto(), o = {}) {
   S.cc = entry;   // the last conversion shown: drag-to-pan reads its overhang
   const { ww, wh, lum, mask, wc } = entry, inv = !photo.neutral && v("invert");
   if (style === "engrave") { drawEngraving(ctx, box, g, entry, inv); return; }
+  if (style === "stipple") { drawStipple(ctx, box, g, entry, inv); return; }
   if (style === "halftone") {
     const sx = box.w / ww, sy = box.h / wh, cellSide = Math.sqrt(sx * sy), vw = g.view;
     const x0 = vw ? Math.max(0, Math.floor((vw.x - box.x) / sx) - 1) : 0, x1 = vw ? Math.min(ww, Math.ceil((vw.x + vw.w - box.x) / sx) + 1) : ww;
@@ -1263,8 +1314,8 @@ function processPixels(D, ww, wh, p) {
     for (let i = 0; i < N; i++) out[i] = mask[i] && g1[i] - g2[i] < -thr ? 0 : 255;
     despeckle(out, ww, wh, Math.max(12, Math.round(N / 40000)));
   }
-  let rgba = null;   // halftone and engraving are drawn from lum, so they need no image
-  if (style !== "halftone" && style !== "engrave") {
+  let rgba = null;   // halftone, engraving and stippling are drawn from lum, so they need no image
+  if (style !== "halftone" && style !== "engrave" && style !== "stipple") {
     rgba = new Uint8ClampedArray(N * 4);
     for (let i = 0; i < N; i++) {
       let o = mask[i] ? out[i] : 255; if (inv && mask[i]) o = 255 - o;
@@ -1310,7 +1361,8 @@ class SvgCtx {
   rect(x, y, w, h) { this.moveTo(x, y); this.d.push(`H${fx(x + w)}V${fx(y + h)}H${fx(x)}Z`); }
   arc(x, y, r, a0, a1, ccw = false) {   // same angle rules as canvas: >= one full turn draws a whole circle
     const P = a => [x + r * Math.cos(a), y + r * Math.sin(a)], [sx, sy] = P(a0), TAU = 2 * Math.PI, sw = ccw ? 0 : 1;
-    this.cur ? this.lineTo(sx, sy) : this.moveTo(sx, sy);
+    if (!this.cur) this.moveTo(sx, sy);
+    else if (Math.abs(this.cur[0] - sx) > 0.005 || Math.abs(this.cur[1] - sy) > 0.005) this.lineTo(sx, sy);   // no zero-length line when already there
     let delta = ccw ? a0 - a1 : a1 - a0;
     if (delta >= TAU - 1e-9) {          // SVG can't draw a full circle in one arc, so use two halves
       const [mx, my] = P(a0 + (ccw ? -Math.PI : Math.PI));
@@ -1355,8 +1407,8 @@ for (const k of ["lineWidth", "strokeStyle", "fillStyle", "lineCap", "lineJoin",
 SvgCtx.prototype.imageSmoothingEnabled = true;   // accepted and ignored
 
 // The page that's showing (single design, or the current booklet page) as a print-size SVG document.
-// Engraving is the one photo style made of shapes rather than pixels, so it can be saved as SVG.
-const isVectorPhoto = () => S.mode === "convert" && v("style") === "engrave";
+// Engraving and stippling are the photo styles made of shapes rather than pixels, so they can be saved as SVG.
+const isVectorPhoto = () => S.mode === "convert" && (v("style") === "engrave" || v("style") === "stipple");
 
 function buildSvg() {
   const g = isPoster() ? posterGeom(num("dpi")) : geometry(), ctx = new SvgCtx(g.W, g.H, g.w, g.h);
@@ -1586,7 +1638,7 @@ function drawTestPage(ctx, g) {
   const labelW = 1.75 * I, rampW = b.w - labelW, rampH = 0.36 * I, ramp = greyRamp(), dot = num("dot");
   text(`Dither styles at dot size ${dot} (from white to black)`, b.x, y, 0.11 * I, 700);
   y += 0.12 * I;
-  for (const [style, name] of [["fs", "Smooth"], ["atkinson", "Crisp"], ["bayer", "Pattern"], ["halftone", "Halftone"], ["engrave", "Engraving"], ["threshold", "Solid"]]) {
+  for (const [style, name] of [["fs", "Smooth"], ["atkinson", "Crisp"], ["bayer", "Pattern"], ["halftone", "Halftone"], ["engrave", "Engraving"], ["stipple", "Stippling"], ["threshold", "Solid"]]) {
     text(name, b.x, y + rampH * 0.62, 0.1 * I, 600);
     const r = { x: b.x + labelW, y, w: rampW, h: rampH };
     convert(ctx, r, g, ramp, { style });
@@ -2103,12 +2155,12 @@ function syncButtons() {
   $("save-png").disabled = poster;
   $("save-png").title = poster ? "Posters save as PDF (one page per sheet) or print directly" : "Save PNG (Ctrl+Shift+S)";
   $("save-svg").disabled = (S.mode !== "make" && !isVectorPhoto()) || isTestPage() || isFold();   // pixels, or two pages per sheet
-  $("save-svg").title = isVectorPhoto() ? "Engraving lines save as vector paths, for laser engravers and plotters"
-    : S.mode === "make" ? "Vector lines for Inkscape, Cricut, Silhouette or laser cutters" : "Photos are made of pixels; choose Engraving lines for SVG";
+  $("save-svg").title = isVectorPhoto() ? (v("style") === "stipple" ? "Stippling dots save as vector circles" : "Engraving lines save as vector paths") + ", for laser engravers and plotters"
+    : S.mode === "make" ? "Vector lines for Inkscape, Cricut, Silhouette or laser cutters" : "Photos are made of pixels; choose Engraving lines or Stippling dots for SVG";
 }
 
 function saveSvg() {
-  if (S.mode !== "make" && !isVectorPhoto()) { msg("Photos are made of pixels, so they save as PNG or PDF. Choose the Engraving lines style for SVG."); return; }
+  if (S.mode !== "make" && !isVectorPhoto()) { msg("Photos are made of pixels, so they save as PNG or PDF. Choose Engraving lines or Stippling dots for SVG."); return; }
   const name = baseName() + (isPoster() ? "-poster" : isBook() || isPhotoBook() ? `-page${S.bookPage + 1}` : ""), svg = buildSvg();
   if (bridge) { bridge.request(JSON.stringify({ kind: "svg", name, svg }), r => msg(r)); return; }
   const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" })); a.download = name + ".svg"; a.click();
@@ -2133,6 +2185,7 @@ const BUILTIN_PRESETS = {
   "Dot-to-dot booklet with answers": { mode: "make", gen: "dots", booklet: true, pages: 8, ramp: true, mix: false, cover: true, pageNums: true, key: true, poster: false, weight: 4 },
   "Newspaper halftone photo": { mode: "convert", style: "halftone", dot: 3, contrast: 120, brightness: 0, invert: false },
   "Engraved photo": { mode: "convert", style: "engrave", dot: 2, contrast: 110, brightness: 0, invert: false },
+  "Stippled photo": { mode: "convert", style: "stipple", dot: 2, contrast: 110, brightness: 0, invert: false },
   "Photo colouring page": { mode: "convert", style: "line", threshold: 128, dot: 2, invert: false },
   "Wall poster 3 × 3": { poster: true, booklet: false, grid: "3x3", overlap: "0.25" },
 };
