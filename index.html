@@ -157,6 +157,11 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; background:
         <div class="row" id="wsWords-row" hidden><label for="wsWords">Your words</label><input type="text" id="wsWords" maxlength="300" placeholder="e.g. mum, dad, grandma, pizza"></div>
         <p class="hint" id="wsNote"></p>
       </div>
+      <div class="sub" id="maze-opts" hidden>
+        <div class="row"><label for="mazeShape">Maze shape</label>
+          <select id="mazeShape"><option value="rect">Rectangle</option><option value="heart">Heart</option><option value="star">Star</option><option value="fish">Fish</option><option value="house">House</option><option value="word">A word or name</option></select></div>
+        <div class="row" id="mazeWord-row" hidden><label for="mazeWord">Word or name</label><input type="text" id="mazeWord" maxlength="12" value="Maze" placeholder="e.g. Maya"></div>
+      </div>
       <div class="sub" id="name-opts" hidden>
         <div class="row"><label for="nameText">Name or word</label><input type="text" id="nameText" maxlength="40" value="Hello" placeholder="e.g. Maya, Happy Birthday"></div>
         <div class="row"><label for="nameBg">Around the letters</label>
@@ -401,12 +406,61 @@ function genMandala(ctx, box, rnd, cx_, lw) {
   }
 }
 
+// Shaped mazes: which grid cells the maze may use. A shape (the dot-to-dot outlines) or a word in heavy
+// letters is drawn into a canvas one pixel per cell; separate pieces (letters) are then joined by the
+// shortest corridors, so the maze is always one piece. null means the plain rectangle.
+function mazeMask(shape, cols, rows, word) {
+  if (!shape || shape === "rect") return null;
+  const cv = document.createElement("canvas"); cv.width = cols; cv.height = rows;
+  const x = cv.getContext("2d", { willReadFrequently: true }); x.fillStyle = "#000"; x.strokeStyle = "#000";
+  if (shape === "word") {
+    const t = (word || "").trim() || "Maze";
+    x.font = `900 100px ${FONT}`; const fs = Math.min(cols * 0.86 / x.measureText(t).width * 100, rows * 0.62);
+    x.font = `900 ${fs}px ${FONT}`; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(t, cols / 2, rows / 2);
+  } else {
+    const line = denseOutline(DOT_SHAPES[shape](mulberry32(7)).pts), xs = line.map(p => p[0]), ys = line.map(p => p[1]);
+    const bw = Math.max(...xs) - Math.min(...xs), bh = Math.max(...ys) - Math.min(...ys), sc = Math.min(cols * 0.96 / bw, rows * 0.96 / bh);
+    const ox = cols / 2 - (Math.min(...xs) + bw / 2) * sc, oy = rows / 2 - (Math.min(...ys) + bh / 2) * sc;
+    x.beginPath(); line.forEach(([px, py], i) => (i ? x.lineTo : x.moveTo).call(x, ox + px * sc, oy + py * sc)); x.closePath(); x.fill();
+  }
+  const d = x.getImageData(0, 0, cols, rows).data, N = cols * rows, mask = new Uint8Array(N);
+  for (let i = 0; i < N; i++) mask[i] = d[i * 4 + 3] > 127 ? 1 : 0;
+  const nbrs = i => { const x0 = i % cols, o = []; if (x0 > 0) o.push(i - 1); if (x0 < cols - 1) o.push(i + 1); if (i >= cols) o.push(i - cols); if (i < N - cols) o.push(i + cols); return o; };
+  for (let guard = 0; guard < 64; guard++) {   // join the pieces, nearest first, until there is one
+    const comp = new Int32Array(N).fill(-1), sizes = []; let n = 0;
+    for (let i = 0; i < N; i++) if (mask[i] && comp[i] < 0) {
+      const st = [i]; comp[i] = n; let k = 0;
+      while (st.length) { const q = st.pop(); k++; for (const j of nbrs(q)) if (mask[j] && comp[j] < 0) { comp[j] = n; st.push(j); } }
+      sizes.push(k); n++;
+    }
+    if (n <= 1) break;
+    const main = sizes.indexOf(Math.max(...sizes)), from = new Int32Array(N).fill(-2), queue = [];
+    for (let i = 0; i < N; i++) if (comp[i] === main) { from[i] = -1; queue.push(i); }
+    let hit = -1;
+    for (let h = 0; h < queue.length && hit < 0; h++) for (const j of nbrs(queue[h])) {
+      if (from[j] !== -2) continue; from[j] = queue[h];
+      if (mask[j]) { hit = j; break; } queue.push(j);
+    }
+    if (hit < 0) break;
+    for (let i = from[hit]; i >= 0 && comp[i] !== main; i = from[i]) mask[i] = 1;
+  }
+  return mask;
+}
+
 // Grid size for a maze in a given box. Answer keys reuse the puzzle page's grid so they draw the same maze.
-function mazeGrid(box, c) { const cols = 8 + c * 5; return { cols, rows: Math.max(2, Math.floor(box.h / (box.w / cols))) }; }
+// Shaped mazes use part of the box, so they get a finer grid. Words get the finest, growing with their length,
+// so each letter's strokes stay at least three paths wide.
+function mazeGrid(box, c) {
+  const shape = v("mazeShape"), len = Math.max(4, ((v("mazeWord") || "").trim() || "Maze").length);
+  const cols = shape === "word" ? Math.round(Math.max(48, (8 + c * 5) * 1.4) * len / 4) : Math.round((8 + c * 5) * (shape && shape !== "rect" ? 1.3 : 1));
+  return { cols, rows: Math.max(2, Math.floor(box.h / (box.w / cols))) };
+}
 
 function genMaze(ctx, box, rnd, c, opts = {}) {
   const { cols, rows } = opts.grid || mazeGrid(box, c), cs = Math.min(box.w / cols, box.h / rows);
   const ox = box.x + (box.w - cols * cs) / 2, oy = box.y + (box.h - rows * cs) / 2;
+  const mask = mazeMask(v("mazeShape"), cols, rows, v("mazeWord"));
+  if (mask) return genShapedMaze(ctx, rnd, cols, rows, cs, ox, oy, mask, opts);
   const E = new Uint8Array(cols * rows).fill(1), Sw = new Uint8Array(cols * rows).fill(1), seen = new Uint8Array(cols * rows);
   const parent = new Int32Array(cols * rows).fill(-1);   // carving tree: following parents from any cell leads to the entrance
   const stack = [0]; seen[0] = 1;
@@ -438,6 +492,46 @@ function genMaze(ctx, box, rnd, c, opts = {}) {
     if (Sw[i] && y < rows - 1) { ctx.moveTo(X, Y + cs); ctx.lineTo(X + cs, Y + cs); }
   }
   ctx.stroke();
+}
+
+// A maze inside a mask: entrance at the top-most cell (opening upward), exit at the bottom-most (opening
+// downward), carved by the same depth-first walk as the rectangle, so every cell is reachable by one route.
+function genShapedMaze(ctx, rnd, cols, rows, cs, ox, oy, mask, opts) {
+  const N = cols * rows, E = new Uint8Array(N).fill(1), Sw = new Uint8Array(N).fill(1), seen = new Uint8Array(N), parent = new Int32Array(N).fill(-1);
+  const inside = i => i >= 0 && i < N && mask[i];
+  let entrance = -1, exit = -1; for (let i = 0; i < N; i++) if (mask[i]) { if (entrance < 0) entrance = i; exit = i; }
+  const stack = [entrance]; seen[entrance] = 1;
+  while (stack.length) {
+    const cur = stack[stack.length - 1], x = cur % cols, nb = [];
+    if (x > 0 && inside(cur - 1) && !seen[cur - 1]) nb.push(cur - 1);
+    if (x < cols - 1 && inside(cur + 1) && !seen[cur + 1]) nb.push(cur + 1);
+    if (inside(cur - cols) && !seen[cur - cols]) nb.push(cur - cols);
+    if (inside(cur + cols) && !seen[cur + cols]) nb.push(cur + cols);
+    if (!nb.length) { stack.pop(); continue; }
+    const nx = nb[(rnd() * nb.length) | 0];
+    if (nx === cur + 1) E[cur] = 0; else if (nx === cur - 1) E[nx] = 0; else if (nx === cur + cols) Sw[cur] = 0; else Sw[nx] = 0;
+    seen[nx] = 1; parent[nx] = cur; stack.push(nx);
+  }
+  const centre = i => [ox + (i % cols + 0.5) * cs, oy + (((i / cols) | 0) + 0.5) * cs];
+  if (opts.solve) {
+    ctx.save(); ctx.strokeStyle = "#8a8a8a"; ctx.lineWidth = cs * 0.38; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    const [ex, ey] = centre(exit), [nx0, ny0] = centre(entrance);
+    ctx.beginPath(); ctx.moveTo(ex, ey + cs);   // out of the exit gap
+    for (let i = exit; i !== -1; i = parent[i]) ctx.lineTo(...centre(i));
+    ctx.lineTo(nx0, ny0 - cs); ctx.stroke(); ctx.restore();   // out of the entrance gap
+  }
+  ctx.lineCap = "square"; ctx.beginPath();
+  const wall = (x1, y1, x2, y2) => { ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); };
+  for (let i = 0; i < N; i++) {
+    if (!mask[i]) continue;
+    const x = i % cols, y = (i / cols) | 0, X = ox + x * cs, Y = oy + y * cs;
+    if (!inside(i - cols) && i !== entrance) wall(X, Y, X + cs, Y);
+    if (x === 0 || !mask[i - 1]) wall(X, Y, X, Y + cs);
+    if (x === cols - 1 || !mask[i + 1] || E[i]) wall(X + cs, Y, X + cs, Y + cs);
+    if ((!inside(i + cols) && i !== exit) || (inside(i + cols) && Sw[i])) wall(X, Y + cs, X + cs, Y + cs);
+  }
+  ctx.stroke();
+  return { cells: mask.reduce((a, b) => a + b, 0), reached: seen.reduce((a, b) => a + b, 0), entrance, exit };
 }
 
 function genTruchet(ctx, box, rnd, c) {
@@ -1852,7 +1946,7 @@ function drawBands(ctx, g, spec) {
 function drawDesign(ctx, g, box, gen, seed, c, lw, opts) {
   const rnd = mulberry32(seed);
   if (gen === "mandala") genMandala(ctx, box, rnd, c, lw);
-  else if (gen === "maze") genMaze(ctx, box, rnd, c, opts);
+  else if (gen === "maze") return genMaze(ctx, box, rnd, c, opts);
   else if (gen === "truchet") genTruchet(ctx, box, rnd, c);
   else if (gen === "contour") genContour(ctx, box, rnd, c, lw, g.dpi, seed);
   else if (gen === "dots") return genDots(ctx, box, rnd, c, lw, g, opts);
@@ -2284,6 +2378,8 @@ function syncOutputs() {
   $("book-opts").hidden = !v("booklet");
   $("name-opts").hidden = v("gen") !== "name";
   $("words-opts").hidden = v("gen") !== "words";
+  $("maze-opts").hidden = !(v("gen") === "maze" || (v("booklet") && v("mix")));
+  $("mazeWord-row").hidden = v("mazeShape") !== "word";
   $("wsWords-row").hidden = v("wsTheme") !== "custom";
   $("testpage-hint").hidden = !isTestPage();
   $("fold-row").hidden = !(isBook() || isPhotoBook());
@@ -2591,11 +2687,12 @@ $("print").onclick = () => isTestPage() ? (bridge ? (msg("Opening the print dial
    ~/.config/inkline/presets.json (its browser storage doesn't survive a restart); a plain browser uses localStorage. */
 const BUILTIN_PRESETS = {
   "Colouring page, bold lines": { mode: "make", gen: "mandala", complexity: 5, weight: 7, frame: false, cbn: false, booklet: false, poster: false },
-  "Classroom maze worksheet": { mode: "make", gen: "maze", complexity: 4, weight: 4, title: "Maze time", nameLine: true, booklet: false, poster: false },
-  "Maze booklet with answers": { mode: "make", gen: "maze", booklet: true, pages: 10, ramp: true, mix: false, cover: true, pageNums: true, key: true, poster: false },
+  "Classroom maze worksheet": { mode: "make", gen: "maze", mazeShape: "rect", complexity: 4, weight: 4, title: "Maze time", nameLine: true, booklet: false, poster: false },
+  "Maze booklet with answers": { mode: "make", gen: "maze", mazeShape: "rect", booklet: true, pages: 10, ramp: true, mix: false, cover: true, pageNums: true, key: true, poster: false },
   "Name colouring page": { mode: "make", gen: "name", nameBg: "flow", complexity: 3, weight: 5, frame: false, cbn: false, booklet: false, poster: false },
   "Word search booklet with answers": { mode: "make", gen: "words", wsTheme: "animals", booklet: true, pages: 8, ramp: true, mix: false, cover: true, pageNums: true, key: true, poster: false, weight: 3 },
   "Sudoku booklet with answers": { mode: "make", gen: "sudoku", booklet: true, pages: 10, ramp: true, mix: false, cover: true, pageNums: true, key: true, poster: false },
+  "Name maze": { mode: "make", gen: "maze", mazeShape: "word", mazeWord: "Maya", complexity: 4, weight: 4, booklet: false, poster: false },
   "Nonogram booklet with answers": { mode: "make", gen: "nonogram", booklet: true, pages: 8, ramp: true, mix: false, cover: true, pageNums: true, key: true, poster: false },
   "Dot-to-dot booklet with answers": { mode: "make", gen: "dots", booklet: true, pages: 8, ramp: true, mix: false, cover: true, pageNums: true, key: true, poster: false, weight: 4 },
   "Newspaper halftone photo": { mode: "convert", style: "halftone", dot: 3, contrast: 120, brightness: 0, invert: false },

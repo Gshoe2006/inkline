@@ -307,14 +307,14 @@ def selftest(win, outdir):
 
     # a hung step (e.g. a promise that never resolves) must still end the run
     QTimer.singleShot(8 * 60 * 1000, lambda: (fail("whole run took longer than 8 minutes"), finish()))
-    steps = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "words", "nonogram", "name", "convert", "engrave", "stipple", "cbn", "cbnpattern", "nonophoto", "testpage"]
+    steps = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "words", "nonogram", "mazeshape", "name", "convert", "engrave", "stipple", "cbn", "cbnpattern", "nonophoto", "testpage"]
 
     def run(i=0):
         if i == len(steps):
             tone_check()
             return
         name = steps[i]
-        js = "$('testpage').checked = false; $('cbn').checked = false; "
+        js = "$('testpage').checked = false; $('cbn').checked = false; $('mazeShape').value = 'rect'; "
         if name == "testpage":
             js += "setMode('make'); $('testpage').checked = true; syncOutputs();"
         else:
@@ -322,6 +322,8 @@ def selftest(win, outdir):
                 js += "setMode('convert'); $('style').value = 'fs';"
             elif name == "cbn":   # colour by number from the photo: traced vector outlines, so it saves as SVG
                 js += "setMode('convert'); $('style').value = 'cbn'; syncOutputs();"
+            elif name == "mazeshape":   # a maze in the shape of a word: one piece, every cell reachable
+                js += "setMode('make'); $('gen').value = 'maze'; $('mazeShape').value = 'word'; $('mazeWord').value = 'Inkline'; syncOutputs();"
             elif name == "nonophoto":   # a nonogram made from the photo: vector lines and text, so it saves as SVG
                 js += "setMode('convert'); $('style').value = 'nono'; syncOutputs();"
             elif name == "cbnpattern":   # colour by number on a mandala: vector lines plus numbers
@@ -459,6 +461,37 @@ def selftest(win, outdir):
             print(f"selftest: word search proof -> {r}")
             if not str(r).startswith("OK"):
                 fail(f"word search proof: {r}")
+            maze_shape_proof()
+        page.runJavaScript(js, got)
+
+    def maze_shape_proof():
+        """Shaped mazes: every cell of the shape is reachable from the entrance (so the shape is one piece and
+        there is a route to the exit), the entrance opens upward and the exit downward, and an answer key with
+        the page's grid draws the same maze."""
+        js = r"""(() => {
+          const bad = [], made = [], g = geometry(), cv = document.createElement('canvas'); cv.width = g.W; cv.height = g.H; const x = cv.getContext('2d');
+          setMode('make'); $('gen').value = 'maze';
+          for (const [shape, word] of [['heart', ''], ['star', ''], ['fish', ''], ['house', ''], ['word', 'Maya'], ['word', 'Inkline'], ['word', 'Jo']]) for (const c of [2, 6]) {
+            $('mazeShape').value = shape; $('mazeWord').value = word;
+            const sp = { ...singlePage(), c }, box = designBox(g, sp), grid = mazeGrid(box, c), tag = `${shape}${word}/c${c}`;
+            const r = drawDesign(x, g, box, 'maze', sp.seed, c, 4, {}), a = drawDesign(x, g, { x: 0, y: 0, w: 900, h: 700 }, 'maze', sp.seed, c, 2, { grid, solve: true });
+            const mask = mazeMask(shape, grid.cols, grid.rows, word);
+            if (!r || r.reached !== r.cells) bad.push(`${tag}: ${r ? r.cells - r.reached : '?'} cells unreachable`);
+            else {
+              if (r.entrance >= grid.cols && mask[r.entrance - grid.cols]) bad.push(`${tag}: entrance doesn't open to the outside`);
+              if (r.exit < grid.cols * (grid.rows - 1) && mask[r.exit + grid.cols]) bad.push(`${tag}: exit doesn't open to the outside`);
+              if (!a || a.cells !== r.cells || a.entrance !== r.entrance || a.exit !== r.exit) bad.push(`${tag}: answer key draws a different maze`);
+              made.push(r.cells);
+            }
+          }
+          $('mazeShape').value = 'rect'; $('mazeWord').value = 'Maze';
+          return (bad.length ? "BAD " + bad.join("; ") : "OK 14 mazes") + ", cells " + made.join(",");
+        })()"""
+
+        def got(r):
+            print(f"selftest: shaped maze proof -> {r}")
+            if not str(r).startswith("OK"):
+                fail(f"shaped maze proof: {r}")
             nonogram_proof()
         page.runJavaScript(js, got)
 
