@@ -139,6 +139,7 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; background:
           <option value="truchet">Woven tiles</option>
           <option value="contour">Topographic contours</option>
           <option value="flow">Flow lines</option>
+          <option value="dots">Dot-to-dot</option>
         </select></div>
       <div class="row"><label for="complexity">Complexity <output id="complexity-o"></output></label><input type="range" id="complexity" min="1" max="10" value="5"></div>
       <div class="row"><label for="weight">Line weight <output id="weight-o"></output></label><input type="range" id="weight" min="1" max="10" value="4"></div>
@@ -156,7 +157,7 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; background:
         <label class="check"><input type="checkbox" id="mix"> Mix all five patterns</label>
         <label class="check"><input type="checkbox" id="cover" checked> Cover page</label>
         <label class="check"><input type="checkbox" id="pageNums" checked> Page numbers</label>
-        <label class="check"><input type="checkbox" id="key" checked> Answer pages for mazes</label>
+        <label class="check"><input type="checkbox" id="key" checked> Answer pages for mazes and dot-to-dots</label>
         <div class="pager"><button class="btn" id="prev" aria-label="Previous page">‹</button><span id="pagepos"></span><button class="btn" id="next" aria-label="Next page">›</button></div>
         <p class="hint">PDF and Print use every page. PNG and SVG save the page shown.</p>
       </div>
@@ -459,6 +460,157 @@ function genFlow(ctx, box, rnd, c, seed) {
   }
 }
 
+/* ---------- dot-to-dot ----------
+   Shapes live in unit space (about -1..1, y down). Each outline point is [x, y, corner]: corners always
+   get a dot so a house keeps its square corners; smooth points are rounded with Catmull-Rom.
+   extras are fixed details (an eye, a door) drawn as lines so the finished picture reads clearly. */
+const DOT_SHAPES = {
+  star(rnd) {
+    const n = 5 + ((rnd() * 3) | 0), pts = [];
+    for (let i = 0; i < 2 * n; i++) { const a = -Math.PI / 2 + i * Math.PI / n, r = i % 2 ? 0.42 : 1; pts.push([r * Math.cos(a), r * Math.sin(a), true]); }
+    return { pts, extras: [] };
+  },
+  heart() {
+    const pts = [];
+    for (let i = 0; i < 64; i++) {
+      const t = i / 64 * 2 * Math.PI;
+      pts.push([Math.sin(t) ** 3, -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) / 16, i === 0 || i === 32]);
+    }
+    return { pts, extras: [] };
+  },
+  fish() {
+    const P = (x, y, c = false) => [x, y, c];
+    return {
+      pts: [P(-1, 0, true), P(-0.55, -0.48), P(0, -0.55), P(0.45, -0.3), P(0.62, -0.08, true), P(1, -0.48, true), P(0.86, 0, true),
+            P(1, 0.48, true), P(0.62, 0.08, true), P(0.45, 0.3), P(0, 0.55), P(-0.55, 0.48)],
+      extras: [{ circle: [-0.58, -0.12, 0.08] }, { line: [[-0.3, -0.38], [-0.22, 0], [-0.3, 0.38]] }],
+    };
+  },
+  house() {
+    const pts = [[-0.75, 1], [-0.75, -0.05], [-0.95, -0.05], [0, -0.95], [0.45, -0.524], [0.45, -0.85], [0.65, -0.85], [0.65, -0.334],
+                 [0.95, -0.05], [0.75, -0.05], [0.75, 1]].map(([x, y]) => [x, y, true]);
+    return { pts, extras: [{ line: [[-0.15, 1], [-0.15, 0.45], [0.15, 0.45], [0.15, 1]] }, { line: [[0.32, 0.2], [0.58, 0.2], [0.58, 0.46], [0.32, 0.46], [0.32, 0.2]] }] };
+  },
+  flower(rnd) {
+    const n = 5 + ((rnd() * 3) | 0), per = 16, pts = [];
+    for (let i = 0; i < n * per; i++) {
+      const t = i / (n * per) * 2 * Math.PI, r = 0.42 + 0.58 * Math.abs(Math.sin(n * t / 2));
+      pts.push([r * Math.cos(t - Math.PI / 2), r * Math.sin(t - Math.PI / 2), i % per === 0]);   // valleys are sharp
+    }
+    return { pts, extras: [{ circle: [0, 0, 0.24] }] };
+  },
+  blob(rnd) {
+    const k = [2, 3, 4].map(f => ({ f, a: 0.05 + rnd() * 0.1, p: rnd() * 6.3 })), pts = [];
+    for (let i = 0; i < 72; i++) { const t = i / 72 * 2 * Math.PI, r = 0.75 + k.reduce((s, q) => s + q.a * Math.cos(q.f * t + q.p), 0); pts.push([r * Math.cos(t), r * Math.sin(t), false]); }
+    return { pts, extras: [] };
+  },
+};
+
+// Dense closed outline from shape points: straight between corners, Catmull-Rom elsewhere.
+function denseOutline(pts) {
+  const n = pts.length, out = [];
+  for (let i = 0; i < n; i++) {
+    const p1 = pts[i], p2 = pts[(i + 1) % n];
+    out.push([p1[0], p1[1], p1[2]]);
+    if (p1[2] && p2[2]) continue;                      // straight edge between corners
+    const p0 = p1[2] ? p1 : pts[(i - 1 + n) % n], p3 = p2[2] ? p2 : pts[(i + 2) % n];   // a corner is its own tangent neighbour
+    for (let s = 1; s < 10; s++) {
+      const t = s / 10, t2 = t * t, t3 = t2 * t;
+      const f = k => 0.5 * (2 * p1[k] + (-p0[k] + p2[k]) * t + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * t2 + (-p0[k] + 3 * p1[k] - 3 * p2[k] + p3[k]) * t3);
+      out.push([f(0), f(1), false]);
+    }
+  }
+  return out;
+}
+
+function genDots(ctx, box, rnd, c, lw, g, opts = {}) {
+  const names = Object.keys(DOT_SHAPES), shapeName = names[(rnd() * names.length) | 0], shape = DOT_SHAPES[shapeName](rnd);
+  let line = denseOutline(shape.pts);
+  // clockwise on screen (positive shoelace area with y down), starting from the top-most corner or point
+  if (line.reduce((a, p, i) => { const q = line[(i + 1) % line.length]; return a + p[0] * q[1] - q[0] * p[1]; }, 0) < 0) line.reverse();
+  const cand = line.some(p => p[2]) ? line.map((p, i) => [p, i]).filter(([p]) => p[2]) : line.map((p, i) => [p, i]);
+  const s0 = cand.reduce((b, x) => (x[0][1] < b[0][1] - 1e-9 || (Math.abs(x[0][1] - b[0][1]) < 1e-9 && x[0][0] < b[0][0]) ? x : b))[1];
+  line = line.slice(s0).concat(line.slice(0, s0));
+  // fit to the box, leaving room for numbers around the outside
+  const xs = line.map(p => p[0]), ys = line.map(p => p[1]), bw = Math.max(...xs) - Math.min(...xs), bh = Math.max(...ys) - Math.min(...ys);
+  const sc = Math.min(box.w * 0.8 / bw, box.h * 0.8 / bh), ox = box.x + box.w / 2 - (Math.min(...xs) + bw / 2) * sc, oy = box.y + box.h / 2 - (Math.min(...ys) + bh / 2) * sc;
+  const T = ([x, y]) => [ox + x * sc, oy + y * sc];
+  const P = line.map(p => [...T(p), p[2]]), M = P.length;
+  // place dots: every corner, then the rest spread along each stretch in proportion to its length
+  const N = 10 + c * 8, cornerIdx = P.map((p, i) => (p[2] ? i : -1)).filter(i => i >= 0);
+  const anchors = cornerIdx.length ? cornerIdx : [0];
+  // outline length from point a forward to point b; a === b (a shape with no corners) means all the way round
+  const segLen = (a, b) => { let L = 0, i = a; do { const j = (i + 1) % M; L += Math.hypot(P[j][0] - P[i][0], P[j][1] - P[i][1]); i = j; } while (i !== b); return L; };
+  const spans = anchors.map((a, k) => [a, anchors[(k + 1) % anchors.length]]);
+  const lens = spans.map(([a, b]) => segLen(a, b));
+  const total = lens.reduce((s, x) => s + x, 0), spare = Math.max(0, N - anchors.length);
+  const dots = [];
+  spans.forEach(([a, b], k) => {
+    dots.push([P[a][0], P[a][1]]);
+    const m = Math.round(spare * lens[k] / total);
+    if (!m) return;
+    const step = lens[k] / (m + 1); let need = step, i = a, acc = 0;
+    while (dots.length < 1e4 && need < lens[k] - 1e-6) {
+      const j = (i + 1) % M, d = Math.hypot(P[j][0] - P[i][0], P[j][1] - P[i][1]);
+      if (acc + d >= need) { const t = (need - acc) / d; dots.push([P[i][0] + (P[j][0] - P[i][0]) * t, P[i][1] + (P[j][1] - P[i][1]) * t]); need += step; continue; }
+      acc += d; i = j; if (i === b) break;
+    }
+  });
+  const ex = fn => { ctx.beginPath(); fn(); ctx.stroke(); };
+  ctx.save(); ctx.lineWidth = lw; ctx.strokeStyle = "#000"; ctx.fillStyle = "#000"; ctx.lineCap = "round"; ctx.lineJoin = "round";
+  for (const e of shape.extras) {   // fixed details, drawn in both the puzzle and the answer
+    if (e.circle) { const [x, y] = T(e.circle); ex(() => ctx.arc(x, y, e.circle[2] * sc, 0, Math.PI * 2)); }
+    if (e.line) ex(() => e.line.forEach((p, i) => (i ? ctx.lineTo : ctx.moveTo).call(ctx, ...T(p))));
+  }
+  const rd = Math.max(lw * 0.9, g.dpi * 0.016);
+  if (opts.connect) {                // answer key: the finished picture
+    ctx.beginPath(); dots.forEach((d, i) => (i ? ctx.lineTo(...d) : ctx.moveTo(...d))); ctx.closePath(); ctx.stroke();
+    dots.forEach(d => { ctx.beginPath(); ctx.arc(d[0], d[1], rd * 0.8, 0, Math.PI * 2); ctx.fill(); });
+    ctx.restore(); return { shape: shapeName, dots: dots.length, overlaps: 0 };
+  }
+  // numbers sit outside the outline; try a few angles so they don't land on other numbers or dots
+  let spacing = Infinity; for (let i = 0; i < dots.length; i++) { const q = dots[(i + 1) % dots.length]; spacing = Math.min(spacing, Math.hypot(q[0] - dots[i][0], q[1] - dots[i][1])); }
+  const fs = Math.max(g.dpi * 0.085, Math.min(g.dpi * 0.17, spacing * 0.6));
+  const cx = box.x + box.w / 2, cy = box.y + box.h / 2, placed = [];
+  ctx.font = `600 ${fs}px ${FONT}`; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+  // the fixed details (eye, door, flower centre) are obstacles too: sample points along them
+  const detail = [];
+  for (const e of shape.extras) {
+    if (e.circle) for (let k = 0; k < 32; k++) { const a = k / 32 * 2 * Math.PI; detail.push(T([e.circle[0] + e.circle[2] * Math.cos(a), e.circle[1] + e.circle[2] * Math.sin(a)])); }
+    if (e.line) for (let k = 1; k < e.line.length; k++) for (let t = 0; t <= 1; t += 1 / 8) {
+      const [a, b] = [e.line[k - 1], e.line[k]]; detail.push(T([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]));
+    }
+  }
+  const inBox = r => r.x >= box.x && r.y >= box.y && r.x + r.w <= box.x + box.w && r.y + r.h <= box.y + box.h;
+  const near = (pts, r, pad) => pts.some(d => d[0] > r.x - pad && d[0] < r.x + r.w + pad && d[1] > r.y - pad && d[1] < r.y + r.h + pad);
+  const hits = r => !inBox(r) || placed.some(q => r.x < q.x + q.w && q.x < r.x + r.w && r.y < q.y + q.h && q.y < r.y + r.h)
+    || near(dots, r, rd) || near(detail, r, lw);
+  let overlaps = 0;
+  dots.forEach((d, i) => {
+    const a = dots[(i - 1 + dots.length) % dots.length], b = dots[(i + 1) % dots.length];
+    let nx = -(b[1] - a[1]), ny = b[0] - a[0], nl = Math.hypot(nx, ny) || 1; nx /= nl; ny /= nl;
+    if (nx * (d[0] - cx) + ny * (d[1] - cy) < 0) { nx = -nx; ny = -ny; }   // point away from the middle
+    const label = String(i + 1), w = ctx.measureText(label).width, h = fs * 0.8;
+    // outward first, then turned, then farther out, then pointing inward as a last resort
+    let best = null, clear = false;
+    search: for (const far of [1, 1.9]) for (const turn of [0, 0.5, -0.5, 1, -1, 1.5, -1.5, Math.PI]) {
+      const ca = Math.cos(turn), sa = Math.sin(turn), ux = nx * ca - ny * sa, uy = nx * sa + ny * ca;
+      const off = (rd + fs * 0.35) * far + Math.abs(ux) * w / 2 + Math.abs(uy) * h / 2;
+      const r = { x: d[0] + ux * off - w / 2, y: d[1] + uy * off - h / 2, w, h };
+      if (!best) best = r;
+      if (!hits(r)) { best = r; clear = true; break search; }
+    }
+    if (!clear) overlaps++;
+    placed.push(best);
+    ctx.fillText(label, best.x + w / 2, best.y + h * 0.9);
+  });
+  dots.forEach((d, i) => { ctx.beginPath(); ctx.arc(d[0], d[1], rd, 0, Math.PI * 2); ctx.fill(); });
+  ctx.lineWidth = Math.max(1, lw * 0.6);
+  ctx.beginPath(); ctx.arc(dots[0][0], dots[0][1], rd * 2.4, 0, Math.PI * 2); ctx.stroke();   // ring marks where to start
+  ctx.restore();
+  return { shape: shapeName, dots: dots.length, overlaps, fs: fs / g.dpi, labels: placed };
+}
+
 /* ---------- photo conversion ---------- */
 const BAYER = (() => { const m = [[0, 2], [3, 1]]; let b = m; for (let n = 2; n < 8; n *= 2) { const nb = []; for (let y = 0; y < n * 2; y++) { nb.push([]); for (let x = 0; x < n * 2; x++) nb[y].push(4 * b[y % n][x % n] + m[(y / n) | 0][(x / n) | 0]); } b = nb; } return b; })();
 
@@ -662,8 +814,9 @@ function buildSvg() {
 }
 
 /* ---------- pages & booklets ---------- */
-const GENS = ["mandala", "maze", "truchet", "contour", "flow"];
-const GEN_NAMES = { mandala: "Mandala", maze: "Maze", truchet: "Woven tiles", contour: "Contours", flow: "Flow lines" };
+const GENS = ["mandala", "maze", "truchet", "contour", "flow", "dots"];
+const GEN_NAMES = { mandala: "Mandala", maze: "Maze", truchet: "Woven tiles", contour: "Contours", flow: "Flow lines", dots: "Dot-to-dot" };
+const HAS_ANSWER = gen => gen === "maze" || gen === "dots";   // puzzles that get a solution in booklet answer pages
 const FONT = '"Cantarell", "Noto Sans", "Inter", sans-serif';
 const inset = (b, p) => ({ x: b.x + p, y: b.y + p, w: b.w - 2 * p, h: b.h - 2 * p });
 
@@ -698,6 +851,7 @@ function drawDesign(ctx, g, box, gen, seed, c, lw, opts) {
   else if (gen === "maze") genMaze(ctx, box, rnd, c, opts);
   else if (gen === "truchet") genTruchet(ctx, box, rnd, c);
   else if (gen === "contour") genContour(ctx, box, rnd, c, lw, g.dpi, seed);
+  else if (gen === "dots") return genDots(ctx, box, rnd, c, lw, g, opts);
   else genFlow(ctx, box, rnd, c, seed);
 }
 
@@ -712,8 +866,8 @@ function bookPages() {
   }
   if (v("cover")) pages.push({ kind: "cover", title: title || (mix ? "Colouring & puzzle book" : GEN_NAMES[v("gen")] + " book"), designs });
   pages.push(...designs);
-  const mazes = designs.filter(d => d.gen === "maze");
-  if (v("key")) for (let i = 0; i < mazes.length; i += 4) pages.push({ kind: "answers", header: true, title: "Answers", items: mazes.slice(i, i + 4) });
+  const puzzles = designs.filter(d => HAS_ANSWER(d.gen));
+  if (v("key")) for (let i = 0; i < puzzles.length; i += 4) pages.push({ kind: "answers", header: true, title: "Answers", items: puzzles.slice(i, i + 4) });
   let no = 1; for (const p of pages) if (p.kind !== "cover" && nums) p.pageNo = no++;
   return pages;
 }
@@ -771,8 +925,11 @@ function drawPage(ctx, g, spec, keep = false) {
       ctx.save(); ctx.font = `600 ${fs}px ${FONT}`; ctx.fillStyle = "#000"; ctx.textAlign = "left";
       ctx.fillText(d.pageNo ? `${d.label} · page ${d.pageNo}` : d.label, cell.x, cell.y + fs); ctx.restore();
       ctx.lineWidth = Math.max(1, lw * 0.45);
-      const grid = mazeGrid(designBox(g, d), d.c);   // same grid as the puzzle page, so it's the same maze
-      drawDesign(ctx, g, inset({ ...cell, y: cell.y + fs * 1.6, h: cell.h - fs * 1.6 }, fs * 0.6), "maze", d.seed, d.c, ctx.lineWidth, { grid, solve: true });
+      const slot = inset({ ...cell, y: cell.y + fs * 1.6, h: cell.h - fs * 1.6 }, fs * 0.6);   // not "area": that's the page layout above
+      if (d.gen === "maze") {
+        const grid = mazeGrid(designBox(g, d), d.c);   // same grid as the puzzle page, so it's the same maze
+        drawDesign(ctx, g, slot, "maze", d.seed, d.c, ctx.lineWidth, { grid, solve: true });
+      } else drawDesign(ctx, g, slot, "dots", d.seed, d.c, ctx.lineWidth, { connect: true });   // same seed draws the same shape, finished
     });
   } else if (spec.kind === "cover") {
     const b = g.box, fs = g.dpi * 0.5;
@@ -784,7 +941,7 @@ function drawPage(ctx, g, spec, keep = false) {
     ctx.restore();
     const art = { x: b.x + b.w * 0.12, y: b.y + b.h * 0.26, w: b.w * 0.76, h: b.h * 0.66 };
     ctx.lineWidth = lw;
-    drawDesign(ctx, g, art, spec.designs[0].gen === "maze" ? "mandala" : spec.designs[0].gen, (S.seed ^ 0x5bd1e995) >>> 0, 6, lw);
+    drawDesign(ctx, g, art, HAS_ANSWER(spec.designs[0].gen) ? "mandala" : spec.designs[0].gen, (S.seed ^ 0x5bd1e995) >>> 0, 6, lw);
   }
 }
 
@@ -1153,6 +1310,7 @@ const BUILTIN_PRESETS = {
   "Colouring page, bold lines": { mode: "make", gen: "mandala", complexity: 5, weight: 7, frame: false, booklet: false, poster: false },
   "Classroom maze worksheet": { mode: "make", gen: "maze", complexity: 4, weight: 4, title: "Maze time", nameLine: true, booklet: false, poster: false },
   "Maze booklet with answers": { mode: "make", gen: "maze", booklet: true, pages: 10, ramp: true, mix: false, cover: true, pageNums: true, key: true, poster: false },
+  "Dot-to-dot booklet with answers": { mode: "make", gen: "dots", booklet: true, pages: 8, ramp: true, mix: false, cover: true, pageNums: true, key: true, poster: false, weight: 4 },
   "Newspaper halftone photo": { mode: "convert", style: "halftone", dot: 3, contrast: 120, brightness: 0, invert: false },
   "Photo colouring page": { mode: "convert", style: "line", threshold: 128, dot: 2, invert: false },
   "Wall poster 3 × 3": { poster: true, booklet: false, grid: "3x3", overlap: "0.25" },

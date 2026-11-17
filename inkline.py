@@ -269,7 +269,7 @@ def selftest(win, outdir):
 
     # a hung step (e.g. a promise that never resolves) must still end the run
     QTimer.singleShot(8 * 60 * 1000, lambda: (fail("whole run took longer than 8 minutes"), finish()))
-    steps = ["mandala", "maze", "truchet", "contour", "flow", "convert"]
+    steps = ["mandala", "maze", "truchet", "contour", "flow", "dots", "convert"]
 
     def run(i=0):
         if i == len(steps):

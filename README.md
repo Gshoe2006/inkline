@@ -2,11 +2,11 @@
 
 A Linux desktop app that converts photos to, or generates, black & white images for printing.
 
-- **Make one up:** mandala colouring pages, mazes, woven tiles, topographic contours, flow lines.
+- **Make one up:** mandala colouring pages, mazes, dot-to-dots, woven tiles, topographic contours, flow lines.
 - **Convert a photo:** Floyd–Steinberg, Atkinson and ordered dithering, halftone dots, solid black & white, or a line drawing (colouring page), with rotate, zoom and pan to crop.
 - **Photo books:** turn several photos into one colouring-book PDF, one page each with its own crop, plus an optional cover, title, name line and page numbers.
-- **Booklets:** turn any pattern (or all five mixed) into a multi-page PDF with a cover, a title and name line, page numbers, difficulty that ramps up page by page, and answer pages for mazes.
-- **Presets:** six built-in starting points (colouring page, maze worksheet, maze booklet, halftone photo, photo colouring page, wall poster) plus your own saved settings.
+- **Booklets:** turn any pattern (or all five mixed) into a multi-page PDF with a cover, a title and name line, page numbers, difficulty that ramps up page by page, and answer pages for mazes and dot-to-dots.
+- **Presets:** seven built-in starting points (colouring page, maze worksheet, maze booklet, dot-to-dot booklet, halftone photo, photo colouring page, wall poster) plus your own saved settings.
 - **Print-ready output:** Letter or A4 at 150/300 dpi, with Print, Save PNG and Save PDF at true paper size.
 - **Posters:** print any design or photo big across 2×1 up to 4×4 sheets, with overlap strips, trim marks and sheet labels (A1, A2…) for assembly.
 - **SVG export:** generated designs save as true vector lines at real paper size, for Inkscape, Cricut/Silhouette cutting machines and laser cutters.
