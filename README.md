@@ -19,6 +19,15 @@ Needs Python 3 and PySide6 with Qt WebEngine (Arch: `sudo pacman -S pyside6 qt6-
 python3 inkline.py
 ```
 
+## Test
+
+```sh
+QT_QPA_PLATFORM=offscreen python3 inkline.py --selftest /tmp/inkline-test
+python3 packaging/check_selftest.py /tmp/inkline-test
+```
+
+The self-test renders every pattern, the photo converter, a booklet, two posters and a photo book, and exits non-zero if anything fails. GitHub runs both commands on every pull request (`.github/workflows/selftest.yml`) and keeps the rendered files for 7 days.
+
 ## Build the installers
 
 ```sh
