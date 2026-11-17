@@ -307,7 +307,7 @@ def selftest(win, outdir):
 
     # a hung step (e.g. a promise that never resolves) must still end the run
     QTimer.singleShot(8 * 60 * 1000, lambda: (fail("whole run took longer than 8 minutes"), finish()))
-    steps = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "name", "convert", "testpage"]
+    steps = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "words", "name", "convert", "testpage"]
 
     def run(i=0):
         if i == len(steps):
@@ -341,7 +341,7 @@ def selftest(win, outdir):
             return
 
         def wrote_svg(svg):
-            if not svg or "<path" not in svg:
+            if not svg or ("<path" not in svg and "<text" not in svg):   # a word search is all letters, no paths
                 fail(f"{name}: SVG export was empty")
             with open(os.path.join(outdir, f"{name}.svg"), "w", encoding="utf-8") as f:
                 f.write(svg or "")
@@ -417,6 +417,37 @@ def selftest(win, outdir):
             print(f"selftest: sudoku proof -> {r}")
             if not str(r).startswith("OK"):
                 fail(f"sudoku proof: {r}")
+            words_proof()
+        page.runJavaScript(js, got)
+
+    def words_proof():
+        """Every word in a generated word search must appear exactly once, counted independently of the
+        generator (rows, columns and diagonals read as text, forwards and backwards)."""
+        js = r"""(() => {
+          const lines = (gr, n) => { const o = [], at = (r, c) => gr[r * n + c];
+            for (let r = 0; r < n; r++) o.push([...Array(n)].map((_, c) => at(r, c)).join(""));
+            for (let c = 0; c < n; c++) o.push([...Array(n)].map((_, r) => at(r, c)).join(""));
+            for (let d = -(n - 1); d < n; d++) { let a = "", b = ""; for (let r = 0; r < n; r++) { const c1 = r + d, c2 = n - 1 - r + d; if (c1 >= 0 && c1 < n) a += at(r, c1); if (c2 >= 0 && c2 < n) b += at(r, c2); } o.push(a, b); }
+            return o; };
+          const count = (ls, w) => { const rv = [...w].reverse().join(""), ts = rv === w ? [w] : [w, rv]; let k = 0;
+            for (const l of ls) for (const t of ts) for (let i = l.indexOf(t); i >= 0; i = l.indexOf(t, i + 1)) k++; return k; };
+          const bad = [], sizes = [];
+          for (const theme of ["animals", "space", "weather"]) for (const c of [1, 5, 10]) {
+            $('wsTheme').value = theme; const rnd = mulberry32(31 * c + theme.length), ws = makeWordSearch(rnd, c, wordPool(rnd, c));
+            if (!ws) { bad.push(`${theme}/c${c} no puzzle`); continue; }
+            const L = lines(ws.grid, ws.size);
+            for (const p of ws.placed) if (count(L, p.word) !== 1) bad.push(`${theme}/c${c} ${p.word} x${count(L, p.word)}`);
+            if (ws.placed.length < wsLevel(c).count) bad.push(`${theme}/c${c} only ${ws.placed.length} words`);
+            sizes.push(ws.placed.length);
+          }
+          $('wsTheme').value = 'animals';
+          return bad.length ? "BAD " + bad.join("; ") : "OK 9 puzzles, words " + sizes.join(",");
+        })()"""
+
+        def got(r):
+            print(f"selftest: word search proof -> {r}")
+            if not str(r).startswith("OK"):
+                fail(f"word search proof: {r}")
             booklet()
         page.runJavaScript(js, got)
 
