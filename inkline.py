@@ -307,7 +307,7 @@ def selftest(win, outdir):
 
     # a hung step (e.g. a promise that never resolves) must still end the run
     QTimer.singleShot(8 * 60 * 1000, lambda: (fail("whole run took longer than 8 minutes"), finish()))
-    steps = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "words", "name", "convert", "engrave", "testpage"]
+    steps = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "words", "nonogram", "name", "convert", "engrave", "testpage"]
 
     def run(i=0):
         if i == len(steps):
@@ -453,6 +453,54 @@ def selftest(win, outdir):
             print(f"selftest: word search proof -> {r}")
             if not str(r).startswith("OK"):
                 fail(f"word search proof: {r}")
+            nonogram_proof()
+        page.runJavaScript(js, got)
+
+    def nonogram_proof():
+        """Every nonogram's clues must match its picture and allow exactly one solution, counted by a plain
+        backtracking search that shares no code with the generator's line solver; and the seed must reproduce it."""
+        js = r"""(() => {
+          const runs = a => a.join("").split("0").filter(Boolean).map(t => t.length);
+          const same = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
+          // every way to lay out one line's runs, as 0/1 arrays
+          const layouts = (clue, n) => { const out = [], lay = (k, at, acc) => {
+              if (k === clue.length) { out.push(acc.concat(Array(n - acc.length).fill(0))); return; }
+              const rest = clue.slice(k + 1).reduce((a, b) => a + b + 1, 0);
+              for (let s = at; s + clue[k] + rest <= n; s++) lay(k + 1, s + clue[k] + 1, acc.concat(Array(s - acc.length).fill(0), Array(clue[k]).fill(1), k < clue.length - 1 ? [0] : []));
+            }; lay(0, 0, []); return out.map(l => l.slice(0, n)); };
+          // rows one at a time; prune when a column's runs so far can't start the column's clue
+          const count = (rows, cols, n) => { const opts = rows.map(r => layouts(r, n)), pick = [];
+            const okSoFar = (c, full) => { const col = pick.map(r => r[c]), rr = runs(col), cl = cols[c];
+              if (full) return same(rr, cl);
+              const open = col[col.length - 1] === 1, done = open ? rr.slice(0, -1) : rr;
+              if (done.length > cl.length || done.some((x, i) => x !== cl[i])) return false;
+              if (open && (rr.length > cl.length || rr[rr.length - 1] > cl[rr.length - 1])) return false;
+              return true; };
+            let found = 0; const go = r => { if (found > 1) return;
+              if (r === n) { found++; return; }
+              for (const o of opts[r]) { pick.push(o); let ok = true; for (let c = 0; c < n && ok; c++) ok = okSoFar(c, r === n - 1); if (ok) go(r + 1); pick.pop(); } };
+            go(0); return found; };
+          const bad = [], made = [];
+          for (const c of [1, 3, 5]) for (const seed of [11, 12, 13]) {
+            const p = makeNonogram(mulberry32(seed), c), q = makeNonogram(mulberry32(seed), c), n = p.size;
+            const rows = [...Array(n)].map((_, r) => runs(p.pic.slice(r * n, r * n + n))), cols = [...Array(n)].map((_, k) => runs(p.pic.filter((_, i) => i % n === k)));
+            if (!rows.every((r, i) => same(r, p.rows[i])) || !cols.every((x, i) => same(x, p.cols[i]))) bad.push(`c${c}/${seed} clues don't match the picture`);
+            const k = count(p.rows, p.cols, n); if (k !== 1) bad.push(`c${c}/${seed} ${k} solutions`);
+            if (p.pic.join("") !== q.pic.join("")) bad.push(`c${c}/${seed} not reproducible`);
+            made.push(`${n}x${n}`);
+          }
+          for (const c of [8, 10]) for (const seed of [11, 12]) {   // too big to enumerate: logic must still solve them fully
+            const p = makeNonogram(mulberry32(seed), c), s = solveNonogram(p.rows, p.cols);
+            if (!s || s.join("") !== p.pic.join("")) bad.push(`c${c}/${seed} not solvable by logic`);
+            made.push(`${p.size}x${p.size}`);
+          }
+          return bad.length ? "BAD " + bad.join("; ") : "OK " + made.length + " puzzles, " + made.join(",");
+        })()"""
+
+        def got(r):
+            print(f"selftest: nonogram proof -> {r}")
+            if not str(r).startswith("OK"):
+                fail(f"nonogram proof: {r}")
             booklet()
         page.runJavaScript(js, got)
 
