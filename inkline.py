@@ -456,8 +456,32 @@ def selftest(win, outdir):
             path = os.path.join(outdir, "booklet-fold.pdf")
             js = ("$('fold').checked = true; $('fold').dispatchEvent(new Event('input')); syncOutputs();"
                   f"runBook('pdf', {json.dumps(path)}).then(r => {{ $('fold').checked = false; syncOutputs(); window.__job = r; }})")
-            wait_for(js, "fold booklet", poster_design)
+            wait_for(js, "fold booklet", swap_check)
         page.runJavaScript(proof, proved)
+
+    def swap_check():
+        """Swapping one booklet page must change only that page and the answer page showing it; undoing restores all."""
+        js = r"""(() => {
+          const g = geometry(), names = bookPages().map(p => p.kind === "design" ? "maze" + (p.idx + 1) : p.kind);
+          const prints = () => bookPages().map(p => { const c = document.createElement("canvas"); c.width = g.W; c.height = g.H;
+            const x = c.getContext("2d", { willReadFrequently: true }); drawPage(x, g, p); const d = x.getImageData(0, 0, g.W, g.H).data;
+            let h = 2166136261; for (let i = 0; i < d.length; i += 16) h = Math.imul(h ^ d[i], 16777619); return h >>> 0; });
+          const diff = (a, b) => a.map((h, i) => h !== b[i] ? i : -1).filter(i => i >= 0);
+          const orig = prints(); S.pageSeeds = { 2: 123456789 };
+          const swapped = diff(orig, prints()); S.pageSeeds = {};
+          const undone = diff(orig, prints());
+          const ansPage = bookPages().findIndex(p => p.kind === "answers" && p.items.some(d => d.idx === 2));
+          const want = [bookPages().findIndex(p => p.idx === 2), ansPage].sort((a, b) => a - b);
+          const ok = swapped.join() === want.join() && undone.length === 0;
+          return (ok ? "OK " : "BAD ") + `swap changed [${swapped.map(i => names[i]).join(", ")}], undo changed [${undone.map(i => names[i]).join(", ")}]`;
+        })()"""
+
+        def got(r):
+            print(f"selftest: swap check -> {r}")
+            if not str(r).startswith("OK"):
+                fail(f"swap check: {r}")
+            poster_design()
+        page.runJavaScript(js, got)
 
     def poster_design():
         path = os.path.join(outdir, "poster-mandala-2x2.pdf")
