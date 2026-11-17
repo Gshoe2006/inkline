@@ -4,6 +4,7 @@ A Linux desktop app that converts photos to, or generates, black & white images 
 
 - **Make one up:** mandala colouring pages, mazes, woven tiles, topographic contours, flow lines.
 - **Convert a photo:** Floyd–Steinberg, Atkinson and ordered dithering, halftone dots, solid black & white, or a line drawing (colouring page).
+- **Booklets:** turn any pattern (or all five mixed) into a multi-page PDF with a cover, a title and name line, page numbers, difficulty that ramps up page by page, and answer pages for mazes.
 - **Print-ready output:** Letter or A4 at 150/300 dpi, with Print, Save PNG and Save PDF at true paper size.
 
 ## Run from source

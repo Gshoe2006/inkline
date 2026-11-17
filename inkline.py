@@ -13,7 +13,7 @@ from PySide6.QtCore import QFile, QIODevice, QMarginsF, QObject, QRect, QTimer, 
 from PySide6.QtGui import QGuiApplication, QIcon, QImage, QPageLayout, QPageSize, QPainter, QPdfWriter
 from PySide6.QtPrintSupport import QPrintDialog, QPrinter
 from PySide6.QtWebChannel import QWebChannel
-from PySide6.QtWebEngineCore import QWebEngineScript
+from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineScript
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import QApplication, QFileDialog, QMainWindow
 
@@ -54,9 +54,11 @@ def write_pdf(img, path, job):
 class Bridge(QObject):
     """Exposed to the page as `inkline` through QWebChannel."""
 
-    def __init__(self, window):
+    def __init__(self, window, test_mode=False):
         super().__init__()
         self.window = window
+        self.test_mode = test_mode     # only the headless self-test may pass a save path from the page
+        self.book = None
         self.last_dir = os.path.expanduser("~/Pictures") if os.path.isdir(os.path.expanduser("~/Pictures")) else os.path.expanduser("~")
 
     def _ask_path(self, title, name, ext, filt):
@@ -100,13 +102,88 @@ class Bridge(QObject):
             return "Sent to the printer." if ok else "The printer didn't accept the job. Check that it's connected."
         return "Unknown request."
 
+    # --- multi-page booklets: the page streams pages one at a time between begin and end ---
+    @Slot(str, result=str)
+    def bookBegin(self, payload):
+        if self.book:
+            return "A booklet is already being made. Wait for it to finish."
+        job = json.loads(payload)
+        if job["kind"] == "pdf":
+            path = job.get("path") if self.test_mode and job.get("path") else \
+                self._ask_path("Save booklet PDF", job["name"], "pdf", "PDF document (*.pdf)")
+            if not path:
+                return "Save cancelled."
+            device = QPdfWriter(path)
+            device.setPageLayout(page_layout(job))
+            device.setResolution(job["dpi"])
+            device.setTitle(job["name"])
+            device.setCreator("Inkline")
+            painter = QPainter(device)
+            target = lambda: QRect(0, 0, device.width(), device.height())
+            done = f"Saved {job['count']}-page booklet as {os.path.basename(path)}"
+        elif job["kind"] == "print":
+            device = QPrinter(QPrinter.PrinterMode.HighResolution)
+            device.setPageLayout(page_layout(job))
+            device.setFullPage(True)
+            device.setDocName(job["name"])
+            device.setColorMode(QPrinter.ColorMode.GrayScale)
+            if QPrintDialog(device, self.window).exec() != QPrintDialog.DialogCode.Accepted:
+                return "Print cancelled."
+            painter = QPainter(device)
+            target = painter.viewport
+            done = f"Sent {job['count']} pages to the printer."
+        else:
+            return "Unknown booklet request."
+        if not painter.isActive():
+            return "Couldn't start the booklet. Check the folder permissions or the printer."
+        self.book = {"device": device, "painter": painter, "target": target, "first": True, "done": done}
+        return "ok"
+
+    @Slot(str, result=str)
+    def bookPage(self, b64):
+        if not self.book:
+            return "No booklet in progress."
+        img = QImage.fromData(base64.b64decode(b64), "PNG")
+        if img.isNull():
+            return "A page couldn't be prepared."
+        b = self.book
+        if not b["first"] and not b["device"].newPage():
+            return "The printer or PDF stopped accepting pages."
+        b["first"] = False
+        draw_fitted(b["painter"], img, b["target"]())
+        return "ok"
+
+    @Slot(result=str)
+    def bookEnd(self):
+        if not self.book:
+            return "No booklet in progress."
+        b, self.book = self.book, None
+        return b["done"] if b["painter"].end() else "The booklet couldn't be finished."
+
+    @Slot()
+    def bookAbort(self):
+        if self.book:
+            if isinstance(self.book["device"], QPrinter):
+                self.book["device"].abort()
+            self.book["painter"].end()
+            self.book = None
+
+
+class ConsolePage(QWebEnginePage):
+    """Used by the self-test so JavaScript errors show up in the terminal."""
+
+    def javaScriptConsoleMessage(self, level, message, line, source):
+        print(f"js[{level.name}] line {line}: {message}")
+
 
 class Window(QMainWindow):
-    def __init__(self):
+    def __init__(self, test_mode=False):
         super().__init__()
         self.setWindowTitle("Inkline")
         self.resize(1280, 860)
         self.view = QWebEngineView(self)
+        if test_mode:
+            self.view.setPage(ConsolePage(self.view))
         self.setCentralWidget(self.view)
 
         # Make qwebchannel.js available before the page's own script runs.
@@ -120,7 +197,7 @@ class Window(QMainWindow):
             self.view.page().scripts().insert(script)
             f.close()
 
-        self.bridge = Bridge(self)
+        self.bridge = Bridge(self, test_mode)
         self.channel = QWebChannel(self)
         self.channel.registerObject("inkline", self.bridge)
         self.view.page().setWebChannel(self.channel)
@@ -135,8 +212,7 @@ def selftest(win, outdir):
 
     def run(i=0):
         if i == len(steps):
-            print("selftest: done")
-            QApplication.quit()
+            booklet()
             return
         name = steps[i]
         js = ("setMode('convert');" if name == "convert" else f"setMode('make'); $('gen').value='{name}';") + " 0"
@@ -154,6 +230,24 @@ def selftest(win, outdir):
         print(f"selftest: {name} {img.width()}x{img.height()}")
         run(i + 1)
 
+    def booklet():
+        path = os.path.join(outdir, "booklet.pdf")
+        js = ("setMode('make'); $('gen').value='maze'; $('booklet').checked=true; $('pages').value='6';"
+              "$('title').value='Rainy Day Mazes'; $('nameLine').checked=true; syncOutputs();"
+              f"runBook('pdf', {json.dumps(path)}).then(r => {{ window.__book = r; }}); 0")
+        page.runJavaScript(js, lambda _r: QTimer.singleShot(500, poll))
+
+    def poll(tries=[0]):
+        def got(r):
+            if not r and tries[0] < 120:      # Qt returns JS null as "" (not None) while the booklet renders
+                tries[0] += 1
+                QTimer.singleShot(500, poll)
+                return
+            print(f"selftest: booklet -> {r}")
+            print("selftest: done")
+            QApplication.quit()
+        page.runJavaScript("window.__book || null", got)
+
     win.view.loadFinished.connect(lambda ok: QTimer.singleShot(800, run) if ok else (print("selftest: load failed"), QApplication.quit()))
 
 
@@ -164,8 +258,9 @@ def main():
     icon = os.path.join(HERE, "inkline.svg")
     if os.path.exists(icon):
         app.setWindowIcon(QIcon(icon))
-    win = Window()
-    if len(sys.argv) > 2 and sys.argv[1] == "--selftest":
+    testing = len(sys.argv) > 2 and sys.argv[1] == "--selftest"
+    win = Window(test_mode=testing)
+    if testing:
         selftest(win, sys.argv[2])
     else:
         win.show()
