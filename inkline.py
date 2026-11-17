@@ -307,19 +307,23 @@ def selftest(win, outdir):
 
     # a hung step (e.g. a promise that never resolves) must still end the run
     QTimer.singleShot(8 * 60 * 1000, lambda: (fail("whole run took longer than 8 minutes"), finish()))
-    steps = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "words", "nonogram", "name", "convert", "engrave", "stipple", "testpage"]
+    steps = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "words", "nonogram", "name", "convert", "engrave", "stipple", "cbn", "cbnpattern", "testpage"]
 
     def run(i=0):
         if i == len(steps):
             tone_check()
             return
         name = steps[i]
-        js = "$('testpage').checked = false; "
+        js = "$('testpage').checked = false; $('cbn').checked = false; "
         if name == "testpage":
             js += "setMode('make'); $('testpage').checked = true; syncOutputs();"
         else:
             if name == "convert":
                 js += "setMode('convert'); $('style').value = 'fs';"
+            elif name == "cbn":   # colour by number from the photo: pixels, so no SVG
+                js += "setMode('convert'); $('style').value = 'cbn'; syncOutputs();"
+            elif name == "cbnpattern":   # colour by number on a mandala: vector lines plus numbers
+                js += "setMode('make'); $('gen').value = 'mandala'; $('cbn').checked = true; syncOutputs();"
             elif name in ("engrave", "stipple"):   # the photo styles that also save as SVG
                 js += f"setMode('convert'); $('style').value = '{name}'; syncOutputs();"
             else:
@@ -341,7 +345,7 @@ def selftest(win, outdir):
         print(f"selftest: {name} {img.width()}x{img.height()}")
         if (img.width(), img.height()) != (2550, 3300):
             fail(f"{name}: expected a 2550x3300 page, got {img.width()}x{img.height()}")
-        if name in ("convert", "testpage"):   # pixels only: no SVG
+        if name in ("convert", "cbn", "testpage"):   # pixels only: no SVG
             run(i + 1)
             return
 
@@ -501,6 +505,46 @@ def selftest(win, outdir):
             print(f"selftest: nonogram proof -> {r}")
             if not str(r).startswith("OK"):
                 fail(f"nonogram proof: {r}")
+            cbn_proof()
+        page.runJavaScript(js, got)
+
+    def cbn_proof():
+        """Colour by number: every region gets a number, every number sits inside its own region, regions
+        that touch never share a colour (photos), and the key lists exactly the numbers used (patterns)."""
+        js = r"""(() => {
+          const bad = [], made = [];
+          setMode('convert'); $('style').value = 'cbn';
+          for (const k of [4, 8, 12]) {
+            $('pcbnColours').value = k;
+            const { ww, wh, label, cbn } = convertData({ x: 0, y: 0, w: 1500, h: 1100 }, 2, 'cbn', curPhoto()), seen = new Set();
+            if (cbn.pal.length > k) bad.push(`photo k${k}: ${cbn.pal.length} crayons`);
+            for (const [l, x, y] of cbn.spots) { if (label[y * ww + x] !== l) bad.push(`photo k${k}: a number outside its region`); seen.add(l); }
+            if (seen.size !== cbn.colour.length) bad.push(`photo k${k}: ${cbn.colour.length - seen.size} regions without a number`);
+            let clash = 0;
+            for (let i = 0; i < ww * wh; i++) { const l = label[i]; if (l < 0) continue;
+              for (const j of [i % ww < ww - 1 ? i + 1 : -1, i + ww < ww * wh ? i + ww : -1]) { const m = j >= 0 ? label[j] : -1; if (m >= 0 && m !== l && cbn.colour[m] === cbn.colour[l]) clash++; } }
+            if (clash) bad.push(`photo k${k}: ${clash} borders between regions of one colour`);
+            made.push(`photo ${cbn.colour.length} regions/${cbn.pal.length} crayons`);
+          }
+          setMode('make'); $('cbn').checked = true;
+          for (const gen of ['mandala', 'truchet', 'contour']) for (const c of [2, 6]) {
+            $('gen').value = gen;
+            const g = geometry(), sp = { ...singlePage(), c }, box = designBox(g, sp), art = { ...box, h: box.h - cbnKeyHeight(box, g, num('cbnColours')) - g.dpi * 0.12 };
+            const r = cbnPattern(g, art, sp, num('weight') * g.dpi / 150);
+            for (const q of r.spots) if (r.label[Math.floor((q.y - art.y) * r.s) * r.w + Math.floor((q.x - art.x) * r.s)] !== q.id) bad.push(`${gen}/c${c}: a number outside its space`);
+            const used = new Set(r.spots.map(q => q.n));
+            if (!r.spots.length) bad.push(`${gen}/c${c}: no numbers`);
+            if (used.size !== r.names.length) bad.push(`${gen}/c${c}: key lists ${r.names.length}, ${used.size} used`);
+            made.push(`${gen} c${c} ${r.spots.length}`);
+          }
+          $('cbn').checked = false; $('gen').value = 'mandala'; syncOutputs();
+          return (bad.length ? "BAD " + bad.join("; ") : "OK ") + " | " + made.join(", ");
+        })()"""
+
+        def got(r):
+            print(f"selftest: colour by number proof -> {r}")
+            if not str(r).startswith("OK"):
+                fail(f"colour by number proof: {r}")
             booklet()
         page.runJavaScript(js, got)
 

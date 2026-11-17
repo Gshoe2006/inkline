@@ -165,6 +165,11 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; background:
       <div class="row"><label for="complexity">Complexity <output id="complexity-o"></output></label><input type="range" id="complexity" min="1" max="10" value="5"></div>
       <div class="row"><label for="weight">Line weight <output id="weight-o"></output></label><input type="range" id="weight" min="1" max="10" value="4"></div>
       <label class="check"><input type="checkbox" id="frame"> Draw a border around the design</label>
+      <label class="check"><input type="checkbox" id="cbn"> Colour by number (a number in each space, with a crayon key)</label>
+      <div class="sub" id="cbn-opts" hidden>
+        <div class="row"><label for="cbnColours">Colours <output id="cbnColours-o"></output></label><input type="range" id="cbnColours" min="3" max="12" value="6"></div>
+        <p class="hint" id="cbnNote">Repeated spaces share a number, and spaces side by side get different colours.</p>
+      </div>
       <div class="seedline"><code id="seed-o"></code><button class="btn primary" id="reroll" title="New design (Ctrl+N)">New design</button></div>
     </fieldset>
 
@@ -222,9 +227,14 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; background:
           <option value="halftone">Halftone dots</option>
           <option value="engrave">Engraving lines</option>
           <option value="stipple">Stippling dots</option>
+          <option value="cbn">Colour by number (with a crayon key)</option>
           <option value="threshold">Solid black &amp; white</option>
           <option value="line">Line drawing (colouring page)</option>
         </select></div>
+      <div class="sub" id="pcbn-opts" hidden>
+        <div class="row"><label for="pcbnColours">Colours <output id="pcbnColours-o"></output></label><input type="range" id="pcbnColours" min="4" max="16" value="8"></div>
+        <p class="hint">Threshold / detail sets how small the regions get. The key names the crayon for each number.</p>
+      </div>
       <div class="row"><label for="brightness">Brightness <output id="brightness-o"></output></label><input type="range" id="brightness" min="-100" max="100" value="0"></div>
       <div class="row"><label for="contrast">Contrast <output id="contrast-o"></output></label><input type="range" id="contrast" min="20" max="300" value="110"></div>
       <div class="row"><label for="threshold">Threshold / detail <output id="threshold-o"></output></label><input type="range" id="threshold" min="1" max="254" value="128"></div>
@@ -1070,9 +1080,10 @@ const workerJobs = new Map();
 function getWorker() {
   if (worker !== null) return worker;
   try {
-    const src = `"use strict";\nconst BAYER = ${JSON.stringify(BAYER)};\n${gaussBlur}\n${despeckle}\n${processPixels}\n` +
+    const src = `"use strict";\nconst BAYER = ${JSON.stringify(BAYER)};\nconst CRAYONS = ${JSON.stringify(CRAYONS)};\nconst cbnDist2 = ${cbnDist2};\n` +
+      [gaussBlur, despeckle, processPixels, cbnLab, cbnComponents, cbnDistance, cbnRegionInfo, cbnMerge, cbnSpots, cbnPalette, cbnModeFilter].join("\n") + "\n" +
       `onmessage = e => { const { id, data, ww, wh, p } = e.data; const r = processPixels(data, ww, wh, p);` +
-      ` postMessage({ id, ...r }, [r.lum.buffer, r.mask.buffer].concat(r.rgba ? [r.rgba.buffer] : [])); };`;
+      ` postMessage({ id, ...r }, [r.lum.buffer, r.mask.buffer].concat(r.rgba ? [r.rgba.buffer] : [], r.label ? [r.label.buffer] : [])); };`;
     worker = new Worker(URL.createObjectURL(new Blob([src], { type: "text/javascript" })));
     worker.onmessage = e => { const job = workerJobs.get(e.data.id); workerJobs.delete(e.data.id); job?.resolve(e.data); };
     worker.onerror = e => {   // fall back to the main thread for good
@@ -1186,17 +1197,232 @@ function drawStipple(ctx, box, g, entry, inv) {
   ctx.restore();
 }
 
+/* ---------- colour by number ----------
+   Shared by photos and generated patterns: regions, each outlined with a number in it, and a key under
+   the picture saying which crayon each number means. Where the regions are is worked out on a coarse
+   grid (150 dpi for photos, 100 for patterns), the same in the preview and in print; numbers and the key
+   are drawn at full resolution. The pure functions below also run in the background worker. */
+const CBN_DPI = 150, CBN_PAT_DPI = 100;
+const CRAYONS = [["White", 255, 255, 255], ["Light grey", 200, 200, 200], ["Grey", 128, 128, 128], ["Black", 30, 30, 30],
+  ["Red", 210, 40, 45], ["Pink", 245, 160, 190], ["Orange", 245, 135, 40], ["Peach", 250, 205, 160], ["Yellow", 250, 220, 60],
+  ["Light green", 160, 210, 110], ["Green", 50, 150, 70], ["Dark green", 30, 85, 50], ["Sky blue", 120, 180, 230], ["Cornflower", 95, 130, 200], ["Blue", 40, 90, 190],
+  ["Navy", 30, 40, 90], ["Purple", 120, 70, 160], ["Lavender", 190, 170, 220], ["Brown", 125, 75, 40], ["Tan", 205, 170, 120], ["Dark brown", 70, 45, 30]];
+const CBN_PATTERN_COLOURS = ["Yellow", "Sky blue", "Pink", "Light green", "Orange", "Purple", "Red", "Blue", "Peach", "Green", "Lavender", "Brown"];
+const CBN_GENS = ["mandala", "truchet", "contour", "name"];   // patterns made of closed spaces
+
+// sRGB 0..255 to CIE Lab, where straight-line distance roughly matches how different colours look.
+function cbnLab(r, g, b) {
+  const lin = c => { c /= 255; return c > 0.04045 ? ((c + 0.055) / 1.055) ** 2.4 : c / 12.92; }, R = lin(r), G = lin(g), B = lin(b);
+  const f = t => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+  const x = f((0.4124 * R + 0.3576 * G + 0.1805 * B) / 0.9505), y = f(0.2126 * R + 0.7152 * G + 0.0722 * B), z = f((0.0193 * R + 0.1192 * G + 0.9505 * B) / 1.089);
+  return [116 * y - 16, 500 * (x - y), 200 * (y - z)];
+}
+const cbnDist2 = (p, q) => (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2 + (p[2] - q[2]) ** 2;
+// Regions: 4-connected pixels of equal value (-1 is nothing). label[i] is the region id, or -1.
+function cbnComponents(val, w, h) {
+  const label = new Int32Array(w * h).fill(-1), stack = new Int32Array(w * h); let n = 0;
+  for (let i = 0; i < w * h; i++) {
+    if (val[i] < 0 || label[i] >= 0) continue;
+    let top = 0; stack[top++] = i; label[i] = n;
+    while (top) {
+      const q = stack[--top], x = q % w;
+      for (const j of [x > 0 ? q - 1 : -1, x < w - 1 ? q + 1 : -1, q - w, q + w]) if (j >= 0 && j < w * h && label[j] < 0 && val[j] === val[i]) { label[j] = n; stack[top++] = j; }
+    }
+    n++;
+  }
+  return { label, n };
+}
+// Distance from each region pixel to the nearest pixel outside its region (two chamfer passes).
+function cbnDistance(label, w, h) {
+  const d = new Float32Array(w * h), D = Math.SQRT2;
+  for (let i = 0; i < w * h; i++) {
+    const x = i % w, y = (i / w) | 0, l = label[i];
+    d[i] = l < 0 ? 0 : x === 0 || y === 0 || x === w - 1 || y === h - 1 || label[i - 1] !== l || label[i + 1] !== l || label[i - w] !== l || label[i + w] !== l ? 1 : 1e9;
+  }
+  for (let y = 1; y < h; y++) for (let x = 1; x < w - 1; x++) { const i = y * w + x; if (d[i] > 1) d[i] = Math.min(d[i], d[i - 1] + 1, d[i - w] + 1, d[i - w - 1] + D, d[i - w + 1] + D); }
+  for (let y = h - 2; y >= 0; y--) for (let x = w - 2; x > 0; x--) { const i = y * w + x; if (d[i] > 1) d[i] = Math.min(d[i], d[i + 1] + 1, d[i + w] + 1, d[i + w + 1] + D, d[i + w - 1] + D); }
+  return d;
+}
+// Per region: its value, size, centre and deepest point (where its number fits best) with that depth r.
+function cbnRegionInfo(label, n, val, w, h) {
+  const d = cbnDistance(label, w, h), info = [];
+  for (let k = 0; k < n; k++) info.push({ c: -1, area: 0, sx: 0, sy: 0, x: 0, y: 0, r: 0, edge: false });
+  for (let i = 0; i < w * h; i++) {
+    const l = label[i]; if (l < 0) continue;
+    const o = info[l], x = i % w, y = (i / w) | 0; o.c = val[i]; o.area++; o.sx += x; o.sy += y;
+    if (x === 0 || y === 0 || x === w - 1 || y === h - 1) o.edge = true;
+    if (d[i] > o.r) { o.r = d[i]; o.x = x; o.y = y; }
+  }
+  return info;
+}
+// Each region too narrow for its number joins the neighbour it shares the most border with, until none are left.
+function cbnMerge(val, w, h, minR) {
+  for (let pass = 0; ; pass++) {
+    const { label, n } = cbnComponents(val, w, h), info = cbnRegionInfo(label, n, val, w, h), small = info.map(o => o.r < minR);
+    if (pass === 12 || !small.some(Boolean)) return { label, info };
+    const border = new Map();
+    for (let i = 0; i < w * h; i++) {
+      const l = label[i]; if (l < 0 || !small[l]) continue;
+      const x = i % w;
+      for (const j of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, i - w, i + w]) {
+        const m = j >= 0 && j < w * h ? label[j] : -1; if (m < 0 || m === l) continue;
+        let t = border.get(l); if (!t) border.set(l, (t = new Map())); t.set(m, (t.get(m) || 0) + 1);
+      }
+    }
+    const to = new Int32Array(n).fill(-1);   // prefer a big neighbour, so two small ones don't just swap colours
+    for (const [l, t] of border) { let best = -1, score = 0; for (const [m, k] of t) { const sc = k * (small[m] ? 0.3 : 1); if (sc > score) { score = sc; best = m; } } if (best >= 0) to[l] = info[best].c; }
+    let changed = false;
+    for (let i = 0; i < w * h; i++) { const l = label[i]; if (l >= 0 && to[l] >= 0 && to[l] !== val[i]) { val[i] = to[l]; changed = true; } }
+    if (!changed) return { label, info };
+  }
+}
+// Where numbers go: each region's deepest point, then more wherever it is still wide enough (ridge points
+// of the distance map) and at least `gap` from its other numbers, so a long or branching region gets a
+// number in every part. Returns [region, x, y, depth] for each number.
+function cbnSpots(label, info, w, h, minR, gap) {
+  const d = cbnDistance(label, w, h), spots = info.map((o, id) => [[id, o.x, o.y, o.r]]), cand = [];
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+    const i = y * w + x; if (label[i] < 0 || d[i] < minR) continue;
+    if (d[i] >= d[i - 1] && d[i] >= d[i + 1] && d[i] >= d[i - w] && d[i] >= d[i + w]) cand.push(i);
+  }
+  cand.sort((a, b) => d[b] - d[a]);
+  for (const i of cand) {
+    const l = label[i], x = i % w, y = (i / w) | 0, list = spots[l];
+    if (list.every(q => (q[1] - x) ** 2 + (q[2] - y) ** 2 >= gap * gap)) list.push([l, x, y, d[i]]);
+  }
+  return spots.flat();
+}
+// Which k crayons best match the photo: start from all of them and drop the least missed, one at a time.
+function cbnPalette(R, G, B, mask, k) {
+  const bins = new Map();
+  for (let i = 0; i < R.length; i++) {
+    if (!mask[i]) continue;
+    const key = ((R[i] >> 4) << 8) | ((G[i] >> 4) << 4) | (B[i] >> 4); let b = bins.get(key);
+    if (!b) bins.set(key, (b = [0, 0, 0, 0])); b[0]++; b[1] += R[i]; b[2] += G[i]; b[3] += B[i];
+  }
+  const labs = CRAYONS.map(c => cbnLab(c[1], c[2], c[3]));
+  const dist = [...bins.values()].map(b => { const lab = cbnLab(b[1] / b[0], b[2] / b[0], b[3] / b[0]); return labs.map(q => cbnDist2(lab, q) * b[0]); });
+  const keep = CRAYONS.map((_, i) => i);
+  while (keep.length > Math.max(2, k)) {
+    let drop = 0, least = Infinity;
+    for (let a = 0; a < keep.length; a++) {
+      let err = 0;
+      for (const row of dist) { let m = Infinity; for (let b = 0; b < keep.length; b++) if (b !== a && row[keep[b]] < m) m = row[keep[b]]; err += m; }
+      if (err < least) { least = err; drop = a; }
+    }
+    keep.splice(drop, 1);
+  }
+  return keep;
+}
+// Majority of the 3 x 3 around each pixel (ties keep their own value): smooths ragged region edges.
+function cbnModeFilter(val, w, h, k) {
+  const out = val.slice(), cnt = new Int32Array(k);
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+    const i = y * w + x; if (val[i] < 0) continue;
+    cnt.fill(0); let best = val[i];
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const q = val[i + dy * w + dx]; if (q >= 0) cnt[q]++; }
+    for (let c = 0; c < k; c++) if (cnt[c] > cnt[best]) best = c;
+    out[i] = best;
+  }
+  return out;
+}
+
+// Numbers, each centred on its region's deepest point; pts are in page pixels, n counting from 1.
+function drawCbnNumbers(ctx, pts, g) {
+  const I = g.dpi || 300;
+  ctx.save(); ctx.fillStyle = "#666"; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+  for (const p of pts) {
+    const fs = Math.max(I * 0.06, Math.min(I * 0.15, p.r * 1.2)); ctx.font = `500 ${fs}px ${FONT}`;
+    ctx.fillText(String(p.n), p.x, p.y + fs * 0.36);
+  }
+  ctx.restore();
+}
+const cbnKeyCols = (w, g) => (w > (g.dpi || 300) * 5 ? 4 : 3);
+const cbnKeyHeight = (box, g, n) => Math.min(box.h * 0.22, (g.dpi || 300) * (0.42 + Math.ceil(n / cbnKeyCols(box.w, g)) * 0.24));
+// The key: a ring with each number, and the crayon it means, to try the colour in before starting.
+function drawCbnKey(ctx, kb, names, g) {
+  const I = g.dpi || 300, cols = cbnKeyCols(kb.w, g), rows = Math.ceil(names.length / cols);
+  const fs = Math.min(I * 0.11, kb.h / (rows * 2.2 + 2)), r = fs * 0.8, colW = kb.w / cols, top = kb.y + fs * 1.6;
+  ctx.save(); ctx.fillStyle = "#000"; ctx.strokeStyle = "#000"; ctx.textBaseline = "alphabetic";
+  ctx.textAlign = "left"; ctx.font = `700 ${fs}px ${FONT}`; ctx.fillText("Colour key", kb.x, top);
+  ctx.lineWidth = Math.max(1, I / 150);
+  names.forEach((name, i) => {
+    const cx = kb.x + (i % cols) * colW + r + ctx.lineWidth, cy = top + fs * 0.9 + r + ((i / cols) | 0) * fs * 2.2;
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+    ctx.textAlign = "center"; ctx.font = `600 ${fs * 0.85}px ${FONT}`; ctx.fillText(String(i + 1), cx, cy + fs * 0.3);
+    ctx.textAlign = "left"; ctx.font = `400 ${fs}px ${FONT}`; ctx.fillText(name, cx + r + fs * 0.5, cy + fs * 0.35, colW - 2 * r - fs * 1.2);
+  });
+  ctx.restore();
+}
+
+// Patterns: the design is drawn again on a coarse grid and its enclosed white spaces become the regions.
+// Spaces with the same shape the same distance from the middle (a mandala's repeated petals) share a
+// number; neighbouring groups get different colours where the palette allows. Cached per design.
+const cbnPatternCache = new Map();
+const isCbnDesign = gen => v("cbn") && CBN_GENS.includes(gen);
+function cbnPattern(g, box, spec, lw) {
+  const k = num("cbnColours"), key = [spec.gen, spec.seed, spec.c, lw, box.x, box.y, box.w, box.h, g.dpi, k, v("nameText"), v("nameBg")].join("|");
+  if (cbnPatternCache.has(key)) return cbnPatternCache.get(key);
+  const s = CBN_PAT_DPI / g.dpi, w = Math.max(1, Math.ceil(box.w * s)), h = Math.max(1, Math.ceil(box.h * s));
+  const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+  const x = cv.getContext("2d", { willReadFrequently: true });
+  x.fillStyle = "#fff"; x.fillRect(0, 0, w, h); x.setTransform(s, 0, 0, s, -box.x * s, -box.y * s);
+  x.strokeStyle = "#000"; x.fillStyle = "#000"; x.lineCap = "round"; x.lineJoin = "round"; x.lineWidth = lw;
+  drawDesign(x, g, box, spec.gen, spec.seed, spec.c, lw);
+  const px = x.getImageData(0, 0, w, h).data, val = new Int32Array(w * h);
+  for (let i = 0; i < w * h; i++) val[i] = px[i * 4] > 160 ? 0 : -1;   // white space, or ink
+  const { label, n } = cbnComponents(val, w, h), info = cbnRegionInfo(label, n, val, w, h);
+  const minR = 0.05 * CBN_PAT_DPI;   // narrower spaces get no number (and are left blank)
+  info.forEach(o => { o.keep = o.r >= minR && !(o.edge && o.area > 0.25 * w * h); });   // the big space round the design is background
+  // group repeated spaces: same size (within 20%) and the same distance from the middle (within 1.2% of the diagonal)
+  const diag = Math.hypot(w, h), groups = [], grp = new Int32Array(n).fill(-1);
+  info.forEach((o, id) => {
+    if (!o.keep) return;
+    const d = Math.hypot(o.sx / o.area - w / 2, o.sy / o.area - h / 2);
+    let gi = groups.findIndex(G => Math.abs(G.d - d) < diag * 0.012 && Math.abs(Math.log(o.area / G.a)) < 0.2);
+    if (gi < 0) { gi = groups.length; groups.push({ d, a: o.area, total: 0, near: new Set(), c: -1 }); }
+    grp[id] = gi; groups[gi].total += o.area;
+  });
+  // neighbouring groups: spaces facing each other across a line
+  const step = Math.ceil(lw * s) + 3;
+  for (let i = 0; i < w * h; i++) {
+    const l = label[i]; if (l < 0 || grp[l] < 0) continue;
+    for (const j of [i % w + step < w ? i + step : -1, i + step * w < w * h ? i + step * w : -1]) {
+      const m = j >= 0 ? label[j] : -1;
+      if (m >= 0 && grp[m] >= 0 && grp[m] !== grp[l]) { groups[grp[l]].near.add(grp[m]); groups[grp[m]].near.add(grp[l]); }
+    }
+  }
+  const use = new Float64Array(k);   // biggest groups first; each takes the least-used colour its neighbours don't have
+  for (const G of [...groups].sort((a, b) => b.total - a.total)) {
+    const taken = new Set([...G.near].map(j => groups[j].c));
+    let best = -1; for (let c = 0; c < k; c++) if (!taken.has(c) && (best < 0 || use[c] < use[best])) best = c;
+    if (best < 0) for (let c = 0; c < k; c++) if (best < 0 || use[c] < use[best]) best = c;
+    G.c = best; use[best] += G.total;
+  }
+  const used = [...new Set(groups.map(G => G.c))].sort((a, b) => a - b), renum = new Map(used.map((c, j) => [c, j]));
+  const spots = info.map((o, id) => (o.keep ? { n: renum.get(groups[grp[id]].c) + 1, x: box.x + (o.x + 0.5) / s, y: box.y + (o.y + 0.5) / s, r: o.r / s, id } : null)).filter(Boolean);
+  const r = { spots, names: used.map(c => CBN_PATTERN_COLOURS[c]), label, w, h, s };
+  if (cbnPatternCache.size > 20) cbnPatternCache.delete(cbnPatternCache.keys().next().value);
+  cbnPatternCache.set(key, r);
+  return r;
+}
+
 // o.style / o.dot override the sidebar (the printer test page shows every style side by side).
 function convert(ctx, box, g = {}, photo = curPhoto(), o = {}) {
+  let keyBox = null;
   if (!photo) {
     ctx.fillStyle = "#888"; ctx.font = `${box.w / 28}px sans-serif`; ctx.textAlign = "center";
     ctx.fillText("Open or drop an image to convert it", box.x + box.w / 2, box.y + box.h / 2); return;
   }
   const style = o.style || v("style"), dot = (o.dot ?? num("dot")) * (g.dpi ? g.dpi / num("dpi") : 1);   // dot size stays physical at preview resolution
-  const cell = Math.max(1, style === "halftone" ? dot * 5 : style === "stipple" ? dot * 2 : dot);
+  if (style === "cbn") {   // the crayon key takes a band under the picture
+    const kh = cbnKeyHeight(box, g, num("pcbnColours")), gap = (g.dpi || 300) * 0.12;
+    keyBox = { x: box.x, y: box.y + box.h - kh, w: box.w, h: kh }; box = { ...box, h: box.h - kh - gap };
+  }
+  const cell = Math.max(1, style === "halftone" ? dot * 5 : style === "stipple" ? dot * 2 : style === "cbn" ? (g.dpi || num("dpi")) / CBN_DPI : dot);
   // Converted images are cached (a poster draws the same photo once per sheet). In a dry run (S.collect)
   // this only records what's needed, so the background worker can prepare it before the real draw.
-  const key = [photo.imgId, box.w, box.h, cell, style, v("brightness"), v("contrast"), v("threshold"), v("fit"), v("invert"), photo.rot, photo.zoom, photo.panx, photo.pany].join("|");
+  const key = [photo.imgId, box.w, box.h, cell, style, v("brightness"), v("contrast"), v("threshold"), v("fit"), v("invert"), style === "cbn" ? v("pcbnColours") : "", photo.rot, photo.zoom, photo.panx, photo.pany].join("|");
   let entry = cacheGet(key);
   if (!entry) {
     if (S.collect) { if (!S.collect.some(j => j.key === key)) S.collect.push({ key, box: { ...box }, cell, style, photo }); return; }
@@ -1219,7 +1445,13 @@ function convert(ctx, box, g = {}, photo = curPhoto(), o = {}) {
     }
     ctx.restore(); return;
   }
-  ctx.imageSmoothingEnabled = false; ctx.drawImage(wc, box.x, box.y, box.w, box.h); ctx.imageSmoothingEnabled = true;
+  // colour-by-number outlines are finer than a low-resolution preview: smoothing keeps them from dropping out
+  ctx.imageSmoothingEnabled = style === "cbn" && box.w < ww; ctx.drawImage(wc, box.x, box.y, box.w, box.h); ctx.imageSmoothingEnabled = true;
+  if (style === "cbn" && entry.cbn) {
+    const sx = box.w / ww, sy = box.h / wh, cbn = entry.cbn;
+    drawCbnNumbers(ctx, cbn.spots.map(([l, x, y, r]) => ({ n: cbn.colour[l] + 1, x: box.x + (x + 0.5) * sx, y: box.y + (y + 0.5) * sy, r: r * sx })), g);
+    drawCbnKey(ctx, keyBox, cbn.pal.map(i => CRAYONS[i][0]), g);
+  }
 }
 
 // Separable Gaussian blur with clamped edges.
@@ -1275,14 +1507,15 @@ function conversionInput(box, cell, style, photo) {
   }
   const neutral = !!photo.neutral;   // the test page's grey ramps ignore brightness, contrast, threshold and invert
   const p = { style, br: neutral ? 0 : num("brightness") * 1.28, ct: neutral ? 1 : num("contrast") / 100,
-              t: neutral ? 128 : num("threshold"), inv: !neutral && v("invert") };
+              t: neutral ? 128 : num("threshold"), inv: !neutral && v("invert"), k: num("pcbnColours") };
   return { ww, wh, wc, data: wx.getImageData(0, 0, ww, wh).data, p, exPx: ex * cell, eyPx: ey * cell };   // overhang in page px, for drag-to-pan
 }
 
 // The heavy half: pure pixel maths with no access to the page, so the background worker runs this very
 // function (its source is copied into the worker), and the main thread runs it when no worker is available.
 function processPixels(D, ww, wh, p) {
-  const N = ww * wh, lum = new Float32Array(N), mask = new Uint8Array(N), { style, br, ct, t, inv } = p;
+  const N = ww * wh, lum = new Float32Array(N), mask = new Uint8Array(N), { style, br, ct, t, inv, k } = p;
+  let label = null, cbn = null;
   for (let i = 0; i < N; i++) {
     const a = D[i * 4 + 3] / 255; mask[i] = a > 0.02;
     let y = (0.2126 * D[i * 4] + 0.7152 * D[i * 4 + 1] + 0.0722 * D[i * 4 + 2]) * a + 255 * (1 - a);
@@ -1313,21 +1546,45 @@ function processPixels(D, ww, wh, p) {
     const thr = (260 - t) / 60;   // Threshold / detail: higher = more lines (default 2.2, tuned on a grainy photo)
     for (let i = 0; i < N; i++) out[i] = mask[i] && g1[i] - g2[i] < -thr ? 0 : 255;
     despeckle(out, ww, wh, Math.max(12, Math.round(N / 40000)));
+  } else if (style === "cbn") {
+    // Colour by number: soften the photo, pick the crayons that match it best, give each pixel the nearest,
+    // smooth the edges, then merge regions too narrow to hold a number. Threshold / detail: higher = smaller regions.
+    const ch = [0, 1, 2].map(c => { const a = new Float32Array(N); for (let i = 0; i < N; i++) { const al = D[i * 4 + 3] / 255; a[i] = Math.min(255, Math.max(0, ((D[i * 4 + c] * al + 255 * (1 - al)) - 128) * ct + 128 + br)); } return gaussBlur(a, ww, wh, 2.4); });
+    const [R, G, B] = ch, pal = cbnPalette(R, G, B, mask, k), palLab = pal.map(c => cbnLab(CRAYONS[c][1], CRAYONS[c][2], CRAYONS[c][3]));
+    let val = new Int32Array(N).fill(-1);
+    for (let i = 0; i < N; i++) {
+      if (!mask[i]) continue;
+      let best = 0, bd = Infinity;
+      const lab = cbnLab(R[i], G[i], B[i]);
+      palLab.forEach((q, j) => { const d = cbnDist2(lab, q); if (d < bd) { bd = d; best = j; } });
+      val[i] = best;
+    }
+    for (let pass = 0; pass < 3; pass++) val = cbnModeFilter(val, ww, wh, pal.length);
+    const minR = 7 + (254 - t) / 254 * 8, merged = cbnMerge(val, ww, wh, minR);   // narrowest region, in 1/150 in: 7 (most detail) to 15
+    label = merged.label;
+    const used = [...new Set(merged.info.map(o => o.c))].sort((a, b) => a - b), renum = new Map(used.map((c, j) => [c, j]));   // crayons merged away leave the key
+    cbn = { pal: used.map(j => pal[j]), colour: merged.info.map(o => renum.get(o.c)), spots: cbnSpots(label, merged.info, ww, wh, minR, 2 * 150) };
+    for (let i = 0; i < N; i++) {   // outlines two pixels wide (one each side of a border), and round the picture
+      if (!mask[i]) continue;
+      const x = i % ww, y = (i / ww) | 0, l = label[i];
+      if (x <= 1 || y <= 1 || x >= ww - 2 || y >= wh - 2 || label[i - 1] !== l || label[i + 1] !== l || label[i - ww] !== l || label[i + ww] !== l
+          || !mask[i - 2] || !mask[i + 2] || !mask[i - 2 * ww] || !mask[i + 2 * ww]) out[i] = 0;
+    }
   }
   let rgba = null;   // halftone, engraving and stippling are drawn from lum, so they need no image
   if (style !== "halftone" && style !== "engrave" && style !== "stipple") {
     rgba = new Uint8ClampedArray(N * 4);
     for (let i = 0; i < N; i++) {
-      let o = mask[i] ? out[i] : 255; if (inv && mask[i]) o = 255 - o;
+      let o = mask[i] ? out[i] : 255; if (inv && mask[i] && style !== "cbn") o = 255 - o;
       rgba[i * 4] = rgba[i * 4 + 1] = rgba[i * 4 + 2] = o; rgba[i * 4 + 3] = 255;
     }
   }
-  return { lum, mask, rgba };
+  return { lum, mask, rgba, label, cbn };
 }
 
 function conversionResult(inp, r) {
   if (r.rgba) inp.wc.getContext("2d").putImageData(new ImageData(r.rgba, inp.ww, inp.wh), 0, 0);
-  return { ww: inp.ww, wh: inp.wh, lum: r.lum, mask: r.mask, wc: inp.wc, exPx: inp.exPx, eyPx: inp.eyPx };
+  return { ww: inp.ww, wh: inp.wh, lum: r.lum, mask: r.mask, wc: inp.wc, exPx: inp.exPx, eyPx: inp.eyPx, label: r.label, cbn: r.cbn };
 }
 
 // Synchronous conversion on the main thread (used when nothing was prepared in advance, e.g. by tests).
@@ -1530,7 +1787,13 @@ function drawPage(ctx, g, spec, keep = false) {
   if (spec.kind === "design") {
     const box = designBox(g, spec);
     if (v("frame")) { ctx.lineWidth = lw * 1.6; ctx.strokeRect(...Object.values(inset(box, -lw * 6))); ctx.lineWidth = lw; }
-    drawDesign(ctx, g, box, spec.gen, spec.seed, spec.c, lw);
+    if (isCbnDesign(spec.gen)) {   // colour by number: the crayon key takes a band under the design
+      const kh = cbnKeyHeight(box, g, num("cbnColours")), art = { ...box, h: box.h - kh - g.dpi * 0.12 };
+      drawDesign(ctx, g, art, spec.gen, spec.seed, spec.c, lw);
+      const r = cbnPattern(g, art, spec, lw);
+      drawCbnNumbers(ctx, r.spots, g);
+      drawCbnKey(ctx, { x: box.x, y: box.y + box.h - kh, w: box.w, h: kh }, r.names, g);
+    } else drawDesign(ctx, g, box, spec.gen, spec.seed, spec.c, lw);
   } else if (spec.kind === "answers") {
     const area = designBox(g, spec), gap = g.dpi * 0.3, cw = (area.w - gap) / 2, ch = (area.h - gap) / 2, fs = g.dpi * 0.14;
     spec.items.forEach((d, k) => {
@@ -1862,6 +2125,13 @@ function syncOutputs() {
   $("contrast-o").textContent = v("contrast") + "%";
   $("threshold-o").textContent = v("threshold");
   $("dot-o").textContent = v("dot") + " px";
+  $("pcbnColours-o").textContent = v("pcbnColours");
+  $("cbnColours-o").textContent = v("cbnColours");
+  $("cbn-opts").hidden = !v("cbn");
+  $("cbnNote").textContent = CBN_GENS.includes(v("gen")) || (v("booklet") && v("mix"))
+    ? "Repeated spaces share a number, and spaces side by side get different colours."
+    : "Works on mandalas, woven tiles, contours and name pages; choose one of those to see it.";
+  $("pcbn-opts").hidden = v("style") !== "cbn";
   $("seed-o").textContent = "seed " + S.seed;
   $("pages-o").textContent = v("pages");
   $("zoom-o").textContent = v("zoom") + "%";
@@ -2175,16 +2445,18 @@ $("print").onclick = () => isTestPage() ? (bridge ? (msg("Opening the print dial
    Saved presets capture every setting except the photo crop. The desktop app keeps them in
    ~/.config/inkline/presets.json (its browser storage doesn't survive a restart); a plain browser uses localStorage. */
 const BUILTIN_PRESETS = {
-  "Colouring page, bold lines": { mode: "make", gen: "mandala", complexity: 5, weight: 7, frame: false, booklet: false, poster: false },
+  "Colouring page, bold lines": { mode: "make", gen: "mandala", complexity: 5, weight: 7, frame: false, cbn: false, booklet: false, poster: false },
   "Classroom maze worksheet": { mode: "make", gen: "maze", complexity: 4, weight: 4, title: "Maze time", nameLine: true, booklet: false, poster: false },
   "Maze booklet with answers": { mode: "make", gen: "maze", booklet: true, pages: 10, ramp: true, mix: false, cover: true, pageNums: true, key: true, poster: false },
-  "Name colouring page": { mode: "make", gen: "name", nameBg: "flow", complexity: 3, weight: 5, frame: false, booklet: false, poster: false },
+  "Name colouring page": { mode: "make", gen: "name", nameBg: "flow", complexity: 3, weight: 5, frame: false, cbn: false, booklet: false, poster: false },
   "Word search booklet with answers": { mode: "make", gen: "words", wsTheme: "animals", booklet: true, pages: 8, ramp: true, mix: false, cover: true, pageNums: true, key: true, poster: false, weight: 3 },
   "Sudoku booklet with answers": { mode: "make", gen: "sudoku", booklet: true, pages: 10, ramp: true, mix: false, cover: true, pageNums: true, key: true, poster: false },
   "Nonogram booklet with answers": { mode: "make", gen: "nonogram", booklet: true, pages: 8, ramp: true, mix: false, cover: true, pageNums: true, key: true, poster: false },
   "Dot-to-dot booklet with answers": { mode: "make", gen: "dots", booklet: true, pages: 8, ramp: true, mix: false, cover: true, pageNums: true, key: true, poster: false, weight: 4 },
   "Newspaper halftone photo": { mode: "convert", style: "halftone", dot: 3, contrast: 120, brightness: 0, invert: false },
   "Engraved photo": { mode: "convert", style: "engrave", dot: 2, contrast: 110, brightness: 0, invert: false },
+  "Colour-by-number mandala": { mode: "make", gen: "mandala", cbn: true, cbnColours: 6, complexity: 3, weight: 5, frame: false, booklet: false, poster: false },
+  "Colour-by-number photo": { mode: "convert", style: "cbn", pcbnColours: 8, threshold: 128, contrast: 110, brightness: 0 },
   "Stippled photo": { mode: "convert", style: "stipple", dot: 2, contrast: 110, brightness: 0, invert: false },
   "Photo colouring page": { mode: "convert", style: "line", threshold: 128, dot: 2, invert: false },
   "Wall poster 3 × 3": { poster: true, booklet: false, grid: "3x3", overlap: "0.25" },
