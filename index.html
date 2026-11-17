@@ -249,6 +249,10 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; background:
     <fieldset>
       <legend>Paper</legend>
       <label class="check"><input type="checkbox" id="testpage" data-nopreset> Show the printer test page</label>
+      <div id="fold-row" hidden>
+        <label class="check"><input type="checkbox" id="fold"> Fold-and-staple book (2 pages per sheet)</label>
+        <p class="hint" id="fold-hint" hidden></p>
+      </div>
       <p class="hint" id="testpage-hint" hidden>Print it at 100% (&ldquo;Actual size&rdquo;), then check the squares with a ruler. Always portrait.</p>
       <div class="pair">
         <div class="row"><label for="paper">Size</label><select id="paper"><option value="letter">Letter</option><option value="a4">A4</option></select></div>
@@ -1343,6 +1347,51 @@ function drawTestPage(ctx, g) {
   return { bottom: y + 5 * rowH, limit: b.y + b.h };
 }
 
+/* ---------- fold-and-staple books ----------
+   Booklets and photo books can print as a real little book: two half-size pages on each side of a
+   landscape sheet, double-sided, so that stacking the sheets, folding them in half and stapling the
+   fold puts every page in reading order. Page counts are padded with blank pages to a multiple of 4. */
+const isFold = () => v("fold") && (isBook() || isPhotoBook());
+const bookletPages = () => (isPhotoBook() ? photoBookPages() : bookPages());
+function foldPages() {
+  const pages = bookletPages().slice();
+  while (pages.length % 4) pages.push({ kind: "blank" });   // a blank page draws nothing
+  return pages;
+}
+// Which two pages (0-based) each printed side carries, for an n-page book: sheet s front, then its back.
+// The outermost sheet holds the first and last pages; the innermost holds the middle spread.
+function foldOrder(n) {
+  const sides = [];
+  for (let s = 0; s < n / 4; s++) {
+    sides.push({ left: n - 1 - 2 * s, right: 2 * s });       // front (outside of the fold)
+    sides.push({ left: 2 * s + 1, right: n - 2 - 2 * s });   // back (inside)
+  }
+  return sides;
+}
+// One half of a landscape sheet: Letter gives 5.5 x 8.5 in pages, A4 gives A5.
+function halfGeometry() {
+  const [pw, ph] = PAPER[v("paper")], dpi = num("dpi"), mm = +v("margin") * dpi;
+  const sheetW = Math.round(ph * dpi), H = Math.round(pw * dpi), W = Math.floor(sheetW / 2);
+  return { w: +(W / dpi).toFixed(2), h: +(H / dpi).toFixed(2), dpi, W, H, sheetW, box: { x: mm, y: mm, w: W - 2 * mm, h: H - 2 * mm } };
+}
+// Draw printed side `side` of the folded book onto a landscape sheet canvas (gs = sheet geometry).
+function drawFoldSide(ctx, gs, pages, side) {
+  const hg = halfGeometry(), { left, right } = foldOrder(pages.length)[side];
+  if (ctx === NULL_CTX) { drawPage(NULL_CTX, hg, pages[left]); drawPage(NULL_CTX, hg, pages[right]); return; }   // dry run
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, gs.W, gs.H);
+  if (!S.half || S.half.width !== hg.W || S.half.height !== hg.H) { S.half = document.createElement("canvas"); S.half.width = hg.W; S.half.height = hg.H; }
+  const hx = S.half.getContext("2d");
+  for (const [idx, x] of [[left, 0], [right, gs.W - hg.W]]) { drawPage(hx, hg, pages[idx]); ctx.drawImage(S.half, x, 0); }
+  if (side % 2 === 0) {   // fold marks at the top and bottom edge of the outside of each sheet
+    const k = gs.dpi / 150, L = gs.dpi * 0.2; ctx.save(); ctx.strokeStyle = "#999"; ctx.lineWidth = k; ctx.setLineDash([k * 3, k * 3]);
+    ctx.beginPath(); ctx.moveTo(gs.W / 2, 0); ctx.lineTo(gs.W / 2, L); ctx.moveTo(gs.W / 2, gs.H); ctx.lineTo(gs.W / 2, gs.H - L); ctx.stroke(); ctx.restore();
+  }
+}
+function foldSideLabel(pages, side) {
+  const { left, right } = foldOrder(pages.length)[side], name = i => (pages[i].kind === "blank" ? "blank" : String(i + 1));
+  return `Sheet ${(side >> 1) + 1} of ${pages.length / 4} · ${side % 2 ? "back" : "front"} (pages ${name(left)} & ${name(right)})`;
+}
+
 /* ---------- posters ----------
    A poster is one big design cut into overlapping sheet-sized tiles. Each sheet's printable area shows
    its slice; neighbouring sheets share an overlap strip so they can be lined up and glued. */
@@ -1415,6 +1464,7 @@ function drawPosterOverlay(ctx, P) {
 // The geometry the preview uses: the test page, a poster scaled so its long side is ~2400 px, or a page.
 function viewGeometry() {
   if (isTestPage()) return { g: geometry("portrait"), test: true };
+  if (isFold()) return { g: geometry("landscape"), fold: true };   // the preview shows a printed sheet
   const g0 = geometry(), poster = isPoster();
   const P = poster ? posterGeom(Math.min(g0.dpi, 2400 / Math.max(posterGeom(1).w, posterGeom(1).h))) : null;
   return { g: P || g0, g0, P, poster };
@@ -1423,6 +1473,11 @@ function viewGeometry() {
 function drawView(ctx, vg) {
   const { g, P } = vg;
   if (vg.test) drawTestPage(ctx, g);
+  else if (vg.fold) {
+    const pages = foldPages(); S.bookPage = Math.min(Math.max(0, S.bookPage), pages.length / 2 - 1);
+    drawFoldSide(ctx, g, pages, S.bookPage);
+    $(isPhotoBook() ? "ppagepos" : "pagepos").textContent = foldSideLabel(pages, S.bookPage);
+  }
   else if (vg.poster) drawPage(ctx, P, S.mode === "make" ? singlePage() : { kind: "photo" });
   else if (isPhotoBook()) {
     const pages = photoBookPages(); S.bookPage = Math.min(Math.max(0, S.bookPage), pages.length - 1);
@@ -1486,6 +1541,14 @@ function syncOutputs() {
   $("book-opts").hidden = !v("booklet");
   $("name-opts").hidden = v("gen") !== "name";
   $("testpage-hint").hidden = !isTestPage();
+  $("fold-row").hidden = !(isBook() || isPhotoBook());
+  $("fold-hint").hidden = !isFold();
+  if (isFold()) {
+    const n = bookletPages().length, padded = Math.ceil(n / 4) * 4, half = halfGeometry();
+    $("fold-hint").textContent = `${n} pages of ${half.w} × ${half.h} in → ${padded / 4} sheet${padded > 4 ? "s" : ""}` +
+      (padded > n ? ` (${padded - n} blank page${padded - n > 1 ? "s" : ""} added at the end)` : "") +
+      `. Print double-sided, flipping on the short edge. Stack the sheets in order, fold in half, staple along the fold.`;
+  }
   $("poster-opts").hidden = !v("poster");
   $("pbook-opts").hidden = !v("photobook");
   syncButtons();
@@ -1535,12 +1598,17 @@ $("cropreset").onclick = () => { resetCrop(); schedule(); };
 }
 $("prev").onclick = () => { S.bookPage--; schedule(); };
 $("next").onclick = () => { S.bookPage++; schedule(); };
+$("fold").addEventListener("input", () => { S.bookPage = 0; });   // the pager now counts printed sides, not pages
 $("booklet").addEventListener("input", () => { S.bookPage = 0; if (v("booklet")) $("poster").checked = false; syncOutputs(); });
 $("poster").addEventListener("input", () => { if (v("poster")) { $("booklet").checked = false; $("photobook").checked = false; } syncOutputs(); });   // one multi-page mode at a time
 $("photobook").addEventListener("input", () => { if (v("photobook")) { $("poster").checked = false; S.bookPage = (v("pcover") ? 1 : 0) + S.sel; } syncOutputs(); });
 $("pcover").addEventListener("input", () => { S.bookPage = (v("pcover") ? 1 : 0) + S.sel; });
 // Paging through the book also selects that page's photo, so the crop controls edit what's shown.
-const goPhotoPage = d => { S.bookPage += d; S.bookPage = Math.max(0, Math.min(S.bookPage, photoBookPages().length - 1)); selectPhoto(pageToPhoto(S.bookPage), { jump: false }); schedule(); };
+const goPhotoPage = d => {
+  S.bookPage += d;
+  if (isFold()) { S.bookPage = Math.max(0, Math.min(S.bookPage, foldPages().length / 2 - 1)); schedule(); return; }   // pages through printed sides
+  S.bookPage = Math.max(0, Math.min(S.bookPage, photoBookPages().length - 1)); selectPhoto(pageToPhoto(S.bookPage), { jump: false }); schedule();
+};
 $("pprev").onclick = () => goPhotoPage(-1);
 $("pnext").onclick = () => goPhotoPage(1);
 
@@ -1668,11 +1736,11 @@ const isBook = () => S.mode === "make" && v("booklet") && !isPoster();
 const call = (fn, ...a) => new Promise(res => bridge[fn](...a, res));
 
 // Streams pages to the desktop shell one at a time, so 40 pages at 300 dpi never sit in memory at once.
-async function streamPages(kind, label, name, count, drawInto, testPath, photos = false) {
+async function streamPages(kind, label, name, count, drawInto, testPath, photos = false, opts = {}) {
   if (!bridge) { msg(`${label[0].toUpperCase() + label.slice(1)}s need the desktop app, which writes multi-page PDFs and prints.`); return "no bridge"; }
   if (S.bookBusy) return "busy";
-  const g = geometry();
-  const meta = { kind, label, name, dpi: g.dpi, paper: v("paper"), orient: v("orient"), count, path: testPath };
+  const g = geometry(opts.orient);
+  const meta = { kind, label, name, dpi: g.dpi, paper: v("paper"), orient: opts.orient || v("orient"), count, path: testPath, duplex: opts.duplex || "" };
   if (kind === "print") msg("Opening the print dialog…");
   const r = await call("bookBegin", JSON.stringify(meta));
   if (r !== "ok") { msg(r); return r; }
@@ -1704,13 +1772,21 @@ async function streamPages(kind, label, name, count, drawInto, testPath, photos 
   }
 }
 
+// A fold-and-staple book saves/prints its sides: landscape sheets, double-sided along the short edge.
+function runFold(kind, label, name, testPath, photos) {
+  const pages = foldPages();
+  return streamPages(kind, label, `${name}-fold`, pages.length / 2, (ctx, g, i) => drawFoldSide(ctx, g, pages, i), testPath, photos, { orient: "landscape", duplex: "short" });
+}
+
 function runBook(kind, testPath = "") {
+  if (isFold()) return runFold(kind, "booklet", `inkline-booklet-${S.seed}`, testPath, false);
   const pages = bookPages();
   return streamPages(kind, "booklet", `inkline-booklet-${S.seed}`, pages.length, (ctx, g, i) => drawPage(ctx, g, pages[i]), testPath);
 }
 
 function runPhotoBook(kind, testPath = "") {
   const pages = photoBookPages();
+  if (isFold()) return runFold(kind, "photo book", `inkline-photobook-${pages.length}p`, testPath, true);
   return streamPages(kind, "photo book", `inkline-photobook-${pages.length}p`, pages.length, (ctx, g, i) => drawPage(ctx, g, pages[i]), testPath, true);
 }
 
