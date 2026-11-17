@@ -120,7 +120,7 @@ class Bridge(QObject):
         job = json.loads(payload)
         if job["kind"] == "pdf":
             path = job.get("path") if self.test_mode and job.get("path") else \
-                self._ask_path("Save booklet PDF", job["name"], "pdf", "PDF document (*.pdf)")
+                self._ask_path(f"Save {job.get('label', 'booklet')} PDF", job["name"], "pdf", "PDF document (*.pdf)")
             if not path:
                 return "Save cancelled."
             device = QPdfWriter(path)
@@ -130,7 +130,7 @@ class Bridge(QObject):
             device.setCreator("Inkline")
             painter = QPainter(device)
             target = lambda: QRect(0, 0, device.width(), device.height())
-            done = f"Saved {job['count']}-page booklet as {os.path.basename(path)}"
+            done = f"Saved {job['count']}-page {job.get('label', 'booklet')} as {os.path.basename(path)}"
         elif job["kind"] == "print":
             device = QPrinter(QPrinter.PrinterMode.HighResolution)
             device.setPageLayout(page_layout(job))
@@ -141,7 +141,7 @@ class Bridge(QObject):
                 return "Print cancelled."
             painter = QPainter(device)
             target = painter.viewport
-            done = f"Sent {job['count']} pages to the printer."
+            done = f"Sent {job['count']} {'sheets' if job.get('label') == 'poster' else 'pages'} to the printer."
         else:
             return "Unknown booklet request."
         if not painter.isActive():
@@ -248,28 +248,52 @@ def selftest(win, outdir):
             run(i + 1)
         page.runJavaScript("buildSvg()", wrote_svg)
 
+    def wait_for(start_js, label, then):
+        """Run start_js (which sets window.__job when done), poll until it finishes, then call then()."""
+        tries = [0]
+
+        def poll():
+            def got(r):
+                if not r and tries[0] < 240:      # Qt returns JS null as "" (not None) while it renders
+                    tries[0] += 1
+                    QTimer.singleShot(500, poll)
+                    return
+                print(f"selftest: {label} -> {r}")
+                then()
+            page.runJavaScript("window.__job || null", got)
+        page.runJavaScript("window.__job = null; " + start_js + "; 0", lambda _r: QTimer.singleShot(500, poll))
+
     def booklet():
         path = os.path.join(outdir, "booklet.pdf")
         js = ("setMode('make'); $('gen').value='maze'; $('booklet').checked=true; $('pages').value='6';"
               "$('title').value='Rainy Day Mazes'; $('nameLine').checked=true; syncOutputs();"
-              f"runBook('pdf', {json.dumps(path)}).then(r => {{ window.__book = r; }}); 0")
-        page.runJavaScript(js, lambda _r: QTimer.singleShot(500, poll))
+              f"runBook('pdf', {json.dumps(path)}).then(r => {{ window.__job = r; }})")
+        wait_for(js, "booklet", answers_svg)
 
-    def poll(tries=[0]):
-        def got(r):
-            if not r and tries[0] < 120:      # Qt returns JS null as "" (not None) while the booklet renders
-                tries[0] += 1
-                QTimer.singleShot(500, poll)
-                return
-            print(f"selftest: booklet -> {r}")
+    def answers_svg():
+        def wrote(svg):
+            with open(os.path.join(outdir, "answers.svg"), "w", encoding="utf-8") as f:
+                f.write(svg)
+            poster_design()
+        page.runJavaScript("S.bookPage = 999; render(); buildSvg()", wrote)
 
-            def wrote(svg):
-                with open(os.path.join(outdir, "answers.svg"), "w", encoding="utf-8") as f:
-                    f.write(svg)
-                print("selftest: done")
-                QApplication.quit()
-            page.runJavaScript("S.bookPage = 999; render(); buildSvg()", wrote)
-        page.runJavaScript("window.__book || null", got)
+    def poster_design():
+        path = os.path.join(outdir, "poster-mandala-2x2.pdf")
+        js = ("setMode('make'); $('title').value=''; $('nameLine').checked=false; $('gen').value='mandala';"
+              "$('poster').checked=true; $('poster').dispatchEvent(new Event('input')); $('grid').value='2x2'; syncOutputs(); render();"
+              f"runPoster('pdf', {json.dumps(path)}).then(r => {{ window.__job = r; }})")
+        wait_for(js, "poster mandala 2x2", poster_photo)
+
+    def poster_photo():
+        path = os.path.join(outdir, "poster-photo-3x3.pdf")
+        js = ("setMode('convert'); $('style').value='fs'; $('grid').value='3x3'; syncOutputs(); render();"
+              f"runPoster('pdf', {json.dumps(path)}).then(r => {{ window.__job = r; }})")
+
+        def preview():
+            page.runJavaScript("render(); $('page').toDataURL('image/png').split(',')[1]", lambda b64: (
+                open(os.path.join(outdir, "poster-preview.png"), "wb").write(base64.b64decode(b64)),
+                print("selftest: done"), QApplication.quit()))
+        wait_for(js, "poster photo 3x3", preview)
 
     win.view.loadFinished.connect(lambda ok: QTimer.singleShot(800, run) if ok else (print("selftest: load failed"), QApplication.quit()))
 

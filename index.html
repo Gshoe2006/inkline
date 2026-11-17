@@ -171,6 +171,24 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; background:
     </fieldset>
 
     <fieldset>
+      <legend>Poster</legend>
+      <label class="check"><input type="checkbox" id="poster"> Print it big, across several sheets</label>
+      <div class="sub" id="poster-opts" hidden>
+        <div class="pair">
+          <div class="row"><label for="grid">Sheets</label>
+            <select id="grid">
+              <option value="2x2">2 × 2</option><option value="3x3">3 × 3</option><option value="4x4">4 × 4</option>
+              <option value="2x1">2 across × 1</option><option value="3x2">3 across × 2</option>
+              <option value="1x2">1 across × 2</option><option value="2x3">2 across × 3</option>
+            </select></div>
+          <div class="row"><label for="overlap">Overlap</label><select id="overlap"><option value="0.25">¼ in</option><option value="0.5">½ in</option><option value="0">None</option></select></div>
+        </div>
+        <p class="hint" id="poster-size"></p>
+        <p class="hint">Each sheet is labelled (A1, A2…) with trim marks. Cut along the marks, then line up neighbouring sheets using the shared overlap strip.</p>
+      </div>
+    </fieldset>
+
+    <fieldset>
       <legend>Paper</legend>
       <div class="pair">
         <div class="row"><label for="paper">Size</label><select id="paper"><option value="letter">Letter</option><option value="a4">A4</option></select></div>
@@ -398,12 +416,36 @@ function genFlow(ctx, box, rnd, c, seed) {
 /* ---------- photo conversion ---------- */
 const BAYER = (() => { const m = [[0, 2], [3, 1]]; let b = m; for (let n = 2; n < 8; n *= 2) { const nb = []; for (let y = 0; y < n * 2; y++) { nb.push([]); for (let x = 0; x < n * 2; x++) nb[y].push(4 * b[y % n][x % n] + m[(y / n) | 0][(x / n) | 0]); } b = nb; } return b; })();
 
-function convert(ctx, box) {
+// Draws the converted photo into box. g.view (a poster sheet's area) lets halftone skip dots off that sheet.
+function convert(ctx, box, g = {}) {
   if (!S.img) {
     ctx.fillStyle = "#888"; ctx.font = `${box.w / 28}px sans-serif`; ctx.textAlign = "center";
     ctx.fillText("Open or drop an image to convert it", box.x + box.w / 2, box.y + box.h / 2); return;
   }
-  const style = v("style"), dot = num("dot"), cell = style === "halftone" ? dot * 5 : dot;
+  const style = v("style"), dot = num("dot") * (g.dpi ? g.dpi / num("dpi") : 1);   // dot size stays physical at preview resolution
+  const cell = Math.max(1, style === "halftone" ? dot * 5 : dot);
+  // A poster draws the same photo once per sheet: cache the converted image so dithering runs only once.
+  const key = [S.imgId, box.w, box.h, cell, style, v("brightness"), v("contrast"), v("threshold"), v("fit"), v("invert")].join("|");
+  if (!S.cc || S.cc.key !== key) S.cc = { key, ...convertData(box, cell, style) };
+  const { ww, wh, lum, mask, wc } = S.cc, inv = v("invert");
+  if (style === "halftone") {
+    const sx = box.w / ww, sy = box.h / wh, rmax = Math.max(sx, sy) * 0.72, vw = g.view;
+    const x0 = vw ? Math.max(0, Math.floor((vw.x - box.x) / sx) - 1) : 0, x1 = vw ? Math.min(ww, Math.ceil((vw.x + vw.w - box.x) / sx) + 1) : ww;
+    const y0 = vw ? Math.max(0, Math.floor((vw.y - box.y) / sy) - 1) : 0, y1 = vw ? Math.min(wh, Math.ceil((vw.y + vw.h - box.y) / sy) + 1) : wh;
+    ctx.save(); ctx.beginPath(); ctx.rect(box.x, box.y, box.w, box.h); ctx.clip(); ctx.fillStyle = "#000";
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+      const i = y * ww + x; if (!mask[i]) continue;
+      let dark = 1 - Math.min(255, Math.max(0, lum[i])) / 255; if (inv) dark = 1 - dark;
+      if (dark < 0.03) continue;
+      ctx.beginPath(); ctx.arc(box.x + (x + 0.5) * sx, box.y + (y + 0.5) * sy, rmax * Math.sqrt(dark), 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore(); return;
+  }
+  ctx.imageSmoothingEnabled = false; ctx.drawImage(wc, box.x, box.y, box.w, box.h); ctx.imageSmoothingEnabled = true;
+}
+
+// Converts the photo to black & white at (box size / cell) resolution. Returns brightness, mask and the 1-bit image.
+function convertData(box, cell, style) {
   const ww = Math.max(1, Math.round(box.w / cell)), wh = Math.max(1, Math.round(box.h / cell));
   const wc = document.createElement("canvas"); wc.width = ww; wc.height = wh;
   const wx = wc.getContext("2d", { willReadFrequently: true });
@@ -440,23 +482,14 @@ function convert(ctx, box) {
       out[y * ww + x] = Math.hypot(gx, gy) > edge ? 0 : 255;
     }
   }
-  if (style === "halftone") {
-    const sx = box.w / ww, sy = box.h / wh, rmax = Math.max(sx, sy) * 0.72;
-    ctx.save(); ctx.beginPath(); ctx.rect(box.x, box.y, box.w, box.h); ctx.clip(); ctx.fillStyle = "#000";
-    for (let y = 0; y < wh; y++) for (let x = 0; x < ww; x++) {
-      const i = y * ww + x; if (!mask[i]) continue;
-      let dark = 1 - Math.min(255, Math.max(0, lum[i])) / 255; if (inv) dark = 1 - dark;
-      if (dark < 0.03) continue;
-      ctx.beginPath(); ctx.arc(box.x + (x + 0.5) * sx, box.y + (y + 0.5) * sy, rmax * Math.sqrt(dark), 0, Math.PI * 2); ctx.fill();
+  if (style !== "halftone") {
+    for (let i = 0; i < N; i++) {
+      let o = mask[i] ? out[i] : 255; if (inv && mask[i]) o = 255 - o;
+      D[i * 4] = D[i * 4 + 1] = D[i * 4 + 2] = o; D[i * 4 + 3] = 255;
     }
-    ctx.restore(); return;
+    wx.putImageData(id, 0, 0);
   }
-  for (let i = 0; i < N; i++) {
-    let o = mask[i] ? out[i] : 255; if (inv && mask[i]) o = 255 - o;
-    D[i * 4] = D[i * 4 + 1] = D[i * 4 + 2] = o; D[i * 4 + 3] = 255;
-  }
-  wx.putImageData(id, 0, 0);
-  ctx.imageSmoothingEnabled = false; ctx.drawImage(wc, box.x, box.y, box.w, box.h); ctx.imageSmoothingEnabled = true;
+  return { ww, wh, lum, mask, wc };
 }
 
 /* ---------- render ---------- */
@@ -527,8 +560,9 @@ SvgCtx.prototype.imageSmoothingEnabled = true;   // accepted and ignored
 
 // The page that's showing (single design, or the current booklet page) as a print-size SVG document.
 function buildSvg() {
-  const g = geometry(), ctx = new SvgCtx(g.W, g.H, g.w, g.h);
-  if (isBook()) { const pages = bookPages(); drawPage(ctx, g, pages[Math.min(S.bookPage, pages.length - 1)]); }
+  const g = isPoster() ? posterGeom(num("dpi")) : geometry(), ctx = new SvgCtx(g.W, g.H, g.w, g.h);
+  if (isPoster()) drawPage(ctx, g, singlePage());
+  else if (isBook()) { const pages = bookPages(); drawPage(ctx, g, pages[Math.min(S.bookPage, pages.length - 1)]); }
   else drawPage(ctx, g, singlePage());
   return ctx.toString();
 }
@@ -541,14 +575,14 @@ const inset = (b, p) => ({ x: b.x + p, y: b.y + p, w: b.w - 2 * p, h: b.h - 2 * 
 
 // Where the design goes once header and footer bands are taken out. Pure, so answer keys can recompute a page's grid.
 function designBox(g, spec) {
-  const b = { ...g.box }, band = g.dpi * 0.5;
+  const b = { ...g.box }, k = g.scale || 1, band = g.dpi * 0.5 * k;
   if (spec.header) { b.y += band; b.h -= band; }
   if (spec.pageNo) b.h -= band * 0.6;
-  return v("frame") ? inset(b, num("weight") * g.dpi / 150 * 7.6) : b;
+  return v("frame") ? inset(b, num("weight") * g.dpi / 150 * 7.6 * k) : b;
 }
 
 function drawBands(ctx, g, spec) {
-  const b = g.box, fs = g.dpi * 0.22;
+  const b = g.box, fs = g.dpi * 0.22 * (g.scale || 1);
   ctx.save(); ctx.fillStyle = "#000"; ctx.textBaseline = "alphabetic";
   if (spec.header) {
     const y = b.y + fs;
@@ -595,12 +629,12 @@ function singlePage() {
   return { kind: "design", gen: v("gen"), seed: S.seed, c: num("complexity"), title, name, header: !!(title || name) };
 }
 
-function drawPage(ctx, g, spec) {
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, g.W, g.H);
+// keep = true draws into a transform the caller set up (a poster sheet) instead of starting a fresh page.
+function drawPage(ctx, g, spec, keep = false) {
+  if (!keep) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, g.W, g.H); }
   ctx.strokeStyle = "#000"; ctx.fillStyle = "#000"; ctx.lineCap = "round"; ctx.lineJoin = "round";
-  const lw = num("weight") * g.dpi / 150; ctx.lineWidth = lw;
-  if (spec.kind === "photo") { convert(ctx, g.box); return; }
+  const lw = num("weight") * g.dpi / 150 * (g.scale || 1); ctx.lineWidth = lw;
+  if (spec.kind === "photo") { convert(ctx, g.box, g); return; }
   drawBands(ctx, g, spec);
   if (spec.kind === "design") {
     const box = designBox(g, spec);
@@ -630,11 +664,84 @@ function drawPage(ctx, g, spec) {
   }
 }
 
+/* ---------- posters ----------
+   A poster is one big design cut into overlapping sheet-sized tiles. Each sheet's printable area shows
+   its slice; neighbouring sheets share an overlap strip so they can be lined up and glued. */
+const isPoster = () => v("poster");
+const rowName = r => String.fromCharCode(65 + r);   // A, B, C… down; 1, 2, 3… across
+
+function posterGeom(dpi) {
+  const base = geometry(), [cols, rows] = v("grid").split("x").map(Number);
+  const o = +v("overlap"), m = +v("margin"), pw = base.w - 2 * m, ph = base.h - 2 * m;
+  const w = cols * pw - (cols - 1) * o, h = rows * ph - (rows - 1) * o;
+  const W = Math.round(w * dpi), H = Math.round(h * dpi), mm = m * dpi;
+  const box = { x: mm, y: mm, w: W - 2 * mm, h: H - 2 * mm };
+  const r = dpi / base.dpi, scale = Math.min(box.w / (base.box.w * r), box.h / (base.box.h * r));   // vs a single page
+  return { w: +w.toFixed(2), h: +h.toFixed(2), dpi, W, H, box, scale, cols, rows, pw, ph, o, m };
+}
+
+// Poster-space rectangle (in P's pixels) that sheet i prints.
+function sheetRect(P, i) {
+  const c = i % P.cols, r = (i / P.cols) | 0;
+  return { c, r, x: c * (P.pw - P.o) * P.dpi, y: r * (P.ph - P.o) * P.dpi, w: P.pw * P.dpi, h: P.ph * P.dpi };
+}
+
+function drawSheet(ctx, g, P, spec, i) {
+  const t = sheetRect(P, i), m = g.box.x, k = g.dpi / 150;
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, g.W, g.H);
+  ctx.save();
+  ctx.beginPath(); ctx.rect(m, m, g.box.w, g.box.h); ctx.clip();
+  ctx.translate(m - t.x, m - t.y);
+  drawPage(ctx, { ...P, view: t }, spec, true);
+  ctx.restore();
+  // trim marks at the printable corners, in the margin
+  const L = Math.min(m * 0.7, g.dpi * 0.3), gap = g.dpi * 0.04, x0 = m, y0 = m, x1 = m + g.box.w, y1 = m + g.box.h;
+  ctx.save(); ctx.strokeStyle = "#000"; ctx.lineWidth = k; ctx.lineCap = "butt"; ctx.beginPath();
+  for (const [x, y, sx, sy] of [[x0, y0, -1, -1], [x1, y0, 1, -1], [x0, y1, -1, 1], [x1, y1, 1, 1]]) {
+    ctx.moveTo(x + sx * gap, y); ctx.lineTo(x + sx * (gap + L), y);
+    ctx.moveTo(x, y + sy * gap); ctx.lineTo(x, y + sy * (gap + L));
+  }
+  ctx.stroke();
+  // ticks where the overlap strip with the next sheet starts
+  if (P.o > 0) {
+    ctx.setLineDash([k * 4, k * 3]); ctx.beginPath();
+    if (t.c < P.cols - 1) { const x = x1 - P.o * g.dpi; ctx.moveTo(x, y0 - gap); ctx.lineTo(x, y0 - gap - L); ctx.moveTo(x, y1 + gap); ctx.lineTo(x, y1 + gap + L); }
+    if (t.r < P.rows - 1) { const y = y1 - P.o * g.dpi; ctx.moveTo(x0 - gap, y); ctx.lineTo(x0 - gap - L, y); ctx.moveTo(x1 + gap, y); ctx.lineTo(x1 + gap + L, y); }
+    ctx.stroke(); ctx.setLineDash([]);
+  }
+  const fs = g.dpi * 0.11;
+  ctx.font = `600 ${fs}px ${FONT}`; ctx.fillStyle = "#000"; ctx.textAlign = "center";
+  ctx.fillText(`Sheet ${rowName(t.r)}${t.c + 1}  ·  row ${t.r + 1} of ${P.rows}, column ${t.c + 1} of ${P.cols}` + (P.o > 0 ? `  ·  dashed ticks mark the ${v("overlap") === "0.5" ? "½" : "¼"} in overlap` : ""), g.W / 2, g.H - m / 2 + fs / 3, g.box.w);
+  ctx.restore();
+}
+
+// Preview only: sheet outlines, shared overlap strips and sheet names over the whole poster.
+function drawPosterOverlay(ctx, P) {
+  const lw = Math.max(1.5, P.W / 700);
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = "rgba(11,126,166,0.13)";
+  for (let c = 1; c < P.cols; c++) ctx.fillRect(c * (P.pw - P.o) * P.dpi, 0, P.o * P.dpi, P.H);
+  for (let r = 1; r < P.rows; r++) ctx.fillRect(0, r * (P.ph - P.o) * P.dpi, P.W, P.o * P.dpi);
+  ctx.strokeStyle = "rgba(11,126,166,0.9)"; ctx.lineWidth = lw; ctx.setLineDash([lw * 5, lw * 4]);
+  const fs = Math.max(12, P.W / 40); ctx.font = `700 ${fs}px ${FONT}`; ctx.textAlign = "left";
+  for (let i = 0; i < P.cols * P.rows; i++) {
+    const t = sheetRect(P, i); ctx.strokeRect(t.x + lw / 2, t.y + lw / 2, t.w - lw, t.h - lw);
+    const label = `${rowName(t.r)}${t.c + 1}`, pad = fs * 0.4, tw = ctx.measureText(label).width;
+    ctx.fillStyle = "rgba(11,126,166,0.9)"; ctx.fillRect(t.x + lw * 2, t.y + lw * 2, tw + pad * 2, fs * 1.3);
+    ctx.fillStyle = "#fff"; ctx.fillText(label, t.x + lw * 2 + pad, t.y + lw * 2 + fs);
+  }
+  ctx.restore();
+}
+
 function render() {
-  const g = geometry();
+  const g0 = geometry(), poster = isPoster();
+  // A poster previews as one image, scaled so its long side is about 2400 px.
+  const P = poster ? posterGeom(Math.min(g0.dpi, 2400 / Math.max(posterGeom(1).w, posterGeom(1).h))) : null;
+  const g = P || g0;
   if (page.width !== g.W || page.height !== g.H) { page.width = g.W; page.height = g.H; }
-  const book = S.mode === "make" && v("booklet");
-  if (book) {
+  const book = isBook();
+  if (poster) drawPage(pctx, P, S.mode === "make" ? singlePage() : { kind: "photo" });
+  else if (book) {
     const pages = bookPages(); S.bookPage = Math.min(Math.max(0, S.bookPage), pages.length - 1);
     drawPage(pctx, g, pages[S.bookPage]);
     const p = pages[S.bookPage];
@@ -645,7 +752,12 @@ function render() {
   const sx = sm.getContext("2d", { willReadFrequently: true }); sx.drawImage(page, 0, 0, sm.width, sm.height);
   const d = sx.getImageData(0, 0, sm.width, sm.height).data; let dark = 0; for (let i = 0; i < d.length; i += 4) dark += 255 - d[i];
   const cov = dark / (d.length / 4) / 255 * 100;
-  $("bar").innerHTML = `<span><b>${v("paper") === "a4" ? "A4" : "Letter"}</b> ${g.w} × ${g.h} in</span><span><b>${g.dpi}</b> dpi · ${g.W} × ${g.H} px</span><span>ink coverage <b>${cov.toFixed(1)}%</b></span>`;
+  const paperName = v("paper") === "a4" ? "A4" : "Letter";
+  if (poster) {
+    drawPosterOverlay(pctx, P);   // after the ink estimate, so the guides don't count as ink
+    $("poster-size").textContent = `Finished poster: ${P.w} × ${P.h} in, from ${P.cols * P.rows} ${paperName} sheets.`;
+    $("bar").innerHTML = `<span><b>Poster</b> ${P.w} × ${P.h} in</span><span><b>${P.cols} × ${P.rows}</b> ${paperName} sheets · ${g0.dpi} dpi</span><span>ink coverage <b>${cov.toFixed(1)}%</b></span>`;
+  } else $("bar").innerHTML = `<span><b>${paperName}</b> ${g.w} × ${g.h} in</span><span><b>${g.dpi}</b> dpi · ${g.W} × ${g.H} px</span><span>ink coverage <b>${cov.toFixed(1)}%</b></span>`;
 }
 let timer = 0;
 function schedule() { $("busy").hidden = false; clearTimeout(timer); timer = setTimeout(() => { requestAnimationFrame(() => { try { render(); } finally { $("busy").hidden = true; } }); }, 40); }
@@ -660,6 +772,8 @@ function syncOutputs() {
   $("seed-o").textContent = "seed " + S.seed;
   $("pages-o").textContent = v("pages");
   $("book-opts").hidden = !v("booklet");
+  $("poster-opts").hidden = !v("poster");
+  syncButtons();
 }
 
 /* ---------- inputs ---------- */
@@ -667,7 +781,7 @@ document.querySelectorAll("aside input, aside select").forEach(el => el.addEvent
 function setMode(m) {
   S.mode = m; $("tab-make").setAttribute("aria-selected", m === "make"); $("tab-convert").setAttribute("aria-selected", m === "convert");
   $("panel-make").hidden = m !== "make"; $("panel-convert").hidden = m !== "convert";
-  $("save-svg").disabled = m !== "make";
+  syncButtons();
   $("save-svg").title = m === "make" ? "Vector lines for Inkscape, Cricut, Silhouette or laser cutters" : "Photos are made of pixels, so they save as PNG or PDF";
   if (m === "convert" && !S.img) loadSample(); else schedule();
 }
@@ -676,11 +790,12 @@ $("tab-convert").onclick = () => setMode("convert");
 $("reroll").onclick = () => { S.seed = (Math.random() * 1e9) | 0; syncOutputs(); schedule(); };
 $("prev").onclick = () => { S.bookPage--; schedule(); };
 $("next").onclick = () => { S.bookPage++; schedule(); };
-$("booklet").addEventListener("input", () => { S.bookPage = 0; });
+$("booklet").addEventListener("input", () => { S.bookPage = 0; if (v("booklet")) $("poster").checked = false; syncOutputs(); });
+$("poster").addEventListener("input", () => { if (v("poster")) $("booklet").checked = false; syncOutputs(); });   // one multi-page mode at a time
 
 function loadBlob(blob, name) {
   const url = URL.createObjectURL(blob), im = new Image();
-  im.onload = () => { S.img = im; S.imgName = name || "image"; $("srcname").innerHTML = "<strong></strong>"; $("srcname").firstChild.textContent = S.imgName; if (S.mode !== "convert") setMode("convert"); else schedule(); };
+  im.onload = () => { S.img = im; S.imgId = (S.imgId || 0) + 1; S.imgName = name || "image"; $("srcname").innerHTML = "<strong></strong>"; $("srcname").firstChild.textContent = S.imgName; if (S.mode !== "convert") setMode("convert"); else schedule(); };
   im.onerror = () => msg("That file couldn't be read as an image. Try a PNG, JPEG or WebP.");
   im.src = url;
 }
@@ -717,15 +832,15 @@ function browserDownload(ext) {
   if (ext === "pdf") { msg("PDF saving and printing need the desktop app. Saved a PNG instead."); }
   page.toBlob(b => { const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = baseName() + ".png"; a.click(); });
 }
-const isBook = () => S.mode === "make" && v("booklet");
+const isBook = () => S.mode === "make" && v("booklet") && !isPoster();
 const call = (fn, ...a) => new Promise(res => bridge[fn](...a, res));
 
-// Streams a booklet to the desktop shell one page at a time, so 40 pages at 300 dpi never sit in memory at once.
-async function runBook(kind, testPath = "") {
-  if (!bridge) { msg("Booklets need the desktop app, which writes multi-page PDFs and prints."); return "no bridge"; }
+// Streams pages to the desktop shell one at a time, so 40 pages at 300 dpi never sit in memory at once.
+async function streamPages(kind, label, name, count, drawInto, testPath) {
+  if (!bridge) { msg(`${label[0].toUpperCase() + label.slice(1)}s need the desktop app, which writes multi-page PDFs and prints.`); return "no bridge"; }
   if (S.bookBusy) return "busy";
-  const g = geometry(), pages = bookPages();
-  const meta = { kind, name: `inkline-booklet-${S.seed}`, dpi: g.dpi, paper: v("paper"), orient: v("orient"), count: pages.length, path: testPath };
+  const g = geometry();
+  const meta = { kind, label, name, dpi: g.dpi, paper: v("paper"), orient: v("orient"), count, path: testPath };
   if (kind === "print") msg("Opening the print dialog…");
   const r = await call("bookBegin", JSON.stringify(meta));
   if (r !== "ok") { msg(r); return r; }
@@ -733,10 +848,10 @@ async function runBook(kind, testPath = "") {
   const off = document.createElement("canvas"); off.width = g.W; off.height = g.H;
   const octx = off.getContext("2d");
   try {
-    for (let i = 0; i < pages.length; i++) {
-      msg(`Rendering page ${i + 1} of ${pages.length}…`);
+    for (let i = 0; i < count; i++) {
+      msg(`Rendering ${label === "poster" ? "sheet" : "page"} ${i + 1} of ${count}…`);
       await new Promise(res => setTimeout(res, 0));          // let the status line repaint
-      drawPage(octx, g, pages[i]);
+      drawInto(octx, g, i);
       const res = await call("bookPage", off.toDataURL("image/png").split(",")[1]);
       if (res !== "ok") { await call("bookAbort"); msg(res); return res; }
     }
@@ -745,19 +860,38 @@ async function runBook(kind, testPath = "") {
     await call("bookAbort"); msg("The booklet couldn't be finished: " + e.message); return "error";
   } finally {
     S.bookBusy = false; ["print", "save-png", "save-pdf", "save-svg"].forEach(id => $(id).disabled = false);
+    syncButtons();
   }
+}
+
+function runBook(kind, testPath = "") {
+  const pages = bookPages();
+  return streamPages(kind, "booklet", `inkline-booklet-${S.seed}`, pages.length, (ctx, g, i) => drawPage(ctx, g, pages[i]), testPath);
+}
+
+function runPoster(kind, testPath = "") {
+  const P = posterGeom(geometry().dpi), spec = S.mode === "make" ? singlePage() : { kind: "photo" };
+  return streamPages(kind, "poster", `${baseName()}-poster-${P.cols}x${P.rows}`, P.cols * P.rows, (ctx, g, i) => drawSheet(ctx, g, P, spec, i), testPath);
+}
+
+// PNG would be a single enormous image for a poster; SVG suits only generated designs.
+function syncButtons() {
+  if (S.bookBusy) return;
+  $("save-png").disabled = isPoster();
+  $("save-png").title = isPoster() ? "Posters save as PDF (one page per sheet) or print directly" : "";
+  $("save-svg").disabled = S.mode !== "make";
 }
 
 function saveSvg() {
   if (S.mode !== "make") { msg("Photos are made of pixels, so they save as PNG or PDF. SVG is for Make one up designs."); return; }
-  const name = baseName() + (isBook() ? `-page${S.bookPage + 1}` : ""), svg = buildSvg();
+  const name = baseName() + (isPoster() ? "-poster" : isBook() ? `-page${S.bookPage + 1}` : ""), svg = buildSvg();
   if (bridge) { bridge.request(JSON.stringify({ kind: "svg", name, svg }), r => msg(r)); return; }
   const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" })); a.download = name + ".svg"; a.click();
 }
 $("save-svg").onclick = saveSvg;
 $("save-png").onclick = () => bridge ? bridge.request(job("png"), r => msg(r)) : browserDownload("png");
-$("save-pdf").onclick = () => isBook() ? runBook("pdf") : bridge ? bridge.request(job("pdf"), r => msg(r)) : browserDownload("pdf");
-$("print").onclick = () => isBook() ? runBook("print") : bridge ? (msg("Opening the print dialog…"), bridge.request(job("print"), r => msg(r))) : browserDownload("pdf");
+$("save-pdf").onclick = () => isPoster() ? runPoster("pdf") : isBook() ? runBook("pdf") : bridge ? bridge.request(job("pdf"), r => msg(r)) : browserDownload("pdf");
+$("print").onclick = () => isPoster() ? runPoster("print") : isBook() ? runBook("print") : bridge ? (msg("Opening the print dialog…"), bridge.request(job("print"), r => msg(r))) : browserDownload("pdf");
 
 // The desktop shell injects qwebchannel.js before this page runs.
 if (window.qt && window.qt.webChannelTransport && typeof QWebChannel === "function") {
