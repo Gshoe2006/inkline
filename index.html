@@ -218,6 +218,7 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; background:
           <option value="atkinson">Dither: crisp (Atkinson)</option>
           <option value="bayer">Dither: pattern (ordered)</option>
           <option value="halftone">Halftone dots</option>
+          <option value="engrave">Engraving lines</option>
           <option value="threshold">Solid black &amp; white</option>
           <option value="line">Line drawing (colouring page)</option>
         </select></div>
@@ -992,6 +993,41 @@ async function prepareConversions(jobs) {
   }
 }
 
+/* Engraving: parallel wavy lines, ENGRAVE_PITCH work pixels apart, that swell where the photo is dark.
+   Each line's half-width at a point is (darkness x pitch / 2), with darkness averaged over the line's
+   band, so the ink covers exactly that share of the band: tone is accurate by construction, the same
+   rule as halftone. The lines are filled shapes, so they also export to SVG as real vector paths. */
+const ENGRAVE_PITCH = 4, ENGRAVE_STEP = 2;
+function drawEngraving(ctx, box, g, entry, inv) {
+  const { ww, wh, lum, mask } = entry, sx = box.w / ww, sy = box.h / wh, P = ENGRAVE_PITCH, vw = g.view;
+  const X = x => box.x + x * sx, Y = y => box.y + y * sy;
+  ctx.save(); ctx.beginPath(); ctx.rect(box.x, box.y, box.w, box.h); ctx.clip(); ctx.fillStyle = "#000";
+  const flush = seg => {   // one stretch of line: along its top edge, back along its bottom edge
+    if (seg.length < 2) return;
+    ctx.beginPath(); ctx.moveTo(X(seg[0][0]), Y(seg[0][1] - seg[0][2]));
+    for (const [x, cy, hw] of seg) ctx.lineTo(X(x), Y(cy - hw));
+    for (let k = seg.length - 1; k >= 0; k--) ctx.lineTo(X(seg[k][0]), Y(seg[k][1] + seg[k][2]));
+    ctx.closePath(); ctx.fill();
+  };
+  for (let band = 0; band * P < wh; band++) {
+    const y0 = band * P, y1 = Math.min(wh, y0 + P), mid = (y0 + y1) / 2;
+    if (vw && (Y(y1) < vw.y || Y(y0) > vw.y + vw.h)) continue;   // poster sheets skip lines off the sheet
+    let seg = [];
+    for (let x = 0; x <= ww; x += ENGRAVE_STEP) {
+      const xi = Math.min(ww - 1, x);
+      let dark = 0, n = 0;
+      for (let y = y0; y < y1; y++) { const i = y * ww + xi; if (mask[i]) { let d = 1 - Math.min(255, Math.max(0, lum[i])) / 255; if (inv) d = 1 - d; dark += d; } n++; }
+      const hw = (dark / n) * (y1 - y0) / 2;
+      // gentle waves, the same phase on neighbouring lines so they never cross
+      const cy = mid + Math.sin(x * 0.11 + band * 0.04) * P * 0.22;
+      if (hw > 0.04) seg.push([x, cy, hw]);
+      else { flush(seg); seg = []; }
+    }
+    flush(seg);
+  }
+  ctx.restore();
+}
+
 // o.style / o.dot override the sidebar (the printer test page shows every style side by side).
 function convert(ctx, box, g = {}, photo = curPhoto(), o = {}) {
   if (!photo) {
@@ -1010,6 +1046,7 @@ function convert(ctx, box, g = {}, photo = curPhoto(), o = {}) {
   }
   S.cc = entry;   // the last conversion shown: drag-to-pan reads its overhang
   const { ww, wh, lum, mask, wc } = entry, inv = !photo.neutral && v("invert");
+  if (style === "engrave") { drawEngraving(ctx, box, g, entry, inv); return; }
   if (style === "halftone") {
     const sx = box.w / ww, sy = box.h / wh, cellSide = Math.sqrt(sx * sy), vw = g.view;
     const x0 = vw ? Math.max(0, Math.floor((vw.x - box.x) / sx) - 1) : 0, x1 = vw ? Math.min(ww, Math.ceil((vw.x + vw.w - box.x) / sx) + 1) : ww;
@@ -1118,8 +1155,8 @@ function processPixels(D, ww, wh, p) {
     for (let i = 0; i < N; i++) out[i] = mask[i] && g1[i] - g2[i] < -thr ? 0 : 255;
     despeckle(out, ww, wh, Math.max(12, Math.round(N / 40000)));
   }
-  let rgba = null;   // halftone is drawn as circles from lum, so it needs no image
-  if (style !== "halftone") {
+  let rgba = null;   // halftone and engraving are drawn from lum, so they need no image
+  if (style !== "halftone" && style !== "engrave") {
     rgba = new Uint8ClampedArray(N * 4);
     for (let i = 0; i < N; i++) {
       let o = mask[i] ? out[i] : 255; if (inv && mask[i]) o = 255 - o;
@@ -1210,11 +1247,16 @@ for (const k of ["lineWidth", "strokeStyle", "fillStyle", "lineCap", "lineJoin",
 SvgCtx.prototype.imageSmoothingEnabled = true;   // accepted and ignored
 
 // The page that's showing (single design, or the current booklet page) as a print-size SVG document.
+// Engraving is the one photo style made of shapes rather than pixels, so it can be saved as SVG.
+const isVectorPhoto = () => S.mode === "convert" && v("style") === "engrave";
+
 function buildSvg() {
   const g = isPoster() ? posterGeom(num("dpi")) : geometry(), ctx = new SvgCtx(g.W, g.H, g.w, g.h);
-  if (isPoster()) drawPage(ctx, g, singlePage());
+  const photo = S.mode === "convert";
+  if (isPoster()) drawPage(ctx, g, photo ? { kind: "photo" } : singlePage());
+  else if (isPhotoBook()) { const pages = photoBookPages(); drawPage(ctx, g, pages[Math.min(S.bookPage, pages.length - 1)]); }
   else if (isBook()) { const pages = bookPages(); drawPage(ctx, g, pages[Math.min(S.bookPage, pages.length - 1)]); }
-  else drawPage(ctx, g, singlePage());
+  else drawPage(ctx, g, photo ? photoPage() : singlePage());
   return ctx.toString();
 }
 
@@ -1435,7 +1477,7 @@ function drawTestPage(ctx, g) {
   const labelW = 1.75 * I, rampW = b.w - labelW, rampH = 0.36 * I, ramp = greyRamp(), dot = num("dot");
   text(`Dither styles at dot size ${dot} (from white to black)`, b.x, y, 0.11 * I, 700);
   y += 0.12 * I;
-  for (const [style, name] of [["fs", "Smooth"], ["atkinson", "Crisp"], ["bayer", "Pattern"], ["halftone", "Halftone"], ["threshold", "Solid"]]) {
+  for (const [style, name] of [["fs", "Smooth"], ["atkinson", "Crisp"], ["bayer", "Pattern"], ["halftone", "Halftone"], ["engrave", "Engraving"], ["threshold", "Solid"]]) {
     text(name, b.x, y + rampH * 0.62, 0.1 * I, 600);
     const r = { x: b.x + labelW, y, w: rampW, h: rampH };
     convert(ctx, r, g, ramp, { style });
@@ -1687,7 +1729,6 @@ function setMode(m) {
   S.mode = m; $("tab-make").setAttribute("aria-selected", m === "make"); $("tab-convert").setAttribute("aria-selected", m === "convert");
   $("panel-make").hidden = m !== "make"; $("panel-convert").hidden = m !== "convert";
   syncButtons();
-  $("save-svg").title = m === "make" ? "Vector lines for Inkscape, Cricut, Silhouette or laser cutters" : "Photos are made of pixels, so they save as PNG or PDF";
   if (m === "convert" && !S.img) loadSample(); else schedule();
   rememberSettings();
 }
@@ -1952,12 +1993,14 @@ function syncButtons() {
   const poster = isPoster() && !isTestPage();
   $("save-png").disabled = poster;
   $("save-png").title = poster ? "Posters save as PDF (one page per sheet) or print directly" : "Save PNG (Ctrl+Shift+S)";
-  $("save-svg").disabled = S.mode !== "make" || isTestPage();   // the test page's dither samples are pixels
+  $("save-svg").disabled = (S.mode !== "make" && !isVectorPhoto()) || isTestPage() || isFold();   // pixels, or two pages per sheet
+  $("save-svg").title = isVectorPhoto() ? "Engraving lines save as vector paths, for laser engravers and plotters"
+    : S.mode === "make" ? "Vector lines for Inkscape, Cricut, Silhouette or laser cutters" : "Photos are made of pixels; choose Engraving lines for SVG";
 }
 
 function saveSvg() {
-  if (S.mode !== "make") { msg("Photos are made of pixels, so they save as PNG or PDF. SVG is for Make one up designs."); return; }
-  const name = baseName() + (isPoster() ? "-poster" : isBook() ? `-page${S.bookPage + 1}` : ""), svg = buildSvg();
+  if (S.mode !== "make" && !isVectorPhoto()) { msg("Photos are made of pixels, so they save as PNG or PDF. Choose the Engraving lines style for SVG."); return; }
+  const name = baseName() + (isPoster() ? "-poster" : isBook() || isPhotoBook() ? `-page${S.bookPage + 1}` : ""), svg = buildSvg();
   if (bridge) { bridge.request(JSON.stringify({ kind: "svg", name, svg }), r => msg(r)); return; }
   const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" })); a.download = name + ".svg"; a.click();
 }
@@ -1979,6 +2022,7 @@ const BUILTIN_PRESETS = {
   "Sudoku booklet with answers": { mode: "make", gen: "sudoku", booklet: true, pages: 10, ramp: true, mix: false, cover: true, pageNums: true, key: true, poster: false },
   "Dot-to-dot booklet with answers": { mode: "make", gen: "dots", booklet: true, pages: 8, ramp: true, mix: false, cover: true, pageNums: true, key: true, poster: false, weight: 4 },
   "Newspaper halftone photo": { mode: "convert", style: "halftone", dot: 3, contrast: 120, brightness: 0, invert: false },
+  "Engraved photo": { mode: "convert", style: "engrave", dot: 2, contrast: 110, brightness: 0, invert: false },
   "Photo colouring page": { mode: "convert", style: "line", threshold: 128, dot: 2, invert: false },
   "Wall poster 3 × 3": { poster: true, booklet: false, grid: "3x3", overlap: "0.25" },
 };

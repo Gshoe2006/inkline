@@ -3,7 +3,7 @@
 A Linux desktop app that converts photos to, or generates, black & white images for printing.
 
 - **Make one up:** mandala colouring pages, mazes, dot-to-dots, sudoku (each with exactly one solution), word search (themes or your own words, each word hidden exactly once), name pages in bubble letters, woven tiles, topographic contours, flow lines.
-- **Convert a photo:** Floyd–Steinberg, Atkinson and ordered dithering, halftone dots, solid black & white, or a line drawing (colouring page), with rotate, zoom and pan to crop.
+- **Convert a photo:** Floyd–Steinberg, Atkinson and ordered dithering, halftone dots, engraving lines (also saves as SVG), solid black & white, or a line drawing (colouring page), with rotate, zoom and pan to crop.
 - **Photo books:** turn several photos into one colouring-book PDF, one page each with its own crop, plus an optional cover, title, name line and page numbers.
 - **Fold-and-staple books:** booklets and photo books can print two half-size pages per side, double-sided, so the sheets fold and staple into a real little book in page order.
 - **Booklets:** turn any pattern (or all five mixed) into a multi-page PDF with a cover, a title and name line, page numbers, difficulty that ramps up page by page, a *New design for this page* button to swap any single page (answers follow), and answer pages for mazes, dot-to-dots, sudoku and word search.
