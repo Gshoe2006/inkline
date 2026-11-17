@@ -14,7 +14,7 @@ import xml.etree.ElementTree as ET
 
 PATTERNS = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "name"]
 PAGE_PX = (2550, 3300)                     # Letter at 300 dpi
-PDF_PAGES = {**{n: 1 for n in PATTERNS + ["convert"]},
+PDF_PAGES = {**{n: 1 for n in PATTERNS + ["convert", "testpage"]},
              "booklet": 9,                 # cover + 6 mazes + 2 answer pages
              "poster-mandala-2x2": 4,
              "poster-photo-3x3": 9,
@@ -40,7 +40,7 @@ def main(d):
     problems = []
     if not shutil.which("pdfinfo"):
         return ["pdfinfo isn't installed (it comes with poppler-utils)"]
-    for n in PATTERNS + ["convert"]:
+    for n in PATTERNS + ["convert", "testpage"]:
         p = os.path.join(d, f"{n}.png")
         try:
             if png_size(p) != PAGE_PX:
@@ -78,7 +78,7 @@ if __name__ == "__main__":
     if len(sys.argv) != 2:
         sys.exit(__doc__)
     found = main(sys.argv[1])
-    checked = len(PATTERNS) + 1 + len(PDF_PAGES) + len(SVGS)
+    checked = len(PATTERNS) + 2 + len(PDF_PAGES) + len(SVGS)
     if found:
         print(f"check_selftest: {len(found)} problem(s) in {sys.argv[1]}:")
         for p in found:
