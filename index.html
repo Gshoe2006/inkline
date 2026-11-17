@@ -39,6 +39,7 @@ aside { width: 330px; flex: none; background: var(--panel); border-right: 1px so
 .brand { padding: 18px 20px 14px; border-bottom: 1px solid var(--line); display: flex; align-items: baseline; gap: 10px; }
 .brand h1 { font: 700 20px/1 var(--font-head); margin: 0; letter-spacing: -0.01em; }
 .brand span { color: var(--muted); font-size: 12px; }
+.brand .ver { margin-left: auto; font: 11px var(--font-mono); }
 .scroll { overflow-y: auto; flex: 1; padding: 14px 20px 20px; display: flex; flex-direction: column; gap: 18px; }
 
 .tabs { display: grid; grid-template-columns: 1fr 1fr; background: var(--field); border: 1px solid var(--line); border-radius: 8px; padding: 3px; gap: 3px; }
@@ -91,6 +92,8 @@ input[type="text"], input[type="number"] { font: 13px var(--font-ui); color: var
 .foot .pair { gap: 8px; }
 .trio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 #msg { font-size: 12px; color: var(--muted); min-height: 1.4em; }
+.keys { margin: 0; font-size: 11px; color: var(--muted); }
+kbd { font: 10px var(--font-mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 3px; padding: 0 3px; background: var(--field); color: var(--ink); }
 
 main { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--table); }
 .bar { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 10px 18px; font: 12px var(--font-mono); color: var(--muted); border-bottom: 1px solid var(--line); background: var(--bg); font-variant-numeric: tabular-nums; }
@@ -110,7 +113,7 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; background:
 </head>
 <body>
 <aside>
-  <div class="brand"><h1>Inkline</h1><span>black &amp; white for print</span></div>
+  <div class="brand"><h1>Inkline</h1><span>black &amp; white for print</span><span class="ver" id="ver"></span></div>
   <div class="scroll">
     <div class="tabs" role="tablist">
       <button id="tab-make" role="tab" aria-selected="true">Make one up</button>
@@ -144,7 +147,7 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; background:
       <div class="row"><label for="complexity">Complexity <output id="complexity-o"></output></label><input type="range" id="complexity" min="1" max="10" value="5"></div>
       <div class="row"><label for="weight">Line weight <output id="weight-o"></output></label><input type="range" id="weight" min="1" max="10" value="4"></div>
       <label class="check"><input type="checkbox" id="frame"> Draw a border around the design</label>
-      <div class="seedline"><code id="seed-o"></code><button class="btn primary" id="reroll">New design</button></div>
+      <div class="seedline"><code id="seed-o"></code><button class="btn primary" id="reroll" title="New design (Ctrl+N)">New design</button></div>
     </fieldset>
 
 
@@ -248,9 +251,10 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; background:
     </fieldset>
   </div>
   <div class="foot">
-    <button class="btn primary" id="print">Print…</button>
-    <div class="trio"><button class="btn" id="save-png">PNG</button><button class="btn" id="save-pdf">PDF</button><button class="btn" id="save-svg" title="Vector lines for Inkscape, Cricut, Silhouette or laser cutters">SVG</button></div>
+    <button class="btn primary" id="print" title="Print (Ctrl+P)">Print…</button>
+    <div class="trio"><button class="btn" id="save-png">PNG</button><button class="btn" id="save-pdf" title="Save PDF (Ctrl+S)">PDF</button><button class="btn" id="save-svg" title="Vector lines for Inkscape, Cricut, Silhouette or laser cutters">SVG</button></div>
     <div id="msg" role="status"></div>
+    <p class="keys"><kbd>Ctrl</kbd>+<kbd>P</kbd> print · <kbd>Ctrl</kbd>+<kbd>S</kbd> PDF · <kbd>Ctrl</kbd>+<kbd>N</kbd> new design · <kbd>←</kbd><kbd>→</kbd> pages</p>
   </div>
 </aside>
 <main>
@@ -1065,17 +1069,18 @@ function syncOutputs() {
 }
 
 /* ---------- inputs ---------- */
-document.querySelectorAll("aside input, aside select").forEach(el => el.addEventListener("input", () => { syncOutputs(); schedule(); }));
+document.querySelectorAll("aside input, aside select").forEach(el => el.addEventListener("input", () => { syncOutputs(); schedule(); rememberSettings(); }));
 function setMode(m) {
   S.mode = m; $("tab-make").setAttribute("aria-selected", m === "make"); $("tab-convert").setAttribute("aria-selected", m === "convert");
   $("panel-make").hidden = m !== "make"; $("panel-convert").hidden = m !== "convert";
   syncButtons();
   $("save-svg").title = m === "make" ? "Vector lines for Inkscape, Cricut, Silhouette or laser cutters" : "Photos are made of pixels, so they save as PNG or PDF";
   if (m === "convert" && !S.img) loadSample(); else schedule();
+  rememberSettings();
 }
 $("tab-make").onclick = () => setMode("make");
 $("tab-convert").onclick = () => setMode("convert");
-$("reroll").onclick = () => { S.seed = (Math.random() * 1e9) | 0; syncOutputs(); schedule(); };
+$("reroll").onclick = () => { S.seed = (Math.random() * 1e9) | 0; syncOutputs(); schedule(); rememberSettings(); };
 function resetCrop() { S.rot = 0; $("zoom").value = 100; $("panx").value = 0; $("pany").value = 0; syncOutputs(); }
 $("rotl").onclick = () => { S.rot = ((S.rot || 0) + 270) % 360; schedule(); };
 $("rotr").onclick = () => { S.rot = ((S.rot || 0) + 90) % 360; schedule(); };
@@ -1287,7 +1292,7 @@ function runPoster(kind, testPath = "") {
 function syncButtons() {
   if (S.bookBusy) return;
   $("save-png").disabled = isPoster();
-  $("save-png").title = isPoster() ? "Posters save as PDF (one page per sheet) or print directly" : "";
+  $("save-png").title = isPoster() ? "Posters save as PDF (one page per sheet) or print directly" : "Save PNG (Ctrl+Shift+S)";
   $("save-svg").disabled = S.mode !== "make";
 }
 
@@ -1354,7 +1359,38 @@ function fillPresetMenu(selected = "") {
   sel.value = selected; $("presetDel").disabled = !selected.startsWith("s:");
 }
 
-async function initPresets() { S.presets = await presetStore.load(); fillPresetMenu(); }
+/* ---------- remember last settings ----------
+   Every change is saved (debounced) with the design's seed; the next start restores it. Saving starts only
+   after the restore, so the defaults never overwrite what was remembered. "Start fresh" undoes it. */
+const settingsStore = {
+  async load() {
+    if (bridge) { try { return JSON.parse(await call("loadLastSettings")) || {}; } catch { return {}; } }
+    try { return JSON.parse(localStorage.getItem("inkline-last") || "{}"); } catch { return {}; }
+  },
+  async save(obj) {
+    const txt = JSON.stringify(obj);
+    if (bridge) return call("saveLastSettings", txt);
+    try { localStorage.setItem("inkline-last", txt); return "ok"; } catch { return "ok"; }
+  },
+};
+let rememberTimer = 0;
+function rememberSettings() {
+  if (!S.restored) return;
+  clearTimeout(rememberTimer);
+  rememberTimer = setTimeout(() => settingsStore.save({ ...capturePreset(), seed: S.seed }), 400);
+}
+
+async function initPresets() {
+  S.presets = await presetStore.load(); fillPresetMenu();
+  const last = await settingsStore.load();
+  if (last && Object.keys(last).length) {
+    const { seed, ...rest } = last;
+    if (Number.isFinite(seed)) S.seed = seed >>> 0;
+    applyPreset(rest);
+    msg("Reopened with your last settings. Presets → Start fresh resets them.");
+  }
+  S.restored = true;
+}
 
 $("preset").addEventListener("change", () => {
   const v_ = $("preset").value; $("presetDel").disabled = !v_.startsWith("s:");
@@ -1381,9 +1417,33 @@ $("presetDel").onclick = async () => {
   S.presets = next; fillPresetMenu(); msg(`Deleted preset “${name}”.`);
 };
 
+/* ---------- keyboard shortcuts ----------
+   Ctrl/Cmd shortcuts work anywhere. Arrow and Page keys turn booklet / photo book pages, but only when
+   focus isn't on a form control, so sliders and menus keep their own arrow keys. Each shortcut clicks the
+   matching button, so disabled buttons (e.g. PNG in poster mode) stay disabled. */
+document.addEventListener("keydown", e => {
+  const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
+  if (mod && !e.altKey) {
+    const target = k === "p" ? "print" : k === "s" ? (e.shiftKey ? "save-png" : "save-pdf") : k === "n" && S.mode === "make" ? "reroll" : null;
+    if (target) { e.preventDefault(); if (!$(target).disabled) $(target).click(); }
+    return;
+  }
+  if (e.altKey || /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement?.tagName || "")) return;
+  const d = { ArrowLeft: -1, PageUp: -1, ArrowRight: 1, PageDown: 1 }[e.key];
+  if (!d) return;
+  if (isPhotoBook()) { e.preventDefault(); goPhotoPage(d); }
+  else if (isBook()) { e.preventDefault(); $(d < 0 ? "prev" : "next").click(); }
+});
+
+BUILTIN_PRESETS["Start fresh (defaults)"] = capturePreset();   // the out-of-the-box settings, taken before any restore
+
 // The desktop shell injects qwebchannel.js before this page runs.
 if (window.qt && window.qt.webChannelTransport && typeof QWebChannel === "function") {
-  new QWebChannel(qt.webChannelTransport, ch => { bridge = ch.objects.inkline; initPresets(); });
+  new QWebChannel(qt.webChannelTransport, ch => {
+    bridge = ch.objects.inkline;
+    bridge.version(ver => { $("ver").textContent = ver === "dev" ? "dev build" : `v${ver}`; $("ver").title = `Inkline ${ver}`; });
+    initPresets();
+  });
 } else initPresets();
 
 syncOutputs(); render();
