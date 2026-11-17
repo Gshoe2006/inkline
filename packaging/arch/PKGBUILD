@@ -1,7 +1,7 @@
 # Maintainer: Inkline
 pkgname=inkline
 pkgver=@VERSION@
-pkgrel=2
+pkgrel=1
 pkgdesc="Convert photos or generate black & white images for printing"
 arch=('any')
 license=('MIT')
