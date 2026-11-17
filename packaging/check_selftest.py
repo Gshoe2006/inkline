@@ -12,7 +12,7 @@ import subprocess
 import sys
 import xml.etree.ElementTree as ET
 
-PATTERNS = ["mandala", "maze", "truchet", "contour", "flow", "dots"]
+PATTERNS = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku"]
 PAGE_PX = (2550, 3300)                     # Letter at 300 dpi
 PDF_PAGES = {**{n: 1 for n in PATTERNS + ["convert"]},
              "booklet": 9,                 # cover + 6 mazes + 2 answer pages
@@ -63,10 +63,12 @@ def main(d):
             root = ET.parse(p).getroot()
             if root.get("width") != "8.5in" or root.get("height") != "11in":
                 problems.append(f"{n}.svg is {root.get('width')} x {root.get('height')}, expected 8.5in x 11in")
-            # Count drawing commands, not <path> elements: the maze is one long path, the mandala hundreds.
+            # Count what's drawn, not <path> elements: the maze is one long path, the mandala hundreds of
+            # paths, and a sudoku is 20 straight lines plus its numbers (text).
             commands = sum(len(re.findall(r"[MLHVCQA]", el.get("d", ""))) for el in root.iter("{http://www.w3.org/2000/svg}path"))
-            if commands < 100:
-                problems.append(f"{n}.svg draws only {commands} path segments; expected a full design")
+            texts = sum(1 for _ in root.iter("{http://www.w3.org/2000/svg}text"))
+            if commands + texts < 60:
+                problems.append(f"{n}.svg draws only {commands} path segments and {texts} labels; expected a full design")
         except (OSError, ET.ParseError) as e:
             problems.append(f"{n}.svg: {e}")
     return problems

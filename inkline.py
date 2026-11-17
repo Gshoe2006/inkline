@@ -305,11 +305,11 @@ def selftest(win, outdir):
 
     # a hung step (e.g. a promise that never resolves) must still end the run
     QTimer.singleShot(8 * 60 * 1000, lambda: (fail("whole run took longer than 8 minutes"), finish()))
-    steps = ["mandala", "maze", "truchet", "contour", "flow", "dots", "convert"]
+    steps = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "convert"]
 
     def run(i=0):
         if i == len(steps):
-            booklet()
+            sudoku_proof()
             return
         name = steps[i]
         js = ("setMode('convert');" if name == "convert" else f"setMode('make'); $('gen').value='{name}';") + " 0"
@@ -357,6 +357,31 @@ def selftest(win, outdir):
                 then()
             page.runJavaScript("window.__job || null", got)
         page.runJavaScript("window.__job = null; " + start_js + "; 0", lambda _r: QTimer.singleShot(500, poll))
+
+    def sudoku_proof():
+        """Every generated sudoku must be a valid grid with exactly one solution, reproducible from its seed."""
+        js = r"""(() => {
+          const valid = s => { for (let k = 0; k < 9; k++) { const a = new Set(), b = new Set(), c = new Set();
+            for (let j = 0; j < 9; j++) { a.add(s[k*9+j]); b.add(s[j*9+k]); c.add(s[(((k/3)|0)*3 + ((j/3)|0))*9 + (k%3)*3 + j%3]); }
+            for (const t of [a, b, c]) if (t.size !== 9 || t.has(0)) return false; } return true; };
+          const bad = [], clues = [];
+          for (const c of [1, 5, 10]) for (const seed of [7, 8, 9]) {
+            const p = makeSudoku(mulberry32(seed), c), q = makeSudoku(mulberry32(seed), c);
+            if (!valid(p.solution)) bad.push(`c${c}/${seed} invalid grid`);
+            if (!p.puzzle.every((v, i) => !v || v === p.solution[i])) bad.push(`c${c}/${seed} givens disagree`);
+            if (countSolutions(p.puzzle.slice(), 2) !== 1) bad.push(`c${c}/${seed} not exactly one solution`);
+            if (p.puzzle.join() !== q.puzzle.join()) bad.push(`c${c}/${seed} not reproducible`);
+            clues.push(p.clues);
+          }
+          return bad.length ? "BAD " + bad.join("; ") : "OK 9 puzzles, clues " + clues.join(",");
+        })()"""
+
+        def got(r):
+            print(f"selftest: sudoku proof -> {r}")
+            if not str(r).startswith("OK"):
+                fail(f"sudoku proof: {r}")
+            booklet()
+        page.runJavaScript(js, got)
 
     def booklet():
         path = os.path.join(outdir, "booklet.pdf")
