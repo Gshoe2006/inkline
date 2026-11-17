@@ -147,7 +147,14 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; background:
           <option value="dots">Dot-to-dot</option>
           <option value="sudoku">Sudoku</option>
           <option value="name">Name or word (bubble letters)</option>
+          <option value="words">Word search</option>
         </select></div>
+      <div class="sub" id="words-opts" hidden>
+        <div class="row"><label for="wsTheme">Words from</label>
+          <select id="wsTheme"><option value="animals">Animals</option><option value="ocean">Ocean</option><option value="space">Space</option><option value="food">Food</option><option value="weather">Weather</option><option value="sports">Sports</option><option value="custom">Your own list</option></select></div>
+        <div class="row" id="wsWords-row" hidden><label for="wsWords">Your words</label><input type="text" id="wsWords" maxlength="300" placeholder="e.g. mum, dad, grandma, pizza"></div>
+        <p class="hint" id="wsNote"></p>
+      </div>
       <div class="sub" id="name-opts" hidden>
         <div class="row"><label for="nameText">Name or word</label><input type="text" id="nameText" maxlength="40" value="Hello" placeholder="e.g. Maya, Happy Birthday"></div>
         <div class="row"><label for="nameBg">Around the letters</label>
@@ -169,7 +176,7 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; background:
         <label class="check"><input type="checkbox" id="mix"> Mix all five patterns</label>
         <label class="check"><input type="checkbox" id="cover" checked> Cover page</label>
         <label class="check"><input type="checkbox" id="pageNums" checked> Page numbers</label>
-        <label class="check"><input type="checkbox" id="key" checked> Answer pages for puzzles (mazes, dot-to-dots, sudoku)</label>
+        <label class="check"><input type="checkbox" id="key" checked> Answer pages for puzzles (mazes, dot-to-dots, sudoku, word search)</label>
         <div class="pager"><button class="btn" id="prev" aria-label="Previous page">‹</button><span id="pagepos"></span><button class="btn" id="next" aria-label="Next page">›</button></div>
         <div class="pagetools"><button class="btn mini" id="pageNew">New design for this page</button><button class="btn mini" id="pageOrig" hidden>Back to original</button></div>
         <p class="hint">PDF and Print use every page. PNG and SVG save the page shown.</p>
@@ -781,6 +788,116 @@ function genName(ctx, g, box, c, lw, seed) {
   return { lines, fs: fs / g.dpi };
 }
 
+/* ---------- word search ----------
+   Words are hidden across, down and (at higher complexity) diagonally and backwards, then the empty
+   cells are filled with random letters. The rule that makes a fair puzzle: every listed word must
+   appear in the grid exactly once, so a fill that accidentally spells a listed word again is redone. */
+const WORD_THEMES = {
+  animals: "cat dog horse tiger zebra rabbit monkey giraffe lion bear mouse sheep goat duck frog owl eagle panda koala otter camel hippo snake turtle wolf fox",
+  ocean: "wave shell crab whale shark coral octopus dolphin seal tide sand reef squid kelp starfish jellyfish lobster anchor boat pearl salt clam",
+  space: "star moon planet comet rocket orbit galaxy saturn mars venus earth jupiter asteroid nebula alien sun meteor crater astronaut telescope",
+  food: "apple bread cheese pizza pasta soup salad banana grape mango carrot rice honey cookie muffin peach lemon toast butter pear plum",
+  weather: "rain snow wind cloud storm sunny thunder fog hail frost rainbow breeze mist sleet heat chilly drizzle tornado",
+  sports: "soccer tennis golf hockey rugby cycling skating skiing rowing boxing karate surfing archery baseball cricket diving judo running",
+};
+const WS_DIRS = [[0, 1], [1, 0], [1, 1], [-1, 1], [0, -1], [-1, 0], [-1, -1], [1, -1]];   // E, S, SE, NE, then the backwards ones
+// Complexity 1..10: grid 8..16, 6..15 words, directions from across/down up to all eight.
+const wsLevel = c => ({ size: 8 + Math.round((c - 1) * 8 / 9), count: 5 + c, dirs: WS_DIRS.slice(0, c <= 3 ? 2 : c <= 6 ? 4 : c <= 8 ? 6 : 8) });
+const cleanWord = w => w.toUpperCase().replace(/[^A-Z]/g, "");
+// A word hidden inside another (RAIN in RAINBOW, SUN backwards in VENUS) can never appear exactly once.
+const hiddenIn = (w, o) => o !== w && (o.includes(w) || o.includes([...w].reverse().join("")));
+
+// The words for one puzzle: your own list if chosen (all of it), else a seeded pick from the theme.
+function wordPool(rnd, c) {
+  const theme = v("wsTheme"), { size, count } = wsLevel(c);
+  if (theme === "custom") {
+    const mine = [...new Set($("wsWords").value.split(/[\s,;]+/).map(cleanWord).filter(w => w.length >= 2))];
+    if (mine.length) return mine;
+  }
+  const pool = (WORD_THEMES[theme] || WORD_THEMES.animals).split(" ").map(cleanWord).filter(w => w.length <= size);
+  for (let i = pool.length - 1; i > 0; i--) { const j = (rnd() * (i + 1)) | 0; [pool[i], pool[j]] = [pool[j], pool[i]]; }
+  const pick = [];   // skip any word that hides inside (or contains) one already picked
+  for (const w of pool) if (pick.length < count && !pick.some(o => hiddenIn(w, o) || hiddenIn(o, w))) pick.push(w);
+  return pick;
+}
+
+// Every place in the grid where `word` can be read in any of the 8 directions (a palindrome counts once).
+function findWord(grid, size, word) {
+  const hits = new Set();
+  for (let r = 0; r < size; r++) for (let c = 0; c < size; c++) for (const [dr, dc] of WS_DIRS) {
+    let k = 0;
+    for (; k < word.length; k++) { const rr = r + dr * k, cc = c + dc * k; if (rr < 0 || cc < 0 || rr >= size || cc >= size || grid[rr * size + cc] !== word[k]) break; }
+    if (k === word.length) { const a = r * size + c, b = (r + dr * (k - 1)) * size + c + dc * (k - 1); hits.add(Math.min(a, b) + "-" + Math.max(a, b)); }
+  }
+  return hits.size;
+}
+
+function makeWordSearch(rnd, c, words) {
+  const { size, dirs } = wsLevel(c);
+  // leave out words too long for the grid, and words hidden inside another listed word
+  const left = words.filter(w => w.length > size).map(w => `${w} (too long for ${size} × ${size})`);
+  const fit = words.filter(w => w.length <= size), inside = fit.filter(w => fit.some(o => hiddenIn(w, o)));
+  for (const w of inside) left.push(`${w} (it's inside ${fit.find(o => hiddenIn(w, o))})`);
+  const list = fit.filter(w => !inside.includes(w)).sort((a, b) => b.length - a.length);
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const grid = new Array(size * size).fill(""), placed = [], skipped = [];
+    for (const w of list) {   // longest first; words may cross where their letters agree
+      let done = false;
+      for (let t = 0; t < 300 && !done; t++) {
+        const [dr, dc] = dirs[(rnd() * dirs.length) | 0], r = (rnd() * size) | 0, col = (rnd() * size) | 0;
+        const er = r + dr * (w.length - 1), ec = col + dc * (w.length - 1);
+        if (er < 0 || ec < 0 || er >= size || ec >= size) continue;
+        let fits = true;
+        for (let k = 0; k < w.length && fits; k++) { const ch = grid[(r + dr * k) * size + col + dc * k]; fits = ch === "" || ch === w[k]; }
+        if (!fits) continue;
+        for (let k = 0; k < w.length; k++) grid[(r + dr * k) * size + col + dc * k] = w[k];
+        placed.push({ word: w, r, c: col, dr, dc }); done = true;
+      }
+      if (!done) skipped.push(`${w} (no room left)`);
+    }
+    const blanks = grid.map((ch, i) => (ch ? -1 : i)).filter(i => i >= 0);
+    for (let fill = 0; fill < 30; fill++) {   // fill the gaps; redo the fill if it spells a listed word a second time
+      for (const i of blanks) grid[i] = String.fromCharCode(65 + ((rnd() * 26) | 0));
+      if (placed.every(p => findWord(grid, size, p.word) === 1)) return { size, grid, placed, skipped: left.concat(skipped) };
+    }
+  }
+  return null;   // practically never: 40 placements x 30 fills all produced a duplicate
+}
+
+function genWords(ctx, box, rnd, c, lw, g, opts = {}) {
+  const ws = makeWordSearch(rnd, c, wordPool(rnd, c));
+  if (!ws) return;
+  const { size, grid, placed } = ws, words = placed.map(p => p.word).sort();
+  if (!opts.solve) $("wsNote").textContent = ws.skipped.length ? `Left out: ${ws.skipped.join(", ")}.` + (ws.skipped.some(t => t.includes("too long")) ? " Raise Complexity for a bigger grid." : "") : "";
+  const side = opts.solve ? Math.min(box.w, box.h) : Math.min(box.w, box.h * 0.66), cs = side / size;
+  const x0 = box.x + (box.w - side) / 2, y0 = box.y + (opts.solve ? (box.h - side) / 2 : 0);
+  const centre = (r, col) => [x0 + (col + 0.5) * cs, y0 + (r + 0.5) * cs];
+  ctx.save(); ctx.lineCap = "round"; ctx.lineJoin = "round";
+  if (opts.solve) {   // answer key: a hollow capsule around each word (black, then a narrower white pass)
+    const wide = cs * 0.8, ring = Math.max(1, lw * 0.6);
+    for (const pass of [0, 1]) for (const p of placed) {
+      ctx.strokeStyle = pass ? "#fff" : "#000"; ctx.lineWidth = pass ? wide - 2 * ring : wide;
+      ctx.beginPath(); ctx.moveTo(...centre(p.r, p.c)); ctx.lineTo(...centre(p.r + p.dr * (p.word.length - 1), p.c + p.dc * (p.word.length - 1))); ctx.stroke();
+    }
+  }
+  ctx.fillStyle = "#000"; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic"; ctx.font = `600 ${cs * 0.58}px ${FONT}`;
+  for (let i = 0; i < size * size; i++) { const [x, y] = centre((i / size) | 0, i % size); ctx.fillText(grid[i], x, y + cs * 0.21); }
+  ctx.strokeStyle = "#000"; ctx.lineWidth = Math.max(1, lw * 0.8); ctx.strokeRect(x0 - cs * 0.15, y0 - cs * 0.15, side + cs * 0.3, side + cs * 0.3);
+  if (!opts.solve) {   // the word list to tick off, in columns under the grid
+    const top = y0 + side + cs * 0.6, avail = box.y + box.h - top, cols = words.length > 12 ? 4 : 3, rows = Math.ceil(words.length / cols);
+    let fs = Math.min(g.dpi * 0.16, cs * 0.5); if (rows * fs * 1.6 + fs * 1.8 > avail) fs = avail / (rows * 1.6 + 1.8);
+    ctx.textAlign = "left"; ctx.font = `700 ${fs}px ${FONT}`; ctx.fillText("Find these words", box.x, top + fs);
+    ctx.font = `500 ${fs}px ${FONT}`; ctx.lineWidth = Math.max(1, lw * 0.4);
+    const colW = box.w / cols;
+    words.forEach((w, i) => {
+      const x = box.x + (i % cols) * colW, y = top + fs * 2.7 + ((i / cols) | 0) * fs * 1.6;
+      ctx.strokeRect(x, y - fs * 0.78, fs * 0.8, fs * 0.8); ctx.fillText(w, x + fs * 1.2, y);
+    });
+  }
+  ctx.restore();
+  return ws;
+}
+
 /* ---------- photo conversion ---------- */
 const BAYER = (() => { const m = [[0, 2], [3, 1]]; let b = m; for (let n = 2; n < 8; n *= 2) { const nb = []; for (let y = 0; y < n * 2; y++) { nb.push([]); for (let x = 0; x < n * 2; x++) nb[y].push(4 * b[y % n][x % n] + m[(y / n) | 0][(x / n) | 0]); } b = nb; } return b; })();
 
@@ -1102,9 +1219,9 @@ function buildSvg() {
 }
 
 /* ---------- pages & booklets ---------- */
-const GENS = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku"];
-const GEN_NAMES = { mandala: "Mandala", maze: "Maze", truchet: "Woven tiles", contour: "Contours", flow: "Flow lines", dots: "Dot-to-dot", sudoku: "Sudoku", name: "Name page" };   // "name" stays out of GENS: a mixed booklet shouldn't repeat one word
-const HAS_ANSWER = gen => gen === "maze" || gen === "dots" || gen === "sudoku";   // puzzles that get a solution in booklet answer pages
+const GENS = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "words"];
+const GEN_NAMES = { mandala: "Mandala", maze: "Maze", truchet: "Woven tiles", contour: "Contours", flow: "Flow lines", dots: "Dot-to-dot", sudoku: "Sudoku", words: "Word search", name: "Name page" };   // "name" stays out of GENS: a mixed booklet shouldn't repeat one word
+const HAS_ANSWER = gen => gen === "maze" || gen === "dots" || gen === "sudoku" || gen === "words";   // puzzles that get a solution in booklet answer pages
 const FONT = '"Cantarell", "Noto Sans", "Inter", sans-serif';
 const inset = (b, p) => ({ x: b.x + p, y: b.y + p, w: b.w - 2 * p, h: b.h - 2 * p });
 
@@ -1142,6 +1259,7 @@ function drawDesign(ctx, g, box, gen, seed, c, lw, opts) {
   else if (gen === "dots") return genDots(ctx, box, rnd, c, lw, g, opts);
   else if (gen === "sudoku") return genSudoku(ctx, box, rnd, c, lw, g, opts);
   else if (gen === "name") return genName(ctx, g, box, c, lw, seed);
+  else if (gen === "words") return genWords(ctx, box, rnd, c, lw, g, opts);
   else genFlow(ctx, box, rnd, c, seed);
 }
 
@@ -1221,7 +1339,7 @@ function drawPage(ctx, g, spec, keep = false) {
       if (d.gen === "maze") {
         const grid = mazeGrid(designBox(g, d), d.c);   // same grid as the puzzle page, so it's the same maze
         drawDesign(ctx, g, slot, "maze", d.seed, d.c, ctx.lineWidth, { grid, solve: true });
-      } else if (d.gen === "sudoku") drawDesign(ctx, g, slot, "sudoku", d.seed, d.c, lw, { solve: true });   // same seed, same puzzle, filled in
+      } else if (d.gen === "sudoku" || d.gen === "words") drawDesign(ctx, g, slot, d.gen, d.seed, d.c, lw, { solve: true });   // same seed, same puzzle, filled in
       else drawDesign(ctx, g, slot, "dots", d.seed, d.c, ctx.lineWidth, { connect: true });   // same seed draws the same shape, finished
     });
   } else if (spec.kind === "cover") {
@@ -1547,6 +1665,8 @@ function syncOutputs() {
   page.classList.toggle("pannable", S.mode === "convert" && !!S.img);
   $("book-opts").hidden = !v("booklet");
   $("name-opts").hidden = v("gen") !== "name";
+  $("words-opts").hidden = v("gen") !== "words";
+  $("wsWords-row").hidden = v("wsTheme") !== "custom";
   $("testpage-hint").hidden = !isTestPage();
   $("fold-row").hidden = !(isBook() || isPhotoBook());
   $("fold-hint").hidden = !isFold();
@@ -1855,6 +1975,7 @@ const BUILTIN_PRESETS = {
   "Classroom maze worksheet": { mode: "make", gen: "maze", complexity: 4, weight: 4, title: "Maze time", nameLine: true, booklet: false, poster: false },
   "Maze booklet with answers": { mode: "make", gen: "maze", booklet: true, pages: 10, ramp: true, mix: false, cover: true, pageNums: true, key: true, poster: false },
   "Name colouring page": { mode: "make", gen: "name", nameBg: "flow", complexity: 3, weight: 5, frame: false, booklet: false, poster: false },
+  "Word search booklet with answers": { mode: "make", gen: "words", wsTheme: "animals", booklet: true, pages: 8, ramp: true, mix: false, cover: true, pageNums: true, key: true, poster: false, weight: 3 },
   "Sudoku booklet with answers": { mode: "make", gen: "sudoku", booklet: true, pages: 10, ramp: true, mix: false, cover: true, pageNums: true, key: true, poster: false },
   "Dot-to-dot booklet with answers": { mode: "make", gen: "dots", booklet: true, pages: 8, ramp: true, mix: false, cover: true, pageNums: true, key: true, poster: false, weight: 4 },
   "Newspaper halftone photo": { mode: "convert", style: "halftone", dot: 3, contrast: 120, brightness: 0, invert: false },
