@@ -320,7 +320,7 @@ def selftest(win, outdir):
         else:
             if name == "convert":
                 js += "setMode('convert'); $('style').value = 'fs';"
-            elif name == "cbn":   # colour by number from the photo: pixels, so no SVG
+            elif name == "cbn":   # colour by number from the photo: traced vector outlines, so it saves as SVG
                 js += "setMode('convert'); $('style').value = 'cbn'; syncOutputs();"
             elif name == "nonophoto":   # a nonogram made from the photo: vector lines and text, so it saves as SVG
                 js += "setMode('convert'); $('style').value = 'nono'; syncOutputs();"
@@ -347,7 +347,7 @@ def selftest(win, outdir):
         print(f"selftest: {name} {img.width()}x{img.height()}")
         if (img.width(), img.height()) != (2550, 3300):
             fail(f"{name}: expected a 2550x3300 page, got {img.width()}x{img.height()}")
-        if name in ("convert", "cbn", "testpage"):   # pixels only: no SVG
+        if name in ("convert", "testpage"):   # pixels only: no SVG
             run(i + 1)
             return
 
@@ -559,7 +559,18 @@ def selftest(win, outdir):
             if (used.size !== r.names.length) bad.push(`${gen}/c${c}: key lists ${r.names.length}, ${used.size} used`);
             made.push(`${gen} c${c} ${r.spots.length}`);
           }
-          $('cbn').checked = false; $('gen').value = 'mandala'; syncOutputs();
+          // booklets: every colour-by-number page gets a shaded answer, drawn from the same spaces
+          $('gen').value = 'mandala'; $('booklet').checked = true; $('pages').value = '3'; $('key').checked = true; $('mix').checked = false; syncOutputs();
+          const ans = bookPages().filter(p => p.kind === 'answers'), items = ans.reduce((a, p) => a + p.items.length, 0);
+          if (items !== 3) bad.push(`booklet: ${items} answers for 3 colour-by-number pages`);
+          else {
+            const g = geometry(), c = document.createElement('canvas'); c.width = g.W; c.height = g.H; const x = c.getContext('2d', { willReadFrequently: true });
+            drawPage(x, g, ans[0]); const d = x.getImageData(0, 0, g.W, g.H).data; let grey = 0;
+            for (let i = 0; i < d.length; i += 4) if (d[i] > 60 && d[i] < 200) grey++;
+            if (grey < g.W * g.H * 0.02) bad.push('booklet: the answer page has no shading');
+            made.push(`booklet answers shaded ${(grey / (g.W * g.H) * 100).toFixed(0)}%`);
+          }
+          $('booklet').checked = false; $('cbn').checked = false; $('gen').value = 'mandala'; syncOutputs();
           return (bad.length ? "BAD " + bad.join("; ") : "OK ") + " | " + made.join(", ");
         })()"""
 

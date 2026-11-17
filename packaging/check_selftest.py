@@ -21,7 +21,7 @@ PDF_PAGES = {**{n: 1 for n in PATTERNS + ["convert", "engrave", "stipple", "cbn"
              "photobook": 4,               # cover + 3 photos
              "booklet-fold": 6}            # the same booklet folded: 12 pages -> 3 sheets -> 6 sides
 PDF_SIZE = {"booklet-fold": "792 x 612"}   # landscape sheets; everything else is portrait Letter
-SVGS = PATTERNS + ["answers", "engrave", "stipple"]
+SVGS = PATTERNS + ["answers", "engrave", "stipple", "cbn"]
 
 
 def png_size(path):
