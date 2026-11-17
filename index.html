@@ -72,6 +72,13 @@ input[type="text"], input[type="number"] { font: 13px var(--font-ui); color: var
 .pager span { flex: 1; text-align: center; font: 12px var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
 .presetrow { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
 .presetrow .btn { width: auto; padding: 7px 12px; }
+.pbhead { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; }
+.btn.mini { width: auto; padding: 3px 8px; font-size: 12px; }
+.photolist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 260px; overflow-y: auto; }
+.photolist li { display: grid; grid-template-columns: 36px 1fr auto auto auto; align-items: center; gap: 6px; padding: 4px; border: 1px solid var(--line); border-radius: 6px; cursor: pointer; font-size: 12px; }
+.photolist li.sel { border-color: var(--accent); background: var(--field); }
+.photolist li img { width: 36px; height: 36px; object-fit: cover; border-radius: 4px; }
+.photolist li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .croprow { display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 8px; }
 #page.pannable { cursor: grab; touch-action: none; }
 #page.pannable:active { cursor: grabbing; }
@@ -139,11 +146,6 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; background:
       <div class="seedline"><code id="seed-o"></code><button class="btn primary" id="reroll">New design</button></div>
     </fieldset>
 
-    <fieldset>
-      <legend>Page text</legend>
-      <div class="row"><label for="title">Title</label><input type="text" id="title" maxlength="60" placeholder="e.g. Rainy Day Mazes"></div>
-      <label class="check"><input type="checkbox" id="nameLine"> Add a "Name ______" line</label>
-    </fieldset>
 
     <fieldset>
       <legend>Booklet</legend>
@@ -166,7 +168,16 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; background:
       <div class="drop" id="drop">
         <span id="srcname">Drop an image anywhere, paste one, or</span>
         <div class="pair"><label class="btn" for="file">Open image…</label><button class="btn" id="sample">Use sample</button></div>
-        <input type="file" id="file" accept="image/*" hidden>
+        <input type="file" id="file" accept="image/*" multiple hidden>
+      </div>
+      <label class="check"><input type="checkbox" id="photobook"> Make a photo book from several photos</label>
+      <div class="sub" id="pbook-opts" hidden>
+        <div class="pbhead"><span id="photocount"></span><label class="btn mini" for="file">Add photos…</label></div>
+        <ol class="photolist" id="photolist"></ol>
+        <label class="check"><input type="checkbox" id="pcover" checked> Cover page</label>
+        <label class="check"><input type="checkbox" id="ppageNums" checked> Page numbers</label>
+        <div class="pager"><button class="btn" id="pprev" aria-label="Previous page">‹</button><span id="ppagepos"></span><button class="btn" id="pnext" aria-label="Next page">›</button></div>
+        <p class="hint">Click a photo to crop it; each photo keeps its own crop. PDF and Print use every page.</p>
       </div>
       <div class="row"><label>Crop</label>
         <div class="croprow">
@@ -197,6 +208,12 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; background:
         <div class="row"><label for="fit">Placement</label><select id="fit"><option value="contain">Fit inside</option><option value="cover">Fill page</option></select></div>
         <div class="row"><label for="invert">&nbsp;</label><label class="check"><input type="checkbox" id="invert"> Invert</label></div>
       </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Page text</legend>
+      <div class="row"><label for="title">Title</label><input type="text" id="title" maxlength="60" placeholder="e.g. Rainy Day Mazes"></div>
+      <label class="check"><input type="checkbox" id="nameLine"> Add a "Name ______" line</label>
     </fieldset>
 
     <fieldset>
@@ -245,7 +262,7 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; background:
 const $ = id => document.getElementById(id);
 const page = $("page"), pctx = page.getContext("2d");
 const PAPER = { letter: [8.5, 11], a4: [8.27, 11.69] };
-const S = { mode: "make", seed: (Math.random() * 1e9) | 0, img: null, imgName: "", bookPage: 0 };
+const S = { mode: "make", seed: (Math.random() * 1e9) | 0, img: null, imgName: "", bookPage: 0, photos: [], sel: 0, imgSeq: 0 };
 
 /* ---------- helpers ---------- */
 function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
@@ -445,17 +462,23 @@ function genFlow(ctx, box, rnd, c, seed) {
 /* ---------- photo conversion ---------- */
 const BAYER = (() => { const m = [[0, 2], [3, 1]]; let b = m; for (let n = 2; n < 8; n *= 2) { const nb = []; for (let y = 0; y < n * 2; y++) { nb.push([]); for (let x = 0; x < n * 2; x++) nb[y].push(4 * b[y % n][x % n] + m[(y / n) | 0][(x / n) | 0]); } b = nb; } return b; })();
 
+// The photo being shown or edited, with the crop from the sliders. Book pages pass their own photo instead.
+function curPhoto() {
+  const p = S.photos[S.sel];
+  return p ? { ...p, rot: S.rot || 0, zoom: num("zoom"), panx: num("panx"), pany: num("pany") } : null;
+}
+
 // Draws the converted photo into box. g.view (a poster sheet's area) lets halftone skip dots off that sheet.
-function convert(ctx, box, g = {}) {
-  if (!S.img) {
+function convert(ctx, box, g = {}, photo = curPhoto()) {
+  if (!photo) {
     ctx.fillStyle = "#888"; ctx.font = `${box.w / 28}px sans-serif`; ctx.textAlign = "center";
     ctx.fillText("Open or drop an image to convert it", box.x + box.w / 2, box.y + box.h / 2); return;
   }
   const style = v("style"), dot = num("dot") * (g.dpi ? g.dpi / num("dpi") : 1);   // dot size stays physical at preview resolution
   const cell = Math.max(1, style === "halftone" ? dot * 5 : dot);
   // A poster draws the same photo once per sheet: cache the converted image so dithering runs only once.
-  const key = [S.imgId, box.w, box.h, cell, style, v("brightness"), v("contrast"), v("threshold"), v("fit"), v("invert"), S.rot || 0, v("zoom"), v("panx"), v("pany")].join("|");
-  if (!S.cc || S.cc.key !== key) S.cc = { key, ...convertData(box, cell, style) };
+  const key = [photo.imgId, box.w, box.h, cell, style, v("brightness"), v("contrast"), v("threshold"), v("fit"), v("invert"), photo.rot, photo.zoom, photo.panx, photo.pany].join("|");
+  if (!S.cc || S.cc.key !== key) S.cc = { key, ...convertData(box, cell, style, photo) };
   const { ww, wh, lum, mask, wc } = S.cc, inv = v("invert");
   if (style === "halftone") {
     const sx = box.w / ww, sy = box.h / wh, rmax = Math.max(sx, sy) * 0.72, vw = g.view;
@@ -506,18 +529,18 @@ function despeckle(img, w, h, minSize) {
 }
 
 // Converts the photo to black & white at (box size / cell) resolution. Returns brightness, mask and the 1-bit image.
-function convertData(box, cell, style) {
+function convertData(box, cell, style, photo) {
   const ww = Math.max(1, Math.round(box.w / cell)), wh = Math.max(1, Math.round(box.h / cell));
   const wc = document.createElement("canvas"); wc.width = ww; wc.height = wh;
   const wx = wc.getContext("2d", { willReadFrequently: true });
   // Crop: rotate in 90° steps, zoom in, and pan across whatever overhangs the box.
-  const iw = S.img.width, ih = S.img.height, rot = S.rot || 0, rw = rot % 180 ? ih : iw, rh = rot % 180 ? iw : ih;
-  const sc = (v("fit") === "cover" ? Math.max(ww / rw, wh / rh) : Math.min(ww / rw, wh / rh)) * num("zoom") / 100;
+  const img = photo.img, iw = img.width, ih = img.height, rot = photo.rot, rw = rot % 180 ? ih : iw, rh = rot % 180 ? iw : ih;
+  const sc = (v("fit") === "cover" ? Math.max(ww / rw, wh / rh) : Math.min(ww / rw, wh / rh)) * photo.zoom / 100;
   const ex = Math.max(0, rw * sc - ww) / 2, ey = Math.max(0, rh * sc - wh) / 2;   // overhang on each side
   wx.save();
-  wx.translate(ww / 2 + num("panx") / 100 * ex, wh / 2 + num("pany") / 100 * ey);
+  wx.translate(ww / 2 + photo.panx / 100 * ex, wh / 2 + photo.pany / 100 * ey);
   wx.rotate(rot * Math.PI / 180);
-  wx.drawImage(S.img, -iw * sc / 2, -ih * sc / 2, iw * sc, ih * sc);
+  wx.drawImage(img, -iw * sc / 2, -ih * sc / 2, iw * sc, ih * sc);
   wx.restore();
   const id = wx.getImageData(0, 0, ww, wh), D = id.data, N = ww * wh;
   const lum = new Float32Array(N), mask = new Uint8Array(N);
@@ -645,11 +668,11 @@ const FONT = '"Cantarell", "Noto Sans", "Inter", sans-serif';
 const inset = (b, p) => ({ x: b.x + p, y: b.y + p, w: b.w - 2 * p, h: b.h - 2 * p });
 
 // Where the design goes once header and footer bands are taken out. Pure, so answer keys can recompute a page's grid.
-function designBox(g, spec) {
+function designBox(g, spec, frame = v("frame")) {
   const b = { ...g.box }, k = g.scale || 1, band = g.dpi * 0.5 * k;
   if (spec.header) { b.y += band; b.h -= band; }
   if (spec.pageNo) b.h -= band * 0.6;
-  return v("frame") ? inset(b, num("weight") * g.dpi / 150 * 7.6 * k) : b;
+  return frame ? inset(b, num("weight") * g.dpi / 150 * 7.6 * k) : b;
 }
 
 function drawBands(ctx, g, spec) {
@@ -695,6 +718,22 @@ function bookPages() {
   return pages;
 }
 
+// A photo book: optional cover, then one page per photo, each converted with its own crop.
+const isPhotoBook = () => S.mode === "convert" && v("photobook") && S.photos.length > 0 && !isPoster();
+const pageToPhoto = i => Math.max(0, i - (v("pcover") ? 1 : 0));
+function photoBookPages() {
+  const title = $("title").value.trim(), name = v("nameLine"), cur = curPhoto();
+  const photos = S.photos.map((p, i) => (i === S.sel ? cur : p));
+  const pages = photos.map(photo => ({ kind: "photo", photo, title, name, header: !!(title || name) }));
+  if (v("pcover")) pages.unshift({ kind: "pcover", title: title || "My colouring book", photo: photos[0], count: photos.length });
+  let no = 1; for (const pg of pages) if (pg.kind !== "pcover" && v("ppageNums")) pg.pageNo = no++;
+  return pages;
+}
+function photoPage() {
+  const title = $("title").value.trim(), name = v("nameLine");
+  return { kind: "photo", title, name, header: !!(title || name) };
+}
+
 function singlePage() {
   const title = $("title").value.trim(), name = v("nameLine");
   return { kind: "design", gen: v("gen"), seed: S.seed, c: num("complexity"), title, name, header: !!(title || name) };
@@ -705,7 +744,21 @@ function drawPage(ctx, g, spec, keep = false) {
   if (!keep) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, g.W, g.H); }
   ctx.strokeStyle = "#000"; ctx.fillStyle = "#000"; ctx.lineCap = "round"; ctx.lineJoin = "round";
   const lw = num("weight") * g.dpi / 150 * (g.scale || 1); ctx.lineWidth = lw;
-  if (spec.kind === "photo") { convert(ctx, g.box, g); return; }
+  if (spec.kind === "photo") {   // photos skip the pattern frame, but take the title, name line and page number
+    if (spec.header || spec.pageNo) { drawBands(ctx, g, spec); convert(ctx, designBox(g, spec, false), g, spec.photo); }
+    else convert(ctx, g.box, g, spec.photo);
+    return;
+  }
+  if (spec.kind === "pcover") {
+    const b = g.box, fs = g.dpi * 0.5;
+    ctx.save(); ctx.font = `700 ${fs}px ${FONT}`; ctx.textAlign = "center"; ctx.fillStyle = "#000";
+    ctx.fillText(spec.title, b.x + b.w / 2, b.y + b.h * 0.12, b.w);
+    ctx.font = `400 ${fs * 0.4}px ${FONT}`; ctx.fillStyle = "#444";
+    ctx.fillText(`${spec.count} ${spec.count === 1 ? "page" : "pages"} to colour`, b.x + b.w / 2, b.y + b.h * 0.12 + fs * 0.8, b.w);
+    ctx.restore();
+    convert(ctx, { x: b.x + b.w * 0.08, y: b.y + b.h * 0.24, w: b.w * 0.84, h: b.h * 0.7 }, g, spec.photo);
+    return;
+  }
   drawBands(ctx, g, spec);
   if (spec.kind === "design") {
     const box = designBox(g, spec);
@@ -812,12 +865,16 @@ function render() {
   if (page.width !== g.W || page.height !== g.H) { page.width = g.W; page.height = g.H; }
   const book = isBook();
   if (poster) drawPage(pctx, P, S.mode === "make" ? singlePage() : { kind: "photo" });
-  else if (book) {
+  else if (isPhotoBook()) {
+    const pages = photoBookPages(); S.bookPage = Math.min(Math.max(0, S.bookPage), pages.length - 1);
+    drawPage(pctx, g, pages[S.bookPage]);
+    $("ppagepos").textContent = `Page ${S.bookPage + 1} of ${pages.length}` + (pages[S.bookPage].kind === "pcover" ? " · cover" : "");
+  } else if (book) {
     const pages = bookPages(); S.bookPage = Math.min(Math.max(0, S.bookPage), pages.length - 1);
     drawPage(pctx, g, pages[S.bookPage]);
     const p = pages[S.bookPage];
     $("pagepos").textContent = `Page ${S.bookPage + 1} of ${pages.length}` + (p.kind === "cover" ? " · cover" : p.kind === "answers" ? " · answers" : "");
-  } else drawPage(pctx, g, S.mode === "make" ? singlePage() : { kind: "photo" });
+  } else drawPage(pctx, g, S.mode === "make" ? singlePage() : photoPage());
   // ink coverage estimate
   const sm = document.createElement("canvas"); sm.width = 200; sm.height = Math.round(200 * g.H / g.W);
   const sx = sm.getContext("2d", { willReadFrequently: true }); sx.drawImage(page, 0, 0, sm.width, sm.height);
@@ -846,6 +903,7 @@ function syncOutputs() {
   page.classList.toggle("pannable", S.mode === "convert" && !!S.img);
   $("book-opts").hidden = !v("booklet");
   $("poster-opts").hidden = !v("poster");
+  $("pbook-opts").hidden = !v("photobook");
   syncButtons();
 }
 
@@ -893,19 +951,106 @@ $("cropreset").onclick = () => { resetCrop(); schedule(); };
 $("prev").onclick = () => { S.bookPage--; schedule(); };
 $("next").onclick = () => { S.bookPage++; schedule(); };
 $("booklet").addEventListener("input", () => { S.bookPage = 0; if (v("booklet")) $("poster").checked = false; syncOutputs(); });
-$("poster").addEventListener("input", () => { if (v("poster")) $("booklet").checked = false; syncOutputs(); });   // one multi-page mode at a time
+$("poster").addEventListener("input", () => { if (v("poster")) { $("booklet").checked = false; $("photobook").checked = false; } syncOutputs(); });   // one multi-page mode at a time
+$("photobook").addEventListener("input", () => { if (v("photobook")) { $("poster").checked = false; S.bookPage = (v("pcover") ? 1 : 0) + S.sel; } syncOutputs(); });
+$("pcover").addEventListener("input", () => { S.bookPage = (v("pcover") ? 1 : 0) + S.sel; });
+// Paging through the book also selects that page's photo, so the crop controls edit what's shown.
+const goPhotoPage = d => { S.bookPage += d; S.bookPage = Math.max(0, Math.min(S.bookPage, photoBookPages().length - 1)); selectPhoto(pageToPhoto(S.bookPage), { jump: false }); schedule(); };
+$("pprev").onclick = () => goPhotoPage(-1);
+$("pnext").onclick = () => goPhotoPage(1);
 
-function loadBlob(blob, name) {
-  const url = URL.createObjectURL(blob), im = new Image();
-  im.onload = () => { S.img = im; S.imgId = (S.imgId || 0) + 1; S.imgName = name || "image"; resetCrop(); $("srcname").innerHTML = "<strong></strong>"; $("srcname").firstChild.textContent = S.imgName; if (S.mode !== "convert") setMode("convert"); else schedule(); };
-  im.onerror = () => msg("That file couldn't be read as an image. Try a PNG, JPEG or WebP.");
-  im.src = url;
+/* ---------- photos ----------
+   S.photos holds every opened photo with its own crop; S.sel is the one shown and edited.
+   The crop controls always edit the selected photo; storeCrop() writes them back before switching. */
+const MAX_PHOTOS = 60;
+function makePhoto(blob, name) {
+  return new Promise((res, rej) => {
+    const im = new Image();
+    im.onload = () => res({ img: im, imgId: ++S.imgSeq, name: name || "photo", rot: 0, zoom: 100, panx: 0, pany: 0 });
+    im.onerror = () => rej(name);
+    im.src = URL.createObjectURL(blob);
+  });
 }
-$("file").onchange = e => { const f = e.target.files[0]; if (f) loadBlob(f, f.name); e.target.value = ""; };
+function storeCrop() {
+  const p = S.photos[S.sel];
+  if (p) Object.assign(p, { rot: S.rot || 0, zoom: num("zoom"), panx: num("panx"), pany: num("pany") });
+}
+// Show and edit photo i. store = false when the list was just replaced, so the old crop isn't copied in.
+function selectPhoto(i, { store = true, jump = true } = {}) {
+  if (store) storeCrop();
+  S.sel = Math.max(0, Math.min(i, S.photos.length - 1));
+  const p = S.photos[S.sel];
+  S.img = p ? p.img : null; S.imgName = p ? p.name : "";
+  S.rot = p ? p.rot : 0;
+  $("zoom").value = p ? p.zoom : 100; $("panx").value = p ? p.panx : 0; $("pany").value = p ? p.pany : 0;
+  if (jump && isPhotoBook()) S.bookPage = (v("pcover") ? 1 : 0) + S.sel;
+  renderPhotoList(); syncOutputs();
+}
+// list: [{ blob, name }]. append adds to a photo book; otherwise the first photo replaces what's open.
+async function addPhotos(list, append) {
+  const ok = [], bad = [];
+  for (const { blob, name } of append ? list : list.slice(0, 1)) {
+    try { ok.push(await makePhoto(blob, name)); } catch { bad.push(name); }
+  }
+  if (bad.length) msg(`Couldn't read ${bad.join(", ")} as an image. Try PNG, JPEG or WebP.`);
+  if (!ok.length) return;
+  let first = 0;
+  if (append && S.photos.length) {
+    storeCrop();
+    const room = MAX_PHOTOS - S.photos.length;
+    if (room <= 0) { msg(`A photo book holds up to ${MAX_PHOTOS} photos.`); return; }
+    if (ok.length > room) msg(`Added ${room} photos; a photo book holds up to ${MAX_PHOTOS}.`);
+    first = S.photos.length; S.photos.push(...ok.slice(0, room));
+  } else S.photos = ok.slice(0, MAX_PHOTOS);
+  selectPhoto(first, { store: false });
+  if (S.mode !== "convert") setMode("convert"); else schedule();
+}
+function movePhoto(i, d) {
+  const j = i + d; if (j < 0 || j >= S.photos.length) return;
+  storeCrop();
+  [S.photos[i], S.photos[j]] = [S.photos[j], S.photos[i]];
+  selectPhoto(S.sel === i ? j : S.sel === j ? i : S.sel, { store: false }); schedule();
+}
+function removePhoto(i) {
+  if (S.photos.length < 2) return;
+  storeCrop();
+  S.photos.splice(i, 1);
+  selectPhoto(S.sel > i ? S.sel - 1 : S.sel, { store: false }); schedule();
+}
+function renderPhotoList() {
+  const ol = $("photolist"); ol.replaceChildren();
+  S.photos.forEach((p, i) => {
+    const li = document.createElement("li"); if (i === S.sel) li.className = "sel";
+    li.tabIndex = 0; li.setAttribute("aria-label", `Photo ${i + 1}: ${p.name}`);
+    const th = document.createElement("img"); th.src = p.img.src; th.alt = "";
+    const nm = document.createElement("span"); nm.textContent = `${i + 1}. ${p.name}`;
+    const btn = (txt, label, fn, off) => {
+      const b = document.createElement("button"); b.className = "btn mini"; b.textContent = txt; b.title = label;
+      b.setAttribute("aria-label", label); b.disabled = off; b.onclick = e => { e.stopPropagation(); fn(); }; return b;
+    };
+    li.append(th, nm,
+      btn("↑", "Move up", () => movePhoto(i, -1), i === 0),
+      btn("↓", "Move down", () => movePhoto(i, 1), i === S.photos.length - 1),
+      btn("✕", "Remove", () => removePhoto(i), S.photos.length < 2));
+    li.onclick = () => { selectPhoto(i); schedule(); };
+    li.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); li.click(); } };
+    ol.append(li);
+  });
+  $("photocount").textContent = `${S.photos.length} photo${S.photos.length === 1 ? "" : "s"}`;
+  const sn = $("srcname"); sn.replaceChildren();
+  if (S.photos.length) {
+    const b = document.createElement("strong");
+    b.textContent = S.photos.length > 1 ? `${S.photos.length} photos · editing ${S.imgName}` : S.imgName;
+    sn.append(b);
+  } else sn.textContent = "Drop images anywhere, paste one, or";
+}
+const loadBlob = (blob, name) => addPhotos([{ blob, name }], v("photobook"));
+const imageFiles = files => [...files].filter(f => f.type.startsWith("image/")).map(f => ({ blob: f, name: f.name }));
+$("file").onchange = e => { const l = imageFiles(e.target.files); if (l.length) addPhotos(l, v("photobook")); e.target.value = ""; };
 const stage = $("stage");
 ["dragenter", "dragover"].forEach(t => document.addEventListener(t, e => { e.preventDefault(); stage.classList.add("over"); }));
 ["dragleave", "drop"].forEach(t => document.addEventListener(t, e => { e.preventDefault(); if (t === "drop" || !e.relatedTarget) stage.classList.remove("over"); }));
-document.addEventListener("drop", e => { const f = [...(e.dataTransfer?.files || [])].find(f => f.type.startsWith("image/")); if (f) loadBlob(f, f.name); });
+document.addEventListener("drop", e => { const l = imageFiles(e.dataTransfer?.files || []); if (l.length) addPhotos(l, v("photobook")); });
 document.addEventListener("paste", e => { const it = [...(e.clipboardData?.items || [])].find(i => i.type.startsWith("image/")); if (it) loadBlob(it.getAsFile(), "pasted image"); });
 
 function loadSample() {   // a procedurally painted landscape, so the converter has something to show
@@ -971,6 +1116,11 @@ function runBook(kind, testPath = "") {
   return streamPages(kind, "booklet", `inkline-booklet-${S.seed}`, pages.length, (ctx, g, i) => drawPage(ctx, g, pages[i]), testPath);
 }
 
+function runPhotoBook(kind, testPath = "") {
+  const pages = photoBookPages();
+  return streamPages(kind, "photo book", `inkline-photobook-${pages.length}p`, pages.length, (ctx, g, i) => drawPage(ctx, g, pages[i]), testPath);
+}
+
 function runPoster(kind, testPath = "") {
   const P = posterGeom(geometry().dpi), spec = S.mode === "make" ? singlePage() : { kind: "photo" };
   return streamPages(kind, "poster", `${baseName()}-poster-${P.cols}x${P.rows}`, P.cols * P.rows, (ctx, g, i) => drawSheet(ctx, g, P, spec, i), testPath);
@@ -992,8 +1142,8 @@ function saveSvg() {
 }
 $("save-svg").onclick = saveSvg;
 $("save-png").onclick = () => bridge ? bridge.request(job("png"), r => msg(r)) : browserDownload("png");
-$("save-pdf").onclick = () => isPoster() ? runPoster("pdf") : isBook() ? runBook("pdf") : bridge ? bridge.request(job("pdf"), r => msg(r)) : browserDownload("pdf");
-$("print").onclick = () => isPoster() ? runPoster("print") : isBook() ? runBook("print") : bridge ? (msg("Opening the print dialog…"), bridge.request(job("print"), r => msg(r))) : browserDownload("pdf");
+$("save-pdf").onclick = () => isPoster() ? runPoster("pdf") : isPhotoBook() ? runPhotoBook("pdf") : isBook() ? runBook("pdf") : bridge ? bridge.request(job("pdf"), r => msg(r)) : browserDownload("pdf");
+$("print").onclick = () => isPoster() ? runPoster("print") : isPhotoBook() ? runPhotoBook("print") : isBook() ? runBook("print") : bridge ? (msg("Opening the print dialog…"), bridge.request(job("print"), r => msg(r))) : browserDownload("pdf");
 
 /* ---------- presets ----------
    Built-in presets set only the settings they're about, so "Wall poster 3 × 3" can go on top of any design.
