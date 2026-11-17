@@ -510,9 +510,11 @@ const DOT_SHAPES = {
     const n = 5 + ((rnd() * 3) | 0), per = 16, pts = [];
     for (let i = 0; i < n * per; i++) {
       const t = i / (n * per) * 2 * Math.PI, r = 0.42 + 0.58 * Math.abs(Math.sin(n * t / 2));
-      pts.push([r * Math.cos(t - Math.PI / 2), r * Math.sin(t - Math.PI / 2), i % per === 0]);   // valleys are sharp
+      // valleys and petal tips always get a dot, so even a few dots trace petals, not a cog
+      pts.push([r * Math.cos(t - Math.PI / 2), r * Math.sin(t - Math.PI / 2), i % per === 0 || i % per === per / 2]);
     }
-    return { pts, extras: [{ circle: [0, 0, 0.24] }] };
+    // 4 dots per petal can only draw a pointed box (the old "cog"); 6 is the fewest that reads as a round petal
+    return { pts, extras: [{ circle: [0, 0, 0.24] }], minDots: n * 6 };
   },
   blob(rnd) {
     const k = [2, 3, 4].map(f => ({ f, a: 0.05 + rnd() * 0.1, p: rnd() * 6.3 })), pts = [];
@@ -552,7 +554,7 @@ function genDots(ctx, box, rnd, c, lw, g, opts = {}) {
   const T = ([x, y]) => [ox + x * sc, oy + y * sc];
   const P = line.map(p => [...T(p), p[2]]), M = P.length;
   // place dots: every corner, then the rest spread along each stretch in proportion to its length
-  const N = 10 + c * 8, cornerIdx = P.map((p, i) => (p[2] ? i : -1)).filter(i => i >= 0);
+  const N = Math.max(10 + c * 8, shape.minDots || 0), cornerIdx = P.map((p, i) => (p[2] ? i : -1)).filter(i => i >= 0);
   const anchors = cornerIdx.length ? cornerIdx : [0];
   // outline length from point a forward to point b; a === b (a shape with no corners) means all the way round
   const segLen = (a, b) => { let L = 0, i = a; do { const j = (i + 1) % M; L += Math.hypot(P[j][0] - P[i][0], P[j][1] - P[i][1]); i = j; } while (i !== b); return L; };
