@@ -210,10 +210,13 @@ class Bridge(QObject):
 
 
 class ConsolePage(QWebEnginePage):
-    """Used by the self-test so JavaScript errors show up in the terminal."""
+    """Used by the self-test so JavaScript errors show up in the terminal, and count as failures."""
+    errors = []
 
     def javaScriptConsoleMessage(self, level, message, line, source):
         print(f"js[{level.name}] line {line}: {message}")
+        if level == QWebEnginePage.JavaScriptConsoleMessageLevel.ErrorMessageLevel:
+            ConsolePage.errors.append(f"line {line}: {message}")
 
 
 class Window(QMainWindow):
@@ -245,9 +248,27 @@ class Window(QMainWindow):
 
 
 def selftest(win, outdir):
-    """Headless check: render each generator, export PNG + PDF without dialogs, then quit."""
+    """Headless check: render each generator, export PNG + PDF + SVG, booklets, posters and a photo book
+    without dialogs, then exit 0 if every step worked and 1 if any failed (CI relies on that)."""
     os.makedirs(outdir, exist_ok=True)
     page = win.view.page()
+    fails = []
+
+    def fail(why):
+        print(f"selftest: FAIL {why}")
+        fails.append(why)
+
+    def finish():
+        fails.extend(f"JavaScript error {e}" for e in ConsolePage.errors)
+        if fails:
+            print(f"selftest: {len(fails)} failure(s)")
+            for f in fails:
+                print(f"  - {f}")
+        print("selftest: done" if not fails else "selftest: FAILED")
+        QApplication.instance().exit(1 if fails else 0)
+
+    # a hung step (e.g. a promise that never resolves) must still end the run
+    QTimer.singleShot(8 * 60 * 1000, lambda: (fail("whole run took longer than 8 minutes"), finish()))
     steps = ["mandala", "maze", "truchet", "contour", "flow", "convert"]
 
     def run(i=0):
@@ -268,13 +289,17 @@ def selftest(win, outdir):
         write_png(img, os.path.join(outdir, f"{name}.png"), job["dpi"])
         write_pdf(img, os.path.join(outdir, f"{name}.pdf"), job)
         print(f"selftest: {name} {img.width()}x{img.height()}")
+        if (img.width(), img.height()) != (2550, 3300):
+            fail(f"{name}: expected a 2550x3300 page, got {img.width()}x{img.height()}")
         if name == "convert":
             run(i + 1)
             return
 
         def wrote_svg(svg):
+            if not svg or "<path" not in svg:
+                fail(f"{name}: SVG export was empty")
             with open(os.path.join(outdir, f"{name}.svg"), "w", encoding="utf-8") as f:
-                f.write(svg)
+                f.write(svg or "")
             run(i + 1)
         page.runJavaScript("buildSvg()", wrote_svg)
 
@@ -289,6 +314,10 @@ def selftest(win, outdir):
                     QTimer.singleShot(500, poll)
                     return
                 print(f"selftest: {label} -> {r}")
+                if not r:
+                    fail(f"{label}: no result after 2 minutes")
+                elif not str(r).startswith("Saved"):
+                    fail(f"{label}: {r}")
                 then()
             page.runJavaScript("window.__job || null", got)
         page.runJavaScript("window.__job = null; " + start_js + "; 0", lambda _r: QTimer.singleShot(500, poll))
@@ -302,8 +331,10 @@ def selftest(win, outdir):
 
     def answers_svg():
         def wrote(svg):
+            if not svg or "<path" not in svg:
+                fail("answers page: SVG export was empty")
             with open(os.path.join(outdir, "answers.svg"), "w", encoding="utf-8") as f:
-                f.write(svg)
+                f.write(svg or "")
             poster_design()
         page.runJavaScript("S.bookPage = 999; render(); buildSvg()", wrote)
 
@@ -336,9 +367,9 @@ def selftest(win, outdir):
               "  loadSample(); for (let i = 0; i < 30 && S.photos.length < 3; i++) await new Promise(r => setTimeout(r, 100));"
               "  selectPhoto(2); S.rot = 90; $('zoom').value = 180; selectPhoto(0);"
               f"  window.__job = await runPhotoBook('pdf', {json.dumps(path)}); }})()")
-        wait_for(js, "photo book", lambda: (print("selftest: done"), QApplication.quit()))
+        wait_for(js, "photo book", finish)
 
-    win.view.loadFinished.connect(lambda ok: QTimer.singleShot(800, run) if ok else (print("selftest: load failed"), QApplication.quit()))
+    win.view.loadFinished.connect(lambda ok: QTimer.singleShot(800, run) if ok else (fail("index.html didn't load"), finish()))
 
 
 def main():

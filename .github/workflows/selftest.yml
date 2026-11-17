@@ -1,0 +1,72 @@
+# Runs Inkline's headless self-test on every pull request and every push to main.
+# The self-test renders every pattern, the photo converter, a booklet, two posters and a photo book
+# through the real page-to-Python bridge; check_selftest.py then inspects the files it wrote.
+name: Self-test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: selftest-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  selftest:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      QT_QPA_PLATFORM: offscreen
+      QTWEBENGINE_CHROMIUM_FLAGS: --disable-gpu
+      # Ubuntu 24.04 blocks the unprivileged namespaces Chromium's sandbox needs inside CI runners.
+      QTWEBENGINE_DISABLE_SANDBOX: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install system libraries for Qt WebEngine
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libnss3 libnspr4 libxkbcommon0 libxkbfile1 libegl1 libgl1 libopengl0 libgbm1 \
+            libfontconfig1 libdbus-1-3 libasound2t64 libxcomposite1 libxdamage1 libxrandr2 \
+            libxtst6 libxshmfence1 libxkbcommon-x11-0 fonts-dejavu-core poppler-utils
+
+      - name: Install PySide6 (same version as Arch ships)
+        run: python -m pip install --disable-pip-version-check PySide6==6.12.0
+
+      - name: Run the self-test
+        # runner.temp is only available inside steps, not in job-level env
+        env:
+          INKLINE_CONFIG_DIR: ${{ runner.temp }}/inkline-config
+        run: python inkline.py --selftest selftest-output
+
+      - name: Check the self-test's files
+        run: python packaging/check_selftest.py selftest-output
+
+      - name: Build the universal installer and smoke-test it
+        run: |
+          packaging/build.sh
+          export HOME="$RUNNER_TEMP/fakehome" && mkdir -p "$HOME"
+          sh dist/inkline-*.run
+          test -x "$HOME/.local/bin/inkline"
+          test -f "$HOME/.local/share/applications/inkline.desktop"
+          sh "$HOME/.local/share/inkline/uninstall.sh"
+          test ! -e "$HOME/.local/share/inkline"
+
+      - name: Keep the rendered files
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selftest-output
+          path: selftest-output/
+          retention-days: 7
+          if-no-files-found: warn
