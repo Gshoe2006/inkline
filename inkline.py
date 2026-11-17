@@ -307,7 +307,7 @@ def selftest(win, outdir):
 
     # a hung step (e.g. a promise that never resolves) must still end the run
     QTimer.singleShot(8 * 60 * 1000, lambda: (fail("whole run took longer than 8 minutes"), finish()))
-    steps = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "words", "name", "convert", "testpage"]
+    steps = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "words", "name", "convert", "engrave", "testpage"]
 
     def run(i=0):
         if i == len(steps):
@@ -318,7 +318,12 @@ def selftest(win, outdir):
         if name == "testpage":
             js += "setMode('make'); $('testpage').checked = true; syncOutputs();"
         else:
-            js += "setMode('convert');" if name == "convert" else f"setMode('make'); $('gen').value='{name}';"
+            if name == "convert":
+                js += "setMode('convert'); $('style').value = 'fs';"
+            elif name == "engrave":   # the one photo style that also saves as SVG
+                js += "setMode('convert'); $('style').value = 'engrave'; syncOutputs();"
+            else:
+                js += f"setMode('make'); $('gen').value='{name}';"
         if name == "name":   # outlined text over a real pattern, so the SVG check sees both
             js += " $('nameText').value='Inkline 2.2'; $('nameBg').value='flow';"
         js += " 0"
@@ -374,7 +379,7 @@ def selftest(win, outdir):
           const g = geometry('portrait'), I = g.dpi, d = pctx.getImageData(0, 0, g.W, g.H).data;
           const labelX = 0.75 * I + 1.75 * I, rampW = g.W - 1.5 * I - 1.75 * I, worst = {};
           let y = 0.75 * I + 0.55 * I + 0.5 * I + 0.6 * I + 2 * I + 0.35 * I + 0.12 * I;
-          for (const name of ['Smooth', 'Crisp', 'Pattern', 'Halftone']) {
+          for (const name of ['Smooth', 'Crisp', 'Pattern', 'Halftone', 'Engraving']) {
             let w = 0;
             for (let k = 1; k < 9; k++) {   // inner slices; the ends are pure white/black
               let ink = 0, n = 0; const xa = Math.round(labelX + rampW * k / 10 + 4), xb = Math.round(labelX + rampW * (k + 1) / 10 - 4);
@@ -384,7 +389,7 @@ def selftest(win, outdir):
             worst[name] = Math.round(w); y += 0.36 * I + 0.09 * I;
           }
           $('testpage').checked = false; syncOutputs();
-          const bad = ['Smooth', 'Pattern', 'Halftone'].filter(n => worst[n] > 6);   // Crisp (Atkinson) adds contrast on purpose
+          const bad = ['Smooth', 'Pattern', 'Halftone', 'Engraving'].filter(n => worst[n] > 6);   // Crisp (Atkinson) adds contrast on purpose
           return (bad.length ? 'BAD ' : 'OK ') + Object.entries(worst).map(([n, w]) => `${n} ±${w}`).join(', ');
         })()"""
 
