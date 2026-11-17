@@ -67,6 +67,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .seedline .btn { width: auto; padding: 7px 14px; }
 .stack { display: flex; flex-direction: column; gap: 18px; }
 input[type="text"], input[type="number"] { font: 13px var(--font-ui); color: var(--ink); background: var(--field); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; width: 100%; }
+[hidden] { display: none !important; }   /* the hidden attribute must win over display rules like .sub below */
 .sub { display: flex; flex-direction: column; gap: 10px; padding-left: 12px; border-left: 2px solid var(--line); }
 .pager { display: flex; align-items: center; gap: 8px; }
 .pager .btn { width: auto; padding: 5px 12px; }
@@ -173,7 +174,7 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; background:
       <div class="sub" id="book-opts" hidden>
         <div class="row"><label for="pages">Design pages <output id="pages-o"></output></label><input type="range" id="pages" min="2" max="40" value="10"></div>
         <label class="check"><input type="checkbox" id="ramp" checked> Get harder page by page</label>
-        <label class="check"><input type="checkbox" id="mix"> Mix all five patterns</label>
+        <label class="check"><input type="checkbox" id="mix"> Mix every pattern (except name pages)</label>
         <label class="check"><input type="checkbox" id="cover" checked> Cover page</label>
         <label class="check"><input type="checkbox" id="pageNums" checked> Page numbers</label>
         <label class="check"><input type="checkbox" id="key" checked> Answer pages for puzzles (mazes, dot-to-dots, sudoku, word search)</label>
