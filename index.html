@@ -67,6 +67,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .seedline .btn { width: auto; padding: 7px 14px; }
 .stack { display: flex; flex-direction: column; gap: 18px; }
 input[type="text"], input[type="number"] { font: 13px var(--font-ui); color: var(--ink); background: var(--field); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; width: 100%; }
+[hidden] { display: none !important; }   /* the hidden attribute must win over display rules like .sub below */
 .sub { display: flex; flex-direction: column; gap: 10px; padding-left: 12px; border-left: 2px solid var(--line); }
 .pager { display: flex; align-items: center; gap: 8px; }
 .pager .btn { width: auto; padding: 5px 12px; }
@@ -148,6 +149,7 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; background:
           <option value="sudoku">Sudoku</option>
           <option value="name">Name or word (bubble letters)</option>
           <option value="words">Word search</option>
+          <option value="nonogram">Nonogram (picture logic)</option>
         </select></div>
       <div class="sub" id="words-opts" hidden>
         <div class="row"><label for="wsTheme">Words from</label>
@@ -173,10 +175,10 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; background:
       <div class="sub" id="book-opts" hidden>
         <div class="row"><label for="pages">Design pages <output id="pages-o"></output></label><input type="range" id="pages" min="2" max="40" value="10"></div>
         <label class="check"><input type="checkbox" id="ramp" checked> Get harder page by page</label>
-        <label class="check"><input type="checkbox" id="mix"> Mix all five patterns</label>
+        <label class="check"><input type="checkbox" id="mix"> Mix every pattern (except name pages)</label>
         <label class="check"><input type="checkbox" id="cover" checked> Cover page</label>
         <label class="check"><input type="checkbox" id="pageNums" checked> Page numbers</label>
-        <label class="check"><input type="checkbox" id="key" checked> Answer pages for puzzles (mazes, dot-to-dots, sudoku, word search)</label>
+        <label class="check"><input type="checkbox" id="key" checked> Answer pages for puzzles (mazes, dot-to-dots, sudoku, word search, nonograms)</label>
         <div class="pager"><button class="btn" id="prev" aria-label="Previous page">‹</button><span id="pagepos"></span><button class="btn" id="next" aria-label="Next page">›</button></div>
         <div class="pagetools"><button class="btn mini" id="pageNew">New design for this page</button><button class="btn mini" id="pageOrig" hidden>Back to original</button></div>
         <p class="hint">PDF and Print use every page. PNG and SVG save the page shown.</p>
@@ -899,6 +901,112 @@ function genWords(ctx, box, rnd, c, lw, g, opts = {}) {
   return ws;
 }
 
+/* ---------- nonograms ----------
+   A hidden picture: each row and column lists its runs of shaded squares, in order. Pictures are random,
+   left-right mirrored and smoothed once so they read as shapes rather than static. A picture is kept only
+   if line-by-line logic alone solves it completely, which also proves it has exactly one solution:
+   no guessing is ever needed. */
+const nonoRuns = line => { const o = []; let k = 0; for (const x of line) { if (x) k++; else if (k) { o.push(k); k = 0; } } if (k) o.push(k); return o; };
+// Complexity 1..10: 5 x 5 up to 20 x 20.
+const nonoSize = c => 5 + Math.round((c - 1) * 15 / 9);
+
+// Everything one line's clue forces, given what's known (1 shaded, 0 blank, -1 unknown); null if impossible.
+// can[j][i]: runs j.. fit in cells i..; then every reachable placement marks which cells could be shaded or blank.
+function nonoLine(clue, line) {
+  const n = line.length, m = clue.length, can = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(false));
+  can[m][n] = true; for (let i = n - 1; i >= 0; i--) can[m][i] = can[m][i + 1] && line[i] !== 1;
+  const fits = (i, L) => { if (i + L > n) return false; for (let k = i; k < i + L; k++) if (line[k] === 0) return false; return true; };
+  const after = (j, i, L) => j === m - 1 ? can[m][i + L] : i + L < n && line[i + L] !== 1 && can[j + 1][i + L + 1];
+  for (let j = m - 1; j >= 0; j--) for (let i = n - 1; i >= 0; i--) can[j][i] = (line[i] !== 1 && can[j][i + 1]) || (fits(i, clue[j]) && after(j, i, clue[j]));
+  if (!can[0][0]) return null;
+  const shade = new Array(n).fill(false), blank = new Array(n).fill(false), seen = new Set(), todo = [[0, 0]];
+  while (todo.length) {
+    const [j, i] = todo.pop(), key = j * (n + 1) + i; if (seen.has(key)) continue; seen.add(key);
+    if (j === m) { for (let k = i; k < n; k++) blank[k] = true; continue; }
+    if (i >= n) continue;
+    if (line[i] !== 1 && can[j][i + 1]) { blank[i] = true; todo.push([j, i + 1]); }
+    const L = clue[j];
+    if (fits(i, L) && after(j, i, L)) {
+      for (let k = i; k < i + L; k++) shade[k] = true;
+      if (j === m - 1) todo.push([m, i + L]); else { blank[i + L] = true; todo.push([j + 1, i + L + 1]); }
+    }
+  }
+  return line.map((x, k) => (shade[k] && blank[k] ? -1 : shade[k] ? 1 : 0));
+}
+// Applies every row and column until nothing changes. Returns the grid (-1 where logic can't decide), or null.
+function solveNonogram(rows, cols) {
+  const h = rows.length, w = cols.length, g = new Array(w * h).fill(-1);
+  for (let changed = true; changed; ) {
+    changed = false;
+    for (let r = 0; r < h; r++) {
+      const line = g.slice(r * w, r * w + w), out = nonoLine(rows[r], line); if (!out) return null;
+      out.forEach((x, c) => { if (x !== line[c]) { g[r * w + c] = x; changed = true; } });
+    }
+    for (let c = 0; c < w; c++) {
+      const line = rows.map((_, r) => g[r * w + c]), out = nonoLine(cols[c], line); if (!out) return null;
+      out.forEach((x, r) => { if (x !== line[r]) { g[r * w + c] = x; changed = true; } });
+    }
+  }
+  return g;
+}
+function nonoClues(pic, n) {
+  const rows = [], cols = [];
+  for (let k = 0; k < n; k++) { rows.push(nonoRuns(pic.slice(k * n, k * n + n))); cols.push(nonoRuns(pic.filter((_, i) => i % n === k))); }
+  return { rows, cols };
+}
+function makeNonogram(rnd, c) {
+  const n = nonoSize(c), half = Math.ceil(n / 2);
+  for (let attempt = 0; attempt < 2000; attempt++) {
+    const noise = new Array(n * n).fill(0);
+    for (let r = 0; r < n; r++) for (let col = 0; col < half; col++) noise[r * n + col] = noise[r * n + n - 1 - col] = rnd() < 0.5 ? 1 : 0;
+    const pic = noise.map((_, i) => {   // shaded where most of the 3 x 3 around it is (the rule is symmetric, so the mirror holds)
+      const r = (i / n) | 0, col = i % n; let k = 0;
+      for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) { const rr = r + dr, cc = col + dc; if (rr >= 0 && cc >= 0 && rr < n && cc < n) k += noise[rr * n + cc]; }
+      return k >= 5 ? 1 : 0;
+    });
+    const ink = pic.reduce((a, b) => a + b, 0) / (n * n);
+    if (ink < 0.4 || ink > 0.65) continue;   // too empty is dull, too full is just a block
+    const { rows, cols } = nonoClues(pic, n), solved = solveNonogram(rows, cols);
+    if (solved && solved.every((x, i) => x === pic[i])) return { size: n, pic, rows, cols, attempts: attempt + 1 };
+  }
+  return null;   // practically never: about half of all in-range pictures solve on their own
+}
+
+function genNonogram(ctx, box, rnd, c, lw, g, opts = {}) {
+  const nono = makeNonogram(rnd, c);
+  if (!nono) return;
+  const { size: n, pic, rows, cols } = nono, slot = 0.7;   // a clue number takes 0.7 of a square
+  const cap = opts.solve ? 0 : Math.min(box.h * 0.1, g.dpi * 0.45);
+  const across = opts.solve ? 0 : Math.max(...rows.map(r => Math.max(1, r.length))) * slot + 0.3;
+  const down = opts.solve ? 0 : Math.max(...cols.map(r => Math.max(1, r.length))) * slot + 0.3;
+  const cs = Math.min(box.w / (n + across), (box.h - cap) / (n + down)) * 0.96;
+  const x0 = box.x + (box.w - (n + across) * cs) / 2 + across * cs, y0 = box.y + (box.h - cap - (n + down) * cs) / 2 + down * cs, side = n * cs;
+  ctx.save(); ctx.fillStyle = "#000"; ctx.strokeStyle = "#000"; ctx.lineCap = "square";
+  if (opts.solve) for (let i = 0; i < n * n; i++) if (pic[i]) ctx.fillRect(x0 + (i % n) * cs, y0 + ((i / n) | 0) * cs, cs, cs);
+  for (let k = 0; k <= n; k++) {   // thin square lines, a thicker line every 5, thickest border
+    ctx.lineWidth = k === 0 || k === n ? lw * 1.3 : k % 5 ? lw * 0.35 : lw;
+    ctx.beginPath();
+    ctx.moveTo(x0 + k * cs, y0); ctx.lineTo(x0 + k * cs, y0 + side);
+    ctx.moveTo(x0, y0 + k * cs); ctx.lineTo(x0 + side, y0 + k * cs);
+    ctx.stroke();
+  }
+  if (!opts.solve) {
+    const fs = cs * 0.5, gap = cs * 0.3; ctx.font = `600 ${fs}px ${FONT}`; ctx.textBaseline = "alphabetic";
+    ctx.textAlign = "right";   // row clues read left to right, ending beside the grid
+    rows.forEach((clue, r) => { const t = clue.length ? clue : [0];
+      t.forEach((x, k) => ctx.fillText(String(x), x0 - gap - (t.length - 1 - k) * slot * cs, y0 + (r + 0.5) * cs + fs * 0.36)); });
+    ctx.textAlign = "center";   // column clues read top to bottom, ending above the grid
+    cols.forEach((clue, col) => { const t = clue.length ? clue : [0];
+      t.forEach((x, k) => ctx.fillText(String(x), x0 + (col + 0.5) * cs, y0 - gap - (t.length - 1 - k) * slot * cs)); });
+    const fc = Math.min(g.dpi * 0.13, cap * 0.32), mid = box.x + box.w / 2;
+    ctx.font = `400 ${fc}px ${FONT}`; ctx.fillStyle = "#555";
+    ctx.fillText(`${n} × ${n} · shade squares to find the picture`, mid, y0 + side + cap * 0.42);
+    ctx.fillText("Each number is a run of shaded squares, in order, with at least one gap between runs.", mid, y0 + side + cap * 0.42 + fc * 1.5, box.w);
+  }
+  ctx.restore();
+  return nono;
+}
+
 /* ---------- photo conversion ---------- */
 const BAYER = (() => { const m = [[0, 2], [3, 1]]; let b = m; for (let n = 2; n < 8; n *= 2) { const nb = []; for (let y = 0; y < n * 2; y++) { nb.push([]); for (let x = 0; x < n * 2; x++) nb[y].push(4 * b[y % n][x % n] + m[(y / n) | 0][(x / n) | 0]); } b = nb; } return b; })();
 
@@ -1261,9 +1369,9 @@ function buildSvg() {
 }
 
 /* ---------- pages & booklets ---------- */
-const GENS = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "words"];
-const GEN_NAMES = { mandala: "Mandala", maze: "Maze", truchet: "Woven tiles", contour: "Contours", flow: "Flow lines", dots: "Dot-to-dot", sudoku: "Sudoku", words: "Word search", name: "Name page" };   // "name" stays out of GENS: a mixed booklet shouldn't repeat one word
-const HAS_ANSWER = gen => gen === "maze" || gen === "dots" || gen === "sudoku" || gen === "words";   // puzzles that get a solution in booklet answer pages
+const GENS = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "words", "nonogram"];
+const GEN_NAMES = { mandala: "Mandala", maze: "Maze", truchet: "Woven tiles", contour: "Contours", flow: "Flow lines", dots: "Dot-to-dot", sudoku: "Sudoku", words: "Word search", nonogram: "Nonogram", name: "Name page" };   // "name" stays out of GENS: a mixed booklet shouldn't repeat one word
+const HAS_ANSWER = gen => gen === "maze" || gen === "dots" || gen === "sudoku" || gen === "words" || gen === "nonogram";   // puzzles that get a solution in booklet answer pages
 const FONT = '"Cantarell", "Noto Sans", "Inter", sans-serif';
 const inset = (b, p) => ({ x: b.x + p, y: b.y + p, w: b.w - 2 * p, h: b.h - 2 * p });
 
@@ -1302,6 +1410,7 @@ function drawDesign(ctx, g, box, gen, seed, c, lw, opts) {
   else if (gen === "sudoku") return genSudoku(ctx, box, rnd, c, lw, g, opts);
   else if (gen === "name") return genName(ctx, g, box, c, lw, seed);
   else if (gen === "words") return genWords(ctx, box, rnd, c, lw, g, opts);
+  else if (gen === "nonogram") return genNonogram(ctx, box, rnd, c, lw, g, opts);
   else genFlow(ctx, box, rnd, c, seed);
 }
 
@@ -1381,7 +1490,7 @@ function drawPage(ctx, g, spec, keep = false) {
       if (d.gen === "maze") {
         const grid = mazeGrid(designBox(g, d), d.c);   // same grid as the puzzle page, so it's the same maze
         drawDesign(ctx, g, slot, "maze", d.seed, d.c, ctx.lineWidth, { grid, solve: true });
-      } else if (d.gen === "sudoku" || d.gen === "words") drawDesign(ctx, g, slot, d.gen, d.seed, d.c, lw, { solve: true });   // same seed, same puzzle, filled in
+      } else if (d.gen === "sudoku" || d.gen === "words" || d.gen === "nonogram") drawDesign(ctx, g, slot, d.gen, d.seed, d.c, lw, { solve: true });   // same seed, same puzzle, filled in
       else drawDesign(ctx, g, slot, "dots", d.seed, d.c, ctx.lineWidth, { connect: true });   // same seed draws the same shape, finished
     });
   } else if (spec.kind === "cover") {
@@ -2020,6 +2129,7 @@ const BUILTIN_PRESETS = {
   "Name colouring page": { mode: "make", gen: "name", nameBg: "flow", complexity: 3, weight: 5, frame: false, booklet: false, poster: false },
   "Word search booklet with answers": { mode: "make", gen: "words", wsTheme: "animals", booklet: true, pages: 8, ramp: true, mix: false, cover: true, pageNums: true, key: true, poster: false, weight: 3 },
   "Sudoku booklet with answers": { mode: "make", gen: "sudoku", booklet: true, pages: 10, ramp: true, mix: false, cover: true, pageNums: true, key: true, poster: false },
+  "Nonogram booklet with answers": { mode: "make", gen: "nonogram", booklet: true, pages: 8, ramp: true, mix: false, cover: true, pageNums: true, key: true, poster: false },
   "Dot-to-dot booklet with answers": { mode: "make", gen: "dots", booklet: true, pages: 8, ramp: true, mix: false, cover: true, pageNums: true, key: true, poster: false, weight: 4 },
   "Newspaper halftone photo": { mode: "convert", style: "halftone", dot: 3, contrast: 120, brightness: 0, invert: false },
   "Engraved photo": { mode: "convert", style: "engrave", dot: 2, contrast: 110, brightness: 0, invert: false },
