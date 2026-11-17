@@ -307,7 +307,7 @@ def selftest(win, outdir):
 
     # a hung step (e.g. a promise that never resolves) must still end the run
     QTimer.singleShot(8 * 60 * 1000, lambda: (fail("whole run took longer than 8 minutes"), finish()))
-    steps = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "words", "nonogram", "name", "convert", "engrave", "stipple", "cbn", "cbnpattern", "testpage"]
+    steps = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "words", "nonogram", "name", "convert", "engrave", "stipple", "cbn", "cbnpattern", "nonophoto", "testpage"]
 
     def run(i=0):
         if i == len(steps):
@@ -322,6 +322,8 @@ def selftest(win, outdir):
                 js += "setMode('convert'); $('style').value = 'fs';"
             elif name == "cbn":   # colour by number from the photo: pixels, so no SVG
                 js += "setMode('convert'); $('style').value = 'cbn'; syncOutputs();"
+            elif name == "nonophoto":   # a nonogram made from the photo: vector lines and text, so it saves as SVG
+                js += "setMode('convert'); $('style').value = 'nono'; syncOutputs();"
             elif name == "cbnpattern":   # colour by number on a mandala: vector lines plus numbers
                 js += "setMode('make'); $('gen').value = 'mandala'; $('cbn').checked = true; syncOutputs();"
             elif name in ("engrave", "stipple"):   # the photo styles that also save as SVG
@@ -498,6 +500,26 @@ def selftest(win, outdir):
             if (!s || s.join("") !== p.pic.join("")) bad.push(`c${c}/${seed} not solvable by logic`);
             made.push(`${p.size}x${p.size}`);
           }
+          // photo nonograms: random pictures (the hardest case) and the sample photo must come out fair
+          const fair = (r, tag) => {
+            const c = nonoClues(r.pic, r.w, r.h);
+            if (!c.rows.every((x, i) => same(x, r.rows[i])) || !c.cols.every((x, i) => same(x, r.cols[i]))) bad.push(`${tag} clues don't match the picture`);
+            const s = solveNonogram(r.rows, r.cols, r.givens ? Array.from(r.givens, x => (x ? 1 : -1)) : null);
+            if (!s || s.join("") !== Array.from(r.pic).join("")) bad.push(`${tag} not solvable by logic`);
+          };
+          let flips = 0;
+          for (const seed of [21, 22, 23, 24]) {
+            const rnd = mulberry32(seed), tone = Float32Array.from({ length: 100 }, () => rnd() * 255), r = nonoFromPicture(Uint8Array.from(tone, x => (x < 128 ? 1 : 0)), tone, 10, 10, 128);
+            fair(r, `random/${seed}`); flips += r.flips;
+            if (!r.givens) { const k = count(r.rows, r.cols, 10); if (k !== 1) bad.push(`random/${seed} ${k} solutions`); }
+          }
+          setMode('convert'); $('style').value = 'nono';
+          for (const n of [10, 15, 25]) {
+            $('pnonoSize').value = n; const r = convertData({ x: 0, y: 0, w: 2400, h: 3000 }, 2400 / (n * 8), 'nono', curPhoto()).nono;
+            if (!r || r.w !== n) bad.push(`photo ${n}: got ${r ? r.w : "nothing"} squares across`); else fair(r, `photo ${n}`);
+          }
+          $('pnonoSize').value = 15; setMode('make');
+          made.push(`photo 10/15/25 across, ${flips} squares flipped in 4 random 10x10`);
           return bad.length ? "BAD " + bad.join("; ") : "OK " + made.length + " puzzles, " + made.join(",");
         })()"""
 
