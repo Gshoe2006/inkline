@@ -73,6 +73,7 @@ input[type="text"], input[type="number"] { font: 13px var(--font-ui); color: var
 .pager span { flex: 1; text-align: center; font: 12px var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
 .presetrow { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
 .presetrow .btn { width: auto; padding: 7px 12px; }
+.pagetools { display: flex; gap: 8px; flex-wrap: wrap; }
 .pbhead { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; }
 .btn.mini { width: auto; padding: 3px 8px; font-size: 12px; }
 .photolist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 260px; overflow-y: auto; }
@@ -170,6 +171,7 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; background:
         <label class="check"><input type="checkbox" id="pageNums" checked> Page numbers</label>
         <label class="check"><input type="checkbox" id="key" checked> Answer pages for puzzles (mazes, dot-to-dots, sudoku)</label>
         <div class="pager"><button class="btn" id="prev" aria-label="Previous page">‹</button><span id="pagepos"></span><button class="btn" id="next" aria-label="Next page">›</button></div>
+        <div class="pagetools"><button class="btn mini" id="pageNew">New design for this page</button><button class="btn mini" id="pageOrig" hidden>Back to original</button></div>
         <p class="hint">PDF and Print use every page. PNG and SVG save the page shown.</p>
       </div>
     </fieldset>
@@ -282,7 +284,7 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; background:
 const $ = id => document.getElementById(id);
 const page = $("page"), pctx = page.getContext("2d");
 const PAPER = { letter: [8.5, 11], a4: [8.27, 11.69] };
-const S = { mode: "make", seed: (Math.random() * 1e9) | 0, img: null, imgName: "", bookPage: 0, photos: [], sel: 0, imgSeq: 0 };
+const S = { mode: "make", seed: (Math.random() * 1e9) | 0, img: null, imgName: "", bookPage: 0, photos: [], sel: 0, imgSeq: 0, pageSeeds: {} };
 
 /* ---------- helpers ---------- */
 function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
@@ -1150,9 +1152,11 @@ function bookPages() {
   for (let i = 0; i < n; i++) {
     const gen = mix ? GENS[i % GENS.length] : v("gen");
     const cx = ramp && n > 1 ? Math.round(1 + (Math.max(c, 2) - 1) * i / (n - 1)) : c;
-    designs.push({ kind: "design", gen, seed: (S.seed + i * 7919) >>> 0, c: cx, title, name, header: !!(title || name), label: `${GEN_NAMES[gen]} ${i + 1}` });
+    // each page's seed comes from the booklet seed, unless that one page was swapped (S.pageSeeds)
+    designs.push({ kind: "design", idx: i, gen, seed: S.pageSeeds[i] ?? (S.seed + i * 7919) >>> 0, c: cx, title, name, header: !!(title || name), label: `${GEN_NAMES[gen]} ${i + 1}` });
   }
-  if (v("cover")) pages.push({ kind: "cover", title: title || (mix ? "Colouring & puzzle book" : GEN_NAMES[v("gen")] + " book"), designs });
+  if (v("cover")) pages.push({ kind: "cover", title: title || (mix ? "Colouring & puzzle book" : GEN_NAMES[v("gen")] + " book"), designs,
+                               artSeed: S.pageSeeds.cover ?? (S.seed ^ 0x5bd1e995) >>> 0 });
   pages.push(...designs);
   const puzzles = designs.filter(d => HAS_ANSWER(d.gen));
   if (v("key")) for (let i = 0; i < puzzles.length; i += 4) pages.push({ kind: "answers", header: true, title: "Answers", items: puzzles.slice(i, i + 4) });
@@ -1230,7 +1234,7 @@ function drawPage(ctx, g, spec, keep = false) {
     ctx.restore();
     const art = { x: b.x + b.w * 0.12, y: b.y + b.h * 0.26, w: b.w * 0.76, h: b.h * 0.66 };
     ctx.lineWidth = lw;
-    drawDesign(ctx, g, art, HAS_ANSWER(spec.designs[0].gen) ? "mandala" : spec.designs[0].gen, (S.seed ^ 0x5bd1e995) >>> 0, 6, lw);
+    drawDesign(ctx, g, art, HAS_ANSWER(spec.designs[0].gen) ? "mandala" : spec.designs[0].gen, spec.artSeed, 6, lw);
   }
 }
 
@@ -1477,6 +1481,7 @@ function drawView(ctx, vg) {
     const pages = foldPages(); S.bookPage = Math.min(Math.max(0, S.bookPage), pages.length / 2 - 1);
     drawFoldSide(ctx, g, pages, S.bookPage);
     $(isPhotoBook() ? "ppagepos" : "pagepos").textContent = foldSideLabel(pages, S.bookPage);
+    if (isBook()) syncPageTools(null);   // sheets show two pages: swapping needs the single-page view
   }
   else if (vg.poster) drawPage(ctx, P, S.mode === "make" ? singlePage() : { kind: "photo" });
   else if (isPhotoBook()) {
@@ -1487,7 +1492,9 @@ function drawView(ctx, vg) {
     const pages = bookPages(); S.bookPage = Math.min(Math.max(0, S.bookPage), pages.length - 1);
     drawPage(ctx, g, pages[S.bookPage]);
     const p = pages[S.bookPage];
-    $("pagepos").textContent = `Page ${S.bookPage + 1} of ${pages.length}` + (p.kind === "cover" ? " · cover" : p.kind === "answers" ? " · answers" : "");
+    $("pagepos").textContent = `Page ${S.bookPage + 1} of ${pages.length}` + (p.kind === "cover" ? " · cover" : p.kind === "answers" ? " · answers" : "") +
+      (swapKey(p) !== null && swapKey(p) in S.pageSeeds ? " · swapped" : "");
+    syncPageTools(p);
   } else drawPage(ctx, g, S.mode === "make" ? singlePage() : photoPage());
 }
 
@@ -1566,7 +1573,31 @@ function setMode(m) {
 }
 $("tab-make").onclick = () => setMode("make");
 $("tab-convert").onclick = () => setMode("convert");
-$("reroll").onclick = () => { S.seed = (Math.random() * 1e9) | 0; syncOutputs(); schedule(); rememberSettings(); };
+$("reroll").onclick = () => { S.seed = (Math.random() * 1e9) | 0; S.pageSeeds = {}; syncOutputs(); schedule(); rememberSettings(); };   // a fresh booklet drops any swaps
+
+/* ---------- swap one booklet page ----------
+   S.pageSeeds holds a seed for each page that was swapped (by design index, or "cover"). Every other
+   page keeps the seed it gets from the booklet seed, so it stays exactly as it was. Answer pages are
+   built from the design pages, so a swapped puzzle's answer follows it. */
+const swapKey = p => (p.kind === "design" ? p.idx : p.kind === "cover" ? "cover" : null);
+function syncPageTools(p) {
+  const key = p ? swapKey(p) : null, fold = isFold();
+  $("pageNew").disabled = key === null || fold;
+  $("pageNew").title = fold ? "Turn off fold-and-staple to pick a single page" : key === null ? "Answer pages follow their puzzles" : "";
+  $("pageNew").textContent = p?.kind === "cover" ? "New cover art" : "New design for this page";
+  $("pageOrig").hidden = key === null || !(key in S.pageSeeds) || fold;
+}
+function currentBookPage() { const pages = bookPages(); return pages[Math.min(Math.max(0, S.bookPage), pages.length - 1)]; }
+$("pageNew").onclick = () => {
+  const key = swapKey(currentBookPage()); if (key === null) return;
+  S.pageSeeds = { ...S.pageSeeds, [key]: (Math.random() * 4294967296) >>> 0 };
+  schedule(); rememberSettings();
+};
+$("pageOrig").onclick = () => {
+  const key = swapKey(currentBookPage()); if (key === null) return;
+  const next = { ...S.pageSeeds }; delete next[key]; S.pageSeeds = next;
+  schedule(); rememberSettings();
+};
 function resetCrop() { S.rot = 0; $("zoom").value = 100; $("panx").value = 0; $("pany").value = 0; syncOutputs(); }
 $("rotl").onclick = () => { S.rot = ((S.rot || 0) + 270) % 360; schedule(); };
 $("rotr").onclick = () => { S.rot = ((S.rot || 0) + 90) % 360; schedule(); };
@@ -1887,15 +1918,16 @@ let rememberTimer = 0;
 function rememberSettings() {
   if (!S.restored) return;
   clearTimeout(rememberTimer);
-  rememberTimer = setTimeout(() => settingsStore.save({ ...capturePreset(), seed: S.seed }), 400);
+  rememberTimer = setTimeout(() => settingsStore.save({ ...capturePreset(), seed: S.seed, pageSeeds: S.pageSeeds }), 400);
 }
 
 async function initPresets() {
   S.presets = await presetStore.load(); fillPresetMenu();
   const last = await settingsStore.load();
   if (last && Object.keys(last).length) {
-    const { seed, ...rest } = last;
+    const { seed, pageSeeds, ...rest } = last;
     if (Number.isFinite(seed)) S.seed = seed >>> 0;
+    if (pageSeeds && typeof pageSeeds === "object") S.pageSeeds = pageSeeds;
     applyPreset(rest);
     msg("Reopened with your last settings. Presets → Start fresh resets them.");
   }
