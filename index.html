@@ -457,7 +457,9 @@ function convertData(box, cell, style) {
   for (let i = 0; i < N; i++) {
     const a = D[i * 4 + 3] / 255; mask[i] = a > 0.02;
     let y = (0.2126 * D[i * 4] + 0.7152 * D[i * 4 + 1] + 0.0722 * D[i * 4 + 2]) * a + 255 * (1 - a);
-    lum[i] = (y - 128) * ct + 128 + br;
+    // Clamp to what paper can show: contrast can push white past 255, and error diffusion would then
+    // carry that impossible brightness into neighbouring pixels.
+    lum[i] = Math.min(255, Math.max(0, (y - 128) * ct + 128 + br));
   }
   const t = num("threshold"), inv = v("invert"), out = new Uint8Array(N).fill(255);
   if (style === "threshold") for (let i = 0; i < N; i++) out[i] = lum[i] < t ? 0 : 255;
@@ -466,8 +468,10 @@ function convertData(box, cell, style) {
     const L = lum.slice(), atk = style === "atkinson";
     for (let y = 0; y < wh; y++) for (let k = 0; k < ww; k++) {
       const s = y & 1 ? -1 : 1, x = s > 0 ? k : ww - 1 - k;   // serpentine scan avoids directional streaks
-      const i = y * ww + x, o = L[i] < t ? 0 : 255, e = L[i] - o; out[i] = o;
-      const add = (dx, dy, w) => { const X = x + dx * s, Y = y + dy; if (X >= 0 && X < ww && Y < wh) L[Y * ww + X] += e * w; };
+      const i = y * ww + x;
+      if (!mask[i]) continue;                    // empty space around the photo takes no part in diffusion
+      const o = L[i] < t ? 0 : 255, e = L[i] - o; out[i] = o;
+      const add = (dx, dy, w) => { const X = x + dx * s, Y = y + dy; if (X >= 0 && X < ww && Y < wh && mask[Y * ww + X]) L[Y * ww + X] += e * w; };
       if (atk) { const w = 1 / 8; add(1, 0, w); add(2, 0, w); add(-1, 1, w); add(0, 1, w); add(1, 1, w); add(0, 2, w); }
       else { add(1, 0, 7 / 16); add(-1, 1, 3 / 16); add(0, 1, 5 / 16); add(1, 1, 1 / 16); }
     }
