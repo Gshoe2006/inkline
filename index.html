@@ -228,12 +228,18 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; background:
           <option value="engrave">Engraving lines</option>
           <option value="stipple">Stippling dots</option>
           <option value="cbn">Colour by number (with a crayon key)</option>
+          <option value="nono">Nonogram puzzle (picture logic)</option>
           <option value="threshold">Solid black &amp; white</option>
           <option value="line">Line drawing (colouring page)</option>
         </select></div>
       <div class="sub" id="pcbn-opts" hidden>
         <div class="row"><label for="pcbnColours">Colours <output id="pcbnColours-o"></output></label><input type="range" id="pcbnColours" min="4" max="16" value="8"></div>
         <p class="hint">Threshold / detail sets how small the regions get. The key names the crayon for each number.</p>
+      </div>
+      <div class="sub" id="pnono-opts" hidden>
+        <div class="row"><label for="pnonoSize">Squares across <output id="pnonoSize-o"></output></label><input type="range" id="pnonoSize" min="10" max="30" value="15"></div>
+        <label class="check"><input type="checkbox" id="pnonoAnswer"> Show the answer</label>
+        <p class="hint">Threshold sets which squares are shaded. Where logic alone can't finish the picture, a few squares are changed, or shaded to start you off.</p>
       </div>
       <div class="row"><label for="brightness">Brightness <output id="brightness-o"></output></label><input type="range" id="brightness" min="-100" max="100" value="0"></div>
       <div class="row"><label for="contrast">Contrast <output id="contrast-o"></output></label><input type="range" id="contrast" min="20" max="300" value="110"></div>
@@ -945,8 +951,9 @@ function nonoLine(clue, line) {
   return line.map((x, k) => (shade[k] && blank[k] ? -1 : shade[k] ? 1 : 0));
 }
 // Applies every row and column until nothing changes. Returns the grid (-1 where logic can't decide), or null.
-function solveNonogram(rows, cols) {
-  const h = rows.length, w = cols.length, g = new Array(w * h).fill(-1);
+// start: squares already known (pre-filled squares on a photo nonogram), -1 elsewhere.
+function solveNonogram(rows, cols, start = null) {
+  const h = rows.length, w = cols.length, g = start ? Array.from(start) : new Array(w * h).fill(-1);
   for (let changed = true; changed; ) {
     changed = false;
     for (let r = 0; r < h; r++) {
@@ -960,9 +967,10 @@ function solveNonogram(rows, cols) {
   }
   return g;
 }
-function nonoClues(pic, n) {
+function nonoClues(pic, w, h = w) {
   const rows = [], cols = [];
-  for (let k = 0; k < n; k++) { rows.push(nonoRuns(pic.slice(k * n, k * n + n))); cols.push(nonoRuns(pic.filter((_, i) => i % n === k))); }
+  for (let r = 0; r < h; r++) rows.push(nonoRuns(Array.from(pic.slice(r * w, r * w + w))));
+  for (let c = 0; c < w; c++) cols.push(nonoRuns(Array.from({ length: h }, (_, r) => pic[r * w + c])));
   return { rows, cols };
 }
 function makeNonogram(rnd, c) {
@@ -978,7 +986,7 @@ function makeNonogram(rnd, c) {
     const ink = pic.reduce((a, b) => a + b, 0) / (n * n);
     if (ink < 0.4 || ink > 0.65) continue;   // too empty is dull, too full is just a block
     const { rows, cols } = nonoClues(pic, n), solved = solveNonogram(rows, cols);
-    if (solved && solved.every((x, i) => x === pic[i])) return { size: n, pic, rows, cols, attempts: attempt + 1 };
+    if (solved && solved.every((x, i) => x === pic[i])) return { size: n, w: n, h: n, pic, rows, cols, attempts: attempt + 1 };
   }
   return null;   // practically never: about half of all in-range pictures solve on their own
 }
@@ -986,21 +994,26 @@ function makeNonogram(rnd, c) {
 function genNonogram(ctx, box, rnd, c, lw, g, opts = {}) {
   const nono = makeNonogram(rnd, c);
   if (!nono) return;
-  const { size: n, pic, rows, cols } = nono, slot = 0.7;   // a clue number takes 0.7 of a square
+  drawNonogram(ctx, box, g, lw, nono, opts);
+  return nono;
+}
+// Draws a w x h nonogram: clues, grid and caption, or (opts.solve) the finished picture. nono.givens marks
+// squares printed already shaded, to start from.
+function drawNonogram(ctx, box, g, lw, nono, opts = {}) {
+  const { w, h, pic, rows, cols, givens } = nono, slot = 0.7;   // a clue number takes 0.7 of a square
   const cap = opts.solve ? 0 : Math.min(box.h * 0.1, g.dpi * 0.45);
   const across = opts.solve ? 0 : Math.max(...rows.map(r => Math.max(1, r.length))) * slot + 0.3;
   const down = opts.solve ? 0 : Math.max(...cols.map(r => Math.max(1, r.length))) * slot + 0.3;
-  const cs = Math.min(box.w / (n + across), (box.h - cap) / (n + down)) * 0.96;
-  const x0 = box.x + (box.w - (n + across) * cs) / 2 + across * cs, y0 = box.y + (box.h - cap - (n + down) * cs) / 2 + down * cs, side = n * cs;
+  const cs = Math.min(box.w / (w + across), (box.h - cap) / (h + down)) * 0.96;
+  const x0 = box.x + (box.w - (w + across) * cs) / 2 + across * cs, y0 = box.y + (box.h - cap - (h + down) * cs) / 2 + down * cs;
   ctx.save(); ctx.fillStyle = "#000"; ctx.strokeStyle = "#000"; ctx.lineCap = "square";
-  if (opts.solve) for (let i = 0; i < n * n; i++) if (pic[i]) ctx.fillRect(x0 + (i % n) * cs, y0 + ((i / n) | 0) * cs, cs, cs);
-  for (let k = 0; k <= n; k++) {   // thin square lines, a thicker line every 5, thickest border
-    ctx.lineWidth = k === 0 || k === n ? lw * 1.3 : k % 5 ? lw * 0.35 : lw;
+  for (let i = 0; i < w * h; i++) if (opts.solve ? pic[i] : givens && givens[i]) ctx.fillRect(x0 + (i % w) * cs, y0 + ((i / w) | 0) * cs, cs, cs);
+  for (let k = 0; k <= Math.max(w, h); k++) {   // thin square lines, a thicker line every 5, thickest border
     ctx.beginPath();
-    ctx.moveTo(x0 + k * cs, y0); ctx.lineTo(x0 + k * cs, y0 + side);
-    ctx.moveTo(x0, y0 + k * cs); ctx.lineTo(x0 + side, y0 + k * cs);
-    ctx.stroke();
+    if (k <= w) { ctx.lineWidth = k === 0 || k === w ? lw * 1.3 : k % 5 ? lw * 0.35 : lw; ctx.moveTo(x0 + k * cs, y0); ctx.lineTo(x0 + k * cs, y0 + h * cs); ctx.stroke(); ctx.beginPath(); }
+    if (k <= h) { ctx.lineWidth = k === 0 || k === h ? lw * 1.3 : k % 5 ? lw * 0.35 : lw; ctx.moveTo(x0, y0 + k * cs); ctx.lineTo(x0 + w * cs, y0 + k * cs); ctx.stroke(); }
   }
+  const side = h * cs;
   if (!opts.solve) {
     const fs = cs * 0.5, gap = cs * 0.3; ctx.font = `600 ${fs}px ${FONT}`; ctx.textBaseline = "alphabetic";
     ctx.textAlign = "right";   // row clues read left to right, ending beside the grid
@@ -1011,11 +1024,35 @@ function genNonogram(ctx, box, rnd, c, lw, g, opts = {}) {
       t.forEach((x, k) => ctx.fillText(String(x), x0 + (col + 0.5) * cs, y0 - gap - (t.length - 1 - k) * slot * cs)); });
     const fc = Math.min(g.dpi * 0.13, cap * 0.32), mid = box.x + box.w / 2;
     ctx.font = `400 ${fc}px ${FONT}`; ctx.fillStyle = "#555";
-    ctx.fillText(`${n} × ${n} · shade squares to find the picture`, mid, y0 + side + cap * 0.42);
+    const nGiven = givens ? givens.reduce((a, b) => a + b, 0) : 0;
+    ctx.fillText(`${w} × ${h} · shade squares to find the picture` + (nGiven ? ` · ${nGiven} square${nGiven > 1 ? "s" : ""} shaded to start you off` : ""), mid, y0 + side + cap * 0.42, box.w);
     ctx.fillText("Each number is a run of shaded squares, in order, with at least one gap between runs.", mid, y0 + side + cap * 0.42 + fc * 1.5, box.w);
   }
   ctx.restore();
-  return nono;
+}
+
+// A photo's black & white grid as a fair nonogram. While logic alone can't finish it, flip the undecided
+// square whose tone is nearest the threshold (the change least visible in the picture), each square at
+// most once; if that isn't enough, print some undecided shaded squares already filled in to start from.
+function nonoFromPicture(pic0, lum, w, h, t) {
+  const pic = Uint8Array.from(pic0), flipped = new Set();
+  for (;;) {
+    const { rows, cols } = nonoClues(pic, w, h), sol = solveNonogram(rows, cols), open = [];
+    sol.forEach((x, i) => { if (x < 0 && !flipped.has(i)) open.push(i); });
+    if (sol.every(x => x >= 0)) return { w, h, pic, rows, cols, givens: null, flips: flipped.size };
+    if (!open.length || flipped.size >= 3 * Math.max(w, h)) {
+      const start = new Array(w * h).fill(-1), givens = new Uint8Array(w * h);
+      for (;;) {
+        const s2 = solveNonogram(rows, cols, start), left = [];
+        s2.forEach((x, i) => { if (x < 0) left.push(i); });
+        if (!left.length) return { w, h, pic, rows, cols, givens, flips: flipped.size };
+        const i = left.find(j => pic[j]) ?? left[0];   // an ambiguity always involves shaded squares
+        start[i] = pic[i]; if (pic[i]) givens[i] = 1;
+      }
+    }
+    let best = open[0]; for (const i of open) if (Math.abs(lum[i] - t) < Math.abs(lum[best] - t)) best = i;
+    pic[best] ^= 1; flipped.add(best);
+  }
 }
 
 /* ---------- photo conversion ---------- */
@@ -1081,7 +1118,8 @@ function getWorker() {
   if (worker !== null) return worker;
   try {
     const src = `"use strict";\nconst BAYER = ${JSON.stringify(BAYER)};\nconst CRAYONS = ${JSON.stringify(CRAYONS)};\nconst cbnDist2 = ${cbnDist2};\n` +
-      [gaussBlur, despeckle, processPixels, cbnLab, cbnComponents, cbnDistance, cbnRegionInfo, cbnMerge, cbnSpots, cbnPalette, cbnModeFilter].join("\n") + "\n" +
+      [gaussBlur, despeckle, processPixels, cbnLab, cbnComponents, cbnDistance, cbnRegionInfo, cbnMerge, cbnSpots, cbnPalette, cbnModeFilter,
+       nonoLine, solveNonogram, nonoClues, nonoFromPicture].join("\n") + `\nconst nonoRuns = ${nonoRuns};\n` +
       `onmessage = e => { const { id, data, ww, wh, p } = e.data; const r = processPixels(data, ww, wh, p);` +
       ` postMessage({ id, ...r }, [r.lum.buffer, r.mask.buffer].concat(r.rgba ? [r.rgba.buffer] : [], r.label ? [r.label.buffer] : [])); };`;
     worker = new Worker(URL.createObjectURL(new Blob([src], { type: "text/javascript" })));
@@ -1419,10 +1457,10 @@ function convert(ctx, box, g = {}, photo = curPhoto(), o = {}) {
     const kh = cbnKeyHeight(box, g, num("pcbnColours")), gap = (g.dpi || 300) * 0.12;
     keyBox = { x: box.x, y: box.y + box.h - kh, w: box.w, h: kh }; box = { ...box, h: box.h - kh - gap };
   }
-  const cell = Math.max(1, style === "halftone" ? dot * 5 : style === "stipple" ? dot * 2 : style === "cbn" ? (g.dpi || num("dpi")) / CBN_DPI : dot);
+  const cell = Math.max(1, style === "halftone" ? dot * 5 : style === "stipple" ? dot * 2 : style === "cbn" ? (g.dpi || num("dpi")) / CBN_DPI : style === "nono" ? box.w / (num("pnonoSize") * 8) : dot);
   // Converted images are cached (a poster draws the same photo once per sheet). In a dry run (S.collect)
   // this only records what's needed, so the background worker can prepare it before the real draw.
-  const key = [photo.imgId, box.w, box.h, cell, style, v("brightness"), v("contrast"), v("threshold"), v("fit"), v("invert"), style === "cbn" ? v("pcbnColours") : "", photo.rot, photo.zoom, photo.panx, photo.pany].join("|");
+  const key = [photo.imgId, box.w, box.h, cell, style, v("brightness"), v("contrast"), v("threshold"), v("fit"), v("invert"), style === "cbn" ? v("pcbnColours") : style === "nono" ? v("pnonoSize") : "", photo.rot, photo.zoom, photo.panx, photo.pany].join("|");
   let entry = cacheGet(key);
   if (!entry) {
     if (S.collect) { if (!S.collect.some(j => j.key === key)) S.collect.push({ key, box: { ...box }, cell, style, photo }); return; }
@@ -1432,6 +1470,7 @@ function convert(ctx, box, g = {}, photo = curPhoto(), o = {}) {
   const { ww, wh, lum, mask, wc } = entry, inv = !photo.neutral && v("invert");
   if (style === "engrave") { drawEngraving(ctx, box, g, entry, inv); return; }
   if (style === "stipple") { drawStipple(ctx, box, g, entry, inv); return; }
+  if (style === "nono") { if (entry.nono) drawNonogram(ctx, box, { dpi: g.dpi || 300 }, num("weight") * (g.dpi || 300) / 150, entry.nono, { solve: v("pnonoAnswer") }); return; }
   if (style === "halftone") {
     const sx = box.w / ww, sy = box.h / wh, cellSide = Math.sqrt(sx * sy), vw = g.view;
     const x0 = vw ? Math.max(0, Math.floor((vw.x - box.x) / sx) - 1) : 0, x1 = vw ? Math.min(ww, Math.ceil((vw.x + vw.w - box.x) / sx) + 1) : ww;
@@ -1507,15 +1546,15 @@ function conversionInput(box, cell, style, photo) {
   }
   const neutral = !!photo.neutral;   // the test page's grey ramps ignore brightness, contrast, threshold and invert
   const p = { style, br: neutral ? 0 : num("brightness") * 1.28, ct: neutral ? 1 : num("contrast") / 100,
-              t: neutral ? 128 : num("threshold"), inv: !neutral && v("invert"), k: num("pcbnColours") };
+              t: neutral ? 128 : num("threshold"), inv: !neutral && v("invert"), k: num("pcbnColours"), n: num("pnonoSize") };
   return { ww, wh, wc, data: wx.getImageData(0, 0, ww, wh).data, p, exPx: ex * cell, eyPx: ey * cell };   // overhang in page px, for drag-to-pan
 }
 
 // The heavy half: pure pixel maths with no access to the page, so the background worker runs this very
 // function (its source is copied into the worker), and the main thread runs it when no worker is available.
 function processPixels(D, ww, wh, p) {
-  const N = ww * wh, lum = new Float32Array(N), mask = new Uint8Array(N), { style, br, ct, t, inv, k } = p;
-  let label = null, cbn = null;
+  const N = ww * wh, lum = new Float32Array(N), mask = new Uint8Array(N), { style, br, ct, t, inv, k, n } = p;
+  let label = null, cbn = null, nono = null;
   for (let i = 0; i < N; i++) {
     const a = D[i * 4 + 3] / 255; mask[i] = a > 0.02;
     let y = (0.2126 * D[i * 4] + 0.7152 * D[i * 4 + 1] + 0.0722 * D[i * 4 + 2]) * a + 255 * (1 - a);
@@ -1546,6 +1585,23 @@ function processPixels(D, ww, wh, p) {
     const thr = (260 - t) / 60;   // Threshold / detail: higher = more lines (default 2.2, tuned on a grainy photo)
     for (let i = 0; i < N; i++) out[i] = mask[i] && g1[i] - g2[i] < -thr ? 0 : 255;
     despeckle(out, ww, wh, Math.max(12, Math.round(N / 40000)));
+  } else if (style === "nono") {
+    // Photo nonogram: the picture's extent split into exactly n squares across, each square the average
+    // tone of the photo under it (after brightness, contrast and invert), shaded if darker than Threshold.
+    let x0 = ww, y0 = wh, x1 = -1, y1 = -1;
+    for (let i = 0; i < N; i++) if (mask[i]) { const x = i % ww, y = (i / ww) | 0; x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+    if (x1 >= 0) {
+      const bw = (x1 - x0 + 1) / n, gw = n, gh = Math.max(1, Math.min(45, Math.round((y1 - y0 + 1) / bw))), bh = (y1 - y0 + 1) / gh;
+      const tone = new Float32Array(gw * gh), pic = new Uint8Array(gw * gh);
+      for (let gy = 0; gy < gh; gy++) for (let gx = 0; gx < gw; gx++) {
+        let sum = 0, cnt = 0;
+        for (let y = Math.floor(y0 + gy * bh); y < Math.floor(y0 + (gy + 1) * bh); y++) for (let x = Math.floor(x0 + gx * bw); x < Math.floor(x0 + (gx + 1) * bw); x++) {
+          const i = y * ww + x; if (mask[i]) { sum += inv ? 255 - lum[i] : lum[i]; cnt++; }
+        }
+        const j = gy * gw + gx; tone[j] = cnt ? sum / cnt : 255; pic[j] = tone[j] < t ? 1 : 0;
+      }
+      nono = nonoFromPicture(pic, tone, gw, gh, t);
+    }
   } else if (style === "cbn") {
     // Colour by number: soften the photo, pick the crayons that match it best, give each pixel the nearest,
     // smooth the edges, then merge regions too narrow to hold a number. Threshold / detail: higher = smaller regions.
@@ -1572,19 +1628,19 @@ function processPixels(D, ww, wh, p) {
     }
   }
   let rgba = null;   // halftone, engraving and stippling are drawn from lum, so they need no image
-  if (style !== "halftone" && style !== "engrave" && style !== "stipple") {
+  if (style !== "halftone" && style !== "engrave" && style !== "stipple" && style !== "nono") {
     rgba = new Uint8ClampedArray(N * 4);
     for (let i = 0; i < N; i++) {
       let o = mask[i] ? out[i] : 255; if (inv && mask[i] && style !== "cbn") o = 255 - o;
       rgba[i * 4] = rgba[i * 4 + 1] = rgba[i * 4 + 2] = o; rgba[i * 4 + 3] = 255;
     }
   }
-  return { lum, mask, rgba, label, cbn };
+  return { lum, mask, rgba, label, cbn, nono };
 }
 
 function conversionResult(inp, r) {
   if (r.rgba) inp.wc.getContext("2d").putImageData(new ImageData(r.rgba, inp.ww, inp.wh), 0, 0);
-  return { ww: inp.ww, wh: inp.wh, lum: r.lum, mask: r.mask, wc: inp.wc, exPx: inp.exPx, eyPx: inp.eyPx, label: r.label, cbn: r.cbn };
+  return { ww: inp.ww, wh: inp.wh, lum: r.lum, mask: r.mask, wc: inp.wc, exPx: inp.exPx, eyPx: inp.eyPx, label: r.label, cbn: r.cbn, nono: r.nono };
 }
 
 // Synchronous conversion on the main thread (used when nothing was prepared in advance, e.g. by tests).
@@ -1664,8 +1720,9 @@ for (const k of ["lineWidth", "strokeStyle", "fillStyle", "lineCap", "lineJoin",
 SvgCtx.prototype.imageSmoothingEnabled = true;   // accepted and ignored
 
 // The page that's showing (single design, or the current booklet page) as a print-size SVG document.
-// Engraving and stippling are the photo styles made of shapes rather than pixels, so they can be saved as SVG.
-const isVectorPhoto = () => S.mode === "convert" && (v("style") === "engrave" || v("style") === "stipple");
+// Engraving, stippling and photo nonograms are the photo styles made of shapes rather than pixels, so they can be saved as SVG.
+const VECTOR_PHOTO_TIPS = { engrave: "Engraving lines save as vector paths", stipple: "Stippling dots save as vector circles", nono: "Photo nonograms save as vector lines and text" };
+const isVectorPhoto = () => S.mode === "convert" && v("style") in VECTOR_PHOTO_TIPS;
 
 function buildSvg() {
   const g = isPoster() ? posterGeom(num("dpi")) : geometry(), ctx = new SvgCtx(g.W, g.H, g.w, g.h);
@@ -2132,6 +2189,8 @@ function syncOutputs() {
     ? "Repeated spaces share a number, and spaces side by side get different colours."
     : "Works on mandalas, woven tiles, contours and name pages; choose one of those to see it.";
   $("pcbn-opts").hidden = v("style") !== "cbn";
+  $("pnonoSize-o").textContent = v("pnonoSize");
+  $("pnono-opts").hidden = v("style") !== "nono";
   $("seed-o").textContent = "seed " + S.seed;
   $("pages-o").textContent = v("pages");
   $("zoom-o").textContent = v("zoom") + "%";
@@ -2425,12 +2484,12 @@ function syncButtons() {
   $("save-png").disabled = poster;
   $("save-png").title = poster ? "Posters save as PDF (one page per sheet) or print directly" : "Save PNG (Ctrl+Shift+S)";
   $("save-svg").disabled = (S.mode !== "make" && !isVectorPhoto()) || isTestPage() || isFold();   // pixels, or two pages per sheet
-  $("save-svg").title = isVectorPhoto() ? (v("style") === "stipple" ? "Stippling dots save as vector circles" : "Engraving lines save as vector paths") + ", for laser engravers and plotters"
-    : S.mode === "make" ? "Vector lines for Inkscape, Cricut, Silhouette or laser cutters" : "Photos are made of pixels; choose Engraving lines or Stippling dots for SVG";
+  $("save-svg").title = isVectorPhoto() ? VECTOR_PHOTO_TIPS[v("style")] + (v("style") === "nono" ? ", for editing in Inkscape" : ", for laser engravers and plotters")
+    : S.mode === "make" ? "Vector lines for Inkscape, Cricut, Silhouette or laser cutters" : "Photos are made of pixels; choose Engraving lines, Stippling dots or Nonogram puzzle for SVG";
 }
 
 function saveSvg() {
-  if (S.mode !== "make" && !isVectorPhoto()) { msg("Photos are made of pixels, so they save as PNG or PDF. Choose Engraving lines or Stippling dots for SVG."); return; }
+  if (S.mode !== "make" && !isVectorPhoto()) { msg("Photos are made of pixels, so they save as PNG or PDF. Choose Engraving lines, Stippling dots or Nonogram puzzle for SVG."); return; }
   const name = baseName() + (isPoster() ? "-poster" : isBook() || isPhotoBook() ? `-page${S.bookPage + 1}` : ""), svg = buildSvg();
   if (bridge) { bridge.request(JSON.stringify({ kind: "svg", name, svg }), r => msg(r)); return; }
   const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" })); a.download = name + ".svg"; a.click();
@@ -2457,6 +2516,7 @@ const BUILTIN_PRESETS = {
   "Engraved photo": { mode: "convert", style: "engrave", dot: 2, contrast: 110, brightness: 0, invert: false },
   "Colour-by-number mandala": { mode: "make", gen: "mandala", cbn: true, cbnColours: 6, complexity: 3, weight: 5, frame: false, booklet: false, poster: false },
   "Colour-by-number photo": { mode: "convert", style: "cbn", pcbnColours: 8, threshold: 128, contrast: 110, brightness: 0 },
+  "Photo nonogram": { mode: "convert", style: "nono", pnonoSize: 15, pnonoAnswer: false, threshold: 128, contrast: 110, brightness: 0, invert: false },
   "Stippled photo": { mode: "convert", style: "stipple", dot: 2, contrast: 110, brightness: 0, invert: false },
   "Photo colouring page": { mode: "convert", style: "line", threshold: 128, dot: 2, invert: false },
   "Wall poster 3 × 3": { poster: true, booklet: false, grid: "3x3", overlap: "0.25" },
