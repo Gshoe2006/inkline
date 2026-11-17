@@ -465,7 +465,10 @@ def selftest(win, outdir):
               f"  window.__job = await runPhotoBook('pdf', {json.dumps(path)}); }})()")
         wait_for(js, "photo book", finish)
 
-    win.view.loadFinished.connect(lambda ok: QTimer.singleShot(800, run) if ok else (fail("index.html didn't load"), finish()))
+    def start():   # a fixed design seed makes every run's output identical, so runs can be compared
+        page.runJavaScript("S.seed = 20261117; syncOutputs(); 0", lambda _r: run())
+
+    win.view.loadFinished.connect(lambda ok: QTimer.singleShot(800, start) if ok else (fail("index.html didn't load"), finish()))
 
 
 def main():

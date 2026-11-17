@@ -92,6 +92,7 @@ input[type="text"], input[type="number"] { font: 13px var(--font-ui); color: var
 .foot .pair { gap: 8px; }
 .trio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 #msg { font-size: 12px; color: var(--muted); min-height: 1.4em; }
+#progress { width: 100%; height: 6px; accent-color: var(--accent); }
 .keys { margin: 0; font-size: 11px; color: var(--muted); }
 kbd { font: 10px var(--font-mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 3px; padding: 0 3px; background: var(--field); color: var(--ink); }
 
@@ -263,6 +264,7 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; background:
     <button class="btn primary" id="print" title="Print (Ctrl+P)">Print…</button>
     <div class="trio"><button class="btn" id="save-png">PNG</button><button class="btn" id="save-pdf" title="Save PDF (Ctrl+S)">PDF</button><button class="btn" id="save-svg" title="Vector lines for Inkscape, Cricut, Silhouette or laser cutters">SVG</button></div>
     <div id="msg" role="status"></div>
+    <progress id="progress" hidden aria-label="Saving progress"></progress>
     <p class="keys"><kbd>Ctrl</kbd>+<kbd>P</kbd> print · <kbd>Ctrl</kbd>+<kbd>S</kbd> PDF · <kbd>Ctrl</kbd>+<kbd>N</kbd> new design · <kbd>←</kbd><kbd>→</kbd> pages</p>
   </div>
 </aside>
@@ -795,6 +797,76 @@ const HALFTONE_R = (() => {
   return t;
 })();
 
+/* ---------- conversion cache, dry runs and the background worker ----------
+   A few converted images are kept, up to ~40 million pixels in total (oldest dropped first; the newest is
+   always kept, however big). Before drawing a page, a dry run with NULL_CTX collects the conversions it
+   needs; prepareConversions() computes the missing ones in a worker, so the window keeps responding. */
+const CACHE_PIXELS = 40e6;
+S.convCache = new Map();
+function cacheGet(key) {
+  const e = S.convCache.get(key);
+  if (e) { S.convCache.delete(key); S.convCache.set(key, e); }   // most recently used goes last
+  return e;
+}
+function cachePut(key, e) {
+  S.convCache.set(key, e);
+  let total = 0; for (const x of S.convCache.values()) total += x.ww * x.wh;
+  for (const [k, x] of S.convCache) {
+    if (total <= CACHE_PIXELS || S.convCache.size <= 1) break;
+    S.convCache.delete(k); total -= x.ww * x.wh;
+  }
+  return e;
+}
+function clearConversions() { S.convCache.clear(); S.cc = null; }
+
+// A canvas context that draws nothing: drawing code runs against it during a dry run.
+const NULL_CTX = new Proxy({}, {
+  get: (t, k) => (k in t ? t[k] : k === "measureText" ? () => ({ width: 0 }) : () => {}),
+  set: (t, k, val) => { t[k] = val; return true; },
+});
+// Run draw() as a dry run and return the conversions it would need that aren't cached yet.
+function collectConversions(draw) {
+  S.collect = [];
+  try { draw(NULL_CTX); return S.collect; } finally { S.collect = null; }
+}
+
+let worker = null, workerSeq = 0;
+const workerJobs = new Map();
+function getWorker() {
+  if (worker !== null) return worker;
+  try {
+    const src = `"use strict";\nconst BAYER = ${JSON.stringify(BAYER)};\n${gaussBlur}\n${despeckle}\n${processPixels}\n` +
+      `onmessage = e => { const { id, data, ww, wh, p } = e.data; const r = processPixels(data, ww, wh, p);` +
+      ` postMessage({ id, ...r }, [r.lum.buffer, r.mask.buffer].concat(r.rgba ? [r.rgba.buffer] : [])); };`;
+    worker = new Worker(URL.createObjectURL(new Blob([src], { type: "text/javascript" })));
+    worker.onmessage = e => { const job = workerJobs.get(e.data.id); workerJobs.delete(e.data.id); job?.resolve(e.data); };
+    worker.onerror = e => {   // fall back to the main thread for good
+      e.preventDefault?.(); worker = false;
+      for (const job of workerJobs.values()) job.reject(new Error("worker failed"));
+      workerJobs.clear();
+    };
+  } catch { worker = false; }
+  return worker;
+}
+// Compute each job in the worker (or here if there is none) and cache the results.
+async function prepareConversions(jobs) {
+  for (const j of jobs) {
+    if (cacheGet(j.key)) continue;
+    const inp = conversionInput(j.box, j.cell, j.style, j.photo), w = getWorker();
+    let r;
+    if (w) {
+      try {
+        r = await new Promise((resolve, reject) => {
+          const id = ++workerSeq; workerJobs.set(id, { resolve, reject });
+          w.postMessage({ id, data: inp.data, ww: inp.ww, wh: inp.wh, p: inp.p }, [inp.data.buffer]);   // hand the pixels over, no copy
+        });
+      } catch { r = null; }
+    }
+    if (!r) { const again = conversionInput(j.box, j.cell, j.style, j.photo); r = processPixels(again.data, again.ww, again.wh, again.p); }
+    cachePut(j.key, conversionResult(inp, r));
+  }
+}
+
 // o.style / o.dot override the sidebar (the printer test page shows every style side by side).
 function convert(ctx, box, g = {}, photo = curPhoto(), o = {}) {
   if (!photo) {
@@ -803,10 +875,16 @@ function convert(ctx, box, g = {}, photo = curPhoto(), o = {}) {
   }
   const style = o.style || v("style"), dot = (o.dot ?? num("dot")) * (g.dpi ? g.dpi / num("dpi") : 1);   // dot size stays physical at preview resolution
   const cell = Math.max(1, style === "halftone" ? dot * 5 : dot);
-  // A poster draws the same photo once per sheet: cache the converted image so dithering runs only once.
+  // Converted images are cached (a poster draws the same photo once per sheet). In a dry run (S.collect)
+  // this only records what's needed, so the background worker can prepare it before the real draw.
   const key = [photo.imgId, box.w, box.h, cell, style, v("brightness"), v("contrast"), v("threshold"), v("fit"), v("invert"), photo.rot, photo.zoom, photo.panx, photo.pany].join("|");
-  if (!S.cc || S.cc.key !== key) S.cc = { key, ...convertData(box, cell, style, photo) };
-  const { ww, wh, lum, mask, wc } = S.cc, inv = !photo.neutral && v("invert");
+  let entry = cacheGet(key);
+  if (!entry) {
+    if (S.collect) { if (!S.collect.some(j => j.key === key)) S.collect.push({ key, box: { ...box }, cell, style, photo }); return; }
+    entry = cachePut(key, convertData(box, cell, style, photo));
+  }
+  S.cc = entry;   // the last conversion shown: drag-to-pan reads its overhang
+  const { ww, wh, lum, mask, wc } = entry, inv = !photo.neutral && v("invert");
   if (style === "halftone") {
     const sx = box.w / ww, sy = box.h / wh, cellSide = Math.sqrt(sx * sy), vw = g.view;
     const x0 = vw ? Math.max(0, Math.floor((vw.x - box.x) / sx) - 1) : 0, x1 = vw ? Math.min(ww, Math.ceil((vw.x + vw.w - box.x) / sx) + 1) : ww;
@@ -856,7 +934,8 @@ function despeckle(img, w, h, minSize) {
 }
 
 // Converts the photo to black & white at (box size / cell) resolution. Returns brightness, mask and the 1-bit image.
-function convertData(box, cell, style, photo) {
+// Main-thread half of a conversion: draw the (cropped) photo into a small work canvas and read its pixels.
+function conversionInput(box, cell, style, photo) {
   const ww = Math.max(1, Math.round(box.w / cell)), wh = Math.max(1, Math.round(box.h / cell));
   const wc = document.createElement("canvas"); wc.width = ww; wc.height = wh;
   const wx = wc.getContext("2d", { willReadFrequently: true });
@@ -873,10 +952,16 @@ function convertData(box, cell, style, photo) {
     wx.drawImage(img, -iw * sc / 2, -ih * sc / 2, iw * sc, ih * sc);
     wx.restore();
   }
-  const id = wx.getImageData(0, 0, ww, wh), D = id.data, N = ww * wh;
-  const lum = new Float32Array(N), mask = new Uint8Array(N);
-  // A neutral photo (the test page's grey ramps) ignores brightness, contrast, threshold and invert.
-  const neutral = !!photo.neutral, br = neutral ? 0 : num("brightness") * 1.28, ct = neutral ? 1 : num("contrast") / 100;
+  const neutral = !!photo.neutral;   // the test page's grey ramps ignore brightness, contrast, threshold and invert
+  const p = { style, br: neutral ? 0 : num("brightness") * 1.28, ct: neutral ? 1 : num("contrast") / 100,
+              t: neutral ? 128 : num("threshold"), inv: !neutral && v("invert") };
+  return { ww, wh, wc, data: wx.getImageData(0, 0, ww, wh).data, p, exPx: ex * cell, eyPx: ey * cell };   // overhang in page px, for drag-to-pan
+}
+
+// The heavy half: pure pixel maths with no access to the page, so the background worker runs this very
+// function (its source is copied into the worker), and the main thread runs it when no worker is available.
+function processPixels(D, ww, wh, p) {
+  const N = ww * wh, lum = new Float32Array(N), mask = new Uint8Array(N), { style, br, ct, t, inv } = p;
   for (let i = 0; i < N; i++) {
     const a = D[i * 4 + 3] / 255; mask[i] = a > 0.02;
     let y = (0.2126 * D[i * 4] + 0.7152 * D[i * 4 + 1] + 0.0722 * D[i * 4 + 2]) * a + 255 * (1 - a);
@@ -884,7 +969,7 @@ function convertData(box, cell, style, photo) {
     // carry that impossible brightness into neighbouring pixels.
     lum[i] = Math.min(255, Math.max(0, (y - 128) * ct + 128 + br));
   }
-  const t = neutral ? 128 : num("threshold"), inv = !neutral && v("invert"), out = new Uint8Array(N).fill(255);
+  const out = new Uint8Array(N).fill(255);
   if (style === "threshold") for (let i = 0; i < N; i++) out[i] = lum[i] < t ? 0 : 255;
   else if (style === "bayer") for (let y = 0; y < wh; y++) for (let x = 0; x < ww; x++) { const i = y * ww + x; out[i] = lum[i] < (BAYER[y & 7][x & 7] + 0.5) * 4 + (t - 128) ? 0 : 255; }
   else if (style === "fs" || style === "atkinson") {
@@ -908,14 +993,26 @@ function convertData(box, cell, style, photo) {
     for (let i = 0; i < N; i++) out[i] = mask[i] && g1[i] - g2[i] < -thr ? 0 : 255;
     despeckle(out, ww, wh, Math.max(12, Math.round(N / 40000)));
   }
+  let rgba = null;   // halftone is drawn as circles from lum, so it needs no image
   if (style !== "halftone") {
+    rgba = new Uint8ClampedArray(N * 4);
     for (let i = 0; i < N; i++) {
       let o = mask[i] ? out[i] : 255; if (inv && mask[i]) o = 255 - o;
-      D[i * 4] = D[i * 4 + 1] = D[i * 4 + 2] = o; D[i * 4 + 3] = 255;
+      rgba[i * 4] = rgba[i * 4 + 1] = rgba[i * 4 + 2] = o; rgba[i * 4 + 3] = 255;
     }
-    wx.putImageData(id, 0, 0);
   }
-  return { ww, wh, lum, mask, wc, exPx: ex * cell, eyPx: ey * cell };   // overhang in page pixels, for drag-to-pan
+  return { lum, mask, rgba };
+}
+
+function conversionResult(inp, r) {
+  if (r.rgba) inp.wc.getContext("2d").putImageData(new ImageData(r.rgba, inp.ww, inp.wh), 0, 0);
+  return { ww: inp.ww, wh: inp.wh, lum: r.lum, mask: r.mask, wc: inp.wc, exPx: inp.exPx, eyPx: inp.eyPx };
+}
+
+// Synchronous conversion on the main thread (used when nothing was prepared in advance, e.g. by tests).
+function convertData(box, cell, style, photo) {
+  const inp = conversionInput(box, cell, style, photo);
+  return conversionResult(inp, processPixels(inp.data, inp.ww, inp.wh, inp.p));
 }
 
 /* ---------- render ---------- */
@@ -1313,31 +1410,36 @@ function drawPosterOverlay(ctx, P) {
   ctx.restore();
 }
 
-function render() {
-  if (isTestPage()) {
-    const g = geometry("portrait");
-    if (page.width !== g.W || page.height !== g.H) { page.width = g.W; page.height = g.H; }
-    drawTestPage(pctx, g);
-    $("bar").innerHTML = `<span><b>Printer test page</b> ${g.w} × ${g.h} in</span><span><b>${g.dpi}</b> dpi · print at 100%</span>`;
-    return;
-  }
+// The geometry the preview uses: the test page, a poster scaled so its long side is ~2400 px, or a page.
+function viewGeometry() {
+  if (isTestPage()) return { g: geometry("portrait"), test: true };
   const g0 = geometry(), poster = isPoster();
-  // A poster previews as one image, scaled so its long side is about 2400 px.
   const P = poster ? posterGeom(Math.min(g0.dpi, 2400 / Math.max(posterGeom(1).w, posterGeom(1).h))) : null;
-  const g = P || g0;
-  if (page.width !== g.W || page.height !== g.H) { page.width = g.W; page.height = g.H; }
-  const book = isBook();
-  if (poster) drawPage(pctx, P, S.mode === "make" ? singlePage() : { kind: "photo" });
+  return { g: P || g0, g0, P, poster };
+}
+// What the preview shows, drawn into ctx. render() uses it for real; renderSoon() runs it as a dry run.
+function drawView(ctx, vg) {
+  const { g, P } = vg;
+  if (vg.test) drawTestPage(ctx, g);
+  else if (vg.poster) drawPage(ctx, P, S.mode === "make" ? singlePage() : { kind: "photo" });
   else if (isPhotoBook()) {
     const pages = photoBookPages(); S.bookPage = Math.min(Math.max(0, S.bookPage), pages.length - 1);
-    drawPage(pctx, g, pages[S.bookPage]);
+    drawPage(ctx, g, pages[S.bookPage]);
     $("ppagepos").textContent = `Page ${S.bookPage + 1} of ${pages.length}` + (pages[S.bookPage].kind === "pcover" ? " · cover" : "");
-  } else if (book) {
+  } else if (isBook()) {
     const pages = bookPages(); S.bookPage = Math.min(Math.max(0, S.bookPage), pages.length - 1);
-    drawPage(pctx, g, pages[S.bookPage]);
+    drawPage(ctx, g, pages[S.bookPage]);
     const p = pages[S.bookPage];
     $("pagepos").textContent = `Page ${S.bookPage + 1} of ${pages.length}` + (p.kind === "cover" ? " · cover" : p.kind === "answers" ? " · answers" : "");
-  } else drawPage(pctx, g, S.mode === "make" ? singlePage() : photoPage());
+  } else drawPage(ctx, g, S.mode === "make" ? singlePage() : photoPage());
+}
+
+// Draws the preview synchronously (anything not prepared is converted here). Tests call this directly.
+function render() {
+  const vg = viewGeometry(), { g, g0, P, poster } = vg;
+  if (page.width !== g.W || page.height !== g.H) { page.width = g.W; page.height = g.H; }
+  drawView(pctx, vg);
+  if (vg.test) { $("bar").innerHTML = `<span><b>Printer test page</b> ${g.w} × ${g.h} in</span><span><b>${g.dpi}</b> dpi · print at 100%</span>`; return; }
   // ink coverage estimate
   const sm = document.createElement("canvas"); sm.width = 200; sm.height = Math.round(200 * g.H / g.W);
   const sx = sm.getContext("2d", { willReadFrequently: true }); sx.drawImage(page, 0, 0, sm.width, sm.height);
@@ -1350,8 +1452,23 @@ function render() {
     $("bar").innerHTML = `<span><b>Poster</b> ${P.w} × ${P.h} in</span><span><b>${P.cols} × ${P.rows}</b> ${paperName} sheets · ${g0.dpi} dpi</span><span>ink coverage <b>${cov.toFixed(1)}%</b></span>`;
   } else $("bar").innerHTML = `<span><b>${paperName}</b> ${g.w} × ${g.h} in</span><span><b>${g.dpi}</b> dpi · ${g.W} × ${g.H} px</span><span>ink coverage <b>${cov.toFixed(1)}%</b></span>`;
 }
-let timer = 0;
-function schedule() { $("busy").hidden = false; clearTimeout(timer); timer = setTimeout(() => { requestAnimationFrame(() => { try { render(); } finally { $("busy").hidden = true; } }); }, 40); }
+// Preview after a change: photo conversions are prepared in the background worker first, so dragging a
+// slider never freezes the window; a newer change supersedes an older one still converting.
+let timer = 0, renderSeq = 0;
+async function renderSoon() {
+  const seq = ++renderSeq;
+  if (S.mode === "convert" || isTestPage()) {
+    const jobs = collectConversions(ctx => drawView(ctx, viewGeometry()));
+    if (jobs.length) { $("busy").textContent = "converting photo…"; await prepareConversions(jobs); }
+  }
+  if (seq !== renderSeq) return false;
+  render();
+  return true;
+}
+function schedule() {
+  $("busy").textContent = "rendering…"; $("busy").hidden = false; clearTimeout(timer);
+  timer = setTimeout(() => requestAnimationFrame(() => renderSoon().then(done => { if (done) $("busy").hidden = true; }, () => { $("busy").hidden = true; })), 40);
+}
 
 function syncOutputs() {
   $("complexity-o").textContent = v("complexity") + " / 10";
@@ -1549,7 +1666,7 @@ const isBook = () => S.mode === "make" && v("booklet") && !isPoster();
 const call = (fn, ...a) => new Promise(res => bridge[fn](...a, res));
 
 // Streams pages to the desktop shell one at a time, so 40 pages at 300 dpi never sit in memory at once.
-async function streamPages(kind, label, name, count, drawInto, testPath) {
+async function streamPages(kind, label, name, count, drawInto, testPath, photos = false) {
   if (!bridge) { msg(`${label[0].toUpperCase() + label.slice(1)}s need the desktop app, which writes multi-page PDFs and prints.`); return "no bridge"; }
   if (S.bookBusy) return "busy";
   const g = geometry();
@@ -1561,10 +1678,17 @@ async function streamPages(kind, label, name, count, drawInto, testPath) {
   const off = document.createElement("canvas"); off.width = g.W; off.height = g.H;
   const octx = off.getContext("2d");
   try {
+    const unit = label === "poster" ? "sheet" : "page", bar = $("progress");
+    bar.max = count; bar.value = 0; bar.hidden = false;
     for (let i = 0; i < count; i++) {
-      msg(`Rendering ${label === "poster" ? "sheet" : "page"} ${i + 1} of ${count}…`);
+      msg(`Rendering ${unit} ${i + 1} of ${count}…`);
       await new Promise(res => setTimeout(res, 0));          // let the status line repaint
+      if (photos) {                                          // convert this page's photos in the worker first
+        const jobs = collectConversions(ctx => drawInto(ctx, g, i));
+        if (jobs.length) { msg(`Converting the photo for ${unit} ${i + 1} of ${count}…`); await prepareConversions(jobs); }
+      }
       drawInto(octx, g, i);
+      bar.value = i + 1;
       const res = await call("bookPage", off.toDataURL("image/png").split(",")[1]);
       if (res !== "ok") { await call("bookAbort"); msg(res); return res; }
     }
@@ -1573,6 +1697,7 @@ async function streamPages(kind, label, name, count, drawInto, testPath) {
     await call("bookAbort"); msg("The booklet couldn't be finished: " + e.message); return "error";
   } finally {
     S.bookBusy = false; ["print", "save-png", "save-pdf", "save-svg"].forEach(id => $(id).disabled = false);
+    $("progress").hidden = true;
     syncButtons();
   }
 }
@@ -1584,12 +1709,12 @@ function runBook(kind, testPath = "") {
 
 function runPhotoBook(kind, testPath = "") {
   const pages = photoBookPages();
-  return streamPages(kind, "photo book", `inkline-photobook-${pages.length}p`, pages.length, (ctx, g, i) => drawPage(ctx, g, pages[i]), testPath);
+  return streamPages(kind, "photo book", `inkline-photobook-${pages.length}p`, pages.length, (ctx, g, i) => drawPage(ctx, g, pages[i]), testPath, true);
 }
 
 function runPoster(kind, testPath = "") {
   const P = posterGeom(geometry().dpi), spec = S.mode === "make" ? singlePage() : { kind: "photo" };
-  return streamPages(kind, "poster", `${baseName()}-poster-${P.cols}x${P.rows}`, P.cols * P.rows, (ctx, g, i) => drawSheet(ctx, g, P, spec, i), testPath);
+  return streamPages(kind, "poster", `${baseName()}-poster-${P.cols}x${P.rows}`, P.cols * P.rows, (ctx, g, i) => drawSheet(ctx, g, P, spec, i), testPath, S.mode === "convert");
 }
 
 // PNG would be a single enormous image for a poster; SVG suits only generated designs.
