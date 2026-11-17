@@ -305,14 +305,18 @@ def selftest(win, outdir):
 
     # a hung step (e.g. a promise that never resolves) must still end the run
     QTimer.singleShot(8 * 60 * 1000, lambda: (fail("whole run took longer than 8 minutes"), finish()))
-    steps = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "name", "convert"]
+    steps = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "name", "convert", "testpage"]
 
     def run(i=0):
         if i == len(steps):
-            sudoku_proof()
+            tone_check()
             return
         name = steps[i]
-        js = ("setMode('convert');" if name == "convert" else f"setMode('make'); $('gen').value='{name}';")
+        js = "$('testpage').checked = false; "
+        if name == "testpage":
+            js += "setMode('make'); $('testpage').checked = true; syncOutputs();"
+        else:
+            js += "setMode('convert');" if name == "convert" else f"setMode('make'); $('gen').value='{name}';"
         if name == "name":   # outlined text over a real pattern, so the SVG check sees both
             js += " $('nameText').value='Inkline 2.2'; $('nameBg').value='flow';"
         js += " 0"
@@ -330,7 +334,7 @@ def selftest(win, outdir):
         print(f"selftest: {name} {img.width()}x{img.height()}")
         if (img.width(), img.height()) != (2550, 3300):
             fail(f"{name}: expected a 2550x3300 page, got {img.width()}x{img.height()}")
-        if name == "convert":
+        if name in ("convert", "testpage"):   # pixels only: no SVG
             run(i + 1)
             return
 
@@ -360,6 +364,34 @@ def selftest(win, outdir):
                 then()
             page.runJavaScript("window.__job || null", got)
         page.runJavaScript("window.__job = null; " + start_js + "; 0", lambda _r: QTimer.singleShot(500, poll))
+
+    def tone_check():
+        """The test page's grey ramps must match their grey level: catches halftone or dither tone drift."""
+        js = r"""(() => {
+          $('testpage').checked = true; syncOutputs(); render();
+          const g = geometry('portrait'), I = g.dpi, d = pctx.getImageData(0, 0, g.W, g.H).data;
+          const labelX = 0.75 * I + 1.75 * I, rampW = g.W - 1.5 * I - 1.75 * I, worst = {};
+          let y = 0.75 * I + 0.55 * I + 0.5 * I + 0.6 * I + 2 * I + 0.35 * I + 0.12 * I;
+          for (const name of ['Smooth', 'Crisp', 'Pattern', 'Halftone']) {
+            let w = 0;
+            for (let k = 1; k < 9; k++) {   // inner slices; the ends are pure white/black
+              let ink = 0, n = 0; const xa = Math.round(labelX + rampW * k / 10 + 4), xb = Math.round(labelX + rampW * (k + 1) / 10 - 4);
+              for (let yy = Math.round(y + 8); yy < y + 0.36 * I - 8; yy += 2) for (let xx = xa; xx < xb; xx += 2) { ink += d[(yy * g.W + xx) * 4] < 128; n++; }
+              w = Math.max(w, Math.abs(ink / n * 100 - (k * 10 + 5)));
+            }
+            worst[name] = Math.round(w); y += 0.36 * I + 0.09 * I;
+          }
+          $('testpage').checked = false; syncOutputs();
+          const bad = ['Smooth', 'Pattern', 'Halftone'].filter(n => worst[n] > 6);   // Crisp (Atkinson) adds contrast on purpose
+          return (bad.length ? 'BAD ' : 'OK ') + Object.entries(worst).map(([n, w]) => `${n} ±${w}`).join(', ');
+        })()"""
+
+        def got(r):
+            print(f"selftest: tone check -> {r}")
+            if not str(r).startswith("OK"):
+                fail(f"tone check: {r}")
+            sudoku_proof()
+        page.runJavaScript(js, got)
 
     def sudoku_proof():
         """Every generated sudoku must be a valid grid with exactly one solution, reproducible from its seed."""
