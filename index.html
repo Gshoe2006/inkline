@@ -183,7 +183,7 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; background:
         <label class="check"><input type="checkbox" id="mix"> Mix every pattern (except name pages)</label>
         <label class="check"><input type="checkbox" id="cover" checked> Cover page</label>
         <label class="check"><input type="checkbox" id="pageNums" checked> Page numbers</label>
-        <label class="check"><input type="checkbox" id="key" checked> Answer pages for puzzles (mazes, dot-to-dots, sudoku, word search, nonograms)</label>
+        <label class="check"><input type="checkbox" id="key" checked> Answer pages for puzzles (mazes, dot-to-dots, sudoku, word search, nonograms) and colour-by-number pages</label>
         <div class="pager"><button class="btn" id="prev" aria-label="Previous page">‹</button><span id="pagepos"></span><button class="btn" id="next" aria-label="Next page">›</button></div>
         <div class="pagetools"><button class="btn mini" id="pageNew">New design for this page</button><button class="btn mini" id="pageOrig" hidden>Back to original</button></div>
         <p class="hint">PDF and Print use every page. PNG and SVG save the page shown.</p>
@@ -1118,7 +1118,7 @@ function getWorker() {
   if (worker !== null) return worker;
   try {
     const src = `"use strict";\nconst BAYER = ${JSON.stringify(BAYER)};\nconst CRAYONS = ${JSON.stringify(CRAYONS)};\nconst cbnDist2 = ${cbnDist2};\n` +
-      [gaussBlur, despeckle, processPixels, cbnLab, cbnComponents, cbnDistance, cbnRegionInfo, cbnMerge, cbnSpots, cbnPalette, cbnModeFilter,
+      [gaussBlur, despeckle, processPixels, cbnLab, cbnComponents, cbnDistance, cbnRegionInfo, cbnMerge, cbnSpots, cbnTrace, cbnPalette, cbnModeFilter,
        nonoLine, solveNonogram, nonoClues, nonoFromPicture].join("\n") + `\nconst nonoRuns = ${nonoRuns};\n` +
       `onmessage = e => { const { id, data, ww, wh, p } = e.data; const r = processPixels(data, ww, wh, p);` +
       ` postMessage({ id, ...r }, [r.lum.buffer, r.mask.buffer].concat(r.rgba ? [r.rgba.buffer] : [], r.label ? [r.label.buffer] : [])); };`;
@@ -1330,6 +1330,59 @@ function cbnSpots(label, info, w, h, minR, gap) {
   }
   return spots.flat();
 }
+// Borders between regions as smooth vector lines. Every cell edge with a different region (or nothing) on
+// each side is a border edge; edges are chained into lines that end where three or more borders meet, so
+// smoothing never pulls lines apart at a junction. Each line is simplified (Douglas-Peucker, removing the
+// pixel staircase) and rounded (Chaikin). Returns lines as flat [x0, y0, x1, y1, ...] in grid-corner units.
+function cbnTrace(label, w, h) {
+  const W = w + 1, at = (x, y) => (x < 0 || y < 0 || x >= w || y >= h ? -1 : label[y * w + x]), ev0 = [], ev1 = [];
+  for (let y = 0; y < h; y++) for (let x = 0; x <= w; x++) if (at(x - 1, y) !== at(x, y)) { ev0.push(y * W + x); ev1.push((y + 1) * W + x); }
+  for (let y = 0; y <= h; y++) for (let x = 0; x < w; x++) if (at(x, y - 1) !== at(x, y)) { ev0.push(y * W + x); ev1.push(y * W + x + 1); }
+  const deg = new Map(), adj = new Map();
+  ev0.forEach((a, e) => { for (const v of [a, ev1[e]]) { deg.set(v, (deg.get(v) || 0) + 1); let l = adj.get(v); if (!l) adj.set(v, (l = [])); l.push(e); } });
+  const used = new Uint8Array(ev0.length), lines = [];
+  const walk = (v, e) => {   // follow edges from vertex v through vertices of degree 2
+    const pts = [v];
+    for (;;) {
+      used[e] = 1; v = ev0[e] === v ? ev1[e] : ev0[e]; pts.push(v);
+      if (deg.get(v) !== 2) break;
+      const next = adj.get(v).find(f => !used[f]); if (next === undefined) break;
+      e = next;
+    }
+    return pts.map(q => [q % W, (q / W) | 0]);
+  };
+  const dp = (pts, tol) => {   // Douglas-Peucker
+    if (pts.length < 3) return pts;
+    const keep = new Uint8Array(pts.length); keep[0] = keep[pts.length - 1] = 1;
+    const stack = [[0, pts.length - 1]];
+    while (stack.length) {
+      const [a, b] = stack.pop(), [ax, ay] = pts[a], [bx, by] = pts[b], L = Math.hypot(bx - ax, by - ay) || 1;
+      let worst = -1, far = 0;
+      for (let i = a + 1; i < b; i++) { const d = Math.abs((bx - ax) * (ay - pts[i][1]) - (ax - pts[i][0]) * (by - ay)) / L; if (d > far) { far = d; worst = i; } }
+      if (far > tol) { keep[worst] = 1; stack.push([a, worst], [worst, b]); }
+    }
+    return pts.filter((_, i) => keep[i]);
+  };
+  const chaikin = (pts, closed) => {
+    const out = closed ? [] : [pts[0]], n = pts.length;
+    for (let i = 0; i < (closed ? n : n - 1); i++) {
+      const [ax, ay] = pts[i], [bx, by] = pts[(i + 1) % n];
+      out.push([ax * 0.75 + bx * 0.25, ay * 0.75 + by * 0.25], [ax * 0.25 + bx * 0.75, ay * 0.25 + by * 0.75]);
+    }
+    if (closed) out.push(out[0]); else out.push(pts[n - 1]);
+    return out;
+  };
+  const emit = (pts, closed) => {
+    let q = dp(pts, 0.8);
+    if (closed) q = q.slice(0, -1);
+    if (q.length >= (closed ? 3 : 2)) { q = chaikin(q, closed); q = chaikin(closed ? q.slice(0, -1) : q, closed); }
+    else if (closed) return;
+    lines.push(Float32Array.from(q.flat()));
+  };
+  for (const [v, d] of deg) if (d !== 2) for (const e of adj.get(v)) if (!used[e]) emit(walk(v, e), false);
+  for (let e = 0; e < ev0.length; e++) if (!used[e]) emit(walk(ev0[e], e), true);   // loops with no junction on them
+  return lines;
+}
 // Which k crayons best match the photo: start from all of them and drop the least missed, one at a time.
 function cbnPalette(R, G, B, mask, k) {
   const bins = new Map();
@@ -1445,6 +1498,31 @@ function cbnPattern(g, box, spec, lw) {
   return r;
 }
 
+// Answer page for a colour-by-number design: the page's own design, shrunk into the slot, with each numbered
+// space shaded grey by its number (1 lightest), so a finished page can be checked against it.
+function drawCbnAnswer(ctx, g, slot, d, lw) {
+  const box = designBox(g, d), kh = cbnKeyHeight(box, g, num("cbnColours")), art = { ...box, h: box.h - kh - g.dpi * 0.12 };
+  const r = cbnPattern(g, art, d, lw), num_ = new Map(r.spots.map(q => [q.id, q.n])), top = Math.max(1, r.names.length);
+  const cv = document.createElement("canvas"); cv.width = r.w; cv.height = r.h;
+  const x = cv.getContext("2d"), im = x.createImageData(r.w, r.h);
+  for (let i = 0; i < r.w * r.h; i++) {
+    const n = num_.get(r.label[i]), v_ = n ? Math.round(255 * (1 - (0.12 + 0.6 * (n - 1) / Math.max(1, top - 1)))) : 255;
+    im.data[i * 4] = im.data[i * 4 + 1] = im.data[i * 4 + 2] = v_; im.data[i * 4 + 3] = 255;
+  }
+  x.putImageData(im, 0, 0);
+  const fs = g.dpi * 0.1, area = { ...slot, h: slot.h - fs * 1.6 }, k = Math.min(area.w / art.w, area.h / art.h);
+  const ox = area.x + (area.w - art.w * k) / 2, oy = area.y + (area.h - art.h * k) / 2;
+  ctx.save();
+  ctx.drawImage(cv, ox, oy, art.w * k, art.h * k);
+  ctx.transform(k, 0, 0, k, ox - art.x * k, oy - art.y * k);   // the page's design, drawn exactly as on its page
+  ctx.strokeStyle = "#000"; ctx.fillStyle = "#000"; ctx.lineWidth = lw;
+  drawDesign(ctx, g, art, d.gen, d.seed, d.c, lw);
+  ctx.restore();
+  ctx.save(); ctx.font = `400 ${fs}px ${FONT}`; ctx.fillStyle = "#555"; ctx.textAlign = "center";
+  ctx.fillText(`Shaded by number: 1 lightest to ${top} darkest`, slot.x + slot.w / 2, slot.y + slot.h - fs * 0.3, slot.w);
+  ctx.restore();
+}
+
 // o.style / o.dot override the sidebar (the printer test page shows every style side by side).
 function convert(ctx, box, g = {}, photo = curPhoto(), o = {}) {
   let keyBox = null;
@@ -1484,13 +1562,17 @@ function convert(ctx, box, g = {}, photo = curPhoto(), o = {}) {
     }
     ctx.restore(); return;
   }
-  // colour-by-number outlines are finer than a low-resolution preview: smoothing keeps them from dropping out
-  ctx.imageSmoothingEnabled = style === "cbn" && box.w < ww; ctx.drawImage(wc, box.x, box.y, box.w, box.h); ctx.imageSmoothingEnabled = true;
-  if (style === "cbn" && entry.cbn) {
+  if (style === "cbn") {
+    if (!entry.cbn) return;
     const sx = box.w / ww, sy = box.h / wh, cbn = entry.cbn;
+    ctx.save(); ctx.strokeStyle = "#000"; ctx.lineWidth = 2 * sx; ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.beginPath();
+    for (const l of cbn.lines) { ctx.moveTo(box.x + l[0] * sx, box.y + l[1] * sy); for (let k = 2; k < l.length; k += 2) ctx.lineTo(box.x + l[k] * sx, box.y + l[k + 1] * sy); }
+    ctx.stroke(); ctx.restore();
     drawCbnNumbers(ctx, cbn.spots.map(([l, x, y, r]) => ({ n: cbn.colour[l] + 1, x: box.x + (x + 0.5) * sx, y: box.y + (y + 0.5) * sy, r: r * sx })), g);
     drawCbnKey(ctx, keyBox, cbn.pal.map(i => CRAYONS[i][0]), g);
+    return;
   }
+  ctx.imageSmoothingEnabled = false; ctx.drawImage(wc, box.x, box.y, box.w, box.h); ctx.imageSmoothingEnabled = true;
 }
 
 // Separable Gaussian blur with clamped edges.
@@ -1620,15 +1702,10 @@ function processPixels(D, ww, wh, p) {
     label = merged.label;
     const used = [...new Set(merged.info.map(o => o.c))].sort((a, b) => a - b), renum = new Map(used.map((c, j) => [c, j]));   // crayons merged away leave the key
     cbn = { pal: used.map(j => pal[j]), colour: merged.info.map(o => renum.get(o.c)), spots: cbnSpots(label, merged.info, ww, wh, minR, 2 * 150) };
-    for (let i = 0; i < N; i++) {   // outlines two pixels wide (one each side of a border), and round the picture
-      if (!mask[i]) continue;
-      const x = i % ww, y = (i / ww) | 0, l = label[i];
-      if (x <= 1 || y <= 1 || x >= ww - 2 || y >= wh - 2 || label[i - 1] !== l || label[i + 1] !== l || label[i - ww] !== l || label[i + ww] !== l
-          || !mask[i - 2] || !mask[i + 2] || !mask[i - 2 * ww] || !mask[i + 2 * ww]) out[i] = 0;
-    }
+    cbn.lines = cbnTrace(label, ww, wh);   // outlines as vector lines, so the page prints crisp and saves as SVG
   }
   let rgba = null;   // halftone, engraving and stippling are drawn from lum, so they need no image
-  if (style !== "halftone" && style !== "engrave" && style !== "stipple" && style !== "nono") {
+  if (style !== "halftone" && style !== "engrave" && style !== "stipple" && style !== "nono" && style !== "cbn") {
     rgba = new Uint8ClampedArray(N * 4);
     for (let i = 0; i < N; i++) {
       let o = mask[i] ? out[i] : 255; if (inv && mask[i] && style !== "cbn") o = 255 - o;
@@ -1665,6 +1742,12 @@ class SvgCtx {
     this.meas = document.createElement("canvas").getContext("2d");   // real canvas, only for text widths
   }
   setTransform() {}                                   // pages always draw with the identity transform
+  transform(a, b, c, d, e, f) { this.out.push(`<g transform="matrix(${[a, b, c, d, e, f].map(n => +n.toFixed(5)).join(" ")})">`); this.st.groups++; }   // undone by restore()
+  drawImage(img, x, y, w, h) {   // a small embedded picture (colour-by-number answer shading)
+    const c = img instanceof HTMLCanvasElement ? img : Object.assign(document.createElement("canvas"), { width: img.width, height: img.height });
+    if (c !== img) c.getContext("2d").drawImage(img, 0, 0);
+    this.out.push(`<image x="${fx(x)}" y="${fx(y)}" width="${fx(w)}" height="${fx(h)}" preserveAspectRatio="none" href="${c.toDataURL("image/png")}"/>`);
+  }
   beginPath() { this.d = []; this.cur = null; }
   moveTo(x, y) { this.d.push(`M${fx(x)} ${fx(y)}`); this.cur = this.start = [x, y]; }
   lineTo(x, y) { if (!this.cur) return this.moveTo(x, y); this.d.push(`L${fx(x)} ${fx(y)}`); this.cur = [x, y]; }
@@ -1721,7 +1804,7 @@ SvgCtx.prototype.imageSmoothingEnabled = true;   // accepted and ignored
 
 // The page that's showing (single design, or the current booklet page) as a print-size SVG document.
 // Engraving, stippling and photo nonograms are the photo styles made of shapes rather than pixels, so they can be saved as SVG.
-const VECTOR_PHOTO_TIPS = { engrave: "Engraving lines save as vector paths", stipple: "Stippling dots save as vector circles", nono: "Photo nonograms save as vector lines and text" };
+const VECTOR_PHOTO_TIPS = { engrave: "Engraving lines save as vector paths", stipple: "Stippling dots save as vector circles", nono: "Photo nonograms save as vector lines and text", cbn: "Colour-by-number outlines save as vector lines" };
 const isVectorPhoto = () => S.mode === "convert" && v("style") in VECTOR_PHOTO_TIPS;
 
 function buildSvg() {
@@ -1793,7 +1876,7 @@ function bookPages() {
   if (v("cover")) pages.push({ kind: "cover", title: title || (mix ? "Colouring & puzzle book" : GEN_NAMES[v("gen")] + " book"), designs,
                                artSeed: S.pageSeeds.cover ?? (S.seed ^ 0x5bd1e995) >>> 0 });
   pages.push(...designs);
-  const puzzles = designs.filter(d => HAS_ANSWER(d.gen));
+  const puzzles = designs.filter(d => HAS_ANSWER(d.gen) || isCbnDesign(d.gen));   // colour-by-number pages get a shaded answer
   if (v("key")) for (let i = 0; i < puzzles.length; i += 4) pages.push({ kind: "answers", header: true, title: "Answers", items: puzzles.slice(i, i + 4) });
   let no = 1; for (const p of pages) if (p.kind !== "cover" && nums) p.pageNo = no++;
   return pages;
@@ -1859,7 +1942,8 @@ function drawPage(ctx, g, spec, keep = false) {
       ctx.fillText(d.pageNo ? `${d.label} · page ${d.pageNo}` : d.label, cell.x, cell.y + fs); ctx.restore();
       ctx.lineWidth = Math.max(1, lw * 0.45);
       const slot = inset({ ...cell, y: cell.y + fs * 1.6, h: cell.h - fs * 1.6 }, fs * 0.6);   // not "area": that's the page layout above
-      if (d.gen === "maze") {
+      if (isCbnDesign(d.gen)) drawCbnAnswer(ctx, g, slot, d, lw);
+      else if (d.gen === "maze") {
         const grid = mazeGrid(designBox(g, d), d.c);   // same grid as the puzzle page, so it's the same maze
         drawDesign(ctx, g, slot, "maze", d.seed, d.c, ctx.lineWidth, { grid, solve: true });
       } else if (d.gen === "sudoku" || d.gen === "words" || d.gen === "nonogram") drawDesign(ctx, g, slot, d.gen, d.seed, d.c, lw, { solve: true });   // same seed, same puzzle, filled in
@@ -2185,7 +2269,9 @@ function syncOutputs() {
   $("pcbnColours-o").textContent = v("pcbnColours");
   $("cbnColours-o").textContent = v("cbnColours");
   $("cbn-opts").hidden = !v("cbn");
-  $("cbnNote").textContent = CBN_GENS.includes(v("gen")) || (v("booklet") && v("mix"))
+  $("cbnNote").textContent = v("gen") === "name" && (v("nameBg") === "none" || v("nameBg") === "flow")
+    ? "Flow lines and plain pages enclose few spaces: choose Woven tiles or Contours around the letters for more to colour."
+    : CBN_GENS.includes(v("gen")) || (v("booklet") && v("mix"))
     ? "Repeated spaces share a number, and spaces side by side get different colours."
     : "Works on mandalas, woven tiles, contours and name pages; choose one of those to see it.";
   $("pcbn-opts").hidden = v("style") !== "cbn";
@@ -2484,12 +2570,12 @@ function syncButtons() {
   $("save-png").disabled = poster;
   $("save-png").title = poster ? "Posters save as PDF (one page per sheet) or print directly" : "Save PNG (Ctrl+Shift+S)";
   $("save-svg").disabled = (S.mode !== "make" && !isVectorPhoto()) || isTestPage() || isFold();   // pixels, or two pages per sheet
-  $("save-svg").title = isVectorPhoto() ? VECTOR_PHOTO_TIPS[v("style")] + (v("style") === "nono" ? ", for editing in Inkscape" : ", for laser engravers and plotters")
-    : S.mode === "make" ? "Vector lines for Inkscape, Cricut, Silhouette or laser cutters" : "Photos are made of pixels; choose Engraving lines, Stippling dots or Nonogram puzzle for SVG";
+  $("save-svg").title = isVectorPhoto() ? VECTOR_PHOTO_TIPS[v("style")] + (v("style") === "nono" || v("style") === "cbn" ? ", for editing in Inkscape" : ", for laser engravers and plotters")
+    : S.mode === "make" ? "Vector lines for Inkscape, Cricut, Silhouette or laser cutters" : "Photos are made of pixels; choose Engraving, Stippling, Colour by number or Nonogram for SVG";
 }
 
 function saveSvg() {
-  if (S.mode !== "make" && !isVectorPhoto()) { msg("Photos are made of pixels, so they save as PNG or PDF. Choose Engraving lines, Stippling dots or Nonogram puzzle for SVG."); return; }
+  if (S.mode !== "make" && !isVectorPhoto()) { msg("Photos are made of pixels, so they save as PNG or PDF. Choose Engraving, Stippling, Colour by number or Nonogram for SVG."); return; }
   const name = baseName() + (isPoster() ? "-poster" : isBook() || isPhotoBook() ? `-page${S.bookPage + 1}` : ""), svg = buildSvg();
   if (bridge) { bridge.request(JSON.stringify({ kind: "svg", name, svg }), r => msg(r)); return; }
   const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" })); a.download = name + ".svg"; a.click();
