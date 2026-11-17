@@ -1,0 +1,11 @@
+# Build outputs — regenerate with packaging/build.sh
+dist/
+
+# Python
+__pycache__/
+*.pyc
+
+# makepkg leftovers if built by hand
+*.pkg.tar.zst
+src/
+pkg/

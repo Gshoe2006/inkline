@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Inkline
+GenericName=Black & White Print Maker
+Comment=Convert photos or generate black and white images for printing
+Exec=inkline
+Icon=inkline
+Terminal=false
+Categories=Graphics;2DGraphics;RasterGraphics;
+Keywords=print;coloring;colouring;dither;halftone;maze;mandala;
+StartupWMClass=inkline

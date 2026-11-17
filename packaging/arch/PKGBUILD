@@ -1,0 +1,25 @@
+# Maintainer: Inkline
+pkgname=inkline
+pkgver=@VERSION@
+pkgrel=2
+pkgdesc="Convert photos or generate black & white images for printing"
+arch=('any')
+license=('MIT')
+depends=('python' 'pyside6' 'qt6-webengine' 'qt6-webchannel')
+optdepends=('cups: printing to local and network printers')
+source=('index.html' 'inkline.py' 'inkline.svg' 'inkline.desktop' 'inkline-icons.tar.gz')
+sha256sums=()
+
+package() {
+  install -Dm644 index.html      "$pkgdir/usr/share/inkline/index.html"
+  install -Dm755 inkline.py      "$pkgdir/usr/share/inkline/inkline.py"
+  install -Dm644 inkline.svg     "$pkgdir/usr/share/inkline/inkline.svg"
+  install -Dm644 inkline.svg     "$pkgdir/usr/share/icons/hicolor/scalable/apps/inkline.svg"
+  install -Dm644 inkline.desktop "$pkgdir/usr/share/applications/inkline.desktop"
+  for png in hicolor/*/apps/inkline.png; do
+    install -Dm644 "$png" "$pkgdir/usr/share/icons/$png"
+  done
+  install -dm755 "$pkgdir/usr/bin"
+  printf '#!/bin/sh\nexec python3 /usr/share/inkline/inkline.py "$@"\n' > "$pkgdir/usr/bin/inkline"
+  chmod 755 "$pkgdir/usr/bin/inkline"
+}
