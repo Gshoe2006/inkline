@@ -18,6 +18,11 @@ from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import QApplication, QFileDialog, QMainWindow
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+def config_dir():
+    """Where saved presets live: $INKLINE_CONFIG_DIR (used by the self-test), else ~/.config/inkline."""
+    return os.environ.get("INKLINE_CONFIG_DIR") or os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "inkline")
+
+
 PAPER_IDS = {"letter": QPageSize.PageSizeId.Letter, "a4": QPageSize.PageSizeId.A4}
 
 
@@ -111,6 +116,31 @@ class Bridge(QObject):
             ok = painter.end()
             return "Sent to the printer." if ok else "The printer didn't accept the job. Check that it's connected."
         return "Unknown request."
+
+    # --- presets, kept as JSON in the config folder ---
+    @Slot(result=str)
+    def loadPresets(self):
+        try:
+            with open(os.path.join(config_dir(), "presets.json"), encoding="utf-8") as f:
+                data = json.load(f)
+            return json.dumps(data if isinstance(data, dict) else {})
+        except (OSError, ValueError):
+            return "{}"
+
+    @Slot(str, result=str)
+    def savePresets(self, payload):
+        try:
+            data = json.loads(payload)
+            if not isinstance(data, dict):
+                return "Presets weren't in the expected format."
+            os.makedirs(config_dir(), exist_ok=True)
+            path = os.path.join(config_dir(), "presets.json")
+            with open(path + ".tmp", "w", encoding="utf-8") as f:   # write then rename, so a crash never leaves half a file
+                json.dump(data, f, indent=2, ensure_ascii=False)
+            os.replace(path + ".tmp", path)
+            return "ok"
+        except (OSError, ValueError):
+            return f"Couldn't save presets to {config_dir()}. Check the folder permissions."
 
     # --- multi-page booklets: the page streams pages one at a time between begin and end ---
     @Slot(str, result=str)

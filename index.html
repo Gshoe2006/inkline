@@ -70,6 +70,11 @@ input[type="text"], input[type="number"] { font: 13px var(--font-ui); color: var
 .pager { display: flex; align-items: center; gap: 8px; }
 .pager .btn { width: auto; padding: 5px 12px; }
 .pager span { flex: 1; text-align: center; font: 12px var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.presetrow { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.presetrow .btn { width: auto; padding: 7px 12px; }
+.croprow { display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 8px; }
+#page.pannable { cursor: grab; touch-action: none; }
+#page.pannable:active { cursor: grabbing; }
 .hint { font-size: 12px; color: var(--muted); margin: 0; }
 .drop { border: 1.5px dashed var(--line); border-radius: 8px; padding: 14px; text-align: center; color: var(--muted); font-size: 13px; display: flex; flex-direction: column; gap: 8px; }
 .drop strong { color: var(--ink); font-weight: 600; word-break: break-all; }
@@ -104,6 +109,18 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; background:
       <button id="tab-make" role="tab" aria-selected="true">Make one up</button>
       <button id="tab-convert" role="tab" aria-selected="false">Convert a photo</button>
     </div>
+
+    <fieldset>
+      <legend>Presets</legend>
+      <div class="presetrow">
+        <select id="preset" data-nopreset aria-label="Apply a preset"><option value="">Choose a preset…</option></select>
+        <button class="btn" id="presetDel" disabled>Delete</button>
+      </div>
+      <div class="presetrow">
+        <input type="text" id="presetName" data-nopreset maxlength="40" placeholder="Name for current settings" aria-label="Preset name">
+        <button class="btn" id="presetSave">Save</button>
+      </div>
+    </fieldset>
 
     <div id="panel-make" class="stack">
     <fieldset>
@@ -151,6 +168,18 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; background:
         <div class="pair"><label class="btn" for="file">Open image…</label><button class="btn" id="sample">Use sample</button></div>
         <input type="file" id="file" accept="image/*" hidden>
       </div>
+      <div class="row"><label>Crop</label>
+        <div class="croprow">
+          <button class="btn" id="rotl" title="Rotate left 90°" aria-label="Rotate left">↺</button>
+          <button class="btn" id="rotr" title="Rotate right 90°" aria-label="Rotate right">↻</button>
+          <button class="btn" id="cropreset">Reset</button>
+        </div></div>
+      <div class="row"><label for="zoom">Zoom <output id="zoom-o"></output></label><input type="range" id="zoom" min="100" max="400" value="100" data-nopreset></div>
+      <div class="pair">
+        <div class="row"><label for="panx">Move ↔</label><input type="range" id="panx" min="-100" max="100" value="0" data-nopreset></div>
+        <div class="row"><label for="pany">Move ↕</label><input type="range" id="pany" min="-100" max="100" value="0" data-nopreset></div>
+      </div>
+      <p class="hint">Drag the preview to move the photo; scroll over it to zoom.</p>
       <div class="row"><label for="style">Style</label>
         <select id="style">
           <option value="fs">Dither: smooth (Floyd–Steinberg)</option>
@@ -425,7 +454,7 @@ function convert(ctx, box, g = {}) {
   const style = v("style"), dot = num("dot") * (g.dpi ? g.dpi / num("dpi") : 1);   // dot size stays physical at preview resolution
   const cell = Math.max(1, style === "halftone" ? dot * 5 : dot);
   // A poster draws the same photo once per sheet: cache the converted image so dithering runs only once.
-  const key = [S.imgId, box.w, box.h, cell, style, v("brightness"), v("contrast"), v("threshold"), v("fit"), v("invert")].join("|");
+  const key = [S.imgId, box.w, box.h, cell, style, v("brightness"), v("contrast"), v("threshold"), v("fit"), v("invert"), S.rot || 0, v("zoom"), v("panx"), v("pany")].join("|");
   if (!S.cc || S.cc.key !== key) S.cc = { key, ...convertData(box, cell, style) };
   const { ww, wh, lum, mask, wc } = S.cc, inv = v("invert");
   if (style === "halftone") {
@@ -444,20 +473,61 @@ function convert(ctx, box, g = {}) {
   ctx.imageSmoothingEnabled = false; ctx.drawImage(wc, box.x, box.y, box.w, box.h); ctx.imageSmoothingEnabled = true;
 }
 
+// Separable Gaussian blur with clamped edges.
+function gaussBlur(src, w, h, sigma) {
+  const r = Math.ceil(sigma * 3), k = new Float32Array(2 * r + 1); let sum = 0;
+  for (let i = -r; i <= r; i++) sum += k[i + r] = Math.exp(-(i * i) / (2 * sigma * sigma));
+  for (let i = 0; i < k.length; i++) k[i] /= sum;
+  const tmp = new Float32Array(w * h), out = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    let a = 0; for (let i = -r; i <= r; i++) a += src[y * w + Math.min(w - 1, Math.max(0, x + i))] * k[i + r]; tmp[y * w + x] = a;
+  }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    let a = 0; for (let i = -r; i <= r; i++) a += tmp[Math.min(h - 1, Math.max(0, y + i)) * w + x] * k[i + r]; out[y * w + x] = a;
+  }
+  return out;
+}
+
+// Turns black blobs smaller than minSize pixels (8-connected) white, in place.
+function despeckle(img, w, h, minSize) {
+  const seen = new Uint8Array(w * h), stack = new Int32Array(w * h), blob = new Int32Array(w * h);
+  for (let i = 0; i < w * h; i++) {
+    if (img[i] !== 0 || seen[i]) continue;
+    let top = 0, n = 0; stack[top++] = i; seen[i] = 1;
+    while (top) {
+      const p = stack[--top], x = p % w, y = (p / w) | 0; blob[n++] = p;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const X = x + dx, Y = y + dy; if (X < 0 || Y < 0 || X >= w || Y >= h) continue;
+        const q = Y * w + X; if (img[q] === 0 && !seen[q]) { seen[q] = 1; stack[top++] = q; }
+      }
+    }
+    if (n < minSize) for (let j = 0; j < n; j++) img[blob[j]] = 255;
+  }
+}
+
 // Converts the photo to black & white at (box size / cell) resolution. Returns brightness, mask and the 1-bit image.
 function convertData(box, cell, style) {
   const ww = Math.max(1, Math.round(box.w / cell)), wh = Math.max(1, Math.round(box.h / cell));
   const wc = document.createElement("canvas"); wc.width = ww; wc.height = wh;
   const wx = wc.getContext("2d", { willReadFrequently: true });
-  const iw = S.img.width, ih = S.img.height, sc = v("fit") === "cover" ? Math.max(ww / iw, wh / ih) : Math.min(ww / iw, wh / ih);
-  const dw = iw * sc, dh = ih * sc; wx.drawImage(S.img, (ww - dw) / 2, (wh - dh) / 2, dw, dh);
+  // Crop: rotate in 90° steps, zoom in, and pan across whatever overhangs the box.
+  const iw = S.img.width, ih = S.img.height, rot = S.rot || 0, rw = rot % 180 ? ih : iw, rh = rot % 180 ? iw : ih;
+  const sc = (v("fit") === "cover" ? Math.max(ww / rw, wh / rh) : Math.min(ww / rw, wh / rh)) * num("zoom") / 100;
+  const ex = Math.max(0, rw * sc - ww) / 2, ey = Math.max(0, rh * sc - wh) / 2;   // overhang on each side
+  wx.save();
+  wx.translate(ww / 2 + num("panx") / 100 * ex, wh / 2 + num("pany") / 100 * ey);
+  wx.rotate(rot * Math.PI / 180);
+  wx.drawImage(S.img, -iw * sc / 2, -ih * sc / 2, iw * sc, ih * sc);
+  wx.restore();
   const id = wx.getImageData(0, 0, ww, wh), D = id.data, N = ww * wh;
   const lum = new Float32Array(N), mask = new Uint8Array(N);
   const br = num("brightness") * 1.28, ct = num("contrast") / 100;
   for (let i = 0; i < N; i++) {
     const a = D[i * 4 + 3] / 255; mask[i] = a > 0.02;
     let y = (0.2126 * D[i * 4] + 0.7152 * D[i * 4 + 1] + 0.0722 * D[i * 4 + 2]) * a + 255 * (1 - a);
-    lum[i] = (y - 128) * ct + 128 + br;
+    // Clamp to what paper can show: contrast can push white past 255, and error diffusion would then
+    // carry that impossible brightness into neighbouring pixels.
+    lum[i] = Math.min(255, Math.max(0, (y - 128) * ct + 128 + br));
   }
   const t = num("threshold"), inv = v("invert"), out = new Uint8Array(N).fill(255);
   if (style === "threshold") for (let i = 0; i < N; i++) out[i] = lum[i] < t ? 0 : 255;
@@ -466,21 +536,22 @@ function convertData(box, cell, style) {
     const L = lum.slice(), atk = style === "atkinson";
     for (let y = 0; y < wh; y++) for (let k = 0; k < ww; k++) {
       const s = y & 1 ? -1 : 1, x = s > 0 ? k : ww - 1 - k;   // serpentine scan avoids directional streaks
-      const i = y * ww + x, o = L[i] < t ? 0 : 255, e = L[i] - o; out[i] = o;
-      const add = (dx, dy, w) => { const X = x + dx * s, Y = y + dy; if (X >= 0 && X < ww && Y < wh) L[Y * ww + X] += e * w; };
+      const i = y * ww + x;
+      if (!mask[i]) continue;                    // empty space around the photo takes no part in diffusion
+      const o = L[i] < t ? 0 : 255, e = L[i] - o; out[i] = o;
+      const add = (dx, dy, w) => { const X = x + dx * s, Y = y + dy; if (X >= 0 && X < ww && Y < wh && mask[Y * ww + X]) L[Y * ww + X] += e * w; };
       if (atk) { const w = 1 / 8; add(1, 0, w); add(2, 0, w); add(-1, 1, w); add(0, 1, w); add(1, 1, w); add(0, 2, w); }
       else { add(1, 0, 7 / 16); add(-1, 1, 3 / 16); add(0, 1, 5 / 16); add(1, 1, 1 / 16); }
     }
   } else if (style === "line") {
-    const B = new Float32Array(N);   // 3x3 box blur, then Sobel edges
-    for (let y = 0; y < wh; y++) for (let x = 0; x < ww; x++) { let s = 0, c = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const X = x + dx, Y = y + dy; if (X >= 0 && Y >= 0 && X < ww && Y < wh) { s += lum[Y * ww + X]; c++; } } B[y * ww + x] = s / c; }
-    const edge = 260 - t;
-    for (let y = 1; y < wh - 1; y++) for (let x = 1; x < ww - 1; x++) {
-      const p = (dx, dy) => B[(y + dy) * ww + x + dx];
-      const gx = -p(-1, -1) - 2 * p(-1, 0) - p(-1, 1) + p(1, -1) + 2 * p(1, 0) + p(1, 1);
-      const gy = -p(-1, -1) - 2 * p(0, -1) - p(1, -1) + p(-1, 1) + 2 * p(0, 1) + p(1, 1);
-      out[y * ww + x] = Math.hypot(gx, gy) > edge ? 0 : 255;
-    }
+    // Difference of Gaussians: ink where a lightly blurred copy is darker than a heavily blurred one.
+    // That traces the dark side of each edge as a continuous stroke, while grain and texture,
+    // which vanish in both blurs, stay white. Then tiny leftover specks are removed.
+    const sigma = Math.max(0.8, Math.min(ww, wh) / 700);   // blur scales with the image, so detail is size-independent
+    const g1 = gaussBlur(lum, ww, wh, sigma), g2 = gaussBlur(lum, ww, wh, sigma * 1.6);
+    const thr = (260 - t) / 60;   // Threshold / detail: higher = more lines (default 2.2, tuned on a grainy photo)
+    for (let i = 0; i < N; i++) out[i] = mask[i] && g1[i] - g2[i] < -thr ? 0 : 255;
+    despeckle(out, ww, wh, Math.max(12, Math.round(N / 40000)));
   }
   if (style !== "halftone") {
     for (let i = 0; i < N; i++) {
@@ -489,7 +560,7 @@ function convertData(box, cell, style) {
     }
     wx.putImageData(id, 0, 0);
   }
-  return { ww, wh, lum, mask, wc };
+  return { ww, wh, lum, mask, wc, exPx: ex * cell, eyPx: ey * cell };   // overhang in page pixels, for drag-to-pan
 }
 
 /* ---------- render ---------- */
@@ -771,6 +842,8 @@ function syncOutputs() {
   $("dot-o").textContent = v("dot") + " px";
   $("seed-o").textContent = "seed " + S.seed;
   $("pages-o").textContent = v("pages");
+  $("zoom-o").textContent = v("zoom") + "%";
+  page.classList.toggle("pannable", S.mode === "convert" && !!S.img);
   $("book-opts").hidden = !v("booklet");
   $("poster-opts").hidden = !v("poster");
   syncButtons();
@@ -788,6 +861,35 @@ function setMode(m) {
 $("tab-make").onclick = () => setMode("make");
 $("tab-convert").onclick = () => setMode("convert");
 $("reroll").onclick = () => { S.seed = (Math.random() * 1e9) | 0; syncOutputs(); schedule(); };
+function resetCrop() { S.rot = 0; $("zoom").value = 100; $("panx").value = 0; $("pany").value = 0; syncOutputs(); }
+$("rotl").onclick = () => { S.rot = ((S.rot || 0) + 270) % 360; schedule(); };
+$("rotr").onclick = () => { S.rot = ((S.rot || 0) + 90) % 360; schedule(); };
+$("cropreset").onclick = () => { resetCrop(); schedule(); };
+
+// Drag the preview to pan the photo; the photo follows the pointer across its overhang.
+{
+  let drag = null;
+  page.addEventListener("pointerdown", e => {
+    if (S.mode !== "convert" || !S.img || !S.cc) return;
+    drag = { x: e.clientX, y: e.clientY, px: num("panx"), py: num("pany") };
+    try { page.setPointerCapture(e.pointerId); } catch { /* still pans while the pointer stays over the preview */ }
+  });
+  page.addEventListener("pointermove", e => {
+    if (!drag) return;
+    const k = page.width / page.getBoundingClientRect().width;     // screen px -> page px
+    const nx = S.cc.exPx ? drag.px + (e.clientX - drag.x) * k / S.cc.exPx * 100 : drag.px;
+    const ny = S.cc.eyPx ? drag.py + (e.clientY - drag.y) * k / S.cc.eyPx * 100 : drag.py;
+    $("panx").value = Math.round(Math.max(-100, Math.min(100, nx))); $("pany").value = Math.round(Math.max(-100, Math.min(100, ny)));
+    schedule();
+  });
+  const end = () => { drag = null; };
+  page.addEventListener("pointerup", end); page.addEventListener("pointercancel", end);
+  page.addEventListener("wheel", e => {
+    if (S.mode !== "convert" || !S.img) return;
+    e.preventDefault();
+    $("zoom").value = Math.max(100, Math.min(400, num("zoom") + (e.deltaY < 0 ? 10 : -10))); syncOutputs(); schedule();
+  }, { passive: false });
+}
 $("prev").onclick = () => { S.bookPage--; schedule(); };
 $("next").onclick = () => { S.bookPage++; schedule(); };
 $("booklet").addEventListener("input", () => { S.bookPage = 0; if (v("booklet")) $("poster").checked = false; syncOutputs(); });
@@ -795,7 +897,7 @@ $("poster").addEventListener("input", () => { if (v("poster")) $("booklet").chec
 
 function loadBlob(blob, name) {
   const url = URL.createObjectURL(blob), im = new Image();
-  im.onload = () => { S.img = im; S.imgId = (S.imgId || 0) + 1; S.imgName = name || "image"; $("srcname").innerHTML = "<strong></strong>"; $("srcname").firstChild.textContent = S.imgName; if (S.mode !== "convert") setMode("convert"); else schedule(); };
+  im.onload = () => { S.img = im; S.imgId = (S.imgId || 0) + 1; S.imgName = name || "image"; resetCrop(); $("srcname").innerHTML = "<strong></strong>"; $("srcname").firstChild.textContent = S.imgName; if (S.mode !== "convert") setMode("convert"); else schedule(); };
   im.onerror = () => msg("That file couldn't be read as an image. Try a PNG, JPEG or WebP.");
   im.src = url;
 }
@@ -893,10 +995,88 @@ $("save-png").onclick = () => bridge ? bridge.request(job("png"), r => msg(r)) :
 $("save-pdf").onclick = () => isPoster() ? runPoster("pdf") : isBook() ? runBook("pdf") : bridge ? bridge.request(job("pdf"), r => msg(r)) : browserDownload("pdf");
 $("print").onclick = () => isPoster() ? runPoster("print") : isBook() ? runBook("print") : bridge ? (msg("Opening the print dialog…"), bridge.request(job("print"), r => msg(r))) : browserDownload("pdf");
 
+/* ---------- presets ----------
+   Built-in presets set only the settings they're about, so "Wall poster 3 × 3" can go on top of any design.
+   Saved presets capture every setting except the photo crop. The desktop app keeps them in
+   ~/.config/inkline/presets.json (its browser storage doesn't survive a restart); a plain browser uses localStorage. */
+const BUILTIN_PRESETS = {
+  "Colouring page, bold lines": { mode: "make", gen: "mandala", complexity: 5, weight: 7, frame: false, booklet: false, poster: false },
+  "Classroom maze worksheet": { mode: "make", gen: "maze", complexity: 4, weight: 4, title: "Maze time", nameLine: true, booklet: false, poster: false },
+  "Maze booklet with answers": { mode: "make", gen: "maze", booklet: true, pages: 10, ramp: true, mix: false, cover: true, pageNums: true, key: true, poster: false },
+  "Newspaper halftone photo": { mode: "convert", style: "halftone", dot: 3, contrast: 120, brightness: 0, invert: false },
+  "Photo colouring page": { mode: "convert", style: "line", threshold: 128, dot: 2, invert: false },
+  "Wall poster 3 × 3": { poster: true, booklet: false, grid: "3x3", overlap: "0.25" },
+};
+S.presets = {};
+const presetStore = {
+  async load() {
+    if (bridge) { try { return JSON.parse(await call("loadPresets")) || {}; } catch { return {}; } }
+    try { return JSON.parse(localStorage.getItem("inkline-presets") || "{}"); } catch { return {}; }
+  },
+  async save(all) {
+    const txt = JSON.stringify(all);
+    if (bridge) return call("savePresets", txt);
+    try { localStorage.setItem("inkline-presets", txt); return "ok"; } catch { return "This browser won't let Inkline save presets."; }
+  },
+};
+const presetFields = () => [...document.querySelectorAll("aside input[id], aside select[id]")].filter(el => el.type !== "file" && !el.hasAttribute("data-nopreset"));
+
+function capturePreset() {
+  const p = { mode: S.mode };
+  for (const el of presetFields()) p[el.id] = el.type === "checkbox" ? el.checked : el.value;
+  return p;
+}
+
+function applyPreset(p) {
+  for (const [k, val] of Object.entries(p)) {
+    if (k === "mode") continue;
+    const el = $(k); if (!el) continue;
+    if (el.type === "checkbox") el.checked = !!val; else el.value = val;
+  }
+  S.bookPage = 0; syncOutputs();
+  if (p.mode && p.mode !== S.mode) setMode(p.mode); else schedule();
+}
+
+function fillPresetMenu(selected = "") {
+  const sel = $("preset"), opt = (name, group) => { const o = document.createElement("option"); o.value = `${group}:${name}`; o.textContent = name; return o; };
+  sel.replaceChildren(new Option("Choose a preset…", ""));
+  const gb = document.createElement("optgroup"); gb.label = "Built-in"; Object.keys(BUILTIN_PRESETS).forEach(n => gb.append(opt(n, "b"))); sel.append(gb);
+  const names = Object.keys(S.presets).sort((a, b) => a.localeCompare(b));
+  if (names.length) { const gs = document.createElement("optgroup"); gs.label = "Saved"; names.forEach(n => gs.append(opt(n, "s"))); sel.append(gs); }
+  sel.value = selected; $("presetDel").disabled = !selected.startsWith("s:");
+}
+
+async function initPresets() { S.presets = await presetStore.load(); fillPresetMenu(); }
+
+$("preset").addEventListener("change", () => {
+  const v_ = $("preset").value; $("presetDel").disabled = !v_.startsWith("s:");
+  if (!v_) return;
+  const name = v_.slice(2), p = v_[0] === "b" ? BUILTIN_PRESETS[name] : S.presets[name];
+  if (p) { applyPreset(p); msg(`Applied “${name}”.`); }
+});
+$("presetSave").onclick = async () => {
+  const name = $("presetName").value.trim();
+  if (!name) { msg("Type a name for the preset first."); $("presetName").focus(); return; }
+  if (BUILTIN_PRESETS[name]) { msg("That name belongs to a built-in preset. Choose another."); return; }
+  const existed = name in S.presets, next = { ...S.presets, [name]: capturePreset() };
+  const r = await presetStore.save(next);
+  if (r !== "ok") { msg(r); return; }
+  S.presets = next; $("presetName").value = ""; fillPresetMenu(`s:${name}`);
+  msg(existed ? `Updated preset “${name}”.` : `Saved preset “${name}”.`);
+};
+$("presetName").addEventListener("keydown", e => { if (e.key === "Enter") $("presetSave").click(); });
+$("presetDel").onclick = async () => {
+  const v_ = $("preset").value; if (!v_.startsWith("s:")) return;
+  const name = v_.slice(2), next = { ...S.presets }; delete next[name];
+  const r = await presetStore.save(next);
+  if (r !== "ok") { msg(r); return; }
+  S.presets = next; fillPresetMenu(); msg(`Deleted preset “${name}”.`);
+};
+
 // The desktop shell injects qwebchannel.js before this page runs.
 if (window.qt && window.qt.webChannelTransport && typeof QWebChannel === "function") {
-  new QWebChannel(qt.webChannelTransport, ch => { bridge = ch.objects.inkline; });
-}
+  new QWebChannel(qt.webChannelTransport, ch => { bridge = ch.objects.inkline; initPresets(); });
+} else initPresets();
 
 syncOutputs(); render();
 </script>
