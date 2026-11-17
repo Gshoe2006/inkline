@@ -2,11 +2,11 @@
 
 A Linux desktop app that converts photos to, or generates, black & white images for printing.
 
-- **Make one up:** mandala colouring pages, mazes, dot-to-dots, sudoku (each with exactly one solution), woven tiles, topographic contours, flow lines.
+- **Make one up:** mandala colouring pages, mazes, dot-to-dots, sudoku (each with exactly one solution), name pages in bubble letters, woven tiles, topographic contours, flow lines.
 - **Convert a photo:** Floyd–Steinberg, Atkinson and ordered dithering, halftone dots, solid black & white, or a line drawing (colouring page), with rotate, zoom and pan to crop.
 - **Photo books:** turn several photos into one colouring-book PDF, one page each with its own crop, plus an optional cover, title, name line and page numbers.
 - **Booklets:** turn any pattern (or all five mixed) into a multi-page PDF with a cover, a title and name line, page numbers, difficulty that ramps up page by page, and answer pages for mazes, dot-to-dots and sudoku.
-- **Presets:** nine built-in starting points (start fresh, colouring page, maze worksheet, maze booklet, sudoku booklet, dot-to-dot booklet, halftone photo, photo colouring page, wall poster) plus your own saved settings.
+- **Presets:** ten built-in starting points (start fresh, colouring page, name page, maze worksheet, maze booklet, sudoku booklet, dot-to-dot booklet, halftone photo, photo colouring page, wall poster) plus your own saved settings.
 - **Picks up where you left off:** settings and the current design are restored on the next start (*Presets → Start fresh* resets them). Shortcuts: Ctrl+P print, Ctrl+S PDF, Ctrl+Shift+S PNG, Ctrl+N new design, ←/→ booklet pages.
 - **Print-ready output:** Letter or A4 at 150/300 dpi, with Print, Save PNG and Save PDF at true paper size.
 - **Posters:** print any design or photo big across 2×1 up to 4×4 sheets, with overlap strips, trim marks and sheet labels (A1, A2…) for assembly.

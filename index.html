@@ -144,7 +144,13 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; background:
           <option value="flow">Flow lines</option>
           <option value="dots">Dot-to-dot</option>
           <option value="sudoku">Sudoku</option>
+          <option value="name">Name or word (bubble letters)</option>
         </select></div>
+      <div class="sub" id="name-opts" hidden>
+        <div class="row"><label for="nameText">Name or word</label><input type="text" id="nameText" maxlength="40" value="Hello" placeholder="e.g. Maya, Happy Birthday"></div>
+        <div class="row"><label for="nameBg">Around the letters</label>
+          <select id="nameBg"><option value="none">Plain</option><option value="flow">Flow lines</option><option value="contour">Contours</option><option value="truchet">Woven tiles</option></select></div>
+      </div>
       <div class="row"><label for="complexity">Complexity <output id="complexity-o"></output></label><input type="range" id="complexity" min="1" max="10" value="5"></div>
       <div class="row"><label for="weight">Line weight <output id="weight-o"></output></label><input type="range" id="weight" min="1" max="10" value="4"></div>
       <label class="check"><input type="checkbox" id="frame"> Draw a border around the design</label>
@@ -709,6 +715,60 @@ function genSudoku(ctx, box, rnd, c, lw, g, opts = {}) {
   return { clues, level: sudokuLevel(clues) };
 }
 
+/* ---------- name pages ----------
+   Bubble letters for colouring: each line is stroked wide in black, then a little narrower in white,
+   then filled white. Where neighbouring letters' outlines overlap, the white pass erases the black
+   between them, so the word becomes one puffy, connected outline. An optional pattern goes underneath. */
+
+// Split words into n lines so the widest line is as narrow as possible (small dynamic programme).
+function balanceLines(words, n, width) {
+  const W = words.length, memo = new Map(), lineW = (a, b) => width(words.slice(a, b).join(" "));
+  const best = (i, k) => {
+    const key = i * 64 + k; if (memo.has(key)) return memo.get(key);
+    let res;
+    if (k === 1) res = { cost: lineW(i, W), lines: [words.slice(i).join(" ")] };
+    else {
+      res = { cost: Infinity, lines: [] };
+      for (let j = i + 1; j <= W - k + 1; j++) {
+        const rest = best(j, k - 1), cost = Math.max(lineW(i, j), rest.cost);
+        if (cost < res.cost) res = { cost, lines: [words.slice(i, j).join(" "), ...rest.lines] };
+      }
+    }
+    memo.set(key, res); return res;
+  };
+  return best(0, n).lines;
+}
+
+function genName(ctx, g, box, c, lw, seed) {
+  const text = ($("nameText").value.trim() || "Your name").replace(/\s+/g, " "), bg = v("nameBg");
+  if (bg !== "none") drawDesign(ctx, g, box, bg, seed, c, lw);
+  ctx.save();
+  const REF = 100; ctx.font = `900 ${REF}px ${FONT}`;
+  const width = s => ctx.measureText(s).width / REF, words = text.split(" ");
+  // Puff of 0.035 em, chosen by comparing 0.025-0.075 at print size: bubbly and joined, while the
+  // openings in a, e and g stay open. Try 1-4 lines; keep the layout with the biggest letters
+  // (the bubble adds 2 x puff, plus a little, to each line's width).
+  const PUFF = 0.035;
+  let pick = null;
+  for (let n = 1; n <= Math.min(4, words.length); n++) {
+    const lines = balanceLines(words, n, width), maxW = Math.max(...lines.map(width));
+    const fs = Math.min(box.w * 0.9 / (maxW + 2 * PUFF + 0.01), box.h * 0.84 / (n * 1.18));
+    if (!pick || fs > pick.fs) pick = { lines, fs };
+  }
+  const { lines, fs } = pick, e = fs * PUFF, lh = fs * 1.18;
+  const cx = box.x + box.w / 2, top = box.y + (box.h - lines.length * lh) / 2, base = i => top + (i + 0.5) * lh + fs * 0.36;
+  ctx.font = `900 ${fs}px ${FONT}`; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+  ctx.lineJoin = "round"; ctx.lineCap = "round";
+  ctx.strokeStyle = "#000"; ctx.lineWidth = 2 * e + lw;
+  lines.forEach((t, i) => ctx.strokeText(t, cx, base(i)));
+  ctx.strokeStyle = "#fff"; ctx.lineWidth = Math.max(1, 2 * e - lw);
+  lines.forEach((t, i) => ctx.strokeText(t, cx, base(i)));
+  ctx.fillStyle = "#fff";
+  lines.forEach((t, i) => ctx.fillText(t, cx, base(i)));
+  ctx.restore();
+  return { lines, fs: fs / g.dpi };
+}
+
 /* ---------- photo conversion ---------- */
 const BAYER = (() => { const m = [[0, 2], [3, 1]]; let b = m; for (let n = 2; n < 8; n *= 2) { const nb = []; for (let y = 0; y < n * 2; y++) { nb.push([]); for (let x = 0; x < n * 2; x++) nb[y].push(4 * b[y % n][x % n] + m[(y / n) | 0][(x / n) | 0]); } b = nb; } return b; })();
 
@@ -885,12 +945,15 @@ class SvgCtx {
   save() { this.stack.push(this.st); this.st = { ...this.st, groups: 0 }; }
   restore() { for (let i = 0; i < this.st.groups; i++) this.out.push("</g>"); if (this.stack.length) this.st = this.stack.pop(); }
   measureText(t) { this.meas.font = this.st.font; return this.meas.measureText(t); }
-  fillText(t, x, y, maxW) {
+  textEl(t, x, y, maxW, paint) {
     const s = this.st, m = /^(?:(\d+)\s+)?([\d.]+)px\s+(.*)$/.exec(s.font) || [, 400, 10, "sans-serif"];
     const anchor = { left: "start", start: "start", center: "middle", right: "end", end: "end" }[s.textAlign] || "start";
     const squeeze = maxW && this.measureText(t).width > maxW ? ` textLength="${fx(maxW)}" lengthAdjust="spacingAndGlyphs"` : "";
-    this.out.push(`<text x="${fx(x)}" y="${fx(y)}" font-family="${m[3].replace(/"/g, "'")}" font-size="${fx(+m[2])}" font-weight="${m[1] || 400}" fill="${s.fillStyle}" text-anchor="${anchor}"${squeeze}>${escXml(t)}</text>`);
+    this.out.push(`<text x="${fx(x)}" y="${fx(y)}" font-family="${m[3].replace(/"/g, "'")}" font-size="${fx(+m[2])}" font-weight="${m[1] || 400}" ${paint} text-anchor="${anchor}"${squeeze}>${escXml(t)}</text>`);
   }
+  fillText(t, x, y, maxW) { this.textEl(t, x, y, maxW, `fill="${this.st.fillStyle}"`); }
+  // Outlined text (name pages). White strokes are kept: they hollow out the bubble letters.
+  strokeText(t, x, y, maxW) { this.textEl(t, x, y, maxW, this.strokeAttrs()); }
   toString() {
     let close = ""; for (let st = this.st, i = this.stack.length; ; st = this.stack[--i]) { close += "</g>".repeat(st.groups); if (i === 0) break; }
     return `${this.head}\n<title>Inkline</title>\n${this.defs.length ? `<defs>${this.defs.join("")}</defs>\n` : ""}${this.out.join("\n")}${close}\n</svg>\n`;
@@ -913,7 +976,7 @@ function buildSvg() {
 
 /* ---------- pages & booklets ---------- */
 const GENS = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku"];
-const GEN_NAMES = { mandala: "Mandala", maze: "Maze", truchet: "Woven tiles", contour: "Contours", flow: "Flow lines", dots: "Dot-to-dot", sudoku: "Sudoku" };
+const GEN_NAMES = { mandala: "Mandala", maze: "Maze", truchet: "Woven tiles", contour: "Contours", flow: "Flow lines", dots: "Dot-to-dot", sudoku: "Sudoku", name: "Name page" };   // "name" stays out of GENS: a mixed booklet shouldn't repeat one word
 const HAS_ANSWER = gen => gen === "maze" || gen === "dots" || gen === "sudoku";   // puzzles that get a solution in booklet answer pages
 const FONT = '"Cantarell", "Noto Sans", "Inter", sans-serif';
 const inset = (b, p) => ({ x: b.x + p, y: b.y + p, w: b.w - 2 * p, h: b.h - 2 * p });
@@ -951,6 +1014,7 @@ function drawDesign(ctx, g, box, gen, seed, c, lw, opts) {
   else if (gen === "contour") genContour(ctx, box, rnd, c, lw, g.dpi, seed);
   else if (gen === "dots") return genDots(ctx, box, rnd, c, lw, g, opts);
   else if (gen === "sudoku") return genSudoku(ctx, box, rnd, c, lw, g, opts);
+  else if (gen === "name") return genName(ctx, g, box, c, lw, seed);
   else genFlow(ctx, box, rnd, c, seed);
 }
 
@@ -1159,6 +1223,7 @@ function syncOutputs() {
   $("zoom-o").textContent = v("zoom") + "%";
   page.classList.toggle("pannable", S.mode === "convert" && !!S.img);
   $("book-opts").hidden = !v("booklet");
+  $("name-opts").hidden = v("gen") !== "name";
   $("poster-opts").hidden = !v("poster");
   $("pbook-opts").hidden = !v("photobook");
   syncButtons();
@@ -1411,6 +1476,7 @@ const BUILTIN_PRESETS = {
   "Colouring page, bold lines": { mode: "make", gen: "mandala", complexity: 5, weight: 7, frame: false, booklet: false, poster: false },
   "Classroom maze worksheet": { mode: "make", gen: "maze", complexity: 4, weight: 4, title: "Maze time", nameLine: true, booklet: false, poster: false },
   "Maze booklet with answers": { mode: "make", gen: "maze", booklet: true, pages: 10, ramp: true, mix: false, cover: true, pageNums: true, key: true, poster: false },
+  "Name colouring page": { mode: "make", gen: "name", nameBg: "flow", complexity: 3, weight: 5, frame: false, booklet: false, poster: false },
   "Sudoku booklet with answers": { mode: "make", gen: "sudoku", booklet: true, pages: 10, ramp: true, mix: false, cover: true, pageNums: true, key: true, poster: false },
   "Dot-to-dot booklet with answers": { mode: "make", gen: "dots", booklet: true, pages: 8, ramp: true, mix: false, cover: true, pageNums: true, key: true, poster: false, weight: 4 },
   "Newspaper halftone photo": { mode: "convert", style: "halftone", dot: 3, contrast: 120, brightness: 0, invert: false },

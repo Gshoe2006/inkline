@@ -305,14 +305,17 @@ def selftest(win, outdir):
 
     # a hung step (e.g. a promise that never resolves) must still end the run
     QTimer.singleShot(8 * 60 * 1000, lambda: (fail("whole run took longer than 8 minutes"), finish()))
-    steps = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "convert"]
+    steps = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "name", "convert"]
 
     def run(i=0):
         if i == len(steps):
             sudoku_proof()
             return
         name = steps[i]
-        js = ("setMode('convert');" if name == "convert" else f"setMode('make'); $('gen').value='{name}';") + " 0"
+        js = ("setMode('convert');" if name == "convert" else f"setMode('make'); $('gen').value='{name}';")
+        if name == "name":   # outlined text over a real pattern, so the SVG check sees both
+            js += " $('nameText').value='Inkline 2.2'; $('nameBg').value='flow';"
+        js += " 0"
         page.runJavaScript(js, lambda _r: QTimer.singleShot(1500, lambda: grab(i)))
 
     def grab(i):
