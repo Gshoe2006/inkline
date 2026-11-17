@@ -1066,17 +1066,18 @@ function syncOutputs() {
 }
 
 /* ---------- inputs ---------- */
-document.querySelectorAll("aside input, aside select").forEach(el => el.addEventListener("input", () => { syncOutputs(); schedule(); }));
+document.querySelectorAll("aside input, aside select").forEach(el => el.addEventListener("input", () => { syncOutputs(); schedule(); rememberSettings(); }));
 function setMode(m) {
   S.mode = m; $("tab-make").setAttribute("aria-selected", m === "make"); $("tab-convert").setAttribute("aria-selected", m === "convert");
   $("panel-make").hidden = m !== "make"; $("panel-convert").hidden = m !== "convert";
   syncButtons();
   $("save-svg").title = m === "make" ? "Vector lines for Inkscape, Cricut, Silhouette or laser cutters" : "Photos are made of pixels, so they save as PNG or PDF";
   if (m === "convert" && !S.img) loadSample(); else schedule();
+  rememberSettings();
 }
 $("tab-make").onclick = () => setMode("make");
 $("tab-convert").onclick = () => setMode("convert");
-$("reroll").onclick = () => { S.seed = (Math.random() * 1e9) | 0; syncOutputs(); schedule(); };
+$("reroll").onclick = () => { S.seed = (Math.random() * 1e9) | 0; syncOutputs(); schedule(); rememberSettings(); };
 function resetCrop() { S.rot = 0; $("zoom").value = 100; $("panx").value = 0; $("pany").value = 0; syncOutputs(); }
 $("rotl").onclick = () => { S.rot = ((S.rot || 0) + 270) % 360; schedule(); };
 $("rotr").onclick = () => { S.rot = ((S.rot || 0) + 90) % 360; schedule(); };
@@ -1355,7 +1356,38 @@ function fillPresetMenu(selected = "") {
   sel.value = selected; $("presetDel").disabled = !selected.startsWith("s:");
 }
 
-async function initPresets() { S.presets = await presetStore.load(); fillPresetMenu(); }
+/* ---------- remember last settings ----------
+   Every change is saved (debounced) with the design's seed; the next start restores it. Saving starts only
+   after the restore, so the defaults never overwrite what was remembered. "Start fresh" undoes it. */
+const settingsStore = {
+  async load() {
+    if (bridge) { try { return JSON.parse(await call("loadLastSettings")) || {}; } catch { return {}; } }
+    try { return JSON.parse(localStorage.getItem("inkline-last") || "{}"); } catch { return {}; }
+  },
+  async save(obj) {
+    const txt = JSON.stringify(obj);
+    if (bridge) return call("saveLastSettings", txt);
+    try { localStorage.setItem("inkline-last", txt); return "ok"; } catch { return "ok"; }
+  },
+};
+let rememberTimer = 0;
+function rememberSettings() {
+  if (!S.restored) return;
+  clearTimeout(rememberTimer);
+  rememberTimer = setTimeout(() => settingsStore.save({ ...capturePreset(), seed: S.seed }), 400);
+}
+
+async function initPresets() {
+  S.presets = await presetStore.load(); fillPresetMenu();
+  const last = await settingsStore.load();
+  if (last && Object.keys(last).length) {
+    const { seed, ...rest } = last;
+    if (Number.isFinite(seed)) S.seed = seed >>> 0;
+    applyPreset(rest);
+    msg("Reopened with your last settings. Presets → Start fresh resets them.");
+  }
+  S.restored = true;
+}
 
 $("preset").addEventListener("change", () => {
   const v_ = $("preset").value; $("presetDel").disabled = !v_.startsWith("s:");
@@ -1381,6 +1413,8 @@ $("presetDel").onclick = async () => {
   if (r !== "ok") { msg(r); return; }
   S.presets = next; fillPresetMenu(); msg(`Deleted preset “${name}”.`);
 };
+
+BUILTIN_PRESETS["Start fresh (defaults)"] = capturePreset();   // the out-of-the-box settings, taken before any restore
 
 // The desktop shell injects qwebchannel.js before this page runs.
 if (window.qt && window.qt.webChannelTransport && typeof QWebChannel === "function") {

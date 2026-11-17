@@ -35,6 +35,32 @@ def config_dir():
     return os.environ.get("INKLINE_CONFIG_DIR") or os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "inkline")
 
 
+def read_config(name):
+    """A JSON object from the config folder, or {} if it's missing or unreadable."""
+    try:
+        with open(os.path.join(config_dir(), name), encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def write_config(name, payload, what):
+    """Write a JSON object to the config folder atomically (temp file + rename). Returns "ok" or a message."""
+    try:
+        data = json.loads(payload)
+        if not isinstance(data, dict):
+            return f"{what} weren't in the expected format."
+        os.makedirs(config_dir(), exist_ok=True)
+        path = os.path.join(config_dir(), name)
+        with open(path + ".tmp", "w", encoding="utf-8") as f:   # a crash never leaves half a file
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        os.replace(path + ".tmp", path)
+        return "ok"
+    except (OSError, ValueError):
+        return f"Couldn't save {what.lower()} to {config_dir()}. Check the folder permissions."
+
+
 PAPER_IDS = {"letter": QPageSize.PageSizeId.Letter, "a4": QPageSize.PageSizeId.A4}
 
 
@@ -71,9 +97,10 @@ def write_pdf(img, path, job):
 class Bridge(QObject):
     """Exposed to the page as `inkline` through QWebChannel."""
 
-    def __init__(self, window, test_mode=False):
+    def __init__(self, window, test_mode=False, remember=True):
         super().__init__()
         self.window = window
+        self.remember = remember
         self.test_mode = test_mode     # only the headless self-test may pass a save path from the page
         self.book = None
         self.last_dir = os.path.expanduser("~/Pictures") if os.path.isdir(os.path.expanduser("~/Pictures")) else os.path.expanduser("~")
@@ -136,27 +163,20 @@ class Bridge(QObject):
     # --- presets, kept as JSON in the config folder ---
     @Slot(result=str)
     def loadPresets(self):
-        try:
-            with open(os.path.join(config_dir(), "presets.json"), encoding="utf-8") as f:
-                data = json.load(f)
-            return json.dumps(data if isinstance(data, dict) else {})
-        except (OSError, ValueError):
-            return "{}"
+        return json.dumps(read_config("presets.json"))
 
     @Slot(str, result=str)
     def savePresets(self, payload):
-        try:
-            data = json.loads(payload)
-            if not isinstance(data, dict):
-                return "Presets weren't in the expected format."
-            os.makedirs(config_dir(), exist_ok=True)
-            path = os.path.join(config_dir(), "presets.json")
-            with open(path + ".tmp", "w", encoding="utf-8") as f:   # write then rename, so a crash never leaves half a file
-                json.dump(data, f, indent=2, ensure_ascii=False)
-            os.replace(path + ".tmp", path)
-            return "ok"
-        except (OSError, ValueError):
-            return f"Couldn't save presets to {config_dir()}. Check the folder permissions."
+        return write_config("presets.json", payload, "Presets")
+
+    # --- last settings, restored at startup (never during the self-test, whose output must not depend on them) ---
+    @Slot(result=str)
+    def loadLastSettings(self):
+        return json.dumps(read_config("last-settings.json")) if self.remember else "{}"
+
+    @Slot(str, result=str)
+    def saveLastSettings(self, payload):
+        return write_config("last-settings.json", payload, "Settings") if self.remember else "ok"
 
     # --- multi-page booklets: the page streams pages one at a time between begin and end ---
     @Slot(str, result=str)
@@ -236,7 +256,7 @@ class ConsolePage(QWebEnginePage):
 
 
 class Window(QMainWindow):
-    def __init__(self, test_mode=False):
+    def __init__(self, test_mode=False, remember=True):
         super().__init__()
         self.setWindowTitle(f"Inkline {APP_VERSION}")
         self.resize(1280, 860)
@@ -256,7 +276,7 @@ class Window(QMainWindow):
             self.view.page().scripts().insert(script)
             f.close()
 
-        self.bridge = Bridge(self, test_mode)
+        self.bridge = Bridge(self, test_mode, remember)
         self.channel = QWebChannel(self)
         self.channel.registerObject("inkline", self.bridge)
         self.view.page().setWebChannel(self.channel)
@@ -396,7 +416,7 @@ def main():
     if os.path.exists(icon):
         app.setWindowIcon(QIcon(icon))
     testing = len(sys.argv) > 2 and sys.argv[1] == "--selftest"
-    win = Window(test_mode=testing)
+    win = Window(test_mode=testing, remember=not testing)
     if testing:
         selftest(win, sys.argv[2])
     else:
