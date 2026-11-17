@@ -39,6 +39,7 @@ aside { width: 330px; flex: none; background: var(--panel); border-right: 1px so
 .brand { padding: 18px 20px 14px; border-bottom: 1px solid var(--line); display: flex; align-items: baseline; gap: 10px; }
 .brand h1 { font: 700 20px/1 var(--font-head); margin: 0; letter-spacing: -0.01em; }
 .brand span { color: var(--muted); font-size: 12px; }
+.brand .ver { margin-left: auto; font: 11px var(--font-mono); }
 .scroll { overflow-y: auto; flex: 1; padding: 14px 20px 20px; display: flex; flex-direction: column; gap: 18px; }
 
 .tabs { display: grid; grid-template-columns: 1fr 1fr; background: var(--field); border: 1px solid var(--line); border-radius: 8px; padding: 3px; gap: 3px; }
@@ -110,7 +111,7 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; background:
 </head>
 <body>
 <aside>
-  <div class="brand"><h1>Inkline</h1><span>black &amp; white for print</span></div>
+  <div class="brand"><h1>Inkline</h1><span>black &amp; white for print</span><span class="ver" id="ver"></span></div>
   <div class="scroll">
     <div class="tabs" role="tablist">
       <button id="tab-make" role="tab" aria-selected="true">Make one up</button>
@@ -1383,7 +1384,11 @@ $("presetDel").onclick = async () => {
 
 // The desktop shell injects qwebchannel.js before this page runs.
 if (window.qt && window.qt.webChannelTransport && typeof QWebChannel === "function") {
-  new QWebChannel(qt.webChannelTransport, ch => { bridge = ch.objects.inkline; initPresets(); });
+  new QWebChannel(qt.webChannelTransport, ch => {
+    bridge = ch.objects.inkline;
+    bridge.version(ver => { $("ver").textContent = ver === "dev" ? "dev build" : `v${ver}`; $("ver").title = `Inkline ${ver}`; });
+    initPresets();
+  });
 } else initPresets();
 
 syncOutputs(); render();

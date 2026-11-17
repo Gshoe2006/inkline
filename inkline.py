@@ -18,6 +18,18 @@ from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import QApplication, QFileDialog, QMainWindow
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+
+
+def app_version():
+    """The VERSION file shipped next to this script (installed by both installers), or "dev"."""
+    try:
+        with open(os.path.join(HERE, "VERSION"), encoding="utf-8") as f:
+            return f.read().strip() or "dev"
+    except OSError:
+        return "dev"
+
+
+APP_VERSION = app_version()
 def config_dir():
     """Where saved presets live: $INKLINE_CONFIG_DIR (used by the self-test), else ~/.config/inkline."""
     return os.environ.get("INKLINE_CONFIG_DIR") or os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "inkline")
@@ -116,6 +128,10 @@ class Bridge(QObject):
             ok = painter.end()
             return "Sent to the printer." if ok else "The printer didn't accept the job. Check that it's connected."
         return "Unknown request."
+
+    @Slot(result=str)
+    def version(self):
+        return APP_VERSION
 
     # --- presets, kept as JSON in the config folder ---
     @Slot(result=str)
@@ -222,7 +238,7 @@ class ConsolePage(QWebEnginePage):
 class Window(QMainWindow):
     def __init__(self, test_mode=False):
         super().__init__()
-        self.setWindowTitle("Inkline")
+        self.setWindowTitle(f"Inkline {APP_VERSION}")
         self.resize(1280, 860)
         self.view = QWebEngineView(self)
         if test_mode:
