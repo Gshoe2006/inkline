@@ -73,6 +73,16 @@ class Bridge(QObject):
     @Slot(str, result=str)
     def request(self, payload):
         job = json.loads(payload)
+        if job["kind"] == "svg":
+            path = self._ask_path("Save SVG", job["name"], "svg", "SVG vector image (*.svg)")
+            if not path:
+                return "Save cancelled."
+            try:
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(job["svg"])
+            except OSError:
+                return f"Couldn't write {path}. Check the folder permissions."
+            return f"Saved {os.path.basename(path)}"
         img = QImage.fromData(base64.b64decode(job["png"]), "PNG")
         if img.isNull():
             return "The image couldn't be prepared. Try again."
@@ -228,7 +238,15 @@ def selftest(win, outdir):
         write_png(img, os.path.join(outdir, f"{name}.png"), job["dpi"])
         write_pdf(img, os.path.join(outdir, f"{name}.pdf"), job)
         print(f"selftest: {name} {img.width()}x{img.height()}")
-        run(i + 1)
+        if name == "convert":
+            run(i + 1)
+            return
+
+        def wrote_svg(svg):
+            with open(os.path.join(outdir, f"{name}.svg"), "w", encoding="utf-8") as f:
+                f.write(svg)
+            run(i + 1)
+        page.runJavaScript("buildSvg()", wrote_svg)
 
     def booklet():
         path = os.path.join(outdir, "booklet.pdf")
@@ -244,8 +262,13 @@ def selftest(win, outdir):
                 QTimer.singleShot(500, poll)
                 return
             print(f"selftest: booklet -> {r}")
-            print("selftest: done")
-            QApplication.quit()
+
+            def wrote(svg):
+                with open(os.path.join(outdir, "answers.svg"), "w", encoding="utf-8") as f:
+                    f.write(svg)
+                print("selftest: done")
+                QApplication.quit()
+            page.runJavaScript("S.bookPage = 999; render(); buildSvg()", wrote)
         page.runJavaScript("window.__book || null", got)
 
     win.view.loadFinished.connect(lambda ok: QTimer.singleShot(800, run) if ok else (print("selftest: load failed"), QApplication.quit()))
