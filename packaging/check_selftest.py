@@ -18,7 +18,9 @@ PDF_PAGES = {**{n: 1 for n in PATTERNS + ["convert", "testpage"]},
              "booklet": 9,                 # cover + 6 mazes + 2 answer pages
              "poster-mandala-2x2": 4,
              "poster-photo-3x3": 9,
-             "photobook": 4}               # cover + 3 photos
+             "photobook": 4,               # cover + 3 photos
+             "booklet-fold": 6}            # the same booklet folded: 12 pages -> 3 sheets -> 6 sides
+PDF_SIZE = {"booklet-fold": "792 x 612"}   # landscape sheets; everything else is portrait Letter
 SVGS = PATTERNS + ["answers"]
 
 
@@ -53,8 +55,9 @@ def main(d):
             pages, size = pdf_info(p)
             if pages != want:
                 problems.append(f"{n}.pdf has {pages} pages, expected {want}")
-            if not size.startswith("612 x 792"):
-                problems.append(f"{n}.pdf page size is '{size}', expected Letter (612 x 792 pts)")
+            want_size = PDF_SIZE.get(n, "612 x 792")
+            if not size.startswith(want_size):
+                problems.append(f"{n}.pdf page size is '{size}', expected {want_size} pts")
         except (OSError, subprocess.CalledProcessError, KeyError, ValueError) as e:
             problems.append(f"{n}.pdf: couldn't read it ({e})")
     for n in SVGS:

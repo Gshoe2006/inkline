@@ -203,6 +203,8 @@ class Bridge(QObject):
             device.setFullPage(True)
             device.setDocName(job["name"])
             device.setColorMode(QPrinter.ColorMode.GrayScale)
+            if job.get("duplex") == "short":   # fold-and-staple books: double-sided, flipping on the short edge
+                device.setDuplex(QPrinter.DuplexMode.DuplexShortSide)
             if QPrintDialog(device, self.window).exec() != QPrintDialog.DialogCode.Accepted:
                 return "Print cancelled."
             painter = QPainter(device)
@@ -431,8 +433,31 @@ def selftest(win, outdir):
                 fail("answers page: SVG export was empty")
             with open(os.path.join(outdir, "answers.svg"), "w", encoding="utf-8") as f:
                 f.write(svg or "")
-            poster_design()
+            fold_booklet()
         page.runJavaScript("S.bookPage = 999; render(); buildSvg()", wrote)
+
+    def fold_booklet():
+        """Fold-and-staple order: the formula must match a simulated fold for every book size, then the
+        same 9-page booklet is saved as a folded book (12 pages with blanks -> 3 sheets -> 6 landscape sides)."""
+        proof = r"""(() => {
+          for (let n = 4; n <= 40; n += 4) {
+            const sides = foldOrder(n), read = [];
+            for (let s = 0; s < n / 4; s++) read.push(sides[2 * s].right, sides[2 * s + 1].left);
+            for (let s = n / 4 - 1; s >= 0; s--) read.push(sides[2 * s + 1].right, sides[2 * s].left);
+            if (read.join() !== [...Array(n).keys()].join()) return "BAD reading order for " + n + " pages: " + read.map(i => i + 1).join(",");
+          }
+          return "OK books of 4-40 pages read in order";
+        })()"""
+
+        def proved(r):
+            print(f"selftest: fold proof -> {r}")
+            if not str(r).startswith("OK"):
+                fail(f"fold proof: {r}")
+            path = os.path.join(outdir, "booklet-fold.pdf")
+            js = ("$('fold').checked = true; $('fold').dispatchEvent(new Event('input')); syncOutputs();"
+                  f"runBook('pdf', {json.dumps(path)}).then(r => {{ $('fold').checked = false; syncOutputs(); window.__job = r; }})")
+            wait_for(js, "fold booklet", poster_design)
+        page.runJavaScript(proof, proved)
 
     def poster_design():
         path = os.path.join(outdir, "poster-mandala-2x2.pdf")
