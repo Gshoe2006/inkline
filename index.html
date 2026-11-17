@@ -77,6 +77,7 @@ input[type="text"], input[type="number"] { font: 13px var(--font-ui); color: var
 
 .foot { border-top: 1px solid var(--line); padding: 14px 20px; display: flex; flex-direction: column; gap: 8px; }
 .foot .pair { gap: 8px; }
+.trio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 #msg { font-size: 12px; color: var(--muted); min-height: 1.4em; }
 
 main { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--table); }
@@ -138,7 +139,7 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; background:
         <label class="check"><input type="checkbox" id="pageNums" checked> Page numbers</label>
         <label class="check"><input type="checkbox" id="key" checked> Answer pages for mazes</label>
         <div class="pager"><button class="btn" id="prev" aria-label="Previous page">‹</button><span id="pagepos"></span><button class="btn" id="next" aria-label="Next page">›</button></div>
-        <p class="hint">Save PDF and Print use every page. Save PNG saves the page shown.</p>
+        <p class="hint">PDF and Print use every page. PNG and SVG save the page shown.</p>
       </div>
     </fieldset>
     </div>
@@ -183,7 +184,7 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; background:
   </div>
   <div class="foot">
     <button class="btn primary" id="print">Print…</button>
-    <div class="pair"><button class="btn" id="save-png">Save PNG</button><button class="btn" id="save-pdf">Save PDF</button></div>
+    <div class="trio"><button class="btn" id="save-png">PNG</button><button class="btn" id="save-pdf">PDF</button><button class="btn" id="save-svg" title="Vector lines for Inkscape, Cricut, Silhouette or laser cutters">SVG</button></div>
     <div id="msg" role="status"></div>
   </div>
 </aside>
@@ -459,6 +460,79 @@ function convert(ctx, box) {
 }
 
 /* ---------- render ---------- */
+/* ---------- SVG export ----------
+   A stand-in for CanvasRenderingContext2D that records the drawing calls the generators make as
+   vector paths. The same drawPage() code runs on it, so SVG output matches the canvas preview. */
+const fx = n => +n.toFixed(2);
+const isWhite = c => /^(#fff|#ffffff|white)$/i.test(String(c).trim());
+const escXml = t => String(t).replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]);
+
+class SvgCtx {
+  constructor(W, H, wIn, hIn) {
+    this.head = `<svg xmlns="http://www.w3.org/2000/svg" width="${wIn}in" height="${hIn}in" viewBox="0 0 ${W} ${H}">`;
+    this.out = []; this.defs = []; this.d = []; this.cur = null; this.start = null; this.clipN = 0; this.stack = [];
+    this.st = { lineWidth: 1, strokeStyle: "#000", fillStyle: "#000", lineCap: "butt", lineJoin: "miter", font: "10px sans-serif", textAlign: "start", textBaseline: "alphabetic", groups: 0 };
+    this.meas = document.createElement("canvas").getContext("2d");   // real canvas, only for text widths
+  }
+  setTransform() {}                                   // pages always draw with the identity transform
+  beginPath() { this.d = []; this.cur = null; }
+  moveTo(x, y) { this.d.push(`M${fx(x)} ${fx(y)}`); this.cur = this.start = [x, y]; }
+  lineTo(x, y) { if (!this.cur) return this.moveTo(x, y); this.d.push(`L${fx(x)} ${fx(y)}`); this.cur = [x, y]; }
+  quadraticCurveTo(cx, cy, x, y) { if (!this.cur) this.moveTo(cx, cy); this.d.push(`Q${fx(cx)} ${fx(cy)} ${fx(x)} ${fx(y)}`); this.cur = [x, y]; }
+  bezierCurveTo(a, b, c, e, x, y) { if (!this.cur) this.moveTo(a, b); this.d.push(`C${fx(a)} ${fx(b)} ${fx(c)} ${fx(e)} ${fx(x)} ${fx(y)}`); this.cur = [x, y]; }
+  closePath() { this.d.push("Z"); if (this.start) this.cur = [...this.start]; }
+  rect(x, y, w, h) { this.moveTo(x, y); this.d.push(`H${fx(x + w)}V${fx(y + h)}H${fx(x)}Z`); }
+  arc(x, y, r, a0, a1, ccw = false) {   // same angle rules as canvas: >= one full turn draws a whole circle
+    const P = a => [x + r * Math.cos(a), y + r * Math.sin(a)], [sx, sy] = P(a0), TAU = 2 * Math.PI, sw = ccw ? 0 : 1;
+    this.cur ? this.lineTo(sx, sy) : this.moveTo(sx, sy);
+    let delta = ccw ? a0 - a1 : a1 - a0;
+    if (delta >= TAU - 1e-9) {          // SVG can't draw a full circle in one arc, so use two halves
+      const [mx, my] = P(a0 + (ccw ? -Math.PI : Math.PI));
+      this.d.push(`A${fx(r)} ${fx(r)} 0 1 ${sw} ${fx(mx)} ${fx(my)}A${fx(r)} ${fx(r)} 0 1 ${sw} ${fx(sx)} ${fx(sy)}`);
+      this.cur = [sx, sy]; return;
+    }
+    delta = ((delta % TAU) + TAU) % TAU;
+    const [ex, ey] = P(a0 + (ccw ? -delta : delta));
+    this.d.push(`A${fx(r)} ${fx(r)} 0 ${delta > Math.PI ? 1 : 0} ${sw} ${fx(ex)} ${fx(ey)}`); this.cur = [ex, ey];
+  }
+  strokeAttrs() { const s = this.st; return `fill="none" stroke="${s.strokeStyle}" stroke-width="${fx(s.lineWidth)}" stroke-linecap="${s.lineCap}" stroke-linejoin="${s.lineJoin}"`; }
+  stroke() { if (this.d.length) this.out.push(`<path d="${this.d.join("")}" ${this.strokeAttrs()}/>`); }
+  fill() { if (this.d.length && !isWhite(this.st.fillStyle)) this.out.push(`<path d="${this.d.join("")}" fill="${this.st.fillStyle}"/>`); }
+  fillRect(x, y, w, h) { if (!isWhite(this.st.fillStyle)) this.out.push(`<rect x="${fx(x)}" y="${fx(y)}" width="${fx(w)}" height="${fx(h)}" fill="${this.st.fillStyle}"/>`); }
+  strokeRect(x, y, w, h) { this.out.push(`<rect x="${fx(x)}" y="${fx(y)}" width="${fx(w)}" height="${fx(h)}" ${this.strokeAttrs()}/>`); }
+  clip() {
+    const id = `clip${this.clipN++}`;
+    this.defs.push(`<clipPath id="${id}"><path d="${this.d.join("")}"/></clipPath>`);
+    this.out.push(`<g clip-path="url(#${id})">`); this.st.groups++;
+  }
+  save() { this.stack.push(this.st); this.st = { ...this.st, groups: 0 }; }
+  restore() { for (let i = 0; i < this.st.groups; i++) this.out.push("</g>"); if (this.stack.length) this.st = this.stack.pop(); }
+  measureText(t) { this.meas.font = this.st.font; return this.meas.measureText(t); }
+  fillText(t, x, y, maxW) {
+    const s = this.st, m = /^(?:(\d+)\s+)?([\d.]+)px\s+(.*)$/.exec(s.font) || [, 400, 10, "sans-serif"];
+    const anchor = { left: "start", start: "start", center: "middle", right: "end", end: "end" }[s.textAlign] || "start";
+    const squeeze = maxW && this.measureText(t).width > maxW ? ` textLength="${fx(maxW)}" lengthAdjust="spacingAndGlyphs"` : "";
+    this.out.push(`<text x="${fx(x)}" y="${fx(y)}" font-family="${m[3].replace(/"/g, "'")}" font-size="${fx(+m[2])}" font-weight="${m[1] || 400}" fill="${s.fillStyle}" text-anchor="${anchor}"${squeeze}>${escXml(t)}</text>`);
+  }
+  toString() {
+    let close = ""; for (let st = this.st, i = this.stack.length; ; st = this.stack[--i]) { close += "</g>".repeat(st.groups); if (i === 0) break; }
+    return `${this.head}\n<title>Inkline</title>\n${this.defs.length ? `<defs>${this.defs.join("")}</defs>\n` : ""}${this.out.join("\n")}${close}\n</svg>\n`;
+  }
+}
+
+// Style properties live in the save()/restore() state, like a real canvas context's.
+for (const k of ["lineWidth", "strokeStyle", "fillStyle", "lineCap", "lineJoin", "font", "textAlign", "textBaseline"])
+  Object.defineProperty(SvgCtx.prototype, k, { get() { return this.st[k]; }, set(v) { this.st[k] = v; } });
+SvgCtx.prototype.imageSmoothingEnabled = true;   // accepted and ignored
+
+// The page that's showing (single design, or the current booklet page) as a print-size SVG document.
+function buildSvg() {
+  const g = geometry(), ctx = new SvgCtx(g.W, g.H, g.w, g.h);
+  if (isBook()) { const pages = bookPages(); drawPage(ctx, g, pages[Math.min(S.bookPage, pages.length - 1)]); }
+  else drawPage(ctx, g, singlePage());
+  return ctx.toString();
+}
+
 /* ---------- pages & booklets ---------- */
 const GENS = ["mandala", "maze", "truchet", "contour", "flow"];
 const GEN_NAMES = { mandala: "Mandala", maze: "Maze", truchet: "Woven tiles", contour: "Contours", flow: "Flow lines" };
@@ -593,6 +667,8 @@ document.querySelectorAll("aside input, aside select").forEach(el => el.addEvent
 function setMode(m) {
   S.mode = m; $("tab-make").setAttribute("aria-selected", m === "make"); $("tab-convert").setAttribute("aria-selected", m === "convert");
   $("panel-make").hidden = m !== "make"; $("panel-convert").hidden = m !== "convert";
+  $("save-svg").disabled = m !== "make";
+  $("save-svg").title = m === "make" ? "Vector lines for Inkscape, Cricut, Silhouette or laser cutters" : "Photos are made of pixels, so they save as PNG or PDF";
   if (m === "convert" && !S.img) loadSample(); else schedule();
 }
 $("tab-make").onclick = () => setMode("make");
@@ -653,7 +729,7 @@ async function runBook(kind, testPath = "") {
   if (kind === "print") msg("Opening the print dialog…");
   const r = await call("bookBegin", JSON.stringify(meta));
   if (r !== "ok") { msg(r); return r; }
-  S.bookBusy = true; ["print", "save-png", "save-pdf"].forEach(id => $(id).disabled = true);
+  S.bookBusy = true; ["print", "save-png", "save-pdf", "save-svg"].forEach(id => $(id).disabled = true);
   const off = document.createElement("canvas"); off.width = g.W; off.height = g.H;
   const octx = off.getContext("2d");
   try {
@@ -668,10 +744,17 @@ async function runBook(kind, testPath = "") {
   } catch (e) {
     await call("bookAbort"); msg("The booklet couldn't be finished: " + e.message); return "error";
   } finally {
-    S.bookBusy = false; ["print", "save-png", "save-pdf"].forEach(id => $(id).disabled = false);
+    S.bookBusy = false; ["print", "save-png", "save-pdf", "save-svg"].forEach(id => $(id).disabled = false);
   }
 }
 
+function saveSvg() {
+  if (S.mode !== "make") { msg("Photos are made of pixels, so they save as PNG or PDF. SVG is for Make one up designs."); return; }
+  const name = baseName() + (isBook() ? `-page${S.bookPage + 1}` : ""), svg = buildSvg();
+  if (bridge) { bridge.request(JSON.stringify({ kind: "svg", name, svg }), r => msg(r)); return; }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" })); a.download = name + ".svg"; a.click();
+}
+$("save-svg").onclick = saveSvg;
 $("save-png").onclick = () => bridge ? bridge.request(job("png"), r => msg(r)) : browserDownload("png");
 $("save-pdf").onclick = () => isBook() ? runBook("pdf") : bridge ? bridge.request(job("pdf"), r => msg(r)) : browserDownload("pdf");
 $("print").onclick = () => isBook() ? runBook("print") : bridge ? (msg("Opening the print dialog…"), bridge.request(job("print"), r => msg(r))) : browserDownload("pdf");
