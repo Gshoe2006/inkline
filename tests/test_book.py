@@ -98,3 +98,49 @@ def test_booklet_pdfs(tmp_path):
         doc.load(str(tmp_path / name))
         size = doc.pagePointSize(0)
         assert doc.pageCount() == pages and (round(size.width()), round(size.height())) == (w, h)
+
+
+PHOTO_BOOKS = load_fixture("photobook")
+
+
+@pytest.mark.parametrize("k", PHOTO_BOOKS, ids=lambda k: f"{k['n']}photos{'-cover' if k['cover'] else ''}{'-numbers' if k['nums'] else ''}")
+def test_photo_book_matches_javascript(k, monkeypatch):
+    """The page list and the cover's and last page's text; the photos themselves aren't drawn here."""
+    from inkengine import page as page_mod, photo
+    monkeypatch.setattr(photo, "convert", lambda *a, **kw: None)
+    s = Settings(mode="convert", style="threshold", dpi=150, pcover=k["cover"], ppage_nums=k["nums"], title=k["title"],
+                 name_line=k["nameLine"])
+    photos = [photo.Photo(None, name=f"p{i}") for i in range(k["n"])]
+    pages = book.photo_book_pages(s, photos)
+    assert [(p.kind, p.page_no, bool(p.header), p.title, p.name) for p in pages] == \
+           [(q["kind"], q["pageNo"], q["header"], q["title"], q["name"]) for q in k["pages"]]
+    assert [photos.index(p.photo) for p in pages] == [int(q["photo"][2:]) for q in k["pages"]]
+    g = geometry(s)
+
+    def texts(spec):
+        ctx = RecordingCanvas(em_per_char=0.55)
+        draw_page(ctx, g, spec, s)
+        return [o for o in ctx.ops if o[0] == "text"]
+
+    if k["coverText"]:
+        same_ops(texts(pages[0]), k["coverText"])
+    same_ops(texts(pages[-1]), k["firstPageText"])
+
+
+def test_photo_book_pdf(tmp_path):
+    from PySide6.QtGui import QColor, QImage
+    from PySide6.QtPdf import QPdfDocument
+    from inkengine import photo
+    from inkengine.qt import ensure_app
+    ensure_app()
+    photos = []
+    for i in range(3):
+        img = QImage(120, 90, QImage.Format.Format_ARGB32)
+        img.fill(QColor(60 * i, 120, 200))
+        photos.append(photo.Photo(img))
+    s = Settings(mode="convert", style="threshold", dpi=150, title="Three")
+    assert output.write_book_pdf(tmp_path / "b.pdf", s, photos) == 4          # cover and three photo pages
+    assert output.write_book_pdf(tmp_path / "f.pdf", Settings(mode="convert", dpi=150, fold=True), photos) == 2
+    doc = QPdfDocument()
+    doc.load(str(tmp_path / "b.pdf"))
+    assert doc.pageCount() == 4

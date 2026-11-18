@@ -61,12 +61,12 @@ def write_pdf(path, s, specs=None):
         p.end()
 
 
-def write_book_pdf(path, s):
-    """A whole booklet as one PDF: a page per page, or for a fold-and-staple book (s.fold) one landscape
-    sheet side per PDF page, to print double-sided (flip on the short edge)."""
-    from .book import book_pages, draw_fold_side, fold_order, fold_pages, sheet_geometry
+def write_book_pdf(path, s, photos=None):
+    """A whole booklet, or with photos a photo book, as one PDF: a page per page, or for a fold-and-staple
+    book (s.fold) one landscape sheet side per PDF page, to print double-sided (flip on the short edge)."""
+    from .book import book_pages, draw_fold_side, fold_order, fold_pages, photo_book_pages, sheet_geometry
     ensure_app()
-    pages = book_pages(s)
+    pages = photo_book_pages(s, photos) if photos else book_pages(s)
     if s.fold:
         pages = fold_pages(pages)
         g = sheet_geometry(s)
@@ -75,7 +75,7 @@ def write_book_pdf(path, s):
         g = geometry(s)
     pdf = QPdfWriter(str(path))
     pdf.setCreator("Inkline")
-    pdf.setTitle(s.title.strip() or "Inkline booklet")
+    pdf.setTitle(s.title.strip() or ("Inkline photo book" if photos else "Inkline booklet"))
     pdf.setResolution(g.dpi)
     pdf.setPageLayout(_page_layout(g))
     p = QPainter()
