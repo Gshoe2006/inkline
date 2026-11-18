@@ -200,10 +200,20 @@ class Renderer(QObject):
             from inkengine import photo as photo_mod
             photo_mod.set_on_convert(self.converting.emit)   # this worker thread's own hook
             try:
-                self.finished.emit(n, fn())
+                result = fn()
+                try:
+                    self.finished.emit(n, result)
+                except RuntimeError:   # the window closed while this was drawing
+                    return
             except Exception:   # noqa: BLE001 — reported in the status line, never a crash
                 traceback.print_exc()   # the details, for a bug report
-                self.failed.emit(n, traceback.format_exc(limit=1).strip().splitlines()[-1])
+                try:
+                    self.failed.emit(n, traceback.format_exc(limit=1).strip().splitlines()[-1])
+                except RuntimeError:
+                    return
             finally:
                 photo_mod.set_on_convert(None)
-        self.busy.emit(False)
+        try:
+            self.busy.emit(False)
+        except RuntimeError:
+            pass
