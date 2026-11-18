@@ -119,3 +119,11 @@ def test_photo_and_test_page_outputs(tmp_path):
     doc.load(str(tmp_path / "t.pdf"))
     size = doc.pagePointSize(0)
     assert doc.pageCount() == 1 and (round(size.width()), round(size.height())) == (612, 792)   # always portrait
+
+
+def test_settings_read_2x_presets_with_text_values():
+    s = Settings.from_dict({"mode": "make", "gen": "maze", "complexity": "4", "overlap": "0.25", "booklet": True,
+                            "pageNums": "false", "mazeShape": "word", "testpage": False, "weight": "x"})
+    assert (s.complexity, s.overlap, s.booklet, s.page_nums, s.maze_shape) == (4, 0.25, True, False, "word")
+    assert s.weight == 4                     # unreadable values keep the default
+    assert Settings.from_dict(s.to_dict()) == s

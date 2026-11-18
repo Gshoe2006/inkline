@@ -1,0 +1,589 @@
+"""The main window: menu bar, the sidebar on the left, the preview on the right.
+
+Every change draws the preview again (after a short pause, on the renderer's worker) and is remembered
+in ~/.config/inkline/last-settings.json, as 2.x did. Print and Save run their pages on a worker too,
+with progress in the footer. Messages are 2.x's.
+"""
+
+import os
+from dataclasses import replace
+
+from PySide6.QtCore import QEvent, QTimer, Qt, Signal
+from PySide6.QtGui import QAction, QGuiApplication, QImage, QKeySequence
+from PySide6.QtPrintSupport import QPrintDialog, QPrinter
+from PySide6.QtWidgets import (QAbstractItemView, QAbstractSlider, QAbstractSpinBox, QApplication, QComboBox, QFileDialog,
+                               QHBoxLayout, QLineEdit, QMainWindow, QMenu, QMenuBar, QMessageBox, QWidget)
+from PySide6.QtGui import QPdfWriter
+
+from inkengine import book, photo
+from inkengine.page import Settings, design_box, geometry, single_page
+
+from . import config, jobs, theme
+from .preview import Preview
+from .render import PREVIEW_DPI, Renderer, render_view, view
+from .sample import sample_photo
+from .sidebar import MAX_PHOTOS, Sidebar
+from .state import BUILTIN_PRESETS, State, new_seed
+
+IMAGE_FILTER = "Images (*.png *.jpg *.jpeg *.webp *.bmp *.gif *.tif *.tiff)"
+
+
+class Window(QMainWindow):
+    status = Signal(str)
+
+    def __init__(self, version="dev", remember=True):
+        super().__init__()
+        self.version, self.remember = version, remember
+        self.setWindowTitle(f"Inkline {version}")
+        self.resize(1280, 860)
+        self.setMinimumSize(900, 600)
+        self.setAcceptDrops(True)
+        self.state = State()
+        self.saved_presets = config.read("presets.json")
+        restored = self._restore()
+        self.last_dir = os.path.expanduser("~/Pictures") if os.path.isdir(os.path.expanduser("~/Pictures")) else os.path.expanduser("~")
+
+        central = QWidget()
+        central.setObjectName("central")
+        lay = QHBoxLayout(central)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(0)
+        self.sidebar = Sidebar(self.state, version)
+        self.preview = Preview()
+        lay.addWidget(self.sidebar)
+        lay.addWidget(self.preview, 1)
+        self.setCentralWidget(central)
+        self.sidebar.fill_presets(self.saved_presets)
+
+        self.renderer = Renderer()
+        self.renderer.finished.connect(self._rendered)
+        self.renderer.failed.connect(lambda _n, _why: self._msg("The preview couldn't be drawn. Try another setting, or start fresh from Presets."))
+        self.renderer.busy.connect(lambda on: None if on else self.preview.set_busy(""))
+        self.renderer.converting.connect(lambda: self.preview.set_busy("converting photo…"))
+        self.worker = Renderer()        # saving and printing
+        self.worker.finished.connect(self._job_done)
+        self.worker.failed.connect(lambda _n, why: self._job_failed(why))
+        self.status.connect(self.sidebar.set_status)
+        self._render_timer = QTimer(self, singleShot=True, interval=40, timeout=self._render)
+        self._remember_timer = QTimer(self, singleShot=True, interval=400, timeout=self._save_settings)
+        self._busy_saving = False
+        self._pan_start = None
+
+        self._wire()
+        self._menus()
+        QApplication.instance().installEventFilter(self)
+        theme.follow_system(QApplication.instance(), self.preview.page.update)
+        if self.state.settings.mode == "convert" and not self.state.photos:
+            self.state.photos = [sample_photo()]
+            self.sidebar.fill_photos()
+        if restored:
+            self._msg("Reopened with your last settings. Presets → Start fresh resets them.")
+        self.schedule()
+
+    # --- wiring -------------------------------------------------------------------------------------
+    def _wire(self):
+        sb, pv = self.sidebar, self.preview
+        sb.changed.connect(self._changed)
+        sb.mode_changed.connect(self._set_mode)
+        sb.reroll.connect(self.new_design)
+        sb.page_step.connect(self.step_page)
+        sb.swap_page.connect(self._swap_page)
+        sb.open_images.connect(self.open_images)
+        sb.sample.connect(lambda: self.add_photos([sample_photo()], self.state.settings.photobook))
+        sb.preset_chosen.connect(self._apply_preset)
+        sb.preset_save.connect(self._save_preset)
+        sb.preset_delete.connect(self._delete_preset)
+        sb.photo_selected.connect(self._select_photo)
+        sb.photo_moved.connect(self._move_photo)
+        sb.photo_removed.connect(self._remove_photo)
+        sb.crop.connect(self._crop)
+        sb.print_.connect(self.print_)
+        sb.save.connect(self.save)
+        sb.synced.connect(self._sync_actions)
+        pv.page.pan.connect(self._pan)
+        pv.page.zoom.connect(self._wheel_zoom)
+        pv.page.pan_end.connect(lambda: setattr(self, "_pan_start", None))
+
+    def _menus(self):
+        mb = self.menuBar()
+
+        def act(menu, text, fn, keys=None):
+            a = QAction(text, self)
+            if keys:
+                a.setShortcut(QKeySequence(keys))
+            a.triggered.connect(fn)
+            menu.addAction(a)
+            return a
+
+        f = mb.addMenu("&File")
+        act(f, "&Open image…", lambda: self.open_images(self.state.settings.photobook), "Ctrl+O")
+        f.addSeparator()
+        self.act_pdf = act(f, "Save &PDF…", lambda: self.save("pdf"), "Ctrl+S")
+        self.act_png = act(f, "Save P&NG…", lambda: self.save("png"), "Ctrl+Shift+S")
+        self.act_svg = act(f, "Save &SVG…", lambda: self.save("svg"))
+        f.addSeparator()
+        act(f, "&Print…", self.print_, "Ctrl+P")
+        f.addSeparator()
+        act(f, "&Quit", self.close, "Ctrl+Q")
+        v = mb.addMenu("&View")
+        act(v, "&New design", self.new_design, "Ctrl+N")
+        act(v, "Pre&vious page\t←", lambda: self.step_page(-1))
+        act(v, "Ne&xt page\t→", lambda: self.step_page(1))
+        v.addSeparator()
+        self.act_test = act(v, "Printer &test page", self._toggle_test_page)
+        self.act_test.setCheckable(True)
+        h = mb.addMenu("&Help")
+        act(h, "&About Inkline", self._about)
+
+    # --- state changes -------------------------------------------------------------------------------
+    def _changed(self, key=""):
+        st = self.state
+        s = st.settings
+        # one multi-page mode at a time, and the pager starts again where 2.x restarted it
+        if key == "booklet":
+            st.page = 0
+            if s.booklet:
+                st.update(poster=False)
+        elif key == "poster" and s.poster:
+            st.update(booklet=False, photobook=False)
+        elif key == "photobook" and s.photobook:
+            st.update(poster=False)
+            st.page = (1 if s.pcover else 0) + st.sel
+        elif key == "pcover":
+            st.page = (1 if s.pcover else 0) + st.sel
+        elif key == "fold":
+            st.page = 0
+        if key in ("booklet", "poster", "photobook"):
+            self.sidebar.load()
+        self.sidebar.sync()
+        self.act_test.setChecked(s.testpage)
+        self.schedule()
+        self.remember_soon()
+
+    def eventFilter(self, obj, e):
+        """← → (and Page Up/Down) turn booklet and photo book pages wherever the keyboard is, except in a
+        field, list or slider that uses them itself (2.x's rule), so a focused button doesn't stop them."""
+        if e.type() == QEvent.Type.KeyPress and self.isActiveWindow():
+            d = {Qt.Key.Key_Left: -1, Qt.Key.Key_PageUp: -1, Qt.Key.Key_Right: 1, Qt.Key.Key_PageDown: 1}.get(e.key())
+            mods = e.modifiers() & ~Qt.KeyboardModifier.KeypadModifier
+            focus = QApplication.focusWidget()
+            if (d and mods == Qt.KeyboardModifier.NoModifier and QApplication.activePopupWidget() is None
+                    and not isinstance(obj, (QMenu, QMenuBar)) and not isinstance(
+                        focus, (QLineEdit, QComboBox, QAbstractSlider, QAbstractSpinBox, QAbstractItemView, QMenuBar))
+                    and self.step_page(d)):
+                return True   # taken only when there were pages to turn; menus keep their arrow keys
+        return super().eventFilter(obj, e)
+
+    def _set_mode(self, mode):
+        self.state.update(mode=mode)
+        if mode == "convert" and not self.state.photos:
+            self.state.photos = [sample_photo()]
+            self.state.sel = 0
+            self.sidebar.fill_photos()
+            self.sidebar.load_crop()
+        self.sidebar.sync()
+        self.schedule()
+        self.remember_soon()
+
+    def new_design(self):
+        if self.state.settings.mode != "make":
+            return
+        self.state.update(seed=new_seed(), page_seeds={})   # a fresh booklet drops any swapped pages
+        self._changed("seed")
+
+    def step_page(self, d):
+        s, v = self.state.settings, view(self.state)
+        if v.kind not in ("booklet", "photobook", "fold"):
+            return False
+        self.state.page = max(0, min(self.state.page + d, v.count - 1))
+        if v.kind == "photobook" and self.state.photos:   # paging selects that page's photo, to crop what's shown
+            self.state.sel = max(0, min(self.state.page - (1 if s.pcover else 0), len(self.state.photos) - 1))
+            self.sidebar.fill_photos()
+            self.sidebar.load_crop()
+        self.schedule()
+        return True
+
+    def _swap_page(self, new):
+        key = getattr(self.sidebar, "current_key", None)
+        if key is None:
+            return
+        seeds = {k: v for k, v in (self.state.settings.page_seeds or {}).items() if str(k) != str(key)}
+        if new:
+            import random
+            seeds[key] = random.randrange(4294967296)
+        self.state.update(page_seeds=seeds)
+        self._changed("page_seeds")
+
+    def _sync_actions(self):
+        """The File menu's saves are enabled exactly when the footer's buttons are (2.x clicked the button)."""
+        if hasattr(self, "act_pdf"):
+            sb = self.sidebar
+            for a, b in ((self.act_pdf, sb.pdf_btn), (self.act_png, sb.png_btn), (self.act_svg, sb.svg_btn)):
+                a.setEnabled(b.isEnabled())
+                a.setToolTip(b.toolTip())
+
+    def _toggle_test_page(self):
+        self.state.update(testpage=not self.state.settings.testpage)
+        self.sidebar.load()
+        self._changed("testpage")
+
+    # --- photos --------------------------------------------------------------------------------------
+    def open_images(self, append=False):
+        files, _ = QFileDialog.getOpenFileNames(self, "Add photos" if append else "Open image", self.last_dir, IMAGE_FILTER)
+        if files:
+            self.last_dir = os.path.dirname(files[0])
+            self._load_files(files, append)
+
+    def _load_files(self, files, append):
+        ok, bad = [], []
+        for f in (files if append else files[:1]):
+            try:
+                p = photo.load_photo(f)
+                p.name = os.path.basename(f)
+                ok.append(p)
+            except OSError:
+                bad.append(os.path.basename(f))
+        if bad:
+            self._msg(f"Couldn't read {', '.join(bad)} as an image. Try PNG, JPEG or WebP.")
+        if ok:
+            self.add_photos(ok, append)
+
+    def add_photos(self, new, append):
+        st = self.state
+        first = 0
+        if append and st.photos:
+            room = MAX_PHOTOS - len(st.photos)
+            if room <= 0:
+                self._msg(f"A photo book holds up to {MAX_PHOTOS} photos.")
+                return
+            if len(new) > room:
+                self._msg(f"Added {room} photos; a photo book holds up to {MAX_PHOTOS}.")
+            first = len(st.photos)
+            st.photos.extend(new[:room])
+        else:
+            st.photos = new[:MAX_PHOTOS]
+        self._select_photo(first)
+        if st.settings.mode != "convert":
+            self.state.update(mode="convert")
+            self.sidebar.load()
+        self.schedule()
+
+    def _select_photo(self, i):
+        st = self.state
+        st.sel = max(0, min(i, len(st.photos) - 1))
+        if st.settings.photobook:
+            st.page = (1 if st.settings.pcover else 0) + st.sel
+        self.sidebar.fill_photos()
+        self.sidebar.load_crop()
+        self.sidebar.sync()
+        self.schedule()
+
+    def _move_photo(self, i, d):
+        st, j = self.state, i + d
+        if 0 <= j < len(st.photos):
+            st.photos[i], st.photos[j] = st.photos[j], st.photos[i]
+            self._select_photo(j if st.sel == i else i if st.sel == j else st.sel)
+
+    def _remove_photo(self, i):
+        st = self.state
+        if len(st.photos) >= 2:
+            del st.photos[i]
+            self._select_photo(st.sel - 1 if st.sel > i else st.sel)
+
+    def _crop(self, kind):
+        ph = self.state.photo
+        if not ph:
+            return
+        if kind == "rotl":
+            ph.rot = (ph.rot + 270) % 360
+        elif kind == "rotr":
+            ph.rot = (ph.rot + 90) % 360
+        elif kind == "reset":
+            ph.rot, ph.zoom, ph.panx, ph.pany = 0, 100, 0, 0
+            self.sidebar.load_crop()
+        else:
+            sb = self.sidebar
+            ph.zoom, ph.panx, ph.pany = sb.zoom.value(), sb.panx.value(), sb.pany.value()
+        self.schedule()
+
+    def _overhang(self):
+        """How far the cropped photo overhangs its box on each side, in page pixels at the preview's dpi."""
+        s, ph = self.state.settings, self.state.photo
+        g = geometry(s, PREVIEW_DPI)
+        spec = single_page(s, ph)
+        box = design_box(g, spec, s, frame=False) if spec.header else g.box
+        iw, ih = ph.image.width(), ph.image.height()
+        rw, rh = (ih, iw) if ph.rot % 180 else (iw, ih)
+        fit = max if s.fit == "cover" else min
+        sc = fit(box.w / rw, box.h / rh) * ph.zoom / 100
+        return max(0, rw * sc - box.w) / 2, max(0, rh * sc - box.h) / 2
+
+    def _pan(self, dx, dy):
+        ph = self.state.photo
+        if not ph:
+            return
+        if self._pan_start is None:
+            self._pan_start = (ph.panx, ph.pany)
+        ex, ey = self._overhang()
+        px, py = self._pan_start
+        ph.panx = round(max(-100, min(100, px + dx / ex * 100))) if ex else px
+        ph.pany = round(max(-100, min(100, py + dy / ey * 100))) if ey else py
+        self.sidebar.load_crop()
+        self.schedule()
+
+    def _wheel_zoom(self, d):
+        ph = self.state.photo
+        if ph:
+            ph.zoom = max(100, min(400, ph.zoom + 10 * d))
+            self.sidebar.load_crop()
+            self.schedule()
+
+    def dragEnterEvent(self, e):
+        if e.mimeData().hasUrls() or e.mimeData().hasImage():
+            e.acceptProposedAction()
+            self.preview.set_drop(True)
+
+    def dragLeaveEvent(self, _e):
+        self.preview.set_drop(False)
+
+    def dropEvent(self, e):
+        self.preview.set_drop(False)
+        md = e.mimeData()
+        files = [u.toLocalFile() for u in md.urls() if u.isLocalFile()]
+        if files:
+            self._load_files(files, self.state.settings.photobook)
+        elif md.hasImage():   # an image dragged straight from a browser or another app
+            img = QImage(md.imageData())
+            if not img.isNull():
+                self.add_photos([photo.Photo(img.convertToFormat(QImage.Format.Format_ARGB32), name="dropped image")],
+                                self.state.settings.photobook)
+
+    def paste(self):
+        img = QGuiApplication.clipboard().image()
+        if not img.isNull():
+            self.add_photos([photo.Photo(img.convertToFormat(QImage.Format.Format_ARGB32), name="pasted image")],
+                            self.state.settings.photobook)
+
+    def keyReleaseEvent(self, e):
+        if e.matches(QKeySequence.StandardKey.Paste) and not isinstance(QApplication.focusWidget(), QLineEdit):
+            self.paste()
+        super().keyReleaseEvent(e)
+
+    # --- the preview ---------------------------------------------------------------------------------
+    def schedule(self):
+        self.preview.set_busy("rendering…")
+        self._render_timer.start()
+
+    def _render(self):
+        st = self.state
+        snap = State(replace(st.settings), [replace(p) for p in st.photos], st.sel, st.page)
+        self.renderer.submit(lambda: render_view(snap))
+
+    def _rendered(self, n, r):
+        if n != self.renderer.latest:
+            return
+        self.state.page = r.view.index
+        self.preview.page.set_image(r.image, r.poster)
+        self.preview.page.set_pannable(self.state.settings.mode == "convert" and bool(self.state.photos)
+                                       and r.view.kind not in ("fold", "testpage"))
+        self.preview.set_info(r.info)
+        self.preview.set_busy("")
+        self.sidebar.ws_note.setText(r.note)
+        self.sidebar.sync(r.view)
+
+    # --- presets and remembered settings -------------------------------------------------------------
+    def _apply_preset(self, group, name):
+        p = BUILTIN_PRESETS.get(name) if group == "b" else self.saved_presets.get(name)
+        if p is None:
+            return
+        self.state.apply_preset(p)
+        self.sidebar.load()
+        if self.state.settings.mode == "convert" and not self.state.photos:
+            self.state.photos = [sample_photo()]
+            self.sidebar.fill_photos()
+        self._msg(f"Applied “{name}”.")
+        self.schedule()
+        self.remember_soon()
+
+    def _save_preset(self, name):
+        if not name:
+            self._msg("Type a name for the preset first.")
+            self.sidebar.preset_name.setFocus()
+            return
+        if name in BUILTIN_PRESETS:
+            self._msg("That name belongs to a built-in preset. Choose another.")
+            return
+        existed = name in self.saved_presets
+        nxt = {**self.saved_presets, name: self.state.preset_values()}
+        err = config.write("presets.json", nxt, "Presets")
+        if err:
+            self._msg(err)
+            return
+        self.saved_presets = nxt
+        self.sidebar.preset_name.clear()
+        self.sidebar.fill_presets(nxt, f"s:{name}")
+        self._msg(f"Updated preset “{name}”." if existed else f"Saved preset “{name}”.")
+
+    def _delete_preset(self, name):
+        nxt = {k: v for k, v in self.saved_presets.items() if k != name}
+        err = config.write("presets.json", nxt, "Presets")
+        if err:
+            self._msg(err)
+            return
+        self.saved_presets = nxt
+        self.sidebar.fill_presets(nxt)
+        self._msg(f"Deleted preset “{name}”.")
+
+    def _restore(self):
+        if not self.remember:
+            return False
+        last = config.read("last-settings.json")
+        if not last:
+            return False
+        s = Settings.from_dict({**Settings().to_dict(), **Settings.from_dict(last).to_dict()})
+        if "seed" not in last and "seed" not in {k.lower() for k in last}:
+            s = replace(s, seed=new_seed())
+        self.state.settings = replace(s, testpage=False)
+        return True
+
+    def remember_soon(self):
+        if self.remember:
+            self._remember_timer.start()
+
+    def _save_settings(self):
+        config.write("last-settings.json", self.state.settings.to_dict(), "Settings")
+
+    # --- saving and printing ----------------------------------------------------------------------------
+    def _ask_path(self, title, name, ext, filt):
+        path, _ = QFileDialog.getSaveFileName(self, title, os.path.join(self.last_dir, f"{name}.{ext}"), filt)
+        if not path:
+            return None
+        if not path.lower().endswith("." + ext):
+            path += "." + ext
+        self.last_dir = os.path.dirname(path)
+        return path
+
+    def save(self, kind):
+        if self._busy_saving:
+            return
+        s, st = self.state.settings, self.state
+        btn = {"png": self.sidebar.png_btn, "pdf": self.sidebar.pdf_btn, "svg": self.sidebar.svg_btn}[kind]
+        if not btn.isEnabled():   # the menu and shortcuts do what the button would: nothing, and say why
+            if kind == "svg" and s.mode != "make" and s.style not in photo.VECTOR_STYLES:
+                self._msg("Photos are made of pixels, so they save as PNG or PDF. Choose Engraving, Stippling, Colour by number or Nonogram for SVG.")
+            elif kind == "png" and s.poster:
+                self._msg("Posters save as PDF (one page per sheet) or print directly.")
+            return
+        snap = State(replace(s), [replace(p) for p in st.photos], st.sel, st.page)
+        if kind == "pdf":
+            j = jobs.job(snap)
+            what = f"Save {j.label} PDF" if j.count > 1 else "Save PDF"
+            path = self._ask_path(what, j.name, "pdf", "PDF document (*.pdf)")
+            if not path:
+                self._msg("Save cancelled.")
+                return
+            dev = QPdfWriter(path)
+            dev.setPageLayout(jobs.page_layout(s, j.orient))
+            dev.setResolution(j.geometry.dpi)
+            dev.setTitle(j.name)
+            dev.setCreator("Inkline")
+            done = f"Saved {j.count}-page {j.label} as {os.path.basename(path)}" if j.count > 1 else f"Saved {os.path.basename(path)}"
+            self._start(j, dev, done, f"Couldn't write {path}. Check the folder permissions.")
+            return
+        ext, filt = ("png", "PNG image (*.png)") if kind == "png" else ("svg", "SVG vector image (*.svg)")
+
+        def work():
+            if kind == "png":
+                img, nm = jobs.png(snap)
+                return ("png", img, nm)
+            text, nm = jobs.svg(snap)
+            return ("svg", text, nm)
+        self._pending_save = (kind, ext, filt)
+        self._busy(True, "Rendering page 1 of 1…")
+        self.worker.submit(work)
+
+    def print_(self):
+        if self._busy_saving:
+            return
+        st = self.state
+        snap = State(replace(st.settings), [replace(p) for p in st.photos], st.sel, st.page)
+        j = jobs.job(snap)
+        printer = QPrinter(QPrinter.PrinterMode.HighResolution)
+        printer.setPageLayout(jobs.page_layout(snap.settings, j.orient))
+        printer.setFullPage(True)
+        printer.setDocName(j.name)
+        printer.setColorMode(QPrinter.ColorMode.GrayScale)
+        if j.duplex:   # fold-and-staple books: double-sided, flipping on the short edge
+            printer.setDuplex(QPrinter.DuplexMode.DuplexShortSide)
+        self._msg("Opening the print dialog…")
+        if QPrintDialog(printer, self).exec() != QPrintDialog.DialogCode.Accepted:
+            self._msg("Print cancelled.")
+            return
+        done = (f"Sent {j.count} {'sheets' if j.label == 'poster' else 'pages'} to the printer." if j.count > 1
+                else "Sent to the printer.")
+        self._start(j, printer, done, "The printer didn't accept the job. Check that it's connected.")
+
+    def _start(self, j, device, done, failed):
+        self._device = device   # kept alive while the worker draws on it
+        bar = self.sidebar.progress
+        bar.setRange(0, j.count)
+        bar.setValue(0)
+        bar.setVisible(j.count > 1)
+        self._busy(True, f"Rendering {j.unit} 1 of {j.count}…")
+        self._pending_save = None
+
+        def progress(i):
+            self.status.emit(f"Rendering {j.unit} {i + 1} of {j.count}…")
+            QTimer.singleShot(0, lambda: bar.setValue(i + 1))
+        self.worker.submit(lambda: ("job", jobs.run(j, device, progress), done, failed))
+
+    def _job_done(self, _n, r):
+        kind = r[0]
+        if kind == "job":
+            _k, ok, done, failed = r
+            self._busy(False, done if ok else failed)
+            self._device = None
+            return
+        _k, data, name = r
+        k, ext, filt = self._pending_save
+        self._busy(False, "")
+        path = self._ask_path(f"Save {ext.upper()}", name, ext, filt)
+        if not path:
+            self._msg("Save cancelled.")
+            return
+        try:
+            if k == "png":
+                if not data.save(path, "PNG"):
+                    raise OSError
+            else:
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(data)
+            self._msg(f"Saved {os.path.basename(path)}")
+        except OSError:
+            self._msg(f"Couldn't write {path}. Check the folder permissions.")
+
+    def _job_failed(self, _why):
+        self._busy(False, "That couldn't be finished. Check the folder permissions or the printer, then try again.")
+        self._device = None
+
+    def _busy(self, on, text):
+        self._busy_saving = on
+        sb = self.sidebar
+        for b in (sb.print_btn, sb.png_btn, sb.pdf_btn, sb.svg_btn):
+            b.setEnabled(not on)
+        if not on:
+            sb.progress.hide()
+            sb.sync()
+        self._msg(text)
+
+    def _msg(self, text):
+        self.status.emit(text)
+
+    def _about(self):
+        QMessageBox.about(self, "About Inkline", f"<b>Inkline {self.version}</b><br>Black &amp; white images for printing: "
+                                                 "colouring pages, puzzles, booklets, posters and photo conversions.")
+
+    def closeEvent(self, e):
+        if self.remember and self._remember_timer.isActive():
+            self._save_settings()
+        super().closeEvent(e)

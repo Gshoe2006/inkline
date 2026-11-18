@@ -23,6 +23,7 @@ Dithers spread each pixel's error to the next, so they run pixel by pixel in pla
 
 import itertools
 import math
+import threading
 from array import array
 from dataclasses import dataclass, field
 
@@ -409,6 +410,13 @@ class Conversion:
 
 CACHE_PIXELS = 40_000_000
 _cache = {}
+_hooks = threading.local()
+
+
+def set_on_convert(fn):
+    """Call fn whenever a conversion on this thread isn't cached and has to be worked out (the window
+    shows "converting photo…"). Per thread, so a save and the preview don't trip each other's."""
+    _hooks.on_convert = fn
 
 
 def _cache_get(key):
@@ -438,6 +446,9 @@ def conversion(box, cell, style, photo, s):
            s.pcbn_colours if style == "cbn" else s.pnono_size if style == "nono" else "", photo.rot, photo.zoom, photo.panx, photo.pany)
     e = _cache_get(key)
     if e is None:
+        hook = getattr(_hooks, "on_convert", None)
+        if hook:
+            hook()
         ww, wh, data, params, overhang = conversion_input(box, cell, style, photo, s)
         r = process_pixels(data, ww, wh, params)
         e = _cache_put(key, Conversion(ww, wh, r["lum"], r["mask"], r["grey"], r["nono"], r["cbn"], overhang))

@@ -5,13 +5,15 @@ pkgrel=1
 pkgdesc="Convert photos or generate black & white images for printing"
 arch=('any')
 license=('MIT')
-depends=('python' 'pyside6' 'qt6-webengine' 'qt6-webchannel')
+depends=('python' 'pyside6' 'python-numpy')
 optdepends=('cups: printing to local and network printers')
-source=('index.html' 'inkline.py' 'inkline.svg' 'inkline.desktop' 'VERSION' 'inkline-icons.tar.gz')
+source=('inkline.py' 'inkline.svg' 'inkline.desktop' 'VERSION' 'inkline-app.tar.gz' 'inkline-icons.tar.gz')
 sha256sums=()
 
 package() {
-  install -Dm644 index.html      "$pkgdir/usr/share/inkline/index.html"
+  for f in $(find inkengine inkapp -name '*.py' -o -name '*.gz' | grep -v __pycache__); do
+    install -Dm644 "$f" "$pkgdir/usr/share/inkline/$f"
+  done
   install -Dm755 inkline.py      "$pkgdir/usr/share/inkline/inkline.py"
   install -Dm644 inkline.svg     "$pkgdir/usr/share/inkline/inkline.svg"
   install -Dm644 VERSION         "$pkgdir/usr/share/inkline/VERSION"

@@ -16,7 +16,7 @@ A Linux desktop app that converts photos to, or generates, black & white images 
 
 ## Run from source
 
-Needs Python 3 and PySide6 with Qt WebEngine (Arch: `sudo pacman -S pyside6 qt6-webengine qt6-webchannel`).
+Needs Python 3, PySide6 and numpy (Arch: `sudo pacman -S pyside6 python-numpy`). No browser engine: since 3.0 Inkline is a native Qt app.
 
 ```sh
 python3 inkline.py
@@ -29,11 +29,11 @@ QT_QPA_PLATFORM=offscreen python3 inkline.py --selftest /tmp/inkline-test
 python3 packaging/check_selftest.py /tmp/inkline-test
 ```
 
-The self-test renders every pattern, the photo converter, a booklet, two posters and a photo book, and exits non-zero if anything fails. GitHub runs both commands on every pull request (`.github/workflows/selftest.yml`) and keeps the rendered files for 7 days.
+The self-test opens the window, then writes every pattern, the photo styles, the printer test page, a booklet (plain and folded), two posters and a photo book through the app's own save code, and exits non-zero if anything fails. The unit tests (`python3 -m pip install pytest && QT_QPA_PLATFORM=offscreen python3 -m pytest -q tests`) check the engine against recordings of what Inkline 2.5 drew. GitHub runs both commands on every pull request (`.github/workflows/selftest.yml`) and keeps the rendered files for 7 days.
 
-## Inkline 3.0 engine (in progress)
+## Command line
 
-Inkline 3.0 drops the HTML page: the patterns are being ported from `index.html` to plain Python and Qt in `inkengine/`, one at a time. The 2.x app doesn't use it yet. So far it has the seeded random numbers (same seed, same design as 2.x), one drawing API that writes the preview, PNG, vector PDF and SVG, the page layout, mazes (every shape, with answer pages), mandalas, woven tiles, contours, flow lines, name pages in bubble letters, and the puzzles with answer pages: dot-to-dots, sudoku, word search and nonograms. That's every pattern 2.x makes. Booklets work too (a cover, difficulty that ramps up, mixed patterns, answer pages and fold-and-staple printing), and so do posters across 2×1 up to 4×4 sheets. Photos convert in every style: smooth, crisp and pattern dithering, solid black & white, line drawings, halftone, engraving, stippling, photo nonograms and colour by number (which also works for mandalas, woven tiles, contours and name pages, with shaded answer pages in booklets); photo books (several photos in one PDF, with a cover, or as a fold-and-staple book) and the printer test page are there too. It needs numpy as well as PySide6 (Arch: `sudo pacman -S python-numpy`).
+Everything the window makes can also be made from the command line, with the same engine:
 
 ```sh
 python3 -m inkengine maze -o maze.pdf
@@ -57,10 +57,9 @@ python3 -m inkengine mandala --cbn 6 --booklet 4 -o numbers.pdf
 python3 -m inkengine testpage -o test.pdf
 python3 -m inkengine maze --shape heart --complexity 7 --seed 42 --answers -o heart.pdf
 python3 -m inkengine maze --shape word --word Maya --title "Maya's maze" --name-line -o maya.svg
-python3 -m pip install pytest numpy && QT_QPA_PLATFORM=offscreen python3 -m pytest -q tests
 ```
 
-The tests check each ported pattern against recordings of what `index.html` draws (`tests/fixtures/`, made by `make_fixtures.js`).
+The tests check every pattern and photo style against recordings of what Inkline 2.5 drew (`tests/fixtures/`). `tests/fixtures/make_fixtures.js` made them from 2.5's `index.html` in a headless browser; to record again, check that file out from the 2.5.0 release (commit `ea92479`) and pass it as `INDEX_HTML=path/to/index.html`.
 
 ## Build the installers
 
@@ -77,10 +76,10 @@ Outputs to `dist/`:
 
 | Path | What it is |
 | --- | --- |
-| `index.html` | The image engine and UI (canvas + JavaScript); also works in a plain browser |
-| `inkline.py` | Qt desktop shell: native save dialogs, PDF export, printing |
-| `inkengine/` | The 3.0 engine in Python and Qt (being ported from `index.html`) |
-| `tests/` | Tests for `inkengine/`, with recordings of the 2.x patterns to match |
+| `inkline.py` | Starts the app (or `--selftest DIR`) |
+| `inkapp/` | The window: sidebar, preview, menus, saving and printing, presets (Qt Widgets) |
+| `inkengine/` | The drawing engine: every pattern, photo style, booklet and poster, as PNG, PDF and SVG (also a command line) |
+| `tests/` | Tests for `inkengine/`, with recordings of what Inkline 2.5 drew to match |
 | `inkline.svg`, `icons/` | App icon; regenerate with `python3 packaging/make_icon.py` |
 | `inkline.desktop` | Application menu entry |
 | `packaging/` | Build script, Arch PKGBUILD, self-extracting installer stub |
