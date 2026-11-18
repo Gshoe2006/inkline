@@ -10,7 +10,7 @@ yet. What it covers so far:
 - page.py      paper sizes, settings and page layout (title, name line, page number, border)
 - patterns/    the generators ported so far: maze.py, mandala.py, truchet.py (woven tiles),
                contour.py, flow.py, dots.py (dot-to-dot), sudoku.py,
-               words.py (word search), nonogram.py
+               words.py (word search), nonogram.py, name.py (name pages)
 - output.py    write a page as PNG, PDF or SVG
 """
 

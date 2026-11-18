@@ -38,6 +38,8 @@ class Settings:
     maze_word: str = "Maze"
     ws_theme: str = "animals"    # word search: a theme from patterns.words.THEMES, or "custom"
     ws_words: str = ""           # word search: your own words, for ws_theme "custom"
+    name_text: str = "Hello"     # name page: the name or word (up to 40 characters)
+    name_bg: str = "none"        # name page: none | flow | contour | truchet underneath
 
     @classmethod
     def from_dict(cls, d):

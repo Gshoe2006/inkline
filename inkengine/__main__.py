@@ -12,6 +12,7 @@
     python3 -m inkengine words --theme ocean --answers -o words.pdf    (word search)
     python3 -m inkengine words --words "mum, dad, grandma, pizza" -o ours.pdf
     python3 -m inkengine nonogram --complexity 6 --answers -o picture.pdf
+    python3 -m inkengine name --text "Happy Birthday Maya" --background flow -o card.pdf    (name page)
 """
 
 import argparse
@@ -19,7 +20,7 @@ import random
 import sys
 
 from .page import PageSpec, Settings, answer_page, single_page
-from .patterns import GENERATORS, HAS_ANSWER, NAMES, maze, words
+from .patterns import GENERATORS, HAS_ANSWER, NAMES, maze, name, words
 
 
 def main(argv=None):
@@ -33,6 +34,8 @@ def main(argv=None):
     ap.add_argument("--word", default="Maze", help="word or name for --shape word (up to 12 letters)")
     ap.add_argument("--theme", default="animals", choices=sorted(words.THEME_NAMES), help="word search words")
     ap.add_argument("--words", default="", help='word search: your own words, e.g. "mum, dad, pizza" (sets --theme custom)')
+    ap.add_argument("--text", default="Hello", help="name page: the name or word (up to 40 characters)")
+    ap.add_argument("--background", default="none", choices=sorted(name.BACKGROUNDS), help="name page: pattern under the letters")
     ap.add_argument("--title", default="")
     ap.add_argument("--name-line", action="store_true", help='add a "Name ____" line')
     ap.add_argument("--frame", action="store_true", help="draw a border around the design")
@@ -47,7 +50,8 @@ def main(argv=None):
                  complexity=a.complexity, weight=a.weight, frame=a.frame, title=a.title, name_line=a.name_line,
                  paper=a.paper, orient="landscape" if a.landscape else "portrait", margin=a.margin, dpi=a.dpi,
                  maze_shape=a.shape, maze_word=a.word[:12],
-                 ws_theme="custom" if a.words else a.theme, ws_words=a.words[:300])
+                 ws_theme="custom" if a.words else a.theme, ws_words=a.words[:300],
+                 name_text=a.text[:40], name_bg=a.background)
     from . import output   # imported here so --help works without starting Qt
     if a.answers:
         if s.gen not in HAS_ANSWER:

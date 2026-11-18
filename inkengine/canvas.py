@@ -160,6 +160,10 @@ class Canvas:
     def fill_text(self, text, x, y, max_width=None):
         raise NotImplementedError
 
+    def stroke_text(self, text, x, y, max_width=None):
+        """Outline text with the current pen (name pages' bubble letters)."""
+        raise NotImplementedError
+
     def clip(self):
         raise NotImplementedError
 
@@ -299,11 +303,30 @@ class QtCanvas(Canvas):
     def fill_text(self, text, x, y, max_width=None):
         x, y, scale = self._text_origin(text, x, y, max_width)
         self.p.save()
-        self.p.setFont(make_font(self.st.font_size, self.st.font_weight))
-        self.p.setPen(QColor(self.st.fill_style))
         self.p.translate(x, y)
         self.p.scale(scale, 1)
-        self.p.drawText(QPointF(0, 0), text)
+        font = make_font(self.st.font_size, self.st.font_weight)
+        if _is_white(self.st.fill_style):
+            # White text only ever covers an outline of the same text (name pages' bubble letters).
+            # Fill the same glyph shapes the outline used: in a PDF, drawText writes real text whose
+            # glyphs don't line up exactly with addText's, and the white would eat into the outline.
+            path = QPainterPath()
+            path.addText(QPointF(0, 0), font, text)
+            self.p.fillPath(path, QColor(self.st.fill_style))
+        else:
+            self.p.setFont(font)
+            self.p.setPen(QColor(self.st.fill_style))
+            self.p.drawText(QPointF(0, 0), text)
+        self.p.restore()
+
+    def stroke_text(self, text, x, y, max_width=None):
+        x, y, scale = self._text_origin(text, x, y, max_width)
+        path = QPainterPath()
+        path.addText(QPointF(0, 0), make_font(self.st.font_size, self.st.font_weight), text)
+        self.p.save()
+        self.p.translate(x, y)
+        self.p.scale(scale, 1)
+        self._draw_stroke(path)
         self.p.restore()
 
     def _on_save(self):
@@ -391,6 +414,13 @@ class SvgCanvas(Canvas):
         self._groups[-1] += 1
 
     def fill_text(self, text, x, y, max_width=None):
+        self._text(text, x, y, max_width, f'fill="{self.st.fill_style}"')
+
+    def stroke_text(self, text, x, y, max_width=None):
+        # White outlines are kept: on name pages they hollow out the bubble letters.
+        self._text(text, x, y, max_width, self._stroke_attrs())
+
+    def _text(self, text, x, y, max_width, paint):
         s = self.st
         anchor = {"center": "middle", "right": "end", "end": "end"}.get(s.text_align, "start")
         baseline = {"middle": ' dominant-baseline="middle"', "top": ' dominant-baseline="text-before-edge"'}.get(s.text_baseline, "")
@@ -399,7 +429,7 @@ class SvgCanvas(Canvas):
             squeeze = f' textLength="{fx(max_width)}" lengthAdjust="spacingAndGlyphs"'
         family = ", ".join(f"'{f}'" if " " in f else f for f in FONT_FAMILIES)
         self.out.append(f'<text x="{fx(x)}" y="{fx(y)}" font-family="{family}" font-size="{fx(s.font_size)}" '
-                        f'font-weight="{s.font_weight}" fill="{s.fill_style}" text-anchor="{anchor}"{baseline}{squeeze}>'
+                        f'font-weight="{s.font_weight}" {paint} text-anchor="{anchor}"{baseline}{squeeze}>'
                         f"{_esc(text)}</text>")
 
     def _on_save(self):
@@ -489,6 +519,10 @@ class RecordingCanvas(Canvas):
     def fill_text(self, text, x, y, max_width=None):
         s = self.st
         self.ops.append(("text", text, x, y, s.fill_style, s.font_weight, s.font_size))
+
+    def stroke_text(self, text, x, y, max_width=None):
+        s = self.st
+        self.ops.append(("stroke_text", text, x, y, s.line_width, s.stroke_style, s.font_weight, s.font_size))
 
     def clip(self):
         self.ops.append(("clip",))

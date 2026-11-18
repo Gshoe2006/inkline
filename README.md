@@ -33,7 +33,7 @@ The self-test renders every pattern, the photo converter, a booklet, two posters
 
 ## Inkline 3.0 engine (in progress)
 
-Inkline 3.0 drops the HTML page: the patterns are being ported from `index.html` to plain Python and Qt in `inkengine/`, one at a time. The 2.x app doesn't use it yet. So far it has the seeded random numbers (same seed, same design as 2.x), one drawing API that writes the preview, PNG, vector PDF and SVG, the page layout, mazes (every shape, with answer pages), mandalas, woven tiles, contours, flow lines, and the puzzles with answer pages: dot-to-dots, sudoku, word search and nonograms. It needs numpy as well as PySide6 (Arch: `sudo pacman -S python-numpy`).
+Inkline 3.0 drops the HTML page: the patterns are being ported from `index.html` to plain Python and Qt in `inkengine/`, one at a time. The 2.x app doesn't use it yet. So far it has the seeded random numbers (same seed, same design as 2.x), one drawing API that writes the preview, PNG, vector PDF and SVG, the page layout, mazes (every shape, with answer pages), mandalas, woven tiles, contours, flow lines, name pages in bubble letters, and the puzzles with answer pages: dot-to-dots, sudoku, word search and nonograms. That's every pattern 2.x makes. It needs numpy as well as PySide6 (Arch: `sudo pacman -S python-numpy`).
 
 ```sh
 python3 -m inkengine maze -o maze.pdf
@@ -46,6 +46,7 @@ python3 -m inkengine sudoku --complexity 8 --answers -o sudoku.pdf
 python3 -m inkengine words --theme ocean --answers -o words.pdf
 python3 -m inkengine words --words "mum, dad, grandma, pizza" -o ours.pdf
 python3 -m inkengine nonogram --complexity 6 --answers -o picture.pdf
+python3 -m inkengine name --text "Happy Birthday Maya" --background flow -o card.pdf
 python3 -m inkengine maze --shape heart --complexity 7 --seed 42 --answers -o heart.pdf
 python3 -m inkengine maze --shape word --word Maya --title "Maya's maze" --name-line -o maya.svg
 python3 -m pip install pytest numpy && QT_QPA_PLATFORM=offscreen python3 -m pytest -q tests
