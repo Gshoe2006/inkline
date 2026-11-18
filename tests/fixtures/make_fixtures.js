@@ -1,5 +1,6 @@
 // Records what the 2.5 JavaScript patterns draw, so the Python ports can be checked against them step for step.
-// Needs Node and Playwright (with Chromium) and the 2.5 index.html:
+// Needs Node and Playwright (with Chromium) and the 2.5 index.html, which 3.0 no longer ships: check it out
+// from the 2.5.0 release first (git show ea92479:index.html > /tmp/index-2.5.html) and pass INDEX_HTML.
 //   node tests/fixtures/make_fixtures.js [maze] [mandala] [truchet] [contour] [flow] [dots] [sudoku] [words] [nonogram] [name] [booklet] [poster] [photo] [nonopic] [testpage] [cbnphoto] [cbnpattern] [photobook]     (default: all)
 // Writes tests/fixtures/<pattern>_js.json.gz. Only re-run it if the reference changes; the tests read the JSON.
 // INDEX_HTML=path/to/index.html points it at another copy (e.g. one checked out from the v2.5.0 tag).
@@ -128,7 +129,8 @@ const PATTERNS = {
 
 (async () => {
   const want = process.argv.slice(2).length ? process.argv.slice(2) : Object.keys(PATTERNS);
-  const html = path.resolve(process.env.INDEX_HTML || path.join(__dirname, "..", "..", "index.html"));
+  if (!process.env.INDEX_HTML) { console.error("Set INDEX_HTML to 2.5's index.html (see the top of this file)."); process.exit(2); }
+  const html = path.resolve(process.env.INDEX_HTML);
   const browser = await chromium.launch();
   const page = await browser.newPage();
   await page.goto("file://" + html);
