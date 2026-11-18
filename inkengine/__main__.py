@@ -7,6 +7,7 @@
     python3 -m inkengine truchet --complexity 6 --frame -o tiles.pdf    (woven tiles)
     python3 -m inkengine contour --complexity 8 -o map.pdf
     python3 -m inkengine flow -o flow.png
+    python3 -m inkengine dots --complexity 6 --answers -o dots.pdf    (dot-to-dot)
 """
 
 import argparse
@@ -14,7 +15,7 @@ import random
 import sys
 
 from .page import PageSpec, Settings, answer_page, single_page
-from .patterns import GENERATORS, HAS_ANSWER, maze
+from .patterns import GENERATORS, HAS_ANSWER, NAMES, maze
 
 
 def main(argv=None):
@@ -48,7 +49,7 @@ def main(argv=None):
             ap.error("--answers needs a .pdf output (the answer is a second page)")
         puzzle = single_page(s)
         key = answer_page([PageSpec(gen=puzzle.gen, seed=puzzle.seed, c=puzzle.c, title=puzzle.title,
-                                    name=puzzle.name, label=f"{s.gen.title()} {s.seed}")])
+                                    name=puzzle.name, label=f"{NAMES[s.gen]} {s.seed}")])
         output.write_pdf(a.out, s, [puzzle, key])
     else:
         output.write(a.out, s)

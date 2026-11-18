@@ -417,11 +417,21 @@ class SvgCanvas(Canvas):
 # --- recording (tests) -----------------------------------------------------------------------------
 
 class RecordingCanvas(Canvas):
-    """Writes down every path command and each stroke's style; used to compare with index.html."""
+    """Writes down every path command and each stroke's style; used to compare with index.html.
 
-    def __init__(self, width=0, height=0):
+    em_per_char, if set, replaces real text measuring with a stand-in (that many font sizes per
+    character), so layouts that depend on text width can be compared whatever fonts are installed.
+    """
+
+    def __init__(self, width=0, height=0, em_per_char=None):
         super().__init__(width, height)
         self.ops = []
+        self.em_per_char = em_per_char
+
+    def measure_text(self, text):
+        if self.em_per_char is None:
+            return super().measure_text(text)
+        return self.st.font_size * self.em_per_char * len(text)
 
     def save(self):
         super().save()

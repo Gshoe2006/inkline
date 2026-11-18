@@ -1,6 +1,6 @@
 // Records what the 2.5 JavaScript patterns draw, so the Python ports can be checked against them step for step.
 // Needs Node and Playwright (with Chromium) and the 2.5 index.html:
-//   node tests/fixtures/make_fixtures.js [maze] [mandala] [truchet] [contour] [flow]     (default: all)
+//   node tests/fixtures/make_fixtures.js [maze] [mandala] [truchet] [contour] [flow] [dots]     (default: all)
 // Writes tests/fixtures/<pattern>_js.json.gz. Only re-run it if the reference changes; the tests read the JSON.
 // INDEX_HTML=path/to/index.html points it at another copy (e.g. one checked out from the v2.5.0 tag).
 const path = require("path"), fs = require("fs"), zlib = require("zlib");
@@ -35,6 +35,12 @@ const PATTERNS = {
     return [[1, 1], [20261117, 5], [42, 10]].map(([seed, c]) => ({ seed, c, box: small }))
       .concat([{ seed: 20261117, c: 6, summary: true }]);
   },
+  dots() {
+    // every shape (seed picks it: star 7, heart 9, fish 14, house 1, flower 2, blob 4), complexity 1 to 10,
+    // and answer pages (connect) for a few
+    const cases = [[7, 1], [9, 3], [14, 5], [1, 7], [2, 10], [4, 6], [8, 9], [3, 2]].map(([seed, c]) => ({ seed, c, connect: false }));
+    return cases.concat([[7, 4], [2, 6], [1, 10]].map(([seed, c]) => ({ seed, c, connect: true })));
+  },
   truchet() {
     // complexity 1-3 draws one arc per corner, 4 and up three; 10 is the finest grid
     return [[1, 1], [20261117, 3], [7, 4], [42, 7], [5, 10]].map(([seed, c]) => ({ seed, c }));
@@ -51,7 +57,8 @@ const PATTERNS = {
     const out = await page.evaluate(([name, cases, BOX, LW]) => {
       // a canvas stand-in that writes down every path command, as called, and the style each stroke used
       function recorder() {
-        const ops = [], st = { lineWidth: 1, strokeStyle: "#000", lineCap: "butt", lineJoin: "miter" }, stack = [];
+        const ops = [], stack = [];
+        const st = { lineWidth: 1, strokeStyle: "#000", fillStyle: "#000", lineCap: "butt", lineJoin: "miter", font: "10px sans-serif", textAlign: "start", textBaseline: "alphabetic" };
         const ctx = {
           ops,
           save() { stack.push({ ...st }); ops.push(["save"]); },
@@ -64,7 +71,13 @@ const PATTERNS = {
           arc(x, y, r, a0, a1, ccw = false) { ops.push(["A", x, y, r, a0, a1, !!ccw]); },
           rect(x, y, w, h) { ops.push(["rect", x, y, w, h]); },
           clip() { ops.push(["clip"]); },
+          closePath() { ops.push(["Z"]); },
           stroke() { ops.push(["stroke", st.lineWidth, st.strokeStyle, st.lineCap, st.lineJoin]); },
+          fill() { ops.push(["fill", st.fillStyle]); },
+          fillText(t, x, y) { ops.push(["text", t, x, y]); },
+          // text widths depend on the fonts installed, so recordings use a stand-in: 0.55 em per character
+          // (the Python test's RecordingCanvas does the same); real pages measure the real font
+          measureText(t) { return { width: +/([\d.]+)px/.exec(st.font)[1] * 0.55 * t.length }; },
         };
         for (const k of Object.keys(st)) Object.defineProperty(ctx, k, { get: () => st[k], set: v => { st[k] = v; } });
         ctx.lineWidth = LW;
@@ -84,6 +97,7 @@ const PATTERNS = {
         if (name === "truchet") genTruchet(ctx, box, mulberry32(k.seed), k.c);
         if (name === "contour") genContour(ctx, box, mulberry32(k.seed), k.c, LW, k.dpi, k.seed);
         if (name === "flow") genFlow(ctx, box, mulberry32(k.seed), k.c, k.seed);
+        if (name === "dots") k.info = genDots(ctx, box, mulberry32(k.seed), k.c, LW, { dpi: 300 }, { connect: k.connect });
         if (k.summary) {   // a full page is too many steps to keep: counts per kind, and sums of the coordinates
           const kinds = {}, sums = {};
           for (const o of ctx.ops) {

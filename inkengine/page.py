@@ -172,6 +172,8 @@ def draw_page(ctx, g, spec, s):
             if d.gen == "maze":   # same grid as the puzzle page, so it's the same maze
                 grid = maze.grid_size(design_box(g, d, s), d.c, s.maze_shape, s.maze_word)
                 draw_design(ctx, g, slot, "maze", d.seed, d.c, s, ctx.line_width, grid=grid, solve=True)
+            elif d.gen == "dots":   # same seed draws the same shape, finished
+                draw_design(ctx, g, slot, "dots", d.seed, d.c, s, ctx.line_width, connect=True)
             elif d.gen in HAS_ANSWER:
                 draw_design(ctx, g, slot, d.gen, d.seed, d.c, s, lw, solve=True)
         return None

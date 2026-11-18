@@ -5,17 +5,18 @@ the line width, the design's seed (some patterns seed their noise with it) and t
 ported from index.html aren't listed.
 """
 
-from . import contour, flow, mandala, maze, truchet
+from . import contour, dots, flow, mandala, maze, truchet
 
 GENERATORS = {
     "contour": contour.draw,
+    "dots": dots.draw,
     "flow": flow.draw,
     "mandala": mandala.draw,
     "maze": maze.draw,
     "truchet": truchet.draw,
 }
 
-NAMES = {"contour": "Contours", "flow": "Flow lines", "mandala": "Mandala", "maze": "Maze", "truchet": "Woven tiles"}
+NAMES = {"contour": "Contours", "dots": "Dot-to-dot", "flow": "Flow lines", "mandala": "Mandala", "maze": "Maze", "truchet": "Woven tiles"}
 
 # Puzzles that have a solution to show on answer pages.
-HAS_ANSWER = {"maze"}
+HAS_ANSWER = {"maze", "dots"}
