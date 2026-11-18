@@ -153,6 +153,8 @@ class Window(QMainWindow):
         self._pan_start = None
         self.history = QUndoStack(self)
         self._drags = 0      # counts finished slider and photo drags, so the next drag is a new step
+        self._focus_moves = 0   # leaving a field and coming back starts a new typing step
+        QApplication.instance().focusChanged.connect(self._focus_moved)
         self._last = _Snapshot(self.state)
         self._restoring = False
 
@@ -239,6 +241,7 @@ class Window(QMainWindow):
     def _changed(self, key=""):
         control = self.sidebar._binds.get(key, (None,))[0]
         self._timed = isinstance(control, QAbstractSlider)   # a slider's arrow keys join; clicks don't
+        self._typed = control if isinstance(control, QLineEdit) and control.hasFocus() else None
         st = self.state
         s = st.settings
         # one multi-page mode at a time, and the pager starts again where 2.x restarted it
@@ -315,6 +318,9 @@ class Window(QMainWindow):
             seeds[key] = random.randrange(4294967296)
         self.state.update(page_seeds=seeds)
         self._changed("page_seeds")
+
+    def _focus_moved(self, *_a):
+        self._focus_moves += 1
 
     def _drag_ended(self):
         self._pan_start = None
@@ -505,9 +511,9 @@ class Window(QMainWindow):
                 return ("slider", key, self._drags)
         if self.sidebar.zoom.isSliderDown() or self.sidebar.panx.isSliderDown() or self.sidebar.pany.isSliderDown():
             return ("crop", self._drags)
-        focus = QApplication.focusWidget()
-        if isinstance(focus, QLineEdit):
-            return ("typing", id(focus))
+        typed, self._typed = getattr(self, "_typed", None), None
+        if typed is not None:     # typed into that field, and the cursor has stayed in it since
+            return ("typing", id(typed), self._focus_moves)
         return None
 
     def _restore_snapshot(self, snap):

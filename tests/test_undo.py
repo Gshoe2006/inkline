@@ -77,3 +77,44 @@ def test_a_preset_that_changes_nothing_does_not_name_the_next_step(win):
     win._apply_preset("b", "Start fresh (defaults)")
     _set(win, weight=win.state.settings.weight + 1)
     assert h.undoText() == "Line weight"
+
+
+def _type(app, field, text):
+    from PySide6.QtTest import QTest
+    QTest.keyClicks(field, text)
+    _wait(app, 50)
+
+
+def test_typing_is_one_step_until_the_cursor_leaves_the_field(win):
+    app, h = QApplication.instance(), win.history
+    _set(win, gen="name")
+    _wait(app, 100)
+    n = h.count()
+    field = win.sidebar._binds["title"][0]
+    field.setFocus()
+    _wait(app, 50)
+    _type(app, field, "Ra")
+    _wait(app, 1700)
+    _type(app, field, "in")
+    assert h.count() == n + 1 and h.undoText() == "Title"
+    win.sidebar._binds["frame"][0].setFocus()
+    field.setFocus()
+    _wait(app, 50)
+    _type(app, field, "y")
+    assert h.count() == n + 2       # back in the field: a new step
+
+
+def test_changes_made_while_a_field_has_the_cursor_are_not_typing(win):
+    app, h = QApplication.instance(), win.history
+    _set(win, gen="name")
+    field = win.sidebar._binds["title"][0]
+    field.setFocus()
+    _wait(app, 50)
+    n = h.count()
+    win.new_design()
+    win.new_design()
+    assert h.count() - n == 2       # Ctrl+N twice is two steps, though the cursor is in Title
+    on = win.state.settings.frame
+    _set(win, frame=not on)
+    _set(win, frame=on)
+    assert h.count() - n == 4       # and the Border clicks stay separate steps
