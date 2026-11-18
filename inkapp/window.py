@@ -12,8 +12,9 @@ from dataclasses import replace
 from PySide6.QtCore import QEvent, QTimer, Qt, Signal
 from PySide6.QtGui import QAction, QGuiApplication, QImage, QKeySequence, QUndoCommand, QUndoStack
 from PySide6.QtPrintSupport import QPrintDialog, QPrinter
-from PySide6.QtWidgets import (QAbstractItemView, QAbstractSlider, QAbstractSpinBox, QApplication, QComboBox, QFileDialog,
-                               QHBoxLayout, QLineEdit, QMainWindow, QMenu, QMenuBar, QMessageBox, QWidget)
+from PySide6.QtWidgets import (QAbstractItemView, QAbstractSlider, QAbstractSpinBox, QApplication, QComboBox, QDialog,
+                               QFileDialog, QHBoxLayout, QLineEdit, QMainWindow, QMenu, QMenuBar, QMessageBox, QUndoView,
+                               QVBoxLayout, QWidget)
 from PySide6.QtGui import QPdfWriter
 
 from inkengine import book, photo
@@ -747,7 +748,6 @@ class Window(QMainWindow):
     def show_history(self):
         """Every undo step in a list beside the window: choosing one goes back (or forward) to it."""
         if self._history_view is None:
-            from PySide6.QtWidgets import QDialog, QUndoView, QVBoxLayout
             d = QDialog(self)
             d.setWindowTitle("History")
             view = QUndoView(self.history, d)
