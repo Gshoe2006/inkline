@@ -143,6 +143,10 @@ class Canvas:
         """Move the origin (undone by restore())."""
         raise NotImplementedError
 
+    def draw_image(self, image, x, y, w, h):
+        """A QImage stretched over the rectangle, pixels kept sharp (a dithered photo)."""
+        raise NotImplementedError
+
     def circle(self, x, y, r):
         """Stroke a whole circle in a fresh path (index.html's circle() helper)."""
         self.begin_path()
@@ -314,6 +318,12 @@ class QtCanvas(Canvas):
     def translate(self, x, y):
         self.p.translate(x, y)
 
+    def draw_image(self, image, x, y, w, h):
+        self.p.save()
+        self.p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, False)
+        self.p.drawImage(QRectF(x, y, w, h), image)
+        self.p.restore()
+
     def fill_text(self, text, x, y, max_width=None):
         x, y, scale = self._text_origin(text, x, y, max_width)
         self.p.save()
@@ -432,6 +442,17 @@ class SvgCanvas(Canvas):
         self.out.append(f'<g transform="translate({fx(x)} {fx(y)})">')
         self._groups[-1] += 1
 
+    def draw_image(self, image, x, y, w, h):
+        import base64
+        from PySide6.QtCore import QBuffer, QByteArray, QIODevice
+        data = QByteArray()
+        buf = QBuffer(data)
+        buf.open(QIODevice.OpenModeFlag.WriteOnly)
+        image.save(buf, "PNG")
+        src = base64.b64encode(bytes(data)).decode("ascii")
+        self.out.append(f'<image x="{fx(x)}" y="{fx(y)}" width="{fx(w)}" height="{fx(h)}" preserveAspectRatio="none" '
+                        f'style="image-rendering:pixelated" href="data:image/png;base64,{src}"/>')
+
     def fill_text(self, text, x, y, max_width=None):
         self._text(text, x, y, max_width, f'fill="{self.st.fill_style}"')
 
@@ -549,3 +570,6 @@ class RecordingCanvas(Canvas):
 
     def translate(self, x, y):
         self.ops.append(("translate", x, y))
+
+    def draw_image(self, image, x, y, w, h):
+        self.ops.append(("image", x, y, w, h))

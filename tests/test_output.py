@@ -91,3 +91,31 @@ def test_name_page_pdf_keeps_its_outline(tmp_path):
     dark = lambda img: sum(img.pixelColor(x, y).lightness() < 128 for y in range(0, img.height(), 2) for x in range(0, img.width(), 2))
     png, pdf = dark(QImage(str(tmp_path / "n.png"))), dark(QImage(str(tmp_path / "p.png")))
     assert png > 1000 and abs(pdf - png) < 0.1 * png
+
+
+def test_photo_and_test_page_outputs(tmp_path):
+    """A photo in each output, and the test page, all at true paper size."""
+    from PySide6.QtGui import QColor
+    from PySide6.QtPdf import QPdfDocument
+    from inkengine import photo
+    ensure_app()
+    img = QImage(300, 200, QImage.Format.Format_ARGB32)
+    for x in range(300):
+        for y in range(200):
+            v = int(255 * x / 299)
+            img.setPixelColor(x, y, QColor(v, v, v))
+    pic = photo.Photo(img)
+    for style in ("fs", "halftone", "engrave"):
+        s = Settings(mode="convert", style=style, dpi=150, title="Gradient")
+        output.write(tmp_path / f"{style}.png", s, single_page(s, pic))
+        output.write(tmp_path / f"{style}.pdf", s, single_page(s, pic))
+        root = ET.fromstring(output.svg_text(s, single_page(s, pic)))
+        ns = "{http://www.w3.org/2000/svg}"
+        drawn = list(root.iter(ns + ("image" if style == "fs" else "path")))
+        assert drawn, style
+        assert QImage(str(tmp_path / f"{style}.png")).width() == 1275
+    output.write_test_page(tmp_path / "t.pdf", Settings(dpi=150, orient="landscape"), "3.0.0")
+    doc = QPdfDocument()
+    doc.load(str(tmp_path / "t.pdf"))
+    size = doc.pagePointSize(0)
+    assert doc.pageCount() == 1 and (round(size.width()), round(size.height())) == (612, 792)   # always portrait

@@ -70,7 +70,9 @@ def draw_sheet(ctx, s, P, spec, i):
     ctx.rect(m, m, g.box.w, g.box.h)
     ctx.clip()
     ctx.translate(m - t.x, m - t.y)
+    P.view = t   # the dot and line photo styles skip what's off this sheet
     draw_page(ctx, P, spec, s, keep=True)
+    P.view = None
     ctx.restore()
     # trim marks at the printable corners, in the margin
     L, gap = min(m * 0.7, g.dpi * 0.3), g.dpi * 0.04

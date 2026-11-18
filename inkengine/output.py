@@ -119,6 +119,43 @@ def write_poster_pdf(path, s, spec=None):
     return P.sheets
 
 
+def write_test_page(path, s, version=""):
+    """The printer test page as PNG, PDF or SVG (always portrait)."""
+    from dataclasses import replace
+    from .testpage import draw_test_page
+    ensure_app()
+    s = replace(s, orient="portrait")
+    g = geometry(s)
+    ext = str(path).lower().rsplit(".", 1)[-1]
+    if ext == "svg":
+        ctx = SvgCanvas(g.W, g.H, g.w, g.h)
+        draw_test_page(ctx, s, version)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(str(ctx))
+        return
+    if ext == "pdf":
+        dev = QPdfWriter(str(path))
+        dev.setCreator("Inkline")
+        dev.setTitle("Printer test page")
+        dev.setResolution(g.dpi)
+        dev.setPageLayout(_page_layout(g))
+    elif ext == "png":
+        dev = QImage(g.W, g.H, QImage.Format.Format_RGB32)
+        dev.setDotsPerMeterX(round(g.dpi / 0.0254))
+        dev.setDotsPerMeterY(round(g.dpi / 0.0254))
+    else:
+        raise ValueError(f"{path}: use a .png, .pdf or .svg file name")
+    p = QPainter()
+    if not p.begin(dev):
+        raise OSError(f"couldn't write {path}")
+    try:
+        draw_test_page(QtCanvas(p, g.W, g.H), s, version)
+    finally:
+        p.end()
+    if ext == "png" and not dev.save(str(path), "PNG"):
+        raise OSError(f"couldn't write {path}")
+
+
 def svg_text(s, spec=None):
     """The page as SVG; for a poster (s.poster), the whole poster as one big vector page."""
     if s.poster:

@@ -53,6 +53,18 @@ class Settings:
     poster: bool = False
     grid: str = "2x2"            # sheets across x down: 2x2, 3x3, 4x4, 2x1, 3x2, 1x2, 2x3
     overlap: float = 0.25        # inches shared by neighbouring sheets: 0, 0.25 or 0.5
+    # photos (photo.py)
+    mode: str = "make"           # make (a pattern) | convert (a photo)
+    style: str = "fs"            # see photo.STYLES
+    brightness: int = 0          # -100..100
+    contrast: int = 110          # 20..300 (%)
+    threshold: int = 128         # 1..254 (also "detail" for line drawings)
+    dot: int = 2                 # 1..8 work pixels per dot
+    fit: str = "contain"         # contain (fit inside) | cover (fill the page)
+    invert: bool = False
+    pnono_size: int = 15         # photo nonogram squares across, 10..30
+    pnono_answer: bool = False   # draw the photo nonogram solved
+    pcbn_colours: int = 8        # colour by number crayons, 4..16
 
     @classmethod
     def from_dict(cls, d):
@@ -98,13 +110,17 @@ class PageSpec:
     idx: int = -1                # booklets: which design page this is (0-based)
     designs: list = field(default_factory=list)   # cover: the booklet's design pages
     art_seed: int = 0            # cover: the seed for its picture
+    photo: object = None         # photo: the photo.Photo to convert
 
     def __post_init__(self):
         if self.header is None:
-            self.header = self.kind == "answers" or (self.kind == "design" and bool(self.title or self.name))
+            self.header = self.kind == "answers" or (self.kind in ("design", "photo") and bool(self.title or self.name))
 
 
-def single_page(s):
+def single_page(s, photo=None):
+    """The page the settings describe: a design, or with s.mode "convert" the photo."""
+    if s.mode == "convert":
+        return PageSpec(kind="photo", photo=photo, title=s.title.strip(), name=s.name_line)
     return PageSpec(kind="design", gen=s.gen, seed=s.seed, c=s.complexity, title=s.title.strip(), name=s.name_line)
 
 
@@ -171,6 +187,13 @@ def draw_page(ctx, g, spec, s, keep=False):
     ctx.line_cap = ctx.line_join = "round"
     lw = line_width(s, g)
     ctx.line_width = lw
+    if spec.kind == "photo":   # photos skip the pattern frame, but take the title, name line and page number
+        from .photo import convert
+        view = getattr(g, "view", None)
+        if spec.header or spec.page_no:
+            draw_bands(ctx, g, spec)
+            return convert(ctx, design_box(g, spec, s, frame=False), g.dpi, s, spec.photo, view=view)
+        return convert(ctx, g.box, g.dpi, s, spec.photo, view=view)
     draw_bands(ctx, g, spec)
     if spec.kind == "design":
         box = design_box(g, spec, s)

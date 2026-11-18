@@ -12,6 +12,8 @@ yet. What it covers so far:
                contour.py, flow.py, dots.py (dot-to-dot), sudoku.py,
                words.py (word search), nonogram.py, name.py (name pages)
 - book.py      booklets: cover, design and answer pages, fold-and-staple sheets
+- photo.py     photos to black & white: dithers, line drawing, halftone, engraving, stippling, nonograms
+- testpage.py  the printer test page
 - poster.py    posters: one design across several sheets, with trim marks and labels
 - output.py    write a page as PNG, PDF or SVG, a booklet or poster as PDF
 """
