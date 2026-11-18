@@ -1,6 +1,6 @@
 // Records what the 2.5 JavaScript patterns draw, so the Python ports can be checked against them step for step.
 // Needs Node and Playwright (with Chromium) and the 2.5 index.html:
-//   node tests/fixtures/make_fixtures.js [maze] [mandala] [truchet] [contour] [flow] [dots] [sudoku] [words] [nonogram] [name] [booklet] [poster] [photo] [nonopic] [testpage]     (default: all)
+//   node tests/fixtures/make_fixtures.js [maze] [mandala] [truchet] [contour] [flow] [dots] [sudoku] [words] [nonogram] [name] [booklet] [poster] [photo] [nonopic] [testpage] [cbnphoto] [cbnpattern]     (default: all)
 // Writes tests/fixtures/<pattern>_js.json.gz. Only re-run it if the reference changes; the tests read the JSON.
 // INDEX_HTML=path/to/index.html points it at another copy (e.g. one checked out from the v2.5.0 tag).
 const path = require("path"), fs = require("fs"), zlib = require("zlib");
@@ -104,6 +104,17 @@ const PATTERNS = {
     // the printer test page: Letter and A4, 150 and 300 dpi, dot sizes 1 and 3
     return [["letter", 300, 2], ["a4", 300, 2], ["letter", 150, 1], ["a4", 150, 3]].map(([paper, dpi, dot]) => ({ paper, dpi, dot }));
   },
+  cbnphoto() {
+    // colour by number on the synthetic photo: [brightness, contrast, threshold (detail), crayons, fit]
+    return [[0, 110, 128, 8, "contain"], [10, 140, 200, 12, "cover"], [0, 100, 60, 4, "contain"], [-10, 120, 254, 16, "cover"]]
+      .map(([brightness, contrast, threshold, k, fit]) => ({ brightness, contrast, threshold, k, fit }));
+  },
+  cbnpattern() {
+    // colour-by-number patterns: the page as drawn, and its answer page; [gen, seed, c, crayons, name text, name background]
+    return [["mandala", 20261117, 4, 8, "", "none"], ["truchet", 7, 3, 6, "", "none"], ["contour", 42, 2, 10, "", "none"],
+            ["name", 5, 3, 8, "Maya", "flow"], ["mandala", 9, 7, 12, "", "none"]]
+      .map(([gen, seed, c, k, text, bg]) => ({ gen, seed, c, k, text, bg }));
+  },
   truchet() {
     // complexity 1-3 draws one arc per corner, 4 and up three; 10 is the finest grid
     return [[1, 1], [20261117, 3], [7, 4], [42, 7], [5, 10]].map(([seed, c]) => ({ seed, c }));
@@ -148,6 +159,7 @@ const PATTERNS = {
           stroke() { ops.push(["stroke", st.lineWidth, st.strokeStyle, st.lineCap, st.lineJoin].concat(dash.length ? [dash] : [])); },
           setLineDash(d) { dash = d.slice(); },
           translate(x, y) { ops.push(["translate", x, y]); },
+          transform(a, b, c, d, e, f) { ops.push(["transform", a, b, c, d, e, f]); },
           setTransform() {},
           fill() { ops.push(["fill", st.fillStyle]); },
           fillText(t, x, y) {   // text, position, colour, weight and size
@@ -170,6 +182,49 @@ const PATTERNS = {
           ctx.ops.length = 0; S.convCache.clear();
           const g = geometry("portrait"), info = drawTestPage(ctx, g);
           return { ...k, g: { w: g.w, h: g.h, W: g.W, H: g.H }, info, ops: ctx.ops };
+        }
+        if (name === "cbnphoto") {
+          const pc = document.createElement("canvas"); pc.width = 360; pc.height = 270; const p = pc.getContext("2d");
+          const lg = p.createLinearGradient(0, 0, 360, 0); lg.addColorStop(0, "#fff"); lg.addColorStop(1, "#000"); p.fillStyle = lg; p.fillRect(0, 0, 360, 270);
+          const rg = p.createRadialGradient(120, 110, 5, 120, 110, 90); rg.addColorStop(0, "#f4d03f"); rg.addColorStop(1, "rgba(40,90,190,0.9)");
+          p.fillStyle = rg; p.beginPath(); p.arc(120, 110, 90, 0, Math.PI * 2); p.fill();
+          p.fillStyle = "#c0392b"; p.fillRect(230, 30, 90, 60); p.fillStyle = "#27ae60"; p.beginPath(); p.arc(270, 200, 50, 0, Math.PI * 2); p.fill();
+          p.strokeStyle = "#222"; p.lineWidth = 3; for (let x = -270; x < 360; x += 14) { p.beginPath(); p.moveTo(x, 270); p.lineTo(x + 120, 150); p.stroke(); }
+          p.clearRect(0, 0, 40, 40);
+          const photo = { img: pc, imgId: "cbn", name: "t", rot: 0, zoom: 100, panx: 0, pany: 0 };
+          const set = (id, v) => { const e = document.getElementById(id); if (e.type === "checkbox") e.checked = v; else e.value = v; };
+          set("style", "cbn"); set("brightness", k.brightness); set("contrast", k.contrast); set("threshold", k.threshold);
+          set("pcbnColours", k.k); set("fit", k.fit); set("invert", false); set("dpi", 300);
+          const pbox = { x: 100, y: 120, w: 520, h: 520 };
+          // what convert() works out: the key's band, then the picture's box and its 150 dpi grid
+          const kh = cbnKeyHeight(pbox, { dpi: 300 }, k.k), art = { ...pbox, h: pbox.h - kh - 300 * 0.12 }, cell = 300 / CBN_DPI;
+          const inp = conversionInput(art, cell, "cbn", photo), r = processPixels(inp.data.slice(), inp.ww, inp.wh, inp.p);
+          const b64 = a => { const u = new Uint8Array(a.buffer, a.byteOffset, a.byteLength); let s = "";
+            for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); };
+          ctx.ops.length = 0; S.convCache.clear();
+          convert(ctx, pbox, { dpi: 300 }, photo);
+          return { ...k, box: pbox, art, ww: inp.ww, wh: inp.wh, p: inp.p, rgba: b64(inp.data),
+                   cbn: { pal: r.cbn.pal, colour: r.cbn.colour, spots: r.cbn.spots, lines: r.cbn.lines.map(l => Array.from(l)) },
+                   label: b64(r.label), ops: ctx.ops };
+        }
+        if (name === "cbnpattern") {
+          const set = (id, v) => { const e = document.getElementById(id); if (e.type === "checkbox") e.checked = v; else e.value = v; };
+          set("cbn", true); set("cbnColours", k.k); set("nameText", k.text); set("nameBg", k.bg); set("frame", false); set("weight", 4);
+          set("booklet", true); set("pages", 2); set("mix", false); set("gen", k.gen); set("complexity", k.c); set("ramp", false);
+          set("cover", false); set("pageNums", true); set("key", true); set("title", ""); set("nameLine", false); set("poster", false);
+          S.mode = "make"; S.seed = k.seed; S.pageSeeds = {};
+          const g = geometry(), pages = bookPages(), page = pages[0], answers = pages.find(q => q.kind === "answers");
+          const draw = q => { const r = recorder(); r.fillRect = function (x, y, w, h) { this.ops.push(["fill_rect", x, y, w, h, this.fillStyle]); };
+            r.ops.length = 0; drawPage(r, g, q); return r.ops; };
+          // the coarse grid cbnPattern found its spaces in (ink -1, space 0), and what it made of them
+          const box = designBox(g, page), kh = cbnKeyHeight(box, g, k.k), art = { ...box, h: box.h - kh - g.dpi * 0.12 };
+          const lw = 4 * g.dpi / 150, pat = cbnPattern(g, art, page, lw);
+          // the second design page's grid too: the answer page shows both
+          const page2 = pages[1], box2 = designBox(g, page2), art2 = { ...box2, h: box2.h - cbnKeyHeight(box2, g, k.k) - g.dpi * 0.12 };
+          const ink2 = Array.from(cbnPattern(g, art2, page2, lw).label, l => (l < 0 ? "1" : "0")).join("");
+          return { ...k, seed: page.seed, seed2: page2.seed, ink2, art, lw, w: pat.w, h: pat.h, s: pat.s, ink: Array.from(pat.label, l => (l < 0 ? "1" : "0")).join(""),
+                   spots: pat.spots.map(q => [q.n, q.x, q.y, q.r, q.id]), names: pat.names, pageOps: draw(page), answerOps: answers ? draw(answers) : null,
+                   kinds: pages.map(q => q.kind) };
         }
         if (name === "nonopic") {
           const r = mulberry32(k.seed), pic = Array.from({ length: k.w * k.h }, () => (r() < 0.5 ? 1 : 0));

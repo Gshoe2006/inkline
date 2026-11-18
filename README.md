@@ -33,7 +33,7 @@ The self-test renders every pattern, the photo converter, a booklet, two posters
 
 ## Inkline 3.0 engine (in progress)
 
-Inkline 3.0 drops the HTML page: the patterns are being ported from `index.html` to plain Python and Qt in `inkengine/`, one at a time. The 2.x app doesn't use it yet. So far it has the seeded random numbers (same seed, same design as 2.x), one drawing API that writes the preview, PNG, vector PDF and SVG, the page layout, mazes (every shape, with answer pages), mandalas, woven tiles, contours, flow lines, name pages in bubble letters, and the puzzles with answer pages: dot-to-dots, sudoku, word search and nonograms. That's every pattern 2.x makes. Booklets work too (a cover, difficulty that ramps up, mixed patterns, answer pages and fold-and-staple printing), and so do posters across 2×1 up to 4×4 sheets. Photos convert in every style but colour by number: smooth, crisp and pattern dithering, solid black & white, line drawings, halftone, engraving, stippling and photo nonograms; the printer test page is there too. It needs numpy as well as PySide6 (Arch: `sudo pacman -S python-numpy`).
+Inkline 3.0 drops the HTML page: the patterns are being ported from `index.html` to plain Python and Qt in `inkengine/`, one at a time. The 2.x app doesn't use it yet. So far it has the seeded random numbers (same seed, same design as 2.x), one drawing API that writes the preview, PNG, vector PDF and SVG, the page layout, mazes (every shape, with answer pages), mandalas, woven tiles, contours, flow lines, name pages in bubble letters, and the puzzles with answer pages: dot-to-dots, sudoku, word search and nonograms. That's every pattern 2.x makes. Booklets work too (a cover, difficulty that ramps up, mixed patterns, answer pages and fold-and-staple printing), and so do posters across 2×1 up to 4×4 sheets. Photos convert in every style: smooth, crisp and pattern dithering, solid black & white, line drawings, halftone, engraving, stippling, photo nonograms and colour by number (which also works for mandalas, woven tiles, contours and name pages, with shaded answer pages in booklets); the printer test page is there too. It needs numpy as well as PySide6 (Arch: `sudo pacman -S python-numpy`).
 
 ```sh
 python3 -m inkengine maze -o maze.pdf
@@ -51,6 +51,8 @@ python3 -m inkengine maze --booklet 10 --title "Rainy Day Mazes" -o mazes.pdf
 python3 -m inkengine mandala --booklet 12 --mix --fold -o book.pdf
 python3 -m inkengine mandala --poster 3x3 -o poster.pdf
 python3 -m inkengine photo --image cat.jpg --style halftone -o cat.pdf
+python3 -m inkengine photo --image cat.jpg --style cbn --crayons 10 -o colour-me.pdf
+python3 -m inkengine mandala --cbn 6 --booklet 4 -o numbers.pdf
 python3 -m inkengine testpage -o test.pdf
 python3 -m inkengine maze --shape heart --complexity 7 --seed 42 --answers -o heart.pdf
 python3 -m inkengine maze --shape word --word Maya --title "Maya's maze" --name-line -o maya.svg

@@ -68,7 +68,7 @@ def test_drawn_styles_match_javascript(k):
 
 
 def test_recordings_cover_every_style():
-    assert {k["style"] for k in CASES} == set(photo.STYLES)
+    assert {k["style"] for k in CASES} == set(photo.STYLES) - {"cbn"}   # colour by number: tests/test_cbn.py
     assert any(k["nono"] and k["nono"]["flips"] for k in CASES)
 
 

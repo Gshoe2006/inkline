@@ -143,8 +143,12 @@ class Canvas:
         """Move the origin (undone by restore())."""
         raise NotImplementedError
 
-    def draw_image(self, image, x, y, w, h):
-        """A QImage stretched over the rectangle, pixels kept sharp (a dithered photo)."""
+    def draw_image(self, image, x, y, w, h, smooth=False):
+        """A QImage stretched over the rectangle: pixels kept sharp (a dithered photo), or smoothed."""
+        raise NotImplementedError
+
+    def transform(self, a, b, c, d, e, f):
+        """Multiply the current transform, as a canvas's transform() (undone by restore())."""
         raise NotImplementedError
 
     def circle(self, x, y, r):
@@ -318,9 +322,13 @@ class QtCanvas(Canvas):
     def translate(self, x, y):
         self.p.translate(x, y)
 
-    def draw_image(self, image, x, y, w, h):
+    def transform(self, a, b, c, d, e, f):
+        from PySide6.QtGui import QTransform
+        self.p.setTransform(QTransform(a, b, c, d, e, f), True)
+
+    def draw_image(self, image, x, y, w, h, smooth=False):
         self.p.save()
-        self.p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, False)
+        self.p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, smooth)
         self.p.drawImage(QRectF(x, y, w, h), image)
         self.p.restore()
 
@@ -442,7 +450,11 @@ class SvgCanvas(Canvas):
         self.out.append(f'<g transform="translate({fx(x)} {fx(y)})">')
         self._groups[-1] += 1
 
-    def draw_image(self, image, x, y, w, h):
+    def transform(self, a, b, c, d, e, f):
+        self.out.append(f'<g transform="matrix({" ".join(str(round(v, 5)) for v in (a, b, c, d, e, f))})">')
+        self._groups[-1] += 1
+
+    def draw_image(self, image, x, y, w, h, smooth=False):
         import base64
         from PySide6.QtCore import QBuffer, QByteArray, QIODevice
         data = QByteArray()
@@ -451,7 +463,7 @@ class SvgCanvas(Canvas):
         image.save(buf, "PNG")
         src = base64.b64encode(bytes(data)).decode("ascii")
         self.out.append(f'<image x="{fx(x)}" y="{fx(y)}" width="{fx(w)}" height="{fx(h)}" preserveAspectRatio="none" '
-                        f'style="image-rendering:pixelated" href="data:image/png;base64,{src}"/>')
+                        f'{"" if smooth else 'style="image-rendering:pixelated" '}href="data:image/png;base64,{src}"/>')
 
     def fill_text(self, text, x, y, max_width=None):
         self._text(text, x, y, max_width, f'fill="{self.st.fill_style}"')
@@ -571,5 +583,8 @@ class RecordingCanvas(Canvas):
     def translate(self, x, y):
         self.ops.append(("translate", x, y))
 
-    def draw_image(self, image, x, y, w, h):
+    def transform(self, a, b, c, d, e, f):
+        self.ops.append(("transform", a, b, c, d, e, f))
+
+    def draw_image(self, image, x, y, w, h, smooth=False):
         self.ops.append(("image", x, y, w, h))

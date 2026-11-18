@@ -17,6 +17,8 @@
     python3 -m inkengine mandala --booklet 12 --mix --fold -o book.pdf    (fold-and-staple)
     python3 -m inkengine mandala --poster 3x3 -o poster.pdf    (nine sheets to tape together)
     python3 -m inkengine photo --image cat.jpg --style halftone -o cat.pdf
+    python3 -m inkengine photo --image cat.jpg --style cbn --crayons 10 -o colour-me.pdf
+    python3 -m inkengine mandala --cbn 6 --booklet 4 -o numbers.pdf    (colour-by-number booklet with shaded answers)
     python3 -m inkengine testpage -o test.pdf    (printer test page)
 """
 
@@ -55,10 +57,12 @@ def main(argv=None):
     ph.add_argument("--rotate", type=int, default=0, choices=[0, 90, 180, 270])
     ph.add_argument("--zoom", type=int, default=100, metavar="100..400")
     ph.add_argument("--squares", type=int, default=15, metavar="10..30", help="photo nonogram squares across")
+    ph.add_argument("--crayons", type=int, default=8, metavar="4..16", help="colour by number (--style cbn): crayons to use")
     ph.add_argument("--solved", action="store_true", help="photo nonogram: draw it solved")
     ap.add_argument("--title", default="")
     ap.add_argument("--name-line", action="store_true", help='add a "Name ____" line')
     ap.add_argument("--frame", action="store_true", help="draw a border around the design")
+    ap.add_argument("--cbn", type=int, metavar="CRAYONS", help="colour by number with 3-12 crayons (mandala, truchet, contour, name)")
     ap.add_argument("--paper", default="letter", choices=["letter", "a4"])
     ap.add_argument("--landscape", action="store_true")
     ap.add_argument("--margin", type=float, default=0.5, choices=[0.25, 0.5, 0.75, 1.0])
@@ -89,7 +93,8 @@ def main(argv=None):
                  poster=bool(a.poster), grid=a.poster or "2x2", overlap=a.overlap,
                  mode="convert" if a.pattern == "photo" else "make", style=a.style, brightness=a.brightness,
                  contrast=a.contrast, threshold=a.threshold, dot=a.dot, fit="cover" if a.fill else "contain",
-                 invert=a.invert, pnono_size=a.squares, pnono_answer=a.solved)
+                 invert=a.invert, pnono_size=a.squares, pnono_answer=a.solved,
+                 pcbn_colours=max(4, min(16, a.crayons)), cbn=bool(a.cbn), cbn_colours=max(3, min(12, a.cbn or 6)))
     from . import output   # imported here so --help works without starting Qt
     if a.pattern == "testpage":
         import os
