@@ -118,3 +118,24 @@ def test_changes_made_while_a_field_has_the_cursor_are_not_typing(win):
     _set(win, frame=not on)
     _set(win, frame=on)
     assert h.count() - n == 4       # and the Border clicks stay separate steps
+
+
+def test_history_lists_the_steps_and_jumps_to_one(win):
+    app, h = QApplication.instance(), win.history
+    from PySide6.QtWidgets import QUndoView
+    start, frame = win.state.settings.weight, win.state.settings.frame
+    _set(win, weight=start + 1)
+    _set(win, frame=not frame)
+    _set(win, frame=frame)          # three steps: clicks never join
+    win.show_history()
+    _wait(app, 50)
+    view = win._history_view.findChild(QUndoView)
+    assert view.model().rowCount() == 4          # "Start" and the three steps
+    view.setCurrentIndex(view.model().index(1, 0))
+    _wait(app, 50)
+    assert h.index() == 1 and win.state.settings.weight == start + 1 and win.state.settings.frame == frame
+    view.setCurrentIndex(view.model().index(0, 0))
+    _wait(app, 50)
+    assert win.state.settings.weight == start
+    win.show_history()                           # opened again: the same window, not a second one
+    assert len(win.findChildren(QUndoView)) == 1

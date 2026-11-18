@@ -152,6 +152,7 @@ class Window(QMainWindow):
         self._busy_saving = False
         self._pan_start = None
         self.history = QUndoStack(self)
+        self._history_view = None   # Edit → History…, made the first time it's opened
         self._drags = 0      # counts finished slider and photo drags, so the next drag is a new step
         self._focus_moves = 0   # leaving a field and coming back starts a new typing step
         QApplication.instance().focusChanged.connect(self._focus_moved)
@@ -227,6 +228,8 @@ class Window(QMainWindow):
         redo.setShortcuts(QKeySequence.StandardKey.Redo)
         e.addAction(undo)
         e.addAction(redo)
+        e.addSeparator()
+        act(e, "&History…", self.show_history, "Ctrl+H")
         v = mb.addMenu("&View")
         act(v, "&New design", self.new_design, "Ctrl+N")
         act(v, "Pre&vious page\t←", lambda: self.step_page(-1))
@@ -740,6 +743,23 @@ class Window(QMainWindow):
 
     def _msg(self, text):
         self.status.emit(text)
+
+    def show_history(self):
+        """Every undo step in a list beside the window: choosing one goes back (or forward) to it."""
+        if self._history_view is None:
+            from PySide6.QtWidgets import QDialog, QUndoView, QVBoxLayout
+            d = QDialog(self)
+            d.setWindowTitle("History")
+            view = QUndoView(self.history, d)
+            view.setEmptyLabel("Start")    # the top row: how things were before the first step
+            lay = QVBoxLayout(d)
+            lay.setContentsMargins(8, 8, 8, 8)
+            lay.addWidget(view)
+            d.resize(260, 360)
+            self._history_view = d
+        self._history_view.show()
+        self._history_view.raise_()
+        self._history_view.activateWindow()
 
     def _about(self):
         QMessageBox.about(self, "About Inkline", f"<b>Inkline {self.version}</b><br>Black &amp; white images for printing: "
