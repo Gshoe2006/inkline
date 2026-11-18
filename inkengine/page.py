@@ -36,6 +36,8 @@ class Settings:
     dpi: int = 300
     maze_shape: str = "rect"
     maze_word: str = "Maze"
+    ws_theme: str = "animals"    # word search: a theme from patterns.words.THEMES, or "custom"
+    ws_words: str = ""           # word search: your own words, for ws_theme "custom"
 
     @classmethod
     def from_dict(cls, d):

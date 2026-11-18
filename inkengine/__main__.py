@@ -9,6 +9,8 @@
     python3 -m inkengine flow -o flow.png
     python3 -m inkengine dots --complexity 6 --answers -o dots.pdf    (dot-to-dot)
     python3 -m inkengine sudoku --complexity 8 --answers -o sudoku.pdf
+    python3 -m inkengine words --theme ocean --answers -o words.pdf    (word search)
+    python3 -m inkengine words --words "mum, dad, grandma, pizza" -o ours.pdf
 """
 
 import argparse
@@ -16,7 +18,7 @@ import random
 import sys
 
 from .page import PageSpec, Settings, answer_page, single_page
-from .patterns import GENERATORS, HAS_ANSWER, NAMES, maze
+from .patterns import GENERATORS, HAS_ANSWER, NAMES, maze, words
 
 
 def main(argv=None):
@@ -28,6 +30,8 @@ def main(argv=None):
     ap.add_argument("--weight", type=int, default=4, choices=range(1, 11), metavar="1-10", help="line weight")
     ap.add_argument("--shape", default="rect", choices=maze.SHAPES, help="maze shape")
     ap.add_argument("--word", default="Maze", help="word or name for --shape word (up to 12 letters)")
+    ap.add_argument("--theme", default="animals", choices=sorted(words.THEME_NAMES), help="word search words")
+    ap.add_argument("--words", default="", help='word search: your own words, e.g. "mum, dad, pizza" (sets --theme custom)')
     ap.add_argument("--title", default="")
     ap.add_argument("--name-line", action="store_true", help='add a "Name ____" line')
     ap.add_argument("--frame", action="store_true", help="draw a border around the design")
@@ -41,7 +45,8 @@ def main(argv=None):
     s = Settings(gen=a.pattern, seed=a.seed if a.seed is not None else random.randrange(10**9),
                  complexity=a.complexity, weight=a.weight, frame=a.frame, title=a.title, name_line=a.name_line,
                  paper=a.paper, orient="landscape" if a.landscape else "portrait", margin=a.margin, dpi=a.dpi,
-                 maze_shape=a.shape, maze_word=a.word[:12])
+                 maze_shape=a.shape, maze_word=a.word[:12],
+                 ws_theme="custom" if a.words else a.theme, ws_words=a.words[:300])
     from . import output   # imported here so --help works without starting Qt
     if a.answers:
         if s.gen not in HAS_ANSWER:
@@ -55,6 +60,15 @@ def main(argv=None):
     else:
         output.write(a.out, s)
     print(f"wrote {a.out} (seed {s.seed})")
+    if s.gen == "words":   # tell the person about words that didn't fit, as the 2.x app does
+        from .box import Box
+        from .canvas import RecordingCanvas
+        from .page import design_box, geometry
+        from .rng import mulberry32
+        g = geometry(s)
+        ws = words.draw(RecordingCanvas(), design_box(g, single_page(s), s), mulberry32(s.seed), s.complexity, s, dpi=g.dpi)
+        if words.note(ws):
+            print(words.note(ws))
 
 
 if __name__ == "__main__":
