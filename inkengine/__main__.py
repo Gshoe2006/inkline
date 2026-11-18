@@ -16,6 +16,8 @@
     python3 -m inkengine maze --booklet 10 --title "Rainy Day Mazes" -o mazes.pdf
     python3 -m inkengine mandala --booklet 12 --mix --fold -o book.pdf    (fold-and-staple)
     python3 -m inkengine mandala --poster 3x3 -o poster.pdf    (nine sheets to tape together)
+    python3 -m inkengine photo --image cat.jpg --style halftone -o cat.pdf
+    python3 -m inkengine testpage -o test.pdf    (printer test page)
 """
 
 import argparse
@@ -23,13 +25,14 @@ import random
 import sys
 
 from .page import PageSpec, Settings, answer_page, single_page
-from . import poster
+from . import photo, poster
 from .patterns import GENERATORS, HAS_ANSWER, NAMES, maze, name, words
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="inkengine", description="Draw an Inkline page without the HTML app.")
-    ap.add_argument("pattern", choices=sorted(GENERATORS))
+    ap.add_argument("pattern", choices=sorted(GENERATORS) + ["photo", "testpage"],
+                    help="a pattern, photo to convert --image, or testpage for the printer test page")
     ap.add_argument("-o", "--out", required=True, help="output file: .pdf, .png or .svg")
     ap.add_argument("--seed", type=int, help="design number (default: random)")
     ap.add_argument("--complexity", type=int, default=5, choices=range(1, 11), metavar="1-10")
@@ -40,6 +43,19 @@ def main(argv=None):
     ap.add_argument("--words", default="", help='word search: your own words, e.g. "mum, dad, pizza" (sets --theme custom)')
     ap.add_argument("--text", default="Hello", help="name page: the name or word (up to 40 characters)")
     ap.add_argument("--background", default="none", choices=sorted(name.BACKGROUNDS), help="name page: pattern under the letters")
+    ph = ap.add_argument_group("photos (pattern: photo)")
+    ph.add_argument("--image", help="the picture to convert (PNG, JPEG...)")
+    ph.add_argument("--style", default="fs", choices=photo.STYLES, help="photo style")
+    ph.add_argument("--brightness", type=int, default=0, metavar="-100..100")
+    ph.add_argument("--contrast", type=int, default=110, metavar="20..300")
+    ph.add_argument("--threshold", type=int, default=128, metavar="1..254", help="threshold, or detail for line drawings")
+    ph.add_argument("--dot", type=int, default=2, choices=range(1, 9), metavar="1-8", help="dot size")
+    ph.add_argument("--fill", action="store_true", help="fill the page (crop) instead of fitting inside")
+    ph.add_argument("--invert", action="store_true")
+    ph.add_argument("--rotate", type=int, default=0, choices=[0, 90, 180, 270])
+    ph.add_argument("--zoom", type=int, default=100, metavar="100..400")
+    ph.add_argument("--squares", type=int, default=15, metavar="10..30", help="photo nonogram squares across")
+    ph.add_argument("--solved", action="store_true", help="photo nonogram: draw it solved")
     ap.add_argument("--title", default="")
     ap.add_argument("--name-line", action="store_true", help='add a "Name ____" line')
     ap.add_argument("--frame", action="store_true", help="draw a border around the design")
@@ -62,7 +78,7 @@ def main(argv=None):
     po.add_argument("--overlap", type=float, default=0.25, choices=[0, 0.25, 0.5], help="inches neighbouring sheets share")
     a = ap.parse_args(argv)
 
-    s = Settings(gen=a.pattern, seed=a.seed if a.seed is not None else random.randrange(10**9),
+    s = Settings(gen=a.pattern if a.pattern in GENERATORS else "maze", seed=a.seed if a.seed is not None else random.randrange(10**9),
                  complexity=a.complexity, weight=a.weight, frame=a.frame, title=a.title, name_line=a.name_line,
                  paper=a.paper, orient="landscape" if a.landscape else "portrait", margin=a.margin, dpi=a.dpi,
                  maze_shape=a.shape, maze_word=a.word[:12],
@@ -70,16 +86,34 @@ def main(argv=None):
                  name_text=a.text[:40], name_bg=a.background,
                  pages=max(2, min(40, a.booklet or 10)), mix=a.mix, ramp=not a.same_difficulty, cover=not a.no_cover,
                  page_nums=not a.no_page_numbers, key=not a.no_answers, fold=a.fold,
-                 poster=bool(a.poster), grid=a.poster or "2x2", overlap=a.overlap)
+                 poster=bool(a.poster), grid=a.poster or "2x2", overlap=a.overlap,
+                 mode="convert" if a.pattern == "photo" else "make", style=a.style, brightness=a.brightness,
+                 contrast=a.contrast, threshold=a.threshold, dot=a.dot, fit="cover" if a.fill else "contain",
+                 invert=a.invert, pnono_size=a.squares, pnono_answer=a.solved)
     from . import output   # imported here so --help works without starting Qt
+    if a.pattern == "testpage":
+        import os
+        version_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "VERSION")
+        version = open(version_file).read().strip() if os.path.exists(version_file) else ""
+        output.write_test_page(a.out, s, version)
+        print(f"wrote {a.out}: print it at 100% (actual size) to check your printer")
+        return
+    pic = None
+    if a.pattern == "photo":
+        if not a.image:
+            ap.error("photo needs --image PICTURE")
+        if a.booklet or a.answers:
+            ap.error("photo can't make booklets or answer pages (photo books come later)")
+        pic = photo.load_photo(a.image)
+        pic.rot, pic.zoom = a.rotate, max(100, min(400, a.zoom))
     if a.poster:
         if a.booklet or a.answers:
             ap.error("--poster can't be combined with --booklet or --answers")
         if a.out.lower().endswith(".pdf"):
-            n = output.write_poster_pdf(a.out, s)
+            n = output.write_poster_pdf(a.out, s, single_page(s, pic))
             print(f"wrote {a.out}: {n} sheets (seed {s.seed})")
         elif a.out.lower().endswith(".svg"):
-            output.write_svg(a.out, s)
+            output.write_svg(a.out, s, single_page(s, pic))
             print(f"wrote {a.out}: the whole poster (seed {s.seed})")
         else:
             ap.error("--poster needs a .pdf (the sheets) or .svg (the whole poster) output")
@@ -103,7 +137,7 @@ def main(argv=None):
                                     name=puzzle.name, label=f"{NAMES[s.gen]} {s.seed}")])
         output.write_pdf(a.out, s, [puzzle, key])
     else:
-        output.write(a.out, s)
+        output.write(a.out, s, single_page(s, pic))
     print(f"wrote {a.out} (seed {s.seed})")
     if s.gen == "words":   # tell the person about words that didn't fit, as the 2.x app does
         from .box import Box

@@ -1,6 +1,6 @@
 // Records what the 2.5 JavaScript patterns draw, so the Python ports can be checked against them step for step.
 // Needs Node and Playwright (with Chromium) and the 2.5 index.html:
-//   node tests/fixtures/make_fixtures.js [maze] [mandala] [truchet] [contour] [flow] [dots] [sudoku] [words] [nonogram] [name] [booklet] [poster]     (default: all)
+//   node tests/fixtures/make_fixtures.js [maze] [mandala] [truchet] [contour] [flow] [dots] [sudoku] [words] [nonogram] [name] [booklet] [poster] [photo] [nonopic] [testpage]     (default: all)
 // Writes tests/fixtures/<pattern>_js.json.gz. Only re-run it if the reference changes; the tests read the JSON.
 // INDEX_HTML=path/to/index.html points it at another copy (e.g. one checked out from the v2.5.0 tag).
 const path = require("path"), fs = require("fs"), zlib = require("zlib");
@@ -86,6 +86,24 @@ const PATTERNS = {
             ["sudoku", "1x2", "0.5", "", false, 7], ["truchet", "4x4", "0.25", "", false, 5]]
       .map(([gen, grid, overlap, title, nameLine, seed]) => ({ gen, grid, overlap, title, nameLine, seed, c: 5 }));
   },
+  photo() {
+    // each style on a small synthetic photo, with the tone controls varied; [style, brightness, contrast, threshold, invert, dot, fit]
+    return [["fs", 0, 110, 128, false, 2, "contain"], ["fs", 20, 150, 110, true, 1, "cover"], ["atkinson", -15, 90, 140, false, 2, "contain"],
+            ["bayer", 0, 110, 128, false, 2, "cover"], ["bayer", 30, 200, 90, true, 3, "contain"], ["threshold", 0, 110, 128, false, 2, "contain"],
+            ["threshold", -40, 300, 200, true, 1, "cover"], ["line", 0, 110, 128, false, 1, "contain"], ["line", 10, 130, 180, false, 2, "cover"],
+            ["halftone", 0, 110, 128, false, 2, "contain"], ["halftone", 0, 140, 128, true, 1, "cover"], ["engrave", 0, 110, 128, false, 2, "contain"],
+            ["engrave", 25, 160, 128, true, 3, "cover"], ["stipple", 0, 110, 128, false, 2, "contain"], ["stipple", -20, 120, 128, true, 1, "cover"],
+            ["nono", 0, 110, 128, false, 2, "contain", 12], ["nono", 0, 110, 110, false, 2, "cover", 25], ["nono", 0, 110, 110, true, 2, "contain", 30]]
+      .map(([style, brightness, contrast, threshold, invert, dot, fit, n]) => ({ style, brightness, contrast, threshold, invert, dot, fit, n: n || 15 }));
+  },
+  nonopic() {
+    // photo nonograms' fixer on random noise pictures, which need squares flipped and some printed shaded
+    return [[1, 10, 10], [2, 15, 12], [3, 20, 20], [4, 12, 18]].map(([seed, w, h]) => ({ seed, w, h }));
+  },
+  testpage() {
+    // the printer test page: Letter and A4, 150 and 300 dpi, dot sizes 1 and 3
+    return [["letter", 300, 2], ["a4", 300, 2], ["letter", 150, 1], ["a4", 150, 3]].map(([paper, dpi, dot]) => ({ paper, dpi, dot }));
+  },
   truchet() {
     // complexity 1-3 draws one arc per corner, 4 and up three; 10 is the finest grid
     return [[1, 1], [20261117, 3], [7, 4], [42, 7], [5, 10]].map(([seed, c]) => ({ seed, c }));
@@ -123,6 +141,7 @@ const PATTERNS = {
             const m = /^(?:(\d+)\s+)?([\d.]+)px/.exec(st.font);
             ops.push(["stroke_text", t, x, y, st.lineWidth, st.strokeStyle, m[1] ? +m[1] : 400, +m[2]]);
           },
+          drawImage(img, x, y, w, h) { ops.push(["image", x, y, w, h]); },
           fillRect(x, y, w, h) { ops.push(["fill_rect", x, y, w, h, st.fillStyle]); },
           strokeRect(x, y, w, h) { ops.push(["stroke_rect", x, y, w, h, st.lineWidth, st.strokeStyle]); },
           // a dashed line's dash pattern goes on the end of its stroke step
@@ -145,6 +164,47 @@ const PATTERNS = {
       }
       return cases.map(k => {
         const ctx = recorder(), box = { ...(k.box || BOX) };
+        if (name === "testpage") {
+          const set = (id, v) => { const e = document.getElementById(id); if (e.type === "checkbox") e.checked = v; else e.value = v; };
+          set("paper", k.paper); set("dpi", k.dpi); set("dot", k.dot); set("margin", "0.5");
+          ctx.ops.length = 0; S.convCache.clear();
+          const g = geometry("portrait"), info = drawTestPage(ctx, g);
+          return { ...k, g: { w: g.w, h: g.h, W: g.W, H: g.H }, info, ops: ctx.ops };
+        }
+        if (name === "nonopic") {
+          const r = mulberry32(k.seed), pic = Array.from({ length: k.w * k.h }, () => (r() < 0.5 ? 1 : 0));
+          const lum = pic.map(x => (x ? 60 : 200) + r() * 60), out = nonoFromPicture(pic, lum, k.w, k.h, 128);
+          return { ...k, pic: pic.join(""), lum, out: { pic: Array.from(out.pic).join(""), rows: out.rows, cols: out.cols,
+                   givens: out.givens ? Array.from(out.givens).join("") : null, flips: out.flips } };
+        }
+        if (name === "photo") {
+          // the test photo: gradients, circles, stripes and a cut-out corner, drawn the same every time
+          const pc = document.createElement("canvas"); pc.width = 360; pc.height = 270; const p = pc.getContext("2d");
+          const lg = p.createLinearGradient(0, 0, 360, 0); lg.addColorStop(0, "#fff"); lg.addColorStop(1, "#000"); p.fillStyle = lg; p.fillRect(0, 0, 360, 270);
+          const rg = p.createRadialGradient(120, 110, 5, 120, 110, 90); rg.addColorStop(0, "#f4d03f"); rg.addColorStop(1, "rgba(40,90,190,0.9)");
+          p.fillStyle = rg; p.beginPath(); p.arc(120, 110, 90, 0, Math.PI * 2); p.fill();
+          p.fillStyle = "#c0392b"; p.fillRect(230, 30, 90, 60); p.fillStyle = "#27ae60"; p.beginPath(); p.arc(270, 200, 50, 0, Math.PI * 2); p.fill();
+          p.strokeStyle = "#222"; p.lineWidth = 3; for (let x = -270; x < 360; x += 14) { p.beginPath(); p.moveTo(x, 270); p.lineTo(x + 120, 150); p.stroke(); }
+          p.clearRect(0, 0, 40, 40);   // a transparent corner: the mask keeps it out of the dither
+          const photo = { img: pc, imgId: "fixture-" + k.style, name: "t", rot: 0, zoom: 100, panx: 0, pany: 0 };
+          const set = (id, v) => { const e = document.getElementById(id); if (e.type === "checkbox") e.checked = v; else e.value = v; };
+          for (const id of ["style", "brightness", "contrast", "threshold", "invert", "dot", "fit"]) set(id, k[id]);
+          set("pnonoSize", k.n); set("dpi", 300); set("pnonoAnswer", false);
+          const pbox = { x: 100, y: 120, w: 260, h: 200 }, cell = Math.max(1, k.style === "halftone" ? k.dot * 5 : k.style === "stipple" ? k.dot * 2 : k.style === "nono" ? pbox.w / (k.n * 8) : k.dot);
+          const inp = conversionInput(pbox, cell, k.style, photo), r = processPixels(inp.data.slice(), inp.ww, inp.wh, inp.p);
+          const b64 = a => {   // raw bytes as base64, a chunk at a time
+            const u = new Uint8Array(a.buffer, a.byteOffset, a.byteLength); let s = "";
+            for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
+            return btoa(s);
+          };
+          const bits = r.rgba ? Array.from({ length: inp.ww * inp.wh }, (_, i) => (r.rgba[i * 4] ? "1" : "0")).join("") : null;
+          ctx.ops.length = 0;
+          if (["halftone", "engrave", "stipple", "nono"].includes(k.style)) { S.convCache.clear(); convert(ctx, pbox, { dpi: 300 }, photo); }
+          return { ...k, box: pbox, cell, ww: inp.ww, wh: inp.wh, p: inp.p, rgba: b64(inp.data), lum: b64(r.lum), mask: r.mask.join(""), bits,
+                   nono: r.nono ? { w: r.nono.w, h: r.nono.h, pic: Array.from(r.nono.pic).join(""), rows: r.nono.rows, cols: r.nono.cols,
+                                    givens: r.nono.givens ? Array.from(r.nono.givens).join("") : null, flips: r.nono.flips } : null,
+                   ops: ctx.ops };
+        }
         if (name === "poster") {
           const set = (id, v) => { const e = document.getElementById(id); if (e.type === "checkbox") e.checked = v; else e.value = v; };
           set("booklet", false); set("poster", true); set("cbn", false); set("frame", false); set("weight", 4);
