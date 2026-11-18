@@ -95,7 +95,38 @@ def write_book_pdf(path, s):
     return len(sides) if s.fold else len(pages)
 
 
+def write_poster_pdf(path, s, spec=None):
+    """Every sheet of the poster, one per PDF page, at true paper size."""
+    from .poster import draw_sheet, poster_geometry
+    ensure_app()
+    g, P = geometry(s), poster_geometry(s)
+    spec = spec or single_page(s)
+    pdf = QPdfWriter(str(path))
+    pdf.setCreator("Inkline")
+    pdf.setTitle(s.title.strip() or "Inkline poster")
+    pdf.setResolution(g.dpi)
+    pdf.setPageLayout(_page_layout(g))
+    p = QPainter()
+    if not p.begin(pdf):
+        raise OSError(f"couldn't write {path}")
+    try:
+        for i in range(P.sheets):
+            if i:
+                pdf.newPage()
+            draw_sheet(QtCanvas(p, g.W, g.H), s, P, spec, i)
+    finally:
+        p.end()
+    return P.sheets
+
+
 def svg_text(s, spec=None):
+    """The page as SVG; for a poster (s.poster), the whole poster as one big vector page."""
+    if s.poster:
+        from .poster import poster_geometry
+        g = poster_geometry(s)
+        ctx = SvgCanvas(g.W, g.H, g.w, g.h)
+        draw_page(ctx, g, spec or single_page(s), s)
+        return str(ctx)
     g = geometry(s)
     ctx = SvgCanvas(g.W, g.H, g.w, g.h)
     draw_page(ctx, g, spec or single_page(s), s)

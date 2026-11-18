@@ -15,6 +15,7 @@
     python3 -m inkengine name --text "Happy Birthday Maya" --background flow -o card.pdf    (name page)
     python3 -m inkengine maze --booklet 10 --title "Rainy Day Mazes" -o mazes.pdf
     python3 -m inkengine mandala --booklet 12 --mix --fold -o book.pdf    (fold-and-staple)
+    python3 -m inkengine mandala --poster 3x3 -o poster.pdf    (nine sheets to tape together)
 """
 
 import argparse
@@ -22,6 +23,7 @@ import random
 import sys
 
 from .page import PageSpec, Settings, answer_page, single_page
+from . import poster
 from .patterns import GENERATORS, HAS_ANSWER, NAMES, maze, name, words
 
 
@@ -54,6 +56,10 @@ def main(argv=None):
     bk.add_argument("--no-page-numbers", action="store_true")
     bk.add_argument("--no-answers", action="store_true", help="leave out the answer pages")
     bk.add_argument("--fold", action="store_true", help="fold-and-staple: two half-size pages per side, print double-sided")
+    po = ap.add_argument_group("posters")
+    po.add_argument("--poster", choices=poster.GRIDS, metavar="GRID",
+                    help="print big across sheets: " + ", ".join(poster.GRIDS) + " (across x down); PDF gives the sheets, SVG the whole poster")
+    po.add_argument("--overlap", type=float, default=0.25, choices=[0, 0.25, 0.5], help="inches neighbouring sheets share")
     a = ap.parse_args(argv)
 
     s = Settings(gen=a.pattern, seed=a.seed if a.seed is not None else random.randrange(10**9),
@@ -63,8 +69,22 @@ def main(argv=None):
                  ws_theme="custom" if a.words else a.theme, ws_words=a.words[:300],
                  name_text=a.text[:40], name_bg=a.background,
                  pages=max(2, min(40, a.booklet or 10)), mix=a.mix, ramp=not a.same_difficulty, cover=not a.no_cover,
-                 page_nums=not a.no_page_numbers, key=not a.no_answers, fold=a.fold)
+                 page_nums=not a.no_page_numbers, key=not a.no_answers, fold=a.fold,
+                 poster=bool(a.poster), grid=a.poster or "2x2", overlap=a.overlap)
     from . import output   # imported here so --help works without starting Qt
+    if a.poster:
+        if a.booklet or a.answers:
+            ap.error("--poster can't be combined with --booklet or --answers")
+        if a.out.lower().endswith(".pdf"):
+            n = output.write_poster_pdf(a.out, s)
+            print(f"wrote {a.out}: {n} sheets (seed {s.seed})")
+        elif a.out.lower().endswith(".svg"):
+            output.write_svg(a.out, s)
+            print(f"wrote {a.out}: the whole poster (seed {s.seed})")
+        else:
+            ap.error("--poster needs a .pdf (the sheets) or .svg (the whole poster) output")
+        print(poster.size_note(s))
+        return
     if a.booklet:
         if not a.out.lower().endswith(".pdf"):
             ap.error("--booklet needs a .pdf output")

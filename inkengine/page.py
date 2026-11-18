@@ -49,6 +49,10 @@ class Settings:
     key: bool = True             # answer pages for the puzzles
     fold: bool = False           # print as a fold-and-staple book: two half-size pages per side
     page_seeds: dict = field(default_factory=dict)   # pages swapped for a new design: {index or "cover": seed}
+    # posters (poster.py)
+    poster: bool = False
+    grid: str = "2x2"            # sheets across x down: 2x2, 3x3, 4x4, 2x1, 3x2, 1x2, 2x3
+    overlap: float = 0.25        # inches shared by neighbouring sheets: 0, 0.25 or 0.5
 
     @classmethod
     def from_dict(cls, d):
@@ -157,10 +161,12 @@ def draw_design(ctx, g, box, gen, seed, c, s, lw, **opts):
     return GENERATORS[gen](ctx, box, mulberry32(seed), c, s, lw=lw, seed=seed, dpi=g.dpi, **opts)
 
 
-def draw_page(ctx, g, spec, s):
-    """Draw one page on a white sheet. Returns what the generator reports (e.g. a maze's grid)."""
-    ctx.fill_style = "#fff"
-    ctx.fill_rect(0, 0, g.W, g.H)
+def draw_page(ctx, g, spec, s, keep=False):
+    """Draw one page on a white sheet. Returns what the generator reports (e.g. a maze's grid).
+    keep=True draws onto what's there (a poster sheet's window onto the whole poster)."""
+    if not keep:
+        ctx.fill_style = "#fff"
+        ctx.fill_rect(0, 0, g.W, g.H)
     ctx.stroke_style = ctx.fill_style = "#000"
     ctx.line_cap = ctx.line_join = "round"
     lw = line_width(s, g)
