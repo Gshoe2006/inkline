@@ -6,7 +6,7 @@ yet. What it covers so far:
 - rng.py       mulberry32, the same seeded generator as index.html, so a seed draws the same design
 - canvas.py    one drawing API with two back ends: QPainter (screen, PNG, PDF, printer) and SVG
 - page.py      paper sizes, settings and page layout (title, name line, page number, border)
-- patterns/    the generators; maze.py is the first one ported
+- patterns/    the generators ported so far: maze.py, mandala.py
 - output.py    write a page as PNG, PDF or SVG
 """
 

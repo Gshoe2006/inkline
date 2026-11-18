@@ -134,10 +134,10 @@ def draw_bands(ctx, g, spec):
     ctx.restore()
 
 
-def draw_design(ctx, box, gen, seed, c, s, **opts):
+def draw_design(ctx, box, gen, seed, c, s, lw, **opts):
     if gen not in GENERATORS:
         raise ValueError(f"{gen!r} isn't ported to the Python engine yet (have: {', '.join(GENERATORS)})")
-    return GENERATORS[gen](ctx, box, mulberry32(seed), c, s, **opts)
+    return GENERATORS[gen](ctx, box, mulberry32(seed), c, s, lw=lw, **opts)
 
 
 def draw_page(ctx, g, spec, s):
@@ -155,7 +155,7 @@ def draw_page(ctx, g, spec, s):
             ctx.line_width = lw * 1.6
             ctx.stroke_rect(*box.inset(-lw * 6))
             ctx.line_width = lw
-        return draw_design(ctx, box, spec.gen, spec.seed, spec.c, s)
+        return draw_design(ctx, box, spec.gen, spec.seed, spec.c, s, lw)
     if spec.kind == "answers":
         area = design_box(g, spec, s)
         gap, fs = g.dpi * 0.3, g.dpi * 0.14
@@ -171,9 +171,9 @@ def draw_page(ctx, g, spec, s):
             slot = Box(cell.x, cell.y + fs * 1.6, cell.w, cell.h - fs * 1.6).inset(fs * 0.6)
             if d.gen == "maze":   # same grid as the puzzle page, so it's the same maze
                 grid = maze.grid_size(design_box(g, d, s), d.c, s.maze_shape, s.maze_word)
-                draw_design(ctx, slot, "maze", d.seed, d.c, s, grid=grid, solve=True)
+                draw_design(ctx, slot, "maze", d.seed, d.c, s, ctx.line_width, grid=grid, solve=True)
             elif d.gen in HAS_ANSWER:
-                draw_design(ctx, slot, d.gen, d.seed, d.c, s, solve=True)
+                draw_design(ctx, slot, d.gen, d.seed, d.c, s, lw, solve=True)
         return None
     raise ValueError(f"unknown page kind {spec.kind!r}")
 

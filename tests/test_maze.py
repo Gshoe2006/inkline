@@ -10,6 +10,8 @@ import os
 
 import pytest
 
+from recording import same_ops
+
 from inkengine.box import Box
 from inkengine.canvas import RecordingCanvas
 from inkengine.page import Settings
@@ -25,15 +27,10 @@ def case_id(k):
     return f"{k['shape']}-{k['seed']}-c{k['c']}{'-solved' if k['solve'] else ''}"
 
 
-def same_ops(got, want):
-    assert len(got) == len(want), f"{len(got)} drawing steps, JavaScript drew {len(want)}"
-    for n, (a, b) in enumerate(zip(got, want)):
-        assert a[0] == b[0], f"step {n}: {a} vs {b}"
-        for x, y in zip(a[1:], b[1:]):
-            if isinstance(y, (int, float)):
-                assert x == pytest.approx(y, abs=1e-3), f"step {n}: {a} vs {b}"
-            else:
-                assert x == y, f"step {n}: {a} vs {b}"
+def recorder(k):
+    ctx = RecordingCanvas()
+    ctx.line_width = k["lw"]
+    return ctx
 
 
 @pytest.mark.parametrize("k", [k for k in CASES if k["shape"] == "rect"], ids=case_id)
@@ -41,7 +38,7 @@ def test_rectangle_matches_javascript(k):
     box = Box(**k["box"])
     s = Settings(maze_shape="rect")
     assert maze.grid_size(box, k["c"], "rect") == (k["grid"]["cols"], k["grid"]["rows"])
-    ctx = RecordingCanvas()
+    ctx = recorder(k)
     maze.draw(ctx, box, mulberry32(k["seed"]), k["c"], s, solve=k["solve"])
     same_ops(ctx.ops, [tuple(o) for o in k["ops"]])
 
@@ -54,7 +51,7 @@ def test_shaped_carving_matches_javascript(k, monkeypatch):
     assert maze.grid_size(box, k["c"], k["shape"], k["word"] or "Maze") == (cols, rows)
     js_mask = bytearray(int(ch) for ch in k["mask"])
     monkeypatch.setattr(maze, "maze_mask", lambda *a: bytearray(js_mask))
-    ctx = RecordingCanvas()
+    ctx = recorder(k)
     info = maze.draw(ctx, box, mulberry32(k["seed"]), k["c"], Settings(maze_shape=k["shape"], maze_word=k["word"]),
                      grid=(cols, rows), solve=k["solve"])
     assert info["reached"] == info["cells"]          # every cell is part of the maze

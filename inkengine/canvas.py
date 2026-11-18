@@ -76,25 +76,33 @@ class Canvas:
     def begin_path(self):
         self.path, self._cur, self._start = [], None, None
 
-    def move_to(self, x, y):
+    # The public calls are what a pattern asks for; _move and _line are the moves and lines the canvas
+    # rules add by themselves (e.g. arc's line to its start), which a RecordingCanvas doesn't log.
+    def _move(self, x, y):
         self.path.append(("M", x, y))
         self._cur = self._start = (x, y)
 
-    def line_to(self, x, y):
+    def _line(self, x, y):
         if self._cur is None:
-            return self.move_to(x, y)
+            return self._move(x, y)
         self.path.append(("L", x, y))
         self._cur = (x, y)
 
+    def move_to(self, x, y):
+        self._move(x, y)
+
+    def line_to(self, x, y):
+        self._line(x, y)
+
     def quadratic_curve_to(self, cx, cy, x, y):
         if self._cur is None:
-            self.move_to(cx, cy)
+            self._move(cx, cy)
         self.path.append(("Q", cx, cy, x, y))
         self._cur = (x, y)
 
     def bezier_curve_to(self, c1x, c1y, c2x, c2y, x, y):
         if self._cur is None:
-            self.move_to(c1x, c1y)
+            self._move(c1x, c1y)
         self.path.append(("C", c1x, c1y, c2x, c2y, x, y))
         self._cur = (x, y)
 
@@ -104,20 +112,21 @@ class Canvas:
             self._cur = self._start
 
     def rect(self, x, y, w, h):
-        self.move_to(x, y)
-        self.line_to(x + w, y)
-        self.line_to(x + w, y + h)
-        self.line_to(x, y + h)
-        self.close_path()
+        self._move(x, y)
+        self._line(x + w, y)
+        self._line(x + w, y + h)
+        self._line(x, y + h)
+        self.path.append(("Z",))
+        self._cur = (x, y)
 
     def arc(self, cx, cy, r, a0, a1, ccw=False):
         """Canvas arc rules: a line from the current point to the start, and a turn of at least
         one full circle draws the whole circle."""
         sx, sy = cx + r * math.cos(a0), cy + r * math.sin(a0)
         if self._cur is None:
-            self.move_to(sx, sy)
+            self._move(sx, sy)
         elif abs(self._cur[0] - sx) > 0.005 or abs(self._cur[1] - sy) > 0.005:
-            self.line_to(sx, sy)
+            self._line(sx, sy)
         delta = a0 - a1 if ccw else a1 - a0
         if delta >= TAU - 1e-9:
             sweep = TAU
@@ -400,10 +409,28 @@ class RecordingCanvas(Canvas):
         self.ops.append(("M", x, y))
 
     def line_to(self, x, y):
-        had = self._cur is not None
         super().line_to(x, y)
-        if had:
-            self.ops.append(("L", x, y))
+        self.ops.append(("L", x, y))
+
+    def quadratic_curve_to(self, cx, cy, x, y):
+        super().quadratic_curve_to(cx, cy, x, y)
+        self.ops.append(("Q", cx, cy, x, y))
+
+    def bezier_curve_to(self, c1x, c1y, c2x, c2y, x, y):
+        super().bezier_curve_to(c1x, c1y, c2x, c2y, x, y)
+        self.ops.append(("C", c1x, c1y, c2x, c2y, x, y))
+
+    def arc(self, cx, cy, r, a0, a1, ccw=False):
+        super().arc(cx, cy, r, a0, a1, ccw)
+        self.ops.append(("A", cx, cy, r, a0, a1, bool(ccw)))   # as called, before the canvas rules apply
+
+    def rect(self, x, y, w, h):
+        super().rect(x, y, w, h)
+        self.ops.append(("rect", x, y, w, h))
+
+    def close_path(self):
+        super().close_path()
+        self.ops.append(("Z",))
 
     def stroke(self):
         s = self.st

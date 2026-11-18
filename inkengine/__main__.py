@@ -3,6 +3,7 @@
     python3 -m inkengine maze -o maze.pdf
     python3 -m inkengine maze --shape heart --complexity 7 --seed 42 -o heart.svg
     python3 -m inkengine maze --shape word --word Maya --answers -o maya.pdf
+    python3 -m inkengine mandala --complexity 8 -o mandala.svg
 """
 
 import argparse
@@ -10,7 +11,7 @@ import random
 import sys
 
 from .page import PageSpec, Settings, answer_page, single_page
-from .patterns import GENERATORS, maze
+from .patterns import GENERATORS, HAS_ANSWER, maze
 
 
 def main(argv=None):
@@ -38,6 +39,8 @@ def main(argv=None):
                  maze_shape=a.shape, maze_word=a.word[:12])
     from . import output   # imported here so --help works without starting Qt
     if a.answers:
+        if s.gen not in HAS_ANSWER:
+            ap.error(f"--answers: {s.gen} pages have no answers")
         if not a.out.lower().endswith(".pdf"):
             ap.error("--answers needs a .pdf output (the answer is a second page)")
         puzzle = single_page(s)

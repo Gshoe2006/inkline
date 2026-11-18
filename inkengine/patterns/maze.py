@@ -186,7 +186,7 @@ def _carve(rnd, cols, rows, start, inside):
     return E, S, seen, parent
 
 
-def draw(ctx, box, rnd, c, settings=None, grid=None, solve=False):
+def draw(ctx, box, rnd, c, settings=None, grid=None, solve=False, lw=None):
     """Draw a maze filling box. settings supplies maze_shape and maze_word; grid=(cols, rows) forces a grid
     (answer pages); solve=True draws the route from entrance to exit."""
     shape = getattr(settings, "maze_shape", "rect")
