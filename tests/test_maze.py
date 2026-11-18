@@ -1,16 +1,14 @@
-"""The Python maze against recordings of index.html's maze (tests/fixtures/maze_js.json).
+"""The Python maze against recordings of index.html's maze (tests/fixtures/maze_js.json.gz).
 
 Rectangular mazes must match the JavaScript line for line. Shaped mazes depend on how the shape is
 rasterised, which differs slightly between Chromium and Qt, so: carving the JavaScript's own mask must
 match line for line, and Qt's mask must agree with Chromium's for the outline shapes.
 """
 
-import json
-import os
 
 import pytest
 
-from recording import same_ops
+from recording import load_fixture, same_ops
 
 from inkengine.box import Box
 from inkengine.canvas import RecordingCanvas
@@ -18,9 +16,7 @@ from inkengine.page import Settings
 from inkengine.patterns import maze
 from inkengine.rng import mulberry32
 
-HERE = os.path.dirname(__file__)
-with open(os.path.join(HERE, "fixtures", "maze_js.json")) as f:
-    CASES = json.load(f)
+CASES = load_fixture("maze")
 
 
 def case_id(k):

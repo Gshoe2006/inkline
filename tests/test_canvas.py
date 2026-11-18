@@ -63,3 +63,40 @@ def test_white_fills_are_left_out_of_svg():
 
 def test_number_format_matches_js_tofixed():
     assert [fx(1.0), fx(2.345), fx(-0.001), fx(10.5)] == ["1", "2.35", "0", "10.5"]
+
+
+def test_qt_draws_single_segments_as_lines_and_polylines_as_paths():
+    """The fast line-by-line drawing is only used where it can't change the picture."""
+    from inkengine.canvas import _as_lines
+    segments = [("M", 0, 0), ("L", 10, 0), ("M", 0, 5), ("L", 10, 5)]
+    assert len(_as_lines(segments)) == 2
+    assert _as_lines([("M", 0, 0), ("L", 10, 0), ("L", 10, 10)]) is None        # a join
+    assert _as_lines([("M", 0, 0), ("Q", 5, 5, 10, 0)]) is None                 # a curve
+    assert _as_lines([("M", 0, 0), ("L", 10, 0), ("Z",)]) is None
+
+
+def test_fast_lines_draw_the_same_as_a_path(monkeypatch):
+    """Separate segments drawn line by line, and the same segments as one path, cover the same pixels."""
+    import inkengine.canvas as canvas
+    from PySide6.QtGui import QImage, QPainter
+    ensure_app()
+
+    def draw():
+        img = QImage(80, 80, QImage.Format.Format_RGB32)
+        img.fill(0xFFFFFFFF)
+        p = QPainter(img)
+        ctx = QtCanvas(p, 80, 80)
+        ctx.line_width, ctx.line_cap = 4, "square"
+        ctx.begin_path()
+        for k in range(6):
+            ctx.move_to(5 + k * 3, 5 + k * 12)
+            ctx.line_to(75 - k * 5, 10 + k * 11)
+        ctx.stroke()
+        p.end()
+        return [img.pixelColor(x, y).lightness() < 128 for y in range(80) for x in range(80)]
+
+    fast = draw()
+    monkeypatch.setattr(canvas, "_as_lines", lambda cmds: None)
+    slow = draw()
+    assert sum(fast) > 1000
+    assert sum(a != b for a, b in zip(fast, slow)) <= 5

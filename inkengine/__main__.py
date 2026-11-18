@@ -5,6 +5,8 @@
     python3 -m inkengine maze --shape word --word Maya --answers -o maya.pdf
     python3 -m inkengine mandala --complexity 8 -o mandala.svg
     python3 -m inkengine truchet --complexity 6 --frame -o tiles.pdf    (woven tiles)
+    python3 -m inkengine contour --complexity 8 -o map.pdf
+    python3 -m inkengine flow -o flow.png
 """
 
 import argparse

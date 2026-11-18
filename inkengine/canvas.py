@@ -13,7 +13,7 @@ Coordinates are page pixels at the page's dpi, y down, angles in radians clockwi
 import math
 from dataclasses import dataclass, replace
 
-from PySide6.QtCore import QPointF, QRectF, Qt
+from PySide6.QtCore import QLineF, QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QFontMetricsF, QPainter, QPainterPath, QPen
 
 from .qt import FONT_FAMILIES, make_font
@@ -220,6 +220,27 @@ def to_qpath(cmds):
     return p
 
 
+def _as_lines(cmds):
+    """The path as a list of QLineF when every piece of it is a single segment (contours, maze walls),
+    else None. With no joins to draw, line by line gives the same lines; only the antialiased edge
+    pixels where two segments' ends overlap come out a shade darker. Polylines (flow lines, routes)
+    keep drawPath: line by line isn't faster for them and would shade every join."""
+    lines, cur, run = [], None, 0
+    for c in cmds:
+        k = c[0]
+        if k == "M":
+            cur, run = (c[1], c[2]), 0
+        elif k == "L" and cur is not None:
+            run += 1
+            if run > 1:
+                return None
+            lines.append(QLineF(cur[0], cur[1], c[1], c[2]))
+            cur = (c[1], c[2])
+        else:
+            return None
+    return lines
+
+
 class QtCanvas(Canvas):
     """Draws with a QPainter that the caller owns (begin/end are the caller's job)."""
 
@@ -247,8 +268,18 @@ class QtCanvas(Canvas):
         self.p.restore()
 
     def stroke(self):
-        if self.path:
+        if not self.path:
+            return
+        lines = _as_lines(self.path)
+        if lines is None:
             self._draw_stroke(to_qpath(self.path))
+            return
+        # Qt's raster painter strokes separate lines about 10x faster than one big path with
+        # antialiasing (a contour page is 40,000 segments: 0.3 s instead of 3 s).
+        self.p.save()
+        self.p.setPen(self._pen())
+        self.p.drawLines(lines)
+        self.p.restore()
 
     def fill(self):
         if self.path:

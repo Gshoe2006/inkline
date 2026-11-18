@@ -3,10 +3,12 @@
 It is being ported from index.html one pattern at a time for Inkline 3.0. The 2.x app does not use it
 yet. What it covers so far:
 
+- noise.py     smooth value noise (contours, flow lines), matching index.html's makeNoise
 - rng.py       mulberry32, the same seeded generator as index.html, so a seed draws the same design
 - canvas.py    one drawing API with two back ends: QPainter (screen, PNG, PDF, printer) and SVG
 - page.py      paper sizes, settings and page layout (title, name line, page number, border)
-- patterns/    the generators ported so far: maze.py, mandala.py, truchet.py (woven tiles)
+- patterns/    the generators ported so far: maze.py, mandala.py, truchet.py (woven tiles),
+               contour.py, flow.py
 - output.py    write a page as PNG, PDF or SVG
 """
 

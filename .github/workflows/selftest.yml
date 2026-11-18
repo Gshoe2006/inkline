@@ -45,7 +45,7 @@ jobs:
 
       - name: Test the 3.0 engine (inkengine/)
         run: |
-          python -m pip install --disable-pip-version-check pytest
+          python -m pip install --disable-pip-version-check pytest numpy
           python -m pytest -q tests
 
       - name: Run the self-test

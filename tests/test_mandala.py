@@ -1,10 +1,8 @@
-"""The Python mandala against recordings of index.html's genMandala (tests/fixtures/mandala_js.json)."""
+"""The Python mandala against recordings of index.html's genMandala (tests/fixtures/mandala_js.json.gz)."""
 
-import json
-import os
 
 import pytest
-from recording import same_ops
+from recording import load_fixture, same_ops
 
 from inkengine.box import Box
 from inkengine.canvas import RecordingCanvas
@@ -12,8 +10,7 @@ from inkengine.page import Settings
 from inkengine.patterns import mandala
 from inkengine.rng import mulberry32
 
-with open(os.path.join(os.path.dirname(__file__), "fixtures", "mandala_js.json")) as f:
-    CASES = json.load(f)
+CASES = load_fixture("mandala")
 
 
 def draw(k):

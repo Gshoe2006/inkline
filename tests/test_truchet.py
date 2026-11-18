@@ -1,19 +1,16 @@
-"""The Python woven tiles against recordings of index.html's genTruchet (tests/fixtures/truchet_js.json)."""
+"""The Python woven tiles against recordings of index.html's genTruchet (tests/fixtures/truchet_js.json.gz)."""
 
-import json
 import math
-import os
 
 import pytest
-from recording import same_ops
+from recording import load_fixture, same_ops
 
 from inkengine.box import Box
 from inkengine.canvas import RecordingCanvas
 from inkengine.patterns import truchet
 from inkengine.rng import mulberry32
 
-with open(os.path.join(os.path.dirname(__file__), "fixtures", "truchet_js.json")) as f:
-    CASES = json.load(f)
+CASES = load_fixture("truchet")
 
 
 @pytest.mark.parametrize("k", CASES, ids=lambda k: f"seed{k['seed']}-c{k['c']}")

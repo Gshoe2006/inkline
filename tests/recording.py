@@ -1,6 +1,16 @@
-"""Comparing a RecordingCanvas with a recording of index.html (tests/fixtures/*_js.json)."""
+"""Comparing a RecordingCanvas with a recording of index.html (tests/fixtures/*_js.json.gz)."""
+
+import gzip
+import json
+import os
 
 import pytest
+
+
+def load_fixture(name):
+    """The recorded cases for a pattern, made by tests/fixtures/make_fixtures.js."""
+    with gzip.open(os.path.join(os.path.dirname(__file__), "fixtures", f"{name}_js.json.gz"), "rt") as f:
+        return json.load(f)
 
 
 def same_ops(got, want):

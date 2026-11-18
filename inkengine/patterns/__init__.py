@@ -1,18 +1,21 @@
 """Pattern generators. Each one draws into a box on a Canvas from a seeded random function.
 
-GENERATORS maps a pattern name to draw(ctx, box, rnd, complexity, settings, lw=line width, **opts). Patterns not yet
+GENERATORS maps a pattern name to draw(ctx, box, rnd, complexity, settings, lw=, seed=, dpi=, **opts):
+the line width, the design's seed (some patterns seed their noise with it) and the page's dpi. Patterns not yet
 ported from index.html aren't listed.
 """
 
-from . import mandala, maze, truchet
+from . import contour, flow, mandala, maze, truchet
 
 GENERATORS = {
+    "contour": contour.draw,
+    "flow": flow.draw,
     "mandala": mandala.draw,
     "maze": maze.draw,
     "truchet": truchet.draw,
 }
 
-NAMES = {"mandala": "Mandala", "maze": "Maze", "truchet": "Woven tiles"}
+NAMES = {"contour": "Contours", "flow": "Flow lines", "mandala": "Mandala", "maze": "Maze", "truchet": "Woven tiles"}
 
 # Puzzles that have a solution to show on answer pages.
 HAS_ANSWER = {"maze"}
