@@ -56,10 +56,24 @@ def book_pages(s):
     return pages
 
 
+def photo_book_pages(s, photos):
+    """A photo book: an optional cover, then one page per photo, each converted with its own crop."""
+    title = s.title.strip()
+    pages = [PageSpec(kind="photo", photo=ph, title=title, name=s.name_line) for ph in photos]
+    if s.pcover and photos:
+        pages.insert(0, PageSpec(kind="pcover", title=title or "My colouring book", photo=photos[0], count=len(photos)))
+    no = 1
+    for pg in pages:
+        if pg.kind != "pcover" and s.ppage_nums:
+            pg.page_no = no
+            no += 1
+    return pages
+
+
 def page_label(pages, i):
     """What the preview's pager shows, e.g. "Page 3 of 14" or "Page 1 of 14 · cover"."""
     kind = pages[i].kind
-    return f"Page {i + 1} of {len(pages)}" + (" · cover" if kind == "cover" else " · answers" if kind == "answers" else "")
+    return f"Page {i + 1} of {len(pages)}" + (" · cover" if kind in ("cover", "pcover") else " · answers" if kind == "answers" else "")
 
 
 # --- fold-and-staple ---------------------------------------------------------------------------------

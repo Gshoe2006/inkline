@@ -67,6 +67,9 @@ class Settings:
     pcbn_colours: int = 8        # colour by number crayons, 4..16
     cbn: bool = False            # mandalas, woven tiles, contours and name pages as colour by number
     cbn_colours: int = 6         # their crayons, 3..12
+    # photo books (book.py)
+    pcover: bool = True          # a cover page with the title, page count and first photo
+    ppage_nums: bool = True
 
     @classmethod
     def from_dict(cls, d):
@@ -99,7 +102,7 @@ def geometry(s):
 
 @dataclass
 class PageSpec:
-    kind: str = "design"         # design | answers | cover | blank
+    kind: str = "design"         # design | answers | cover | blank | photo | pcover
     gen: str = "maze"
     seed: int = 0
     c: int = 5
@@ -112,7 +115,8 @@ class PageSpec:
     idx: int = -1                # booklets: which design page this is (0-based)
     designs: list = field(default_factory=list)   # cover: the booklet's design pages
     art_seed: int = 0            # cover: the seed for its picture
-    photo: object = None         # photo: the photo.Photo to convert
+    photo: object = None         # photo, pcover: the photo.Photo to convert
+    count: int = 0               # pcover: how many photo pages follow
 
     def __post_init__(self):
         if self.header is None:
@@ -189,6 +193,18 @@ def draw_page(ctx, g, spec, s, keep=False):
     ctx.line_cap = ctx.line_join = "round"
     lw = line_width(s, g)
     ctx.line_width = lw
+    if spec.kind == "pcover":   # a photo book's cover: title, how many pages, and the first photo
+        from .photo import convert
+        b, fs = g.box, g.dpi * 0.5
+        ctx.save()
+        ctx.set_font(fs, 700)
+        ctx.text_align, ctx.fill_style = "center", "#000"
+        ctx.fill_text(spec.title, b.x + b.w / 2, b.y + b.h * 0.12, b.w)
+        ctx.set_font(fs * 0.4, 400)
+        ctx.fill_style = "#444"
+        ctx.fill_text(f"{spec.count} {'page' if spec.count == 1 else 'pages'} to colour", b.x + b.w / 2, b.y + b.h * 0.12 + fs * 0.8, b.w)
+        ctx.restore()
+        return convert(ctx, Box(b.x + b.w * 0.08, b.y + b.h * 0.24, b.w * 0.84, b.h * 0.7), g.dpi, s, spec.photo)
     if spec.kind == "photo":   # photos skip the pattern frame, but take the title, name line and page number
         from .photo import convert
         view = getattr(g, "view", None)

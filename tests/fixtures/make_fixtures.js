@@ -1,6 +1,6 @@
 // Records what the 2.5 JavaScript patterns draw, so the Python ports can be checked against them step for step.
 // Needs Node and Playwright (with Chromium) and the 2.5 index.html:
-//   node tests/fixtures/make_fixtures.js [maze] [mandala] [truchet] [contour] [flow] [dots] [sudoku] [words] [nonogram] [name] [booklet] [poster] [photo] [nonopic] [testpage] [cbnphoto] [cbnpattern]     (default: all)
+//   node tests/fixtures/make_fixtures.js [maze] [mandala] [truchet] [contour] [flow] [dots] [sudoku] [words] [nonogram] [name] [booklet] [poster] [photo] [nonopic] [testpage] [cbnphoto] [cbnpattern] [photobook]     (default: all)
 // Writes tests/fixtures/<pattern>_js.json.gz. Only re-run it if the reference changes; the tests read the JSON.
 // INDEX_HTML=path/to/index.html points it at another copy (e.g. one checked out from the v2.5.0 tag).
 const path = require("path"), fs = require("fs"), zlib = require("zlib");
@@ -115,6 +115,11 @@ const PATTERNS = {
             ["name", 5, 3, 8, "Maya", "flow"], ["mandala", 9, 7, 12, "", "none"]]
       .map(([gen, seed, c, k, text, bg]) => ({ gen, seed, c, k, text, bg }));
   },
+  photobook() {
+    // the photo book's page list and its cover's text: [photos, cover, page numbers, title, name line]
+    return [[3, true, true, "", false], [1, true, false, "Our holiday", true], [4, false, true, "Zoo", false], [2, true, true, "", true]]
+      .map(([n, cover, nums, title, nameLine]) => ({ n, cover, nums, title, nameLine }));
+  },
   truchet() {
     // complexity 1-3 draws one arc per corner, 4 and up three; 10 is the finest grid
     return [[1, 1], [20261117, 3], [7, 4], [42, 7], [5, 10]].map(([seed, c]) => ({ seed, c }));
@@ -176,6 +181,20 @@ const PATTERNS = {
       }
       return cases.map(k => {
         const ctx = recorder(), box = { ...(k.box || BOX) };
+        if (name === "photobook") {
+          const set = (id, v) => { const e = document.getElementById(id); if (e.type === "checkbox") e.checked = v; else e.value = v; };
+          set("photobook", true); set("poster", false); set("pcover", k.cover); set("ppageNums", k.nums); set("title", k.title); set("nameLine", k.nameLine);
+          set("style", "threshold"); set("dpi", 150);
+          const mk = i => { const c = document.createElement("canvas"); c.width = 40 + i * 10; c.height = 30; c.getContext("2d").fillRect(0, 0, 10 + i * 5, 30);
+            return { img: c, imgId: "pb" + i, name: "p" + i, rot: 0, zoom: 100, panx: 0, pany: 0 }; };
+          S.mode = "convert"; S.photos = Array.from({ length: k.n }, (_, i) => mk(i)); S.sel = 0;
+          const pages = photoBookPages(), g = geometry();
+          let coverText = null;
+          if (pages[0].kind === "pcover") { const r = recorder(); r.fillRect = () => {}; r.drawImage = () => {}; r.ops.length = 0; drawPage(r, g, pages[0]); coverText = r.ops.filter(o => o[0] === "text"); }
+          const pageText = q => { const r = recorder(); r.fillRect = () => {}; r.drawImage = () => {}; r.ops.length = 0; drawPage(r, g, q); return r.ops.filter(o => o[0] === "text"); };
+          return { ...k, pages: pages.map(q => ({ kind: q.kind, title: q.title, name: !!q.name, header: !!q.header, pageNo: q.pageNo ?? 0,
+                   count: q.count ?? null, photo: q.photo ? q.photo.imgId : null })), coverText, firstPageText: pageText(pages[pages.length - 1]) };
+        }
         if (name === "testpage") {
           const set = (id, v) => { const e = document.getElementById(id); if (e.type === "checkbox") e.checked = v; else e.value = v; };
           set("paper", k.paper); set("dpi", k.dpi); set("dot", k.dot); set("margin", "0.5");

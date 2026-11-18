@@ -11,7 +11,7 @@ yet. What it covers so far:
 - patterns/    the generators ported so far: maze.py, mandala.py, truchet.py (woven tiles),
                contour.py, flow.py, dots.py (dot-to-dot), sudoku.py,
                words.py (word search), nonogram.py, name.py (name pages)
-- book.py      booklets: cover, design and answer pages, fold-and-staple sheets
+- book.py      booklets and photo books: covers, pages, answer pages, fold-and-staple sheets
 - photo.py     photos to black & white: dithers, line drawing, halftone, engraving, stippling, nonograms
 - cbn.py       colour by number, for photos and patterns
 - testpage.py  the printer test page

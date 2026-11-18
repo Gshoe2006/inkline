@@ -18,6 +18,7 @@
     python3 -m inkengine mandala --poster 3x3 -o poster.pdf    (nine sheets to tape together)
     python3 -m inkengine photo --image cat.jpg --style halftone -o cat.pdf
     python3 -m inkengine photo --image cat.jpg --style cbn --crayons 10 -o colour-me.pdf
+    python3 -m inkengine photo --image a.jpg b.jpg c.jpg --style line --title "Our holiday" -o book.pdf    (photo book)
     python3 -m inkengine mandala --cbn 6 --booklet 4 -o numbers.pdf    (colour-by-number booklet with shaded answers)
     python3 -m inkengine testpage -o test.pdf    (printer test page)
 """
@@ -46,7 +47,8 @@ def main(argv=None):
     ap.add_argument("--text", default="Hello", help="name page: the name or word (up to 40 characters)")
     ap.add_argument("--background", default="none", choices=sorted(name.BACKGROUNDS), help="name page: pattern under the letters")
     ph = ap.add_argument_group("photos (pattern: photo)")
-    ph.add_argument("--image", help="the picture to convert (PNG, JPEG...)")
+    ph.add_argument("--image", nargs="+", metavar="PICTURE",
+                    help="the picture to convert (PNG, JPEG...); several make a photo book (PDF): a page each, plus a cover")
     ph.add_argument("--style", default="fs", choices=photo.STYLES, help="photo style")
     ph.add_argument("--brightness", type=int, default=0, metavar="-100..100")
     ph.add_argument("--contrast", type=int, default=110, metavar="20..300")
@@ -94,7 +96,8 @@ def main(argv=None):
                  mode="convert" if a.pattern == "photo" else "make", style=a.style, brightness=a.brightness,
                  contrast=a.contrast, threshold=a.threshold, dot=a.dot, fit="cover" if a.fill else "contain",
                  invert=a.invert, pnono_size=a.squares, pnono_answer=a.solved,
-                 pcbn_colours=max(4, min(16, a.crayons)), cbn=bool(a.cbn), cbn_colours=max(3, min(12, a.cbn or 6)))
+                 pcbn_colours=max(4, min(16, a.crayons)), cbn=bool(a.cbn), cbn_colours=max(3, min(12, a.cbn or 6)),
+                 pcover=not a.no_cover, ppage_nums=not a.no_page_numbers)
     from . import output   # imported here so --help works without starting Qt
     if a.pattern == "testpage":
         import os
@@ -108,9 +111,21 @@ def main(argv=None):
         if not a.image:
             ap.error("photo needs --image PICTURE")
         if a.booklet or a.answers:
-            ap.error("photo can't make booklets or answer pages (photo books come later)")
-        pic = photo.load_photo(a.image)
-        pic.rot, pic.zoom = a.rotate, max(100, min(400, a.zoom))
+            ap.error("photo can't make booklets or answer pages: give several --image files for a photo book")
+        pics = [photo.load_photo(f) for f in a.image]
+        for pic in pics:
+            pic.rot, pic.zoom = a.rotate, max(100, min(400, a.zoom))
+        if len(pics) > 1:
+            if a.poster:
+                ap.error("a photo book can't also be a poster")
+            if not a.out.lower().endswith(".pdf"):
+                ap.error("a photo book (several --image files) needs a .pdf output")
+            n = output.write_book_pdf(a.out, s, pics)
+            print(f"wrote {a.out}: a photo book, {n} {'printed sides' if s.fold else 'pages'}")
+            if s.fold:
+                print("Print double-sided, flipping on the short edge, then stack, fold and staple.")
+            return
+        pic = pics[0]
     if a.poster:
         if a.booklet or a.answers:
             ap.error("--poster can't be combined with --booklet or --answers")
