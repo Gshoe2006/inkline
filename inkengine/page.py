@@ -20,6 +20,19 @@ def js_round(x):
     return int(math.floor(x + 0.5))
 
 
+def _coerce(v, kind):
+    try:
+        if kind is bool:
+            return v if isinstance(v, bool) else str(v).lower() in ("1", "true", "yes", "on")
+        if kind is int:
+            return int(float(v))
+        if kind is float:
+            return float(v)
+        return str(v)
+    except (TypeError, ValueError):
+        return None
+
+
 @dataclass
 class Settings:
     """The options a page is drawn with. Defaults match index.html's controls."""
@@ -41,6 +54,7 @@ class Settings:
     name_text: str = "Hello"     # name page: the name or word (up to 40 characters)
     name_bg: str = "none"        # name page: none | flow | contour | truchet underneath
     # booklets (book.py)
+    booklet: bool = False        # several pages: cover, designs, answers
     pages: int = 10              # design pages, 2..40
     ramp: bool = True            # difficulty rises page by page
     mix: bool = False            # every pattern in turn, instead of only gen
@@ -68,6 +82,8 @@ class Settings:
     cbn: bool = False            # mandalas, woven tiles, contours and name pages as colour by number
     cbn_colours: int = 6         # their crayons, 3..12
     # photo books (book.py)
+    photobook: bool = False      # several photos, a page each
+    testpage: bool = False       # show the printer test page instead
     pcover: bool = True          # a cover page with the title, page count and first photo
     ppage_nums: bool = True
 
@@ -75,9 +91,18 @@ class Settings:
     def from_dict(cls, d):
         """Settings from a dict. 2.x names (mazeShape, nameLine) are read as maze_shape, name_line;
         keys this version doesn't know are ignored."""
-        names = {f.name for f in fields(cls)}
-        snake = {re.sub(r"(?<!^)([A-Z])", r"_\1", k).lower(): v for k, v in d.items()}
-        return cls(**{k: v for k, v in snake.items() if k in names})
+        types = {f.name: type(f.default) for f in fields(cls) if not isinstance(f.default, type(field()))}
+        out = {}
+        for k, v in d.items():
+            k = re.sub(r"(?<!^)([A-Z])", r"_\1", k).lower()
+            if k == "page_seeds" and isinstance(v, dict):
+                out[k] = v
+            elif k in types:
+                out[k] = _coerce(v, types[k])   # 2.x's form stores everything as text: "5", "0.25", "true"
+        return cls(**{k: v for k, v in out.items() if v is not None})
+
+    def to_dict(self):
+        return {f.name: getattr(self, f.name) for f in fields(self)}
 
 
 @dataclass
@@ -91,13 +116,15 @@ class Geometry:
     scale: float = 1.0
 
 
-def geometry(s):
+def geometry(s, dpi=None):
+    """The page at the settings' dpi, or at another (the preview draws at screen resolution)."""
+    dpi = s.dpi if dpi is None else dpi
     w, h = PAPER[s.paper]
     if s.orient == "landscape":
         w, h = h, w
-    m = s.margin * s.dpi
-    W, H = js_round(w * s.dpi), js_round(h * s.dpi)
-    return Geometry(w, h, s.dpi, W, H, Box(m, m, W - 2 * m, H - 2 * m))
+    m = s.margin * dpi
+    W, H = js_round(w * dpi), js_round(h * dpi)
+    return Geometry(w, h, dpi, W, H, Box(m, m, W - 2 * m, H - 2 * m))
 
 
 @dataclass

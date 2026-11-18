@@ -53,12 +53,12 @@ if [ "$ACTION" = uninstall ]; then
 fi
 
 # --- dependency check ---
-if ! command -v python3 >/dev/null 2>&1 || ! python3 -c "import PySide6.QtWebEngineWidgets, PySide6.QtWebChannel, PySide6.QtPrintSupport" >/dev/null 2>&1; then
-  echo "Inkline needs Python 3 with PySide6 (Qt WebEngine). Install it, then run this installer again:"
-  echo "  Arch / CachyOS / Manjaro:  sudo pacman -S pyside6 qt6-webengine qt6-webchannel"
-  echo "  Debian / Ubuntu:           sudo apt install python3-pyside6.qtwebenginewidgets python3-pyside6.qtwebchannel python3-pyside6.qtprintsupport"
-  echo "  Fedora:                    sudo dnf install python3-pyside6"
-  echo "  Any distro (user only):    pip install --user PySide6"
+if ! command -v python3 >/dev/null 2>&1 || ! python3 -c "import PySide6.QtWidgets, PySide6.QtPrintSupport, numpy" >/dev/null 2>&1; then
+  echo "Inkline needs Python 3 with PySide6 and numpy. Install them, then run this installer again:"
+  echo "  Arch / CachyOS / Manjaro:  sudo pacman -S pyside6 python-numpy"
+  echo "  Debian / Ubuntu:           sudo apt install python3-pyside6.qtwidgets python3-pyside6.qtprintsupport python3-numpy"
+  echo "  Fedora:                    sudo dnf install python3-pyside6 python3-numpy"
+  echo "  Any distro (user only):    pip install --user PySide6 numpy"
   exit 1
 fi
 
@@ -73,7 +73,9 @@ LINE=$(awk '/^__INKLINE_PAYLOAD__$/ { print NR + 1; exit }' "$0")
 tail -n +"$LINE" "$0" | tar -xz -C "$TMP"
 
 mkdir -p "$APP" "$BIN" "$DESK" "$ICONS/scalable/apps"
-cp "$TMP/index.html" "$TMP/inkline.py" "$TMP/inkline.svg" "$TMP/VERSION" "$APP/"
+rm -rf "$APP/inkengine" "$APP/inkapp" "$APP/index.html"   # 2.x's page goes; 3.0 is native
+cp "$TMP/inkline.py" "$TMP/inkline.svg" "$TMP/VERSION" "$APP/"
+cp -R "$TMP/inkengine" "$TMP/inkapp" "$APP/"
 cp "$TMP/inkline.svg" "$ICONS/scalable/apps/inkline.svg"
 for png in "$TMP"/icons/hicolor/*/apps/inkline.png; do
   size="$(basename "$(dirname "$(dirname "$png")")")"
