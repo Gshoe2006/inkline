@@ -481,7 +481,7 @@ class RecordingCanvas(Canvas):
         self.ops.append(("fill", self.st.fill_style))
 
     def fill_rect(self, x, y, w, h):
-        self.ops.append(("fill_rect", x, y, w, h))
+        self.ops.append(("fill_rect", x, y, w, h, self.st.fill_style))
 
     def stroke_rect(self, x, y, w, h):
         self.ops.append(("stroke_rect", x, y, w, h, self.st.line_width, self.st.stroke_style))

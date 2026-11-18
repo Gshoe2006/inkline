@@ -1,6 +1,6 @@
 // Records what the 2.5 JavaScript patterns draw, so the Python ports can be checked against them step for step.
 // Needs Node and Playwright (with Chromium) and the 2.5 index.html:
-//   node tests/fixtures/make_fixtures.js [maze] [mandala] [truchet] [contour] [flow] [dots] [sudoku] [words]     (default: all)
+//   node tests/fixtures/make_fixtures.js [maze] [mandala] [truchet] [contour] [flow] [dots] [sudoku] [words] [nonogram]     (default: all)
 // Writes tests/fixtures/<pattern>_js.json.gz. Only re-run it if the reference changes; the tests read the JSON.
 // INDEX_HTML=path/to/index.html points it at another copy (e.g. one checked out from the v2.5.0 tag).
 const path = require("path"), fs = require("fs"), zlib = require("zlib");
@@ -55,6 +55,11 @@ const PATTERNS = {
       .map(([theme, list, seed, c]) => ({ theme, list, seed, c, solve: false }))
       .concat([["animals", "", 42, 6], ["custom", custom, 3, 10]].map(([theme, list, seed, c]) => ({ theme, list, seed, c, solve: true })));
   },
+  nonogram() {
+    // complexity 1 (5x5) to 10 (20x20), puzzles and answer pages
+    return [[1, 1], [20261117, 3], [42, 5], [7, 7], [5, 10], [9, 8]].map(([seed, c]) => ({ seed, c, solve: false }))
+      .concat([[42, 5], [5, 10]].map(([seed, c]) => ({ seed, c, solve: true })));
+  },
   truchet() {
     // complexity 1-3 draws one arc per corner, 4 and up three; 10 is the finest grid
     return [[1, 1], [20261117, 3], [7, 4], [42, 7], [5, 10]].map(([seed, c]) => ({ seed, c }));
@@ -86,6 +91,7 @@ const PATTERNS = {
           rect(x, y, w, h) { ops.push(["rect", x, y, w, h]); },
           clip() { ops.push(["clip"]); },
           closePath() { ops.push(["Z"]); },
+          fillRect(x, y, w, h) { ops.push(["fill_rect", x, y, w, h, st.fillStyle]); },
           strokeRect(x, y, w, h) { ops.push(["stroke_rect", x, y, w, h, st.lineWidth, st.strokeStyle]); },
           stroke() { ops.push(["stroke", st.lineWidth, st.strokeStyle, st.lineCap, st.lineJoin]); },
           fill() { ops.push(["fill", st.fillStyle]); },
@@ -120,6 +126,10 @@ const PATTERNS = {
           document.getElementById("wsWords").value = k.list;
           const ws = genWords(ctx, box, mulberry32(k.seed), k.c, LW, { dpi: 300 }, { solve: k.solve });
           k.info = { size: ws.size, words: ws.placed.map(p => p.word), skipped: ws.skipped };
+        }
+        if (name === "nonogram") {
+          const n = genNonogram(ctx, box, mulberry32(k.seed), k.c, LW, { dpi: 300 }, { solve: k.solve });
+          k.info = { size: n.size, attempts: n.attempts, pic: n.pic.join(""), rows: n.rows, cols: n.cols };
         }
         if (name === "sudoku") k.info = genSudoku(ctx, box, mulberry32(k.seed), k.c, LW, { dpi: 300 }, { solve: k.solve });
         if (name === "dots") k.info = genDots(ctx, box, mulberry32(k.seed), k.c, LW, { dpi: 300 }, { connect: k.connect });

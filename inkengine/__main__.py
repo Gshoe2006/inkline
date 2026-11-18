@@ -11,6 +11,7 @@
     python3 -m inkengine sudoku --complexity 8 --answers -o sudoku.pdf
     python3 -m inkengine words --theme ocean --answers -o words.pdf    (word search)
     python3 -m inkengine words --words "mum, dad, grandma, pizza" -o ours.pdf
+    python3 -m inkengine nonogram --complexity 6 --answers -o picture.pdf
 """
 
 import argparse
