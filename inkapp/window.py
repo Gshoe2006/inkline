@@ -74,9 +74,14 @@ class _Snapshot:
 
 
 class _Step(QUndoCommand):
-    def __init__(self, window, before, after, text):
+    """One undo step. gesture is what the change belongs to (a slider held down, one drag of the photo,
+    typing in one field): changes in the same gesture are one step however slow. timed steps (a
+    slider's arrow keys, the wheel) join when they come within MERGE_SECONDS. Clicks never join."""
+
+    def __init__(self, window, before, after, text, gesture=None, timed=False):
         super().__init__(text)
         self.window, self.before, self.after = window, before, after
+        self.gesture, self.timed = gesture, timed
         self.when = time.monotonic()
         self._first = True
 
@@ -84,9 +89,16 @@ class _Step(QUndoCommand):
         return hash(self.text()) & 0x7FFFFFFF
 
     def mergeWith(self, other):
-        if other.text() != self.text() or other.when - self.when > MERGE_SECONDS:
+        if other.text() != self.text():
+            return False
+        if self.gesture is not None and other.gesture == self.gesture:
+            pass
+        elif not (self.gesture is None and other.gesture is None and self.timed and other.timed
+                  and other.when - self.when <= MERGE_SECONDS):
             return False
         self.after, self.when = other.after, other.when
+        if self.after.same(self.before):   # back where it started (on and off again): no step at all
+            self.setObsolete(True)
         return True
 
     def redo(self):
@@ -140,6 +152,7 @@ class Window(QMainWindow):
         self._busy_saving = False
         self._pan_start = None
         self.history = QUndoStack(self)
+        self._drags = 0      # counts finished slider and photo drags, so the next drag is a new step
         self._last = _Snapshot(self.state)
         self._restoring = False
 
@@ -177,7 +190,12 @@ class Window(QMainWindow):
         sb.synced.connect(self._sync_actions)
         pv.page.pan.connect(self._pan)
         pv.page.zoom.connect(self._wheel_zoom)
-        pv.page.pan_end.connect(lambda: setattr(self, "_pan_start", None))
+        pv.page.pan_end.connect(self._drag_ended)
+        for control, _write in sb._binds.values():
+            if isinstance(control, QAbstractSlider):
+                control.sliderReleased.connect(self._drag_ended)
+        for s in (sb.zoom, sb.panx, sb.pany):
+            s.sliderReleased.connect(self._drag_ended)
 
     def _menus(self):
         mb = self.menuBar()
@@ -219,6 +237,8 @@ class Window(QMainWindow):
 
     # --- state changes -------------------------------------------------------------------------------
     def _changed(self, key=""):
+        control = self.sidebar._binds.get(key, (None,))[0]
+        self._timed = isinstance(control, QAbstractSlider)   # a slider's arrow keys join; clicks don't
         st = self.state
         s = st.settings
         # one multi-page mode at a time, and the pager starts again where 2.x restarted it
@@ -295,6 +315,10 @@ class Window(QMainWindow):
             seeds[key] = random.randrange(4294967296)
         self.state.update(page_seeds=seeds)
         self._changed("page_seeds")
+
+    def _drag_ended(self):
+        self._pan_start = None
+        self._drags += 1
 
     def _sync_actions(self):
         """The File menu's saves are enabled exactly when the footer's buttons are (2.x clicked the button)."""
@@ -386,6 +410,7 @@ class Window(QMainWindow):
         else:
             sb = self.sidebar
             ph.zoom, ph.panx, ph.pany = sb.zoom.value(), sb.panx.value(), sb.pany.value()
+            self._timed = True
         self.schedule()
 
     def _overhang(self):
@@ -417,6 +442,7 @@ class Window(QMainWindow):
         ph = self.state.photo
         if ph:
             ph.zoom = max(100, min(400, ph.zoom + 10 * d))
+            self._timed = True
             self.sidebar.load_crop()
             self.schedule()
 
@@ -462,11 +488,27 @@ class Window(QMainWindow):
         """After every change: one undo step if the edits differ from the last step (schedule() calls this)."""
         if self._restoring or not hasattr(self, "history"):
             return
+        timed, self._timed = getattr(self, "_timed", False), False
+        name, self._step_name = getattr(self, "_step_name", None), None
         now = _Snapshot(self.state)
-        if not now.same(self._last):
-            name, self._step_name = getattr(self, "_step_name", None) or now.what(self._last), None
-            self.history.push(_Step(self, self._last, now, name))
-            self._last = now
+        if now.same(self._last):
+            return
+        self.history.push(_Step(self, self._last, now, name or now.what(self._last), self._gesture(), timed))
+        self._last = now
+
+    def _gesture(self):
+        """What the change in progress belongs to: a slider held down, a drag of the photo, typing in one field."""
+        if self._pan_start is not None:
+            return ("drag", self._drags)
+        for key, (control, _write) in self.sidebar._binds.items():
+            if isinstance(control, QAbstractSlider) and control.isSliderDown():
+                return ("slider", key, self._drags)
+        if self.sidebar.zoom.isSliderDown() or self.sidebar.panx.isSliderDown() or self.sidebar.pany.isSliderDown():
+            return ("crop", self._drags)
+        focus = QApplication.focusWidget()
+        if isinstance(focus, QLineEdit):
+            return ("typing", id(focus))
+        return None
 
     def _restore_snapshot(self, snap):
         st = self.state
