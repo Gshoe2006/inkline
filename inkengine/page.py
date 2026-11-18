@@ -35,7 +35,8 @@ def _coerce(v, kind):
 
 @dataclass
 class Settings:
-    """The options a page is drawn with. Defaults match index.html's controls."""
+    """The options a page is drawn with. Defaults match index.html's controls, except gen: the engine
+    defaults to maze, while the window opens on mandala as 2.x did (inkapp.state)."""
     gen: str = "maze"
     seed: int = 20261117
     complexity: int = 5          # 1..10

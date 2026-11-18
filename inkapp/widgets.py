@@ -94,12 +94,16 @@ def line_edit(text="", placeholder="", max_length=None):
 class Section(QWidget):
     def __init__(self, title):
         super().__init__()
-        lay = QVBoxLayout(self)
-        lay.setContentsMargins(0, 0, 0, 0)
-        lay.setSpacing(theme.ROW_GAP)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(theme.HEADING_GAP)
         heading = label(title.upper(), "legend")   # stylesheets can't uppercase, so the text is
         heading.setAccessibleName(title)
-        lay.addWidget(heading)
+        outer.addWidget(heading)
+        lay = QVBoxLayout()
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(theme.ROW_GAP)
+        outer.addLayout(lay)
         self._lay = lay
 
     def add(self, *widgets):

@@ -8,10 +8,11 @@ with progress in the footer. Messages are 2.x's.
 import os
 from dataclasses import replace
 
-from PySide6.QtCore import QTimer, Qt, Signal
+from PySide6.QtCore import QEvent, QTimer, Qt, Signal
 from PySide6.QtGui import QAction, QGuiApplication, QImage, QKeySequence
 from PySide6.QtPrintSupport import QPrintDialog, QPrinter
-from PySide6.QtWidgets import QApplication, QFileDialog, QHBoxLayout, QLineEdit, QMainWindow, QMessageBox, QWidget
+from PySide6.QtWidgets import (QAbstractItemView, QAbstractSlider, QAbstractSpinBox, QApplication, QComboBox, QFileDialog,
+                               QHBoxLayout, QLineEdit, QMainWindow, QMessageBox, QWidget)
 from PySide6.QtGui import QPdfWriter
 
 from inkengine import book, photo
@@ -56,8 +57,9 @@ class Window(QMainWindow):
 
         self.renderer = Renderer()
         self.renderer.finished.connect(self._rendered)
-        self.renderer.failed.connect(lambda _n, why: self._msg(f"The preview couldn't be drawn: {why}"))
+        self.renderer.failed.connect(lambda _n, _why: self._msg("The preview couldn't be drawn. Try another setting, or start fresh from Presets."))
         self.renderer.busy.connect(lambda on: None if on else self.preview.set_busy(""))
+        self.renderer.converting.connect(lambda: self.preview.set_busy("converting photo…"))
         self.worker = Renderer()        # saving and printing
         self.worker.finished.connect(self._job_done)
         self.worker.failed.connect(lambda _n, why: self._job_failed(why))
@@ -69,6 +71,8 @@ class Window(QMainWindow):
 
         self._wire()
         self._menus()
+        QApplication.instance().installEventFilter(self)
+        theme.follow_system(QApplication.instance(), self.preview.page.update)
         if self.state.settings.mode == "convert" and not self.state.photos:
             self.state.photos = [sample_photo()]
             self.sidebar.fill_photos()
@@ -95,6 +99,7 @@ class Window(QMainWindow):
         sb.crop.connect(self._crop)
         sb.print_.connect(self.print_)
         sb.save.connect(self.save)
+        sb.synced.connect(self._sync_actions)
         pv.page.pan.connect(self._pan)
         pv.page.zoom.connect(self._wheel_zoom)
         pv.page.pan_end.connect(lambda: setattr(self, "_pan_start", None))
@@ -155,15 +160,18 @@ class Window(QMainWindow):
         self.schedule()
         self.remember_soon()
 
-    def keyPressEvent(self, e):
-        """← → (and Page Up/Down) turn booklet and photo book pages when no field has the keyboard."""
-        focus = QApplication.focusWidget()
-        if not isinstance(focus, QLineEdit) and not hasattr(focus, "setValue") and e.modifiers() == Qt.KeyboardModifier.NoModifier:
+    def eventFilter(self, obj, e):
+        """← → (and Page Up/Down) turn booklet and photo book pages wherever the keyboard is, except in a
+        field, list or slider that uses them itself (2.x's rule), so a focused button doesn't stop them."""
+        if e.type() == QEvent.Type.KeyPress and self.isActiveWindow():
             d = {Qt.Key.Key_Left: -1, Qt.Key.Key_PageUp: -1, Qt.Key.Key_Right: 1, Qt.Key.Key_PageDown: 1}.get(e.key())
-            if d:
+            mods = e.modifiers() & ~Qt.KeyboardModifier.KeypadModifier
+            focus = QApplication.focusWidget()
+            if d and mods == Qt.KeyboardModifier.NoModifier and not isinstance(
+                    focus, (QLineEdit, QComboBox, QAbstractSlider, QAbstractSpinBox, QAbstractItemView)):
                 self.step_page(d)
-                return
-        super().keyPressEvent(e)
+                return True
+        return super().eventFilter(obj, e)
 
     def _set_mode(self, mode):
         self.state.update(mode=mode)
@@ -203,6 +211,14 @@ class Window(QMainWindow):
             seeds[key] = random.randrange(4294967296)
         self.state.update(page_seeds=seeds)
         self._changed("page_seeds")
+
+    def _sync_actions(self):
+        """The File menu's saves are enabled exactly when the footer's buttons are (2.x clicked the button)."""
+        if hasattr(self, "act_pdf"):
+            sb = self.sidebar
+            for a, b in ((self.act_pdf, sb.pdf_btn), (self.act_png, sb.png_btn), (self.act_svg, sb.svg_btn)):
+                a.setEnabled(b.isEnabled())
+                a.setToolTip(b.toolTip())
 
     def _toggle_test_page(self):
         self.state.update(testpage=not self.state.settings.testpage)
@@ -323,11 +339,22 @@ class Window(QMainWindow):
     def dragEnterEvent(self, e):
         if e.mimeData().hasUrls() or e.mimeData().hasImage():
             e.acceptProposedAction()
+            self.preview.set_drop(True)
+
+    def dragLeaveEvent(self, _e):
+        self.preview.set_drop(False)
 
     def dropEvent(self, e):
-        files = [u.toLocalFile() for u in e.mimeData().urls() if u.isLocalFile()]
+        self.preview.set_drop(False)
+        md = e.mimeData()
+        files = [u.toLocalFile() for u in md.urls() if u.isLocalFile()]
         if files:
             self._load_files(files, self.state.settings.photobook)
+        elif md.hasImage():   # an image dragged straight from a browser or another app
+            img = QImage(md.imageData())
+            if not img.isNull():
+                self.add_photos([photo.Photo(img.convertToFormat(QImage.Format.Format_ARGB32), name="dropped image")],
+                                self.state.settings.photobook)
 
     def paste(self):
         img = QGuiApplication.clipboard().image()
@@ -342,7 +369,7 @@ class Window(QMainWindow):
 
     # --- the preview ---------------------------------------------------------------------------------
     def schedule(self):
-        self.preview.set_busy("converting photo…" if self.state.settings.mode == "convert" else "rendering…")
+        self.preview.set_busy("rendering…")
         self._render_timer.start()
 
     def _render(self):
@@ -359,19 +386,8 @@ class Window(QMainWindow):
                                        and r.view.kind not in ("fold", "testpage"))
         self.preview.set_info(r.info)
         self.preview.set_busy("")
+        self.sidebar.ws_note.setText(r.note)
         self.sidebar.sync(r.view)
-        if self.state.settings.gen == "words" and self.state.settings.mode == "make" and r.view.kind == "page":
-            self._word_note()
-
-    def _word_note(self):
-        from inkengine.patterns import words
-        from inkengine.canvas import RecordingCanvas
-        from inkengine.rng import mulberry32
-        s = self.state.settings
-        g = geometry(s)
-        ws = words.draw(RecordingCanvas(), design_box(g, single_page(s), s), mulberry32(s.seed), s.complexity, s, dpi=g.dpi)
-        self.sidebar.ws_note.setText(words.note(ws))
-        self.sidebar.ws_note.setVisible(bool(words.note(ws)))
 
     # --- presets and remembered settings -------------------------------------------------------------
     def _apply_preset(self, group, name):
@@ -449,11 +465,12 @@ class Window(QMainWindow):
         if self._busy_saving:
             return
         s, st = self.state.settings, self.state
-        if kind == "png" and s.poster and not s.testpage:
-            self._msg("Posters save as PDF (one page per sheet) or print directly.")
-            return
-        if kind == "svg" and s.mode != "make" and s.style not in photo.VECTOR_STYLES:
-            self._msg("Photos are made of pixels, so they save as PNG or PDF. Choose Engraving, Stippling, Colour by number or Nonogram for SVG.")
+        btn = {"png": self.sidebar.png_btn, "pdf": self.sidebar.pdf_btn, "svg": self.sidebar.svg_btn}[kind]
+        if not btn.isEnabled():   # the menu and shortcuts do what the button would: nothing, and say why
+            if kind == "svg" and s.mode != "make" and s.style not in photo.VECTOR_STYLES:
+                self._msg("Photos are made of pixels, so they save as PNG or PDF. Choose Engraving, Stippling, Colour by number or Nonogram for SVG.")
+            elif kind == "png" and s.poster:
+                self._msg("Posters save as PDF (one page per sheet) or print directly.")
             return
         snap = State(replace(s), [replace(p) for p in st.photos], st.sel, st.page)
         if kind == "pdf":
@@ -480,7 +497,7 @@ class Window(QMainWindow):
             text, nm = jobs.svg(snap)
             return ("svg", text, nm)
         self._pending_save = (kind, ext, filt)
-        self._busy(True, f"Rendering the {kind.upper()}…")
+        self._busy(True, "Rendering page 1 of 1…")
         self.worker.submit(work)
 
     def print_(self):
@@ -543,8 +560,8 @@ class Window(QMainWindow):
         except OSError:
             self._msg(f"Couldn't write {path}. Check the folder permissions.")
 
-    def _job_failed(self, why):
-        self._busy(False, f"That couldn't be finished: {why}")
+    def _job_failed(self, _why):
+        self._busy(False, "That couldn't be finished. Check the folder permissions or the printer, then try again.")
         self._device = None
 
     def _busy(self, on, text):

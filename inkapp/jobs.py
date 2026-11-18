@@ -106,6 +106,8 @@ def run(j, device, progress=None, cancelled=lambda: False):
 def svg(state):
     """The page shown as SVG (a poster: the whole poster), and the file name to suggest."""
     s, v = state.settings, view(state)
+    if v.kind in ("fold", "testpage"):
+        raise ValueError("fold-and-staple sides and the test page don't save as SVG")
     spec = v.pages[v.index] if v.pages else single_page(s, state.photo)
     suffix = "-poster" if v.kind == "poster" else f"-page{v.index + 1}" if v.pages else ""
     return output.svg_text(s, spec), base_name(state) + suffix
@@ -119,8 +121,8 @@ def png(state):
         return output_image(j, 0), j.name
     spec = v.pages[v.index] if v.pages and v.kind != "fold" else single_page(s, state.photo)
     if v.kind == "fold":
-        return output_image(j, v.index), f"{j.name}-sheet{v.index // 2 + 1}{'b' if v.index % 2 else 'a'}"
-    return output.render_image(s, spec), base_name(state) + (f"-page{v.index + 1}" if v.pages else "")
+        return output_image(j, v.index), base_name(state)
+    return output.render_image(s, spec), base_name(state)   # 2.x's PNG name, whichever page is shown
 
 
 def output_image(j, i):

@@ -33,7 +33,7 @@ class Page(QWidget):
         shadow = QGraphicsDropShadowEffect(self)
         shadow.setBlurRadius(theme.SHADOW_BLUR)
         shadow.setOffset(0, 8)
-        shadow.setColor(QColor(0, 0, 0, 46))
+        shadow.setColor(QColor(*theme.SHADOW_COLOUR))
         self.setGraphicsEffect(shadow)
         self.setAccessibleName("Page preview")
 
@@ -155,19 +155,25 @@ class Preview(QWidget):
             self.busy.move(self._stage.width() - self.busy.width() - 34, 34)
             self.busy.raise_()
 
-    def set_info(self, pairs):
-        """Info bar facts: (bold, plain) pairs, e.g. ("Letter", "8.5 × 11 in")."""
+    def set_info(self, groups):
+        """Info bar facts: groups of (text, bold) runs, e.g. [("Letter", True), (" 8.5 × 11 in", False)]."""
         while self._bar.count() > 1:
-            w = self._bar.takeAt(0).widget()
-            if w:
-                w.deleteLater()
-        for i, (bold, plain) in enumerate(pairs):
-            lab = label("", "info")
-            lab.setTextFormat(Qt.TextFormat.RichText)
-            t = theme.tokens()
-            lab.setText(f'<span style="color:{t.ink};font-weight:600">{_esc(bold)}</span> {_esc(plain)}')
-            self._bar.insertWidget(i, lab)
+            item = self._bar.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        for i, runs in enumerate(groups):
+            box = QWidget()
+            lay = QHBoxLayout(box)
+            lay.setContentsMargins(0, 0, 0, 0)
+            lay.setSpacing(0)
+            for text, bold in runs:
+                lay.addWidget(label(text.replace(" ", "\u00a0"), "infoBold" if bold else "info"))
+            self._bar.insertWidget(i, box)
+
+    def set_drop(self, over):
+        """A dashed outline round the light table while a file is dragged over the window (2.x's .stage.over)."""
+        self._stage.setProperty("over", "true" if over else "false")
+        self._stage.style().unpolish(self._stage)
+        self._stage.style().polish(self._stage)
 
 
-def _esc(s):
-    return str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")

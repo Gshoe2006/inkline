@@ -26,9 +26,12 @@ BUILTIN_PRESETS = {
     "Wall poster 3 × 3": {"poster": True, "booklet": False, "grid": "3x3", "overlap": "0.25"},
     "Start fresh (defaults)": {},   # every setting back to its default (filled in below)
 }
+FIRST_PATTERN = "mandala"   # 2.x opened on the first pattern in its list (the engine's own default is maze)
+
 # Settings that belong to the photo being cropped or the page being viewed, not to a preset.
 NOT_IN_PRESETS = {"seed", "page_seeds", "testpage"}
-BUILTIN_PRESETS["Start fresh (defaults)"] = {k: v for k, v in Settings().to_dict().items() if k not in NOT_IN_PRESETS}
+BUILTIN_PRESETS["Start fresh (defaults)"] = {k: v for k, v in Settings(gen=FIRST_PATTERN).to_dict().items()
+                                            if k not in NOT_IN_PRESETS}
 
 
 def new_seed():
@@ -37,7 +40,7 @@ def new_seed():
 
 @dataclass
 class State:
-    settings: Settings = field(default_factory=lambda: Settings(seed=new_seed()))
+    settings: Settings = field(default_factory=lambda: Settings(seed=new_seed(), gen=FIRST_PATTERN))
     photos: list = field(default_factory=list)   # photo.Photo, each with its own crop
     sel: int = 0                                  # the photo being cropped
     page: int = 0                                 # the booklet / photo book page (or folded side) shown

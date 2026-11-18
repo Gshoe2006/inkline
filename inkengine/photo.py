@@ -409,6 +409,7 @@ class Conversion:
 
 CACHE_PIXELS = 40_000_000
 _cache = {}
+on_convert = None   # called when a conversion isn't cached and has to be worked out (the window says so)
 
 
 def _cache_get(key):
@@ -438,6 +439,8 @@ def conversion(box, cell, style, photo, s):
            s.pcbn_colours if style == "cbn" else s.pnono_size if style == "nono" else "", photo.rot, photo.zoom, photo.panx, photo.pany)
     e = _cache_get(key)
     if e is None:
+        if on_convert:
+            on_convert()
         ww, wh, data, params, overhang = conversion_input(box, cell, style, photo, s)
         r = process_pixels(data, ww, wh, params)
         e = _cache_put(key, Conversion(ww, wh, r["lum"], r["mask"], r["grey"], r["nono"], r["cbn"], overhang))

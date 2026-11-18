@@ -7,7 +7,7 @@ Photo ("Convert a photo"), then Page text, Poster and Paper.
 """
 
 from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QIcon, QPixmap
+from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QListWidget, QListWidgetItem, QProgressBar,
                                QScrollArea, QTabBar, QVBoxLayout, QWidget)
 
@@ -45,6 +45,7 @@ class Sidebar(QFrame):
     print_ = Signal()
     save = Signal(str)            # png | pdf | svg
     mode_changed = Signal(str)
+    synced = Signal()             # sync() ran: the window matches its menu actions to the footer buttons
 
     def __init__(self, state, version):
         super().__init__()
@@ -189,6 +190,7 @@ class Sidebar(QFrame):
         sec.add(self.cbn_opts)
         self.seed = label("", "seed")
         new = button("New design", "primary", "New design (Ctrl+N)")
+        new.setObjectName("newDesign")
         new.clicked.connect(self.reroll)
         self.new_design = new
         sec.add(_row(self.seed, new, stretch_first=True))
@@ -213,6 +215,7 @@ class Sidebar(QFrame):
         self.page_orig = button("Back to original", "mini")
         self.page_new.clicked.connect(lambda: self.swap_page.emit(True))
         self.page_orig.clicked.connect(lambda: self.swap_page.emit(False))
+        self.page_orig.hide()   # shown once the page shown has been swapped
         tools = QWidget()
         tl = QHBoxLayout(tools)
         tl.setContentsMargins(0, 0, 0, 0)
@@ -239,7 +242,7 @@ class Sidebar(QFrame):
         self.src.setWordWrap(True)
         dl.addWidget(self.src)
         op = button("Open image…")
-        op.clicked.connect(lambda: self.open_images.emit(False))
+        op.clicked.connect(lambda: self.open_images.emit(self.state.settings.photobook))   # adds to a photo book, as 2.x
         smp = button("Use sample")
         smp.clicked.connect(self.sample)
         dl.addWidget(Pair(op, smp))
@@ -252,8 +255,7 @@ class Sidebar(QFrame):
         self.pbook_opts.add(_row(self.photo_count, add, stretch_first=True))
         self.photo_list = QListWidget()
         self.photo_list.setObjectName("photoList")
-        self.photo_list.setIconSize(QSize(36, 36))
-        self.photo_list.setMaximumHeight(260)
+        self.photo_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.photo_list.currentRowChanged.connect(lambda i: None if self._loading or i < 0 else self.photo_selected.emit(i))
         self.pbook_opts.add(self.photo_list)
         self.pbook_opts.add(self._check("pcover", "Cover page"))
@@ -420,16 +422,25 @@ class Sidebar(QFrame):
         self._loading = True
         lst, st = self.photo_list, self.state
         lst.clear()
+        row_h = 46
         for i, ph in enumerate(st.photos):
-            item = QListWidgetItem(QIcon(QPixmap.fromImage(ph.image.scaled(72, 72, Qt.AspectRatioMode.KeepAspectRatioByExpanding))),
-                                   f"{i + 1}. {ph.name}")
+            item = QListWidgetItem()
             item.setToolTip(ph.name)
+            item.setData(Qt.ItemDataRole.AccessibleTextRole, f"Photo {i + 1}: {ph.name}")
+            item.setSizeHint(QSize(0, row_h))
             lst.addItem(item)
             row = QWidget()
             rl = QHBoxLayout(row)
-            rl.setContentsMargins(0, 0, 4, 0)
-            rl.setSpacing(4)
-            rl.addStretch(1)
+            rl.setContentsMargins(4, 4, 4, 4)
+            rl.setSpacing(6)
+            thumb = QLabel()
+            thumb.setPixmap(QPixmap.fromImage(ph.image.scaled(36, 36, Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+                                                              Qt.TransformationMode.SmoothTransformation).copy(0, 0, 36, 36)))
+            thumb.setFixedSize(36, 36)
+            rl.addWidget(thumb)
+            nm = _Elided(f"{i + 1}. {ph.name}")
+            nm.setObjectName("photoName")
+            rl.addWidget(nm, 1)
             for txt, tip, fn, off in (("↑", "Move up", lambda _c=False, i=i: self.photo_moved.emit(i, -1), i == 0),
                                       ("↓", "Move down", lambda _c=False, i=i: self.photo_moved.emit(i, 1), i == len(st.photos) - 1),
                                       ("✕", "Remove", lambda _c=False, i=i: self.photo_removed.emit(i), len(st.photos) < 2)):
@@ -438,17 +449,20 @@ class Sidebar(QFrame):
                 b.setEnabled(not off)
                 b.clicked.connect(fn)
                 rl.addWidget(b)
-            item.setSizeHint(QSize(0, 46))
             lst.setItemWidget(item, row)
+        # as tall as its photos, up to 260 px (2.x's list), then it scrolls
+        lst.setFixedHeight(min(260, max(1, len(st.photos)) * (row_h + 4) + 4))
         lst.setCurrentRow(st.sel)
         n = len(st.photos)
         self.photo_count.setText(f"{n} photo{'' if n == 1 else 's'}")
         if n:
             nm = st.photo.name if st.photo else ""
             self.src.setText(f"{n} photos · editing {nm}" if n > 1 else nm)
-            self.src.setStyleSheet("")
         else:
             self.src.setText("Drop images anywhere, paste one, or")
+        self.src.setProperty("named", "true" if n else "false")   # the name in bold ink, as 2.x's <strong>
+        self.src.style().unpolish(self.src)
+        self.src.style().polish(self.src)
         self._loading = False
 
     def sync(self, view=None):
@@ -519,10 +533,28 @@ class Sidebar(QFrame):
                 "cbn": "Colour-by-number outlines save as vector lines, for editing in Inkscape"}
         self.svg_btn.setToolTip(tips[s.style] if vector else "Vector lines for Inkscape, Cricut, Silhouette or laser cutters"
                                 if make else "Photos are made of pixels; choose Engraving, Stippling, Colour by number or Nonogram for SVG")
-        self.ws_note.setVisible(bool(self.ws_note.text()))
+        self.ws_note.setVisible(bool(self.ws_note.text()) and s.gen == "words")
+        self.synced.emit()
 
     def set_status(self, text):
         self.status.setText(text)
+
+
+class _Elided(QLabel):
+    """A one-line label that ends in … when it doesn't fit (2.x's text-overflow: ellipsis)."""
+
+    def __init__(self, text):
+        super().__init__()
+        self.full = text
+        self.setMinimumWidth(0)
+        self.setToolTip(text)
+
+    def resizeEvent(self, e):
+        super().resizeEvent(e)
+        self.setText(self.fontMetrics().elidedText(self.full, Qt.TextElideMode.ElideRight, self.width()))
+
+    def minimumSizeHint(self):
+        return QSize(0, super().minimumSizeHint().height())
 
 
 def _row(first, second, stretch_first=False):

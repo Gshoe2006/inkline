@@ -58,7 +58,8 @@ def view(state):
 class Rendered:
     image: QImage
     view: View
-    info: list             # (bold, plain) pairs for the info bar
+    info: list             # the info bar: groups of (text, bold) runs, as 2.x's spans
+    note: str = ""         # the word search's "Left out: ..." note, worked out here, off the UI thread
     poster: object = None  # the poster's geometry, for the sheet overlay
     scale: float = 1.0     # preview pixels per page pixel at the settings' dpi
 
@@ -117,15 +118,33 @@ def render_view(state):
         p = QPainter(img)
         draw_page(QtCanvas(p, g.W, g.H), g, spec, s)
         p.end()
-    cov = ink_coverage(img)
-    if v.kind == "poster":
-        info = [("Poster", f"{_num(P.w)} × {_num(P.h)} in"), (f"{P.cols} × {P.rows}", f"{_paper_name(s)} sheets · {s.dpi} dpi"),
-                ("ink coverage", f"{cov:.1f}%")]
+    paper = _paper_name(s)
+    if v.kind == "testpage":
+        info = [[("Printer test page", True), (f" {_num(g.w)} × {_num(g.h)} in", False)],
+                [(str(s.dpi), True), (" dpi · print at 100%", False)]]
     else:
-        pg = geometry(s)
-        info = [(_paper_name(s), f"{_num(g.w)} × {_num(g.h)} in"), (str(s.dpi), f"dpi · {pg.W} × {pg.H} px"),
-                ("ink coverage", f"{cov:.1f}%")]
-    return Rendered(img, v, info, P, PREVIEW_DPI / s.dpi)
+        cov = ink_coverage(img)
+        if v.kind == "poster":
+            info = [[("Poster", True), (f" {_num(P.w)} × {_num(P.h)} in", False)],
+                    [(f"{P.cols} × {P.rows}", True), (f" {paper} sheets · {s.dpi} dpi", False)]]
+        else:
+            pg = geometry(s)
+            info = [[(paper, True), (f" {_num(g.w)} × {_num(g.h)} in", False)],
+                    [(str(s.dpi), True), (f" dpi · {pg.W} × {pg.H} px", False)]]
+        info.append([("ink coverage ", False), (f"{cov:.1f}%", True)])
+    note = _word_note(s) if s.mode == "make" and s.gen == "words" and v.kind == "page" else ""
+    return Rendered(img, v, info, poster=P, scale=PREVIEW_DPI / s.dpi, note=note)
+
+
+def _word_note(s):
+    """What 2.x's word search note says about words left out, for this page's word search."""
+    from inkengine.canvas import RecordingCanvas
+    from inkengine.page import design_box
+    from inkengine.patterns import words
+    from inkengine.rng import mulberry32
+    g = geometry(s)
+    ws = words.draw(RecordingCanvas(), design_box(g, single_page(s), s), mulberry32(s.seed), s.complexity, s, dpi=g.dpi)
+    return words.note(ws)
 
 
 def _blank(w, h):
@@ -140,6 +159,7 @@ class Renderer(QObject):
     finished = Signal(int, object)     # request number, result
     failed = Signal(int, str)          # request number, what went wrong
     busy = Signal(bool)
+    converting = Signal()              # a photo conversion started (it wasn't cached)
 
     def __init__(self):
         super().__init__()
@@ -172,9 +192,13 @@ class Renderer(QObject):
                     self._running = False
                     break
             n, fn = job
+            from inkengine import photo as photo_mod
+            photo_mod.on_convert = self.converting.emit
             try:
                 self.finished.emit(n, fn())
-            except Exception:   # noqa: BLE001 — shown in the status line, never a crash
-                traceback.print_exc()
+            except Exception:   # noqa: BLE001 — reported in the status line, never a crash
+                traceback.print_exc()   # the details, for a bug report
                 self.failed.emit(n, traceback.format_exc(limit=1).strip().splitlines()[-1])
+            finally:
+                photo_mod.on_convert = None
         self.busy.emit(False)

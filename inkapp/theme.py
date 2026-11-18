@@ -38,11 +38,13 @@ SIDEBAR_WIDTH = 330
 PAD_X = 20            # sidebar's side padding
 SECTION_GAP = 18      # between sections
 ROW_GAP = 10          # between rows in a section
+HEADING_GAP = 8       # a section's heading to its first row
 LABEL_GAP = 4         # a label to its control
 SUB_INDENT = 12       # sub-options' indent, beside a 2 px line
 PAIR_GAP = 8          # two controls side by side
 STAGE_PAD = 24        # round the page in the preview
 SHADOW_BLUR = 30      # the page's shadow
+SHADOW_COLOUR = (0, 0, 0, 46)   # its colour: black at 18%, as 2.x's (rgb(0 0 0 / .18))
 
 
 def _families(fams):
@@ -77,6 +79,27 @@ def palette(t):
     return p
 
 
+def _arrow(colour):
+    """A small down-pointing triangle in the given colour, as an image file the stylesheet can use (Qt
+    stylesheets can't draw one from borders, as 2.x's CSS could)."""
+    import os
+    import tempfile
+    from PySide6.QtCore import QPointF
+    from PySide6.QtGui import QImage, QPainter, QPolygonF
+    path = os.path.join(tempfile.gettempdir(), f"inkline-arrow-{colour.lstrip('#')}.png")
+    if not os.path.exists(path):
+        img = QImage(20, 12, QImage.Format.Format_ARGB32)
+        img.fill(0)
+        p = QPainter(img)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(colour))
+        p.drawPolygon(QPolygonF([QPointF(1, 1), QPointF(19, 1), QPointF(10, 11)]))
+        p.end()
+        img.save(path, "PNG")
+    return path.replace("\\", "/")
+
+
 def stylesheet(t):
     ui, head, mono = _families(FONT_UI), _families(FONT_HEAD), _families(FONT_MONO)
     return f"""
@@ -106,18 +129,20 @@ QComboBox, QLineEdit, QPushButton {{
   font-size: 13px; background: {t.field}; border: 1px solid {t.line}; border-radius: 6px; padding: 7px 9px; }}
 QPushButton {{ font-weight: 600; }}
 QPushButton:hover, QComboBox:hover {{ border-color: {t.accent}; }}
-QPushButton:focus, QComboBox:focus, QLineEdit:focus, QCheckBox:focus, QSlider:focus, QTabBar:focus {{
-  border: 2px solid {t.accent}; }}
+QPushButton:focus, QComboBox:focus, QLineEdit:focus {{ border: 2px solid {t.accent}; padding: 6px 8px; }}
+QComboBox::drop-down {{ border: 0; width: 22px; }}
+QComboBox::down-arrow {{ image: url("{_arrow(t.muted)}"); width: 10px; height: 6px; margin-right: 8px; }}
 QPushButton:disabled {{ color: {t.muted}; border-color: {t.line}; }}
 QPushButton[role="primary"] {{ background: {t.accent}; color: {t.accent_ink}; border-color: {t.accent}; }}
 QPushButton[role="mini"] {{ font-size: 12px; padding: 3px 8px; }}
+QPushButton[role="mini"]:focus {{ padding: 2px 7px; }}
+QPushButton#newDesign {{ padding: 7px 14px; }}
+QPushButton#newDesign:focus {{ padding: 6px 13px; }}
 QComboBox QAbstractItemView {{ background: {t.panel}; border: 1px solid {t.line}; selection-background-color: {t.accent};
   selection-color: {t.accent_ink}; }}
 QSlider::groove:horizontal {{ height: 4px; background: {t.line}; border-radius: 2px; }}
 QSlider::sub-page:horizontal {{ background: {t.accent}; border-radius: 2px; }}
 QSlider::handle:horizontal {{ background: {t.accent}; width: 14px; height: 14px; margin: -5px 0; border-radius: 7px; }}
-QCheckBox::indicator:checked {{ background: {t.accent}; border: 1px solid {t.accent}; border-radius: 3px; }}
-QCheckBox::indicator:unchecked {{ background: {t.field}; border: 1px solid {t.line}; border-radius: 3px; }}
 QProgressBar {{ background: {t.field}; border: 0; border-radius: 3px; max-height: 6px; }}
 QProgressBar::chunk {{ background: {t.accent}; border-radius: 3px; }}
 
@@ -131,10 +156,14 @@ QListWidget#photoList::item {{ border: 1px solid {t.line}; border-radius: 6px; p
 QListWidget#photoList::item:selected {{ border-color: {t.accent}; background: {t.field}; color: {t.ink}; }}
 QFrame#drop {{ border: 2px dashed {t.line}; border-radius: 8px; }}
 QLabel#dropText {{ color: {t.muted}; font-size: 13px; }}
+QLabel#dropText[named="true"] {{ color: {t.ink}; font-weight: 600; }}
+QLabel#photoName {{ font-size: 12px; }}
 
 QFrame#infoBar {{ background: {t.bg}; border-bottom: 1px solid {t.line}; }}
 QLabel[role="info"] {{ color: {t.muted}; font-family: {mono}; font-size: 12px; }}
+QLabel[role="infoBold"] {{ color: {t.ink}; font-family: {mono}; font-size: 12px; font-weight: 600; }}
 QWidget#stage {{ background: {t.table}; }}
+QWidget#stage[over="true"] {{ border: 3px dashed {t.accent}; }}
 QLabel#busy {{ background: {t.panel}; color: {t.muted}; font-family: {mono}; font-size: 12px; border: 1px solid {t.line};
   border-radius: 10px; padding: 4px 10px; }}
 QMenuBar {{ background: {t.bg}; }}
@@ -150,3 +179,15 @@ def apply(app, dark=None):
     app.setPalette(palette(t))
     app.setStyleSheet(stylesheet(t))
     return t
+
+
+def follow_system(app, changed=None):
+    """Restyle when the desktop switches between light and dark, as 2.x followed the system."""
+    def again(*_a):
+        apply(app)
+        if changed:
+            changed()
+    try:
+        app.styleHints().colorSchemeChanged.connect(again)
+    except AttributeError:   # Qt before 6.5: no live switching
+        pass
