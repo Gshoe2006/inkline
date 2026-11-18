@@ -1,6 +1,6 @@
 // Records what the 2.5 JavaScript patterns draw, so the Python ports can be checked against them step for step.
 // Needs Node and Playwright (with Chromium) and the 2.5 index.html:
-//   node tests/fixtures/make_fixtures.js [maze] [mandala] [truchet] [contour] [flow] [dots] [sudoku] [words] [nonogram] [name] [booklet]     (default: all)
+//   node tests/fixtures/make_fixtures.js [maze] [mandala] [truchet] [contour] [flow] [dots] [sudoku] [words] [nonogram] [name] [booklet] [poster]     (default: all)
 // Writes tests/fixtures/<pattern>_js.json.gz. Only re-run it if the reference changes; the tests read the JSON.
 // INDEX_HTML=path/to/index.html points it at another copy (e.g. one checked out from the v2.5.0 tag).
 const path = require("path"), fs = require("fs"), zlib = require("zlib");
@@ -80,6 +80,12 @@ const PATTERNS = {
       { mix: true, pages: 40, c: 10, title: "Big book" },
     ].map(o => ({ ...base, ...o }));
   },
+  poster() {
+    // a design across 2x1 to 4x4 sheets, with and without overlap; the first and last sheet as drawn
+    return [["maze", "2x2", "0.25", "", false, 20261117], ["mandala", "3x2", "0", "Big mandala", true, 42],
+            ["sudoku", "1x2", "0.5", "", false, 7], ["truchet", "4x4", "0.25", "", false, 5]]
+      .map(([gen, grid, overlap, title, nameLine, seed]) => ({ gen, grid, overlap, title, nameLine, seed, c: 5 }));
+  },
   truchet() {
     // complexity 1-3 draws one arc per corner, 4 and up three; 10 is the finest grid
     return [[1, 1], [20261117, 3], [7, 4], [42, 7], [5, 10]].map(([seed, c]) => ({ seed, c }));
@@ -93,15 +99,17 @@ const PATTERNS = {
   const page = await browser.newPage();
   await page.goto("file://" + html);
   for (const name of want) {
+    await page.goto("file://" + html);   // fresh form defaults: earlier patterns' settings mustn't leak in
     const out = await page.evaluate(([name, cases, BOX, LW]) => {
       // a canvas stand-in that writes down every path command, as called, and the style each stroke used
       function recorder() {
         const ops = [], stack = [];
+        let dash = [];
         const st = { lineWidth: 1, strokeStyle: "#000", fillStyle: "#000", lineCap: "butt", lineJoin: "miter", font: "10px sans-serif", textAlign: "start", textBaseline: "alphabetic" };
         const ctx = {
           ops,
-          save() { stack.push({ ...st }); ops.push(["save"]); },
-          restore() { Object.assign(st, stack.pop()); ops.push(["restore"]); },
+          save() { stack.push({ ...st, dash }); ops.push(["save"]); },
+          restore() { const o = stack.pop(); dash = o.dash; delete o.dash; Object.assign(st, o); ops.push(["restore"]); },
           beginPath() { ops.push(["begin"]); },
           moveTo(x, y) { ops.push(["M", x, y]); },
           lineTo(x, y) { ops.push(["L", x, y]); },
@@ -117,7 +125,11 @@ const PATTERNS = {
           },
           fillRect(x, y, w, h) { ops.push(["fill_rect", x, y, w, h, st.fillStyle]); },
           strokeRect(x, y, w, h) { ops.push(["stroke_rect", x, y, w, h, st.lineWidth, st.strokeStyle]); },
-          stroke() { ops.push(["stroke", st.lineWidth, st.strokeStyle, st.lineCap, st.lineJoin]); },
+          // a dashed line's dash pattern goes on the end of its stroke step
+          stroke() { ops.push(["stroke", st.lineWidth, st.strokeStyle, st.lineCap, st.lineJoin].concat(dash.length ? [dash] : [])); },
+          setLineDash(d) { dash = d.slice(); },
+          translate(x, y) { ops.push(["translate", x, y]); },
+          setTransform() {},
           fill() { ops.push(["fill", st.fillStyle]); },
           fillText(t, x, y) {   // text, position, colour, weight and size
             const m = /^(?:(\d+)\s+)?([\d.]+)px/.exec(st.font);
@@ -133,6 +145,16 @@ const PATTERNS = {
       }
       return cases.map(k => {
         const ctx = recorder(), box = { ...(k.box || BOX) };
+        if (name === "poster") {
+          const set = (id, v) => { const e = document.getElementById(id); if (e.type === "checkbox") e.checked = v; else e.value = v; };
+          set("booklet", false); set("poster", true); set("cbn", false); set("frame", false); set("weight", 4);
+          for (const id of ["gen", "grid", "overlap", "title", "nameLine"]) set(id, k[id]);
+          set("complexity", k.c); S.mode = "make"; S.seed = k.seed;
+          const g = geometry(), P = posterGeom(g.dpi), spec = singlePage(), n = P.cols * P.rows;
+          const sheet = i => { const r = recorder(); r.fillRect = function (x, y, w, h) { this.ops.push(["fill_rect", x, y, w, h, this.fillStyle]); };
+            r.ops.length = 0; drawSheet(r, g, P, spec, i); return r.ops; };
+          return { ...k, P: { w: P.w, h: P.h, W: P.W, H: P.H, box: P.box, scale: P.scale }, first: sheet(0), last: n > 1 ? sheet(n - 1) : null };
+        }
         if (name === "booklet") {
           const set = (id, v) => { const e = document.getElementById(id); if (e.type === "checkbox") e.checked = v; else e.value = v; };
           set("booklet", true); set("poster", false); set("cbn", false); set("frame", false); set("weight", 4);

@@ -524,7 +524,8 @@ class RecordingCanvas(Canvas):
 
     def stroke(self):
         s = self.st
-        self.ops.append(("stroke", s.line_width, s.stroke_style, s.line_cap, s.line_join))
+        dash = (list(s.line_dash),) if s.line_dash else ()
+        self.ops.append(("stroke", s.line_width, s.stroke_style, s.line_cap, s.line_join) + dash)
 
     def fill(self):
         self.ops.append(("fill", self.st.fill_style))
