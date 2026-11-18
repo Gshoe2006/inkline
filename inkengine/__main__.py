@@ -8,6 +8,7 @@
     python3 -m inkengine contour --complexity 8 -o map.pdf
     python3 -m inkengine flow -o flow.png
     python3 -m inkengine dots --complexity 6 --answers -o dots.pdf    (dot-to-dot)
+    python3 -m inkengine sudoku --complexity 8 --answers -o sudoku.pdf
 """
 
 import argparse

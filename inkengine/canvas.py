@@ -487,7 +487,8 @@ class RecordingCanvas(Canvas):
         self.ops.append(("stroke_rect", x, y, w, h))
 
     def fill_text(self, text, x, y, max_width=None):
-        self.ops.append(("text", text, x, y))
+        s = self.st
+        self.ops.append(("text", text, x, y, s.fill_style, s.font_weight, s.font_size))
 
     def clip(self):
         self.ops.append(("clip",))

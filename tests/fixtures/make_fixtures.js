@@ -1,6 +1,6 @@
 // Records what the 2.5 JavaScript patterns draw, so the Python ports can be checked against them step for step.
 // Needs Node and Playwright (with Chromium) and the 2.5 index.html:
-//   node tests/fixtures/make_fixtures.js [maze] [mandala] [truchet] [contour] [flow] [dots]     (default: all)
+//   node tests/fixtures/make_fixtures.js [maze] [mandala] [truchet] [contour] [flow] [dots] [sudoku]     (default: all)
 // Writes tests/fixtures/<pattern>_js.json.gz. Only re-run it if the reference changes; the tests read the JSON.
 // INDEX_HTML=path/to/index.html points it at another copy (e.g. one checked out from the v2.5.0 tag).
 const path = require("path"), fs = require("fs"), zlib = require("zlib");
@@ -41,6 +41,11 @@ const PATTERNS = {
     const cases = [[7, 1], [9, 3], [14, 5], [1, 7], [2, 10], [4, 6], [8, 9], [3, 2]].map(([seed, c]) => ({ seed, c, connect: false }));
     return cases.concat([[7, 4], [2, 6], [1, 10]].map(([seed, c]) => ({ seed, c, connect: true })));
   },
+  sudoku() {
+    // complexity 1 (48 givens) to 10 (~25: the hardest also remove single cells), puzzles and answer pages
+    return [[1, 1], [20261117, 3], [42, 5], [7, 8], [5, 10], [6, 10]].map(([seed, c]) => ({ seed, c, solve: false }))
+      .concat([[42, 5], [5, 10]].map(([seed, c]) => ({ seed, c, solve: true })));
+  },
   truchet() {
     // complexity 1-3 draws one arc per corner, 4 and up three; 10 is the finest grid
     return [[1, 1], [20261117, 3], [7, 4], [42, 7], [5, 10]].map(([seed, c]) => ({ seed, c }));
@@ -74,7 +79,10 @@ const PATTERNS = {
           closePath() { ops.push(["Z"]); },
           stroke() { ops.push(["stroke", st.lineWidth, st.strokeStyle, st.lineCap, st.lineJoin]); },
           fill() { ops.push(["fill", st.fillStyle]); },
-          fillText(t, x, y) { ops.push(["text", t, x, y]); },
+          fillText(t, x, y) {   // text, position, colour, weight and size
+            const m = /^(?:(\d+)\s+)?([\d.]+)px/.exec(st.font);
+            ops.push(["text", t, x, y, st.fillStyle, m[1] ? +m[1] : 400, +m[2]]);
+          },
           // text widths depend on the fonts installed, so recordings use a stand-in: 0.55 em per character
           // (the Python test's RecordingCanvas does the same); real pages measure the real font
           measureText(t) { return { width: +/([\d.]+)px/.exec(st.font)[1] * 0.55 * t.length }; },
@@ -97,6 +105,7 @@ const PATTERNS = {
         if (name === "truchet") genTruchet(ctx, box, mulberry32(k.seed), k.c);
         if (name === "contour") genContour(ctx, box, mulberry32(k.seed), k.c, LW, k.dpi, k.seed);
         if (name === "flow") genFlow(ctx, box, mulberry32(k.seed), k.c, k.seed);
+        if (name === "sudoku") k.info = genSudoku(ctx, box, mulberry32(k.seed), k.c, LW, { dpi: 300 }, { solve: k.solve });
         if (name === "dots") k.info = genDots(ctx, box, mulberry32(k.seed), k.c, LW, { dpi: 300 }, { connect: k.connect });
         if (k.summary) {   // a full page is too many steps to keep: counts per kind, and sums of the coordinates
           const kinds = {}, sums = {};
