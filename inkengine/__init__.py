@@ -9,7 +9,8 @@ yet. What it covers so far:
 - canvas.py    one drawing API with two back ends: QPainter (screen, PNG, PDF, printer) and SVG
 - page.py      paper sizes, settings and page layout (title, name line, page number, border)
 - patterns/    the generators ported so far: maze.py, mandala.py, truchet.py (woven tiles),
-               contour.py, flow.py, dots.py (dot-to-dot)
+               contour.py, flow.py, dots.py (dot-to-dot), sudoku.py,
+               words.py (word search), nonogram.py
 - output.py    write a page as PNG, PDF or SVG
 """
 

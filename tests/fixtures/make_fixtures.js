@@ -1,6 +1,6 @@
 // Records what the 2.5 JavaScript patterns draw, so the Python ports can be checked against them step for step.
 // Needs Node and Playwright (with Chromium) and the 2.5 index.html:
-//   node tests/fixtures/make_fixtures.js [maze] [mandala] [truchet] [contour] [flow] [dots]     (default: all)
+//   node tests/fixtures/make_fixtures.js [maze] [mandala] [truchet] [contour] [flow] [dots] [sudoku] [words] [nonogram]     (default: all)
 // Writes tests/fixtures/<pattern>_js.json.gz. Only re-run it if the reference changes; the tests read the JSON.
 // INDEX_HTML=path/to/index.html points it at another copy (e.g. one checked out from the v2.5.0 tag).
 const path = require("path"), fs = require("fs"), zlib = require("zlib");
@@ -41,6 +41,25 @@ const PATTERNS = {
     const cases = [[7, 1], [9, 3], [14, 5], [1, 7], [2, 10], [4, 6], [8, 9], [3, 2]].map(([seed, c]) => ({ seed, c, connect: false }));
     return cases.concat([[7, 4], [2, 6], [1, 10]].map(([seed, c]) => ({ seed, c, connect: true })));
   },
+  sudoku() {
+    // complexity 1 (48 givens) to 10 (~25: the hardest also remove single cells), puzzles and answer pages
+    return [[1, 1], [20261117, 3], [42, 5], [7, 8], [5, 10], [6, 10]].map(([seed, c]) => ({ seed, c, solve: false }))
+      .concat([[42, 5], [5, 10]].map(([seed, c]) => ({ seed, c, solve: true })));
+  },
+  words() {
+    // every theme, complexity 1 to 10 (8x8 across and down only, up to 16x16 in all eight directions),
+    // a custom list with a word too long for the grid and one hidden inside another, and answer pages
+    const custom = "mum, dad; grandma pizza  pizza Pizza x Ann-Marie supercalifragilistic sun venus";
+    return [["animals", "", 1, 1], ["ocean", "", 20261117, 3], ["space", "", 42, 5], ["food", "", 7, 7], ["weather", "", 5, 9],
+            ["sports", "", 6, 10], ["custom", custom, 3, 4], ["custom", "", 8, 2]]
+      .map(([theme, list, seed, c]) => ({ theme, list, seed, c, solve: false }))
+      .concat([["animals", "", 42, 6], ["custom", custom, 3, 10]].map(([theme, list, seed, c]) => ({ theme, list, seed, c, solve: true })));
+  },
+  nonogram() {
+    // complexity 1 (5x5) to 10 (20x20), puzzles and answer pages
+    return [[1, 1], [20261117, 3], [42, 5], [7, 7], [5, 10], [9, 8]].map(([seed, c]) => ({ seed, c, solve: false }))
+      .concat([[42, 5], [5, 10]].map(([seed, c]) => ({ seed, c, solve: true })));
+  },
   truchet() {
     // complexity 1-3 draws one arc per corner, 4 and up three; 10 is the finest grid
     return [[1, 1], [20261117, 3], [7, 4], [42, 7], [5, 10]].map(([seed, c]) => ({ seed, c }));
@@ -72,9 +91,14 @@ const PATTERNS = {
           rect(x, y, w, h) { ops.push(["rect", x, y, w, h]); },
           clip() { ops.push(["clip"]); },
           closePath() { ops.push(["Z"]); },
+          fillRect(x, y, w, h) { ops.push(["fill_rect", x, y, w, h, st.fillStyle]); },
+          strokeRect(x, y, w, h) { ops.push(["stroke_rect", x, y, w, h, st.lineWidth, st.strokeStyle]); },
           stroke() { ops.push(["stroke", st.lineWidth, st.strokeStyle, st.lineCap, st.lineJoin]); },
           fill() { ops.push(["fill", st.fillStyle]); },
-          fillText(t, x, y) { ops.push(["text", t, x, y]); },
+          fillText(t, x, y) {   // text, position, colour, weight and size
+            const m = /^(?:(\d+)\s+)?([\d.]+)px/.exec(st.font);
+            ops.push(["text", t, x, y, st.fillStyle, m[1] ? +m[1] : 400, +m[2]]);
+          },
           // text widths depend on the fonts installed, so recordings use a stand-in: 0.55 em per character
           // (the Python test's RecordingCanvas does the same); real pages measure the real font
           measureText(t) { return { width: +/([\d.]+)px/.exec(st.font)[1] * 0.55 * t.length }; },
@@ -97,6 +121,17 @@ const PATTERNS = {
         if (name === "truchet") genTruchet(ctx, box, mulberry32(k.seed), k.c);
         if (name === "contour") genContour(ctx, box, mulberry32(k.seed), k.c, LW, k.dpi, k.seed);
         if (name === "flow") genFlow(ctx, box, mulberry32(k.seed), k.c, k.seed);
+        if (name === "words") {
+          document.getElementById("wsTheme").value = k.theme;
+          document.getElementById("wsWords").value = k.list;
+          const ws = genWords(ctx, box, mulberry32(k.seed), k.c, LW, { dpi: 300 }, { solve: k.solve });
+          k.info = { size: ws.size, words: ws.placed.map(p => p.word), skipped: ws.skipped };
+        }
+        if (name === "nonogram") {
+          const n = genNonogram(ctx, box, mulberry32(k.seed), k.c, LW, { dpi: 300 }, { solve: k.solve });
+          k.info = { size: n.size, attempts: n.attempts, pic: n.pic.join(""), rows: n.rows, cols: n.cols };
+        }
+        if (name === "sudoku") k.info = genSudoku(ctx, box, mulberry32(k.seed), k.c, LW, { dpi: 300 }, { solve: k.solve });
         if (name === "dots") k.info = genDots(ctx, box, mulberry32(k.seed), k.c, LW, { dpi: 300 }, { connect: k.connect });
         if (k.summary) {   // a full page is too many steps to keep: counts per kind, and sums of the coordinates
           const kinds = {}, sums = {};
