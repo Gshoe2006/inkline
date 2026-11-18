@@ -43,7 +43,8 @@ def book_pages(s):
         pages.append(PageSpec(kind="cover", title=cover_title, designs=designs,
                               art_seed=_page_seed(s, "cover", (s.seed ^ 0x5BD1E995) & 0xFFFFFFFF)))
     pages.extend(designs)
-    puzzles = [d for d in designs if d.gen in HAS_ANSWER]
+    from .cbn import is_cbn_design
+    puzzles = [d for d in designs if d.gen in HAS_ANSWER or is_cbn_design(d.gen, s)]   # colour by number gets a shaded answer
     if s.key:
         for i in range(0, len(puzzles), 4):
             pages.append(PageSpec(kind="answers", header=True, title="Answers", items=puzzles[i:i + 4]))

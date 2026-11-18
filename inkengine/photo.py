@@ -9,8 +9,7 @@ into a small work image, one pixel per dot, then turned into tones and drawn in 
   bayer      pattern dither (ordered)               stipple    same-size dots, packed closer where dark
   threshold  solid black & white                    nono       a nonogram puzzle that reveals the photo
   line       line drawing (difference of Gaussians, for colouring)
-
-Colour by number comes in a later step.
+  cbn        colour by number, with a crayon key (cbn.py)
 
 From the work image on, this matches index.html exactly: tones are kept in 32-bit floats where the
 JavaScript keeps them in Float32Arrays (numpy float32 and array('f') round the same way), and the
@@ -31,16 +30,17 @@ import numpy as np
 from PySide6.QtCore import QRectF, Qt
 from PySide6.QtGui import QImage, QPainter
 
+from .box import Box
 from .patterns import nonogram
 from .qt import ensure_app
 
-STYLES = ["fs", "atkinson", "bayer", "halftone", "engrave", "stipple", "nono", "threshold", "line"]
+STYLES = ["fs", "atkinson", "bayer", "halftone", "engrave", "stipple", "cbn", "nono", "threshold", "line"]
 STYLE_NAMES = {"fs": "Dither: smooth (Floyd–Steinberg)", "atkinson": "Dither: crisp (Atkinson)",
                "bayer": "Dither: pattern (ordered)", "halftone": "Halftone dots", "engrave": "Engraving lines",
                "stipple": "Stippling dots", "cbn": "Colour by number (with a crayon key)",
                "nono": "Nonogram puzzle (picture logic)", "threshold": "Solid black & white",
                "line": "Line drawing (colouring page)"}
-VECTOR_STYLES = {"engrave", "stipple", "nono"}   # drawn as shapes, so they save as real vector SVG
+VECTOR_STYLES = {"engrave", "stipple", "nono", "cbn"}   # drawn as shapes, so they save as real vector SVG
 
 
 def _js_round(x):
@@ -283,6 +283,7 @@ def process_pixels(D, ww, wh, p):
     """Tones, mask and the black & white result for one work image (D: RGBA bytes). Returns a dict with
     lum (float32), mask (uint8), grey (the 1-bit image as 0/255 bytes, for the dither styles) and nono."""
     N = ww * wh
+    D_bytes = D
     D = np.asarray(D, np.uint8).reshape(N, 4).astype(np.float64)
     a = D[:, 3] / 255
     mask = (a > 0.02).astype(np.uint8)
@@ -311,6 +312,10 @@ def process_pixels(D, ww, wh, p):
         despeckle(out, ww, wh, max(12, _js_round(N / 40000)))
     elif style == "nono":
         nono = _nono_picture(lum, mask, ww, wh, p)
+    label = cbn_result = None
+    if style == "cbn":
+        from .cbn import process_photo
+        label, cbn_result = process_photo(D_bytes, mask, ww, wh, p)
     grey = None
     if out is not None:
         o = np.frombuffer(bytes(out), np.uint8).copy()
@@ -318,7 +323,7 @@ def process_pixels(D, ww, wh, p):
         if inv:
             o[mask == 1] = 255 - o[mask == 1]
         grey = o
-    return {"lum": lum, "mask": mask, "grey": grey, "nono": nono}
+    return {"lum": lum, "mask": mask, "grey": grey, "nono": nono, "label": label, "cbn": cbn_result}
 
 
 def _nono_picture(lum, mask, ww, wh, p):
@@ -389,6 +394,7 @@ class Conversion:
     mask: np.ndarray
     grey: object = None          # 0/255 bytes for the dither styles
     nono: dict = None
+    cbn: dict = None             # colour by number: crayons, region colours, number spots, border lines
     overhang: tuple = (0, 0)     # page pixels the crop overhangs on each side (for drag-to-pan)
     stipple: dict = field(default_factory=dict)
     _image: QImage = None
@@ -429,12 +435,12 @@ def clear_cache():
 
 def conversion(box, cell, style, photo, s):
     key = (photo.id, box.w, box.h, cell, style, s.brightness, s.contrast, s.threshold, s.fit, s.invert,
-           s.pnono_size if style == "nono" else "", photo.rot, photo.zoom, photo.panx, photo.pany)
+           s.pcbn_colours if style == "cbn" else s.pnono_size if style == "nono" else "", photo.rot, photo.zoom, photo.panx, photo.pany)
     e = _cache_get(key)
     if e is None:
         ww, wh, data, params, overhang = conversion_input(box, cell, style, photo, s)
         r = process_pixels(data, ww, wh, params)
-        e = _cache_put(key, Conversion(ww, wh, r["lum"], r["mask"], r["grey"], r["nono"], overhang))
+        e = _cache_put(key, Conversion(ww, wh, r["lum"], r["mask"], r["grey"], r["nono"], r["cbn"], overhang))
     return e
 
 
@@ -447,6 +453,9 @@ def cell_size(style, dot, box, s, dpi):
         c = dot * 2
     elif style == "nono":
         c = box.w / (s.pnono_size * 8)
+    elif style == "cbn":
+        from .cbn import CBN_DPI
+        c = dpi / CBN_DPI
     else:
         c = dot
     return max(1, c)
@@ -461,9 +470,13 @@ def convert(ctx, box, dpi, s, photo, style=None, dot=None, view=None):
         ctx.fill_text("Open or drop an image to convert it", box.x + box.w / 2, box.y + box.h / 2)
         return None
     style = style or s.style
-    if style == "cbn":
-        raise NotImplementedError("colour by number isn't ported to the Python engine yet")
     dot = (s.dot if dot is None else dot) * (dpi / s.dpi)   # dot size stays physical at preview resolution
+    key_box = None
+    if style == "cbn":   # the crayon key takes a band under the picture
+        from .cbn import key_height
+        kh = key_height(box, dpi, s.pcbn_colours)
+        key_box = Box(box.x, box.y + box.h - kh, box.w, kh)
+        box = Box(box.x, box.y, box.w, box.h - kh - dpi * 0.12)
     e = conversion(box, cell_size(style, dot, box, s, dpi), style, photo, s)
     inv = (not photo.neutral) and s.invert
     if style == "engrave":
@@ -472,6 +485,9 @@ def convert(ctx, box, dpi, s, photo, style=None, dot=None, view=None):
         _draw_stipple(ctx, box, e, inv, view)
     elif style == "halftone":
         _draw_halftone(ctx, box, e, inv, view)
+    elif style == "cbn":
+        from .cbn import draw_photo
+        draw_photo(ctx, box, key_box, dpi, e)
     elif style == "nono":
         if e.nono:
             nonogram.draw_nonogram(ctx, box, dpi, s.weight * dpi / 150, e.nono, s.pnono_answer)

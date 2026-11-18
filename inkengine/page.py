@@ -65,6 +65,8 @@ class Settings:
     pnono_size: int = 15         # photo nonogram squares across, 10..30
     pnono_answer: bool = False   # draw the photo nonogram solved
     pcbn_colours: int = 8        # colour by number crayons, 4..16
+    cbn: bool = False            # mandalas, woven tiles, contours and name pages as colour by number
+    cbn_colours: int = 6         # their crayons, 3..12
 
     @classmethod
     def from_dict(cls, d):
@@ -201,6 +203,9 @@ def draw_page(ctx, g, spec, s, keep=False):
             ctx.line_width = lw * 1.6
             ctx.stroke_rect(*box.inset(-lw * 6))
             ctx.line_width = lw
+        from . import cbn
+        if cbn.is_cbn_design(spec.gen, s):   # colour by number: the crayon key takes a band under the design
+            return cbn.draw_design_page(ctx, g, box, spec, s, lw)
         return draw_design(ctx, g, box, spec.gen, spec.seed, spec.c, s, lw)
     if spec.kind == "answers":
         area = design_box(g, spec, s)
@@ -215,7 +220,10 @@ def draw_page(ctx, g, spec, s, keep=False):
             ctx.restore()
             ctx.line_width = max(1, lw * 0.45)
             slot = Box(cell.x, cell.y + fs * 1.6, cell.w, cell.h - fs * 1.6).inset(fs * 0.6)
-            if d.gen == "maze":   # same grid as the puzzle page, so it's the same maze
+            from . import cbn
+            if cbn.is_cbn_design(d.gen, s):   # shaded by number
+                cbn.draw_answer(ctx, g, slot, d, s, lw)
+            elif d.gen == "maze":   # same grid as the puzzle page, so it's the same maze
                 grid = maze.grid_size(design_box(g, d, s), d.c, s.maze_shape, s.maze_word)
                 draw_design(ctx, g, slot, "maze", d.seed, d.c, s, ctx.line_width, grid=grid, solve=True)
             elif d.gen == "dots":   # same seed draws the same shape, finished
