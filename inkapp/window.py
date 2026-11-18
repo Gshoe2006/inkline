@@ -366,9 +366,11 @@ class Window(QMainWindow):
                 opened.append(os.path.abspath(f))
             except OSError:
                 bad.append(os.path.basename(f))
-        self._add_recent(opened)
         if bad:
             self._msg(f"Couldn't read {', '.join(bad)} as an image. Try PNG, JPEG or WebP.")
+        st = self.state
+        room = MAX_PHOTOS - len(st.photos) if append and st.photos else MAX_PHOTOS
+        self._add_recent(opened[:max(0, room)])   # only the photos add_photos will keep
         if ok:
             self.add_photos(ok, append)
 
@@ -376,7 +378,8 @@ class Window(QMainWindow):
     def _add_recent(self, paths):
         if not paths or not self.remember:
             return
-        self._set_recent(list(reversed(paths)) + [p for p in self.recent if p not in paths])
+        newest = list(dict.fromkeys(reversed(paths)))   # newest first, each file once
+        self._set_recent(newest + [p for p in self.recent if p not in newest])
 
     def _set_recent(self, paths):
         self.recent = paths[:MAX_RECENT]
@@ -392,7 +395,6 @@ class Window(QMainWindow):
         for i, path in enumerate(self.recent):
             label = os.path.basename(path).replace("&", "&&")
             a = m.addAction(f"&{i + 1} {label}" if i < 9 else f"1&0 {label}")
-            a.setStatusTip(path)
             a.setToolTip(path)
             a.triggered.connect(lambda _c=False, p=path: self.open_recent(p))
         m.setToolTipsVisible(True)

@@ -57,7 +57,7 @@ def test_opened_photos_are_listed_newest_first_and_kept(make, tmp_path):
     w._load_files([a], False)                    # opened again: moves to the top, not listed twice
     assert w.recent_menu.isEnabled()
     assert _items(w) == ["&1 a.png", "&2 b && c.png", "&Clear list"]
-    assert w.recent_menu.actions()[0].statusTip() == os.path.abspath(a)
+    assert w.recent_menu.actions()[0].toolTip() == os.path.abspath(a)   # the window has no status bar
     again = make()                               # the next run remembers them
     assert again.recent == [os.path.abspath(a), os.path.abspath(b)]
 
@@ -94,3 +94,15 @@ def test_nothing_is_kept_when_not_remembering(make, tmp_path):
     w = make(remember=False)
     w._load_files([_photo(tmp_path, "a.png")], False)
     assert w.recent == [] and not (tmp_path / "config" / "recent.json").exists()
+
+
+def test_a_batch_lists_each_file_once_and_only_what_fits(make, tmp_path, monkeypatch):
+    w = make()
+    a, b = _photo(tmp_path, "a.png"), _photo(tmp_path, "b.png")
+    w._load_files([a, b, a], True)              # the same file twice in one drop
+    assert w.recent == [os.path.abspath(a), os.path.abspath(b)]
+    import inkapp.window as win_mod
+    monkeypatch.setattr(win_mod, "MAX_PHOTOS", len(w.state.photos) + 1)
+    c, d = _photo(tmp_path, "c.png"), _photo(tmp_path, "d.png")
+    w._load_files([c, d], True)                 # room for one more: d is left out, so isn't listed
+    assert w.recent[0] == os.path.abspath(c) and os.path.abspath(d) not in w.recent
