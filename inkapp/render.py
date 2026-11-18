@@ -87,10 +87,15 @@ def render_view(state):
     if v.kind == "testpage":
         from dataclasses import replace
         from inkengine.testpage import draw_test_page
-        g = geometry(replace(s, orient="portrait"), PREVIEW_DPI)
+        st = replace(s, orient="portrait")   # drawn at the settings' dpi, so its heading says the dpi it prints at
+        full = geometry(st)
+        sc = PREVIEW_DPI / s.dpi
+        g = geometry(st, PREVIEW_DPI)
         img = _blank(g.W, g.H)
         p = QPainter(img)
-        draw_test_page(QtCanvas(p, g.W, g.H), replace(s, dpi=PREVIEW_DPI, orient="portrait"))
+        p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        p.scale(sc, sc)
+        draw_test_page(QtCanvas(p, full.W, full.H), st)
         p.end()
     elif v.kind == "fold":
         gs = book.sheet_geometry(s)
@@ -193,12 +198,12 @@ class Renderer(QObject):
                     break
             n, fn = job
             from inkengine import photo as photo_mod
-            photo_mod.on_convert = self.converting.emit
+            photo_mod.set_on_convert(self.converting.emit)   # this worker thread's own hook
             try:
                 self.finished.emit(n, fn())
             except Exception:   # noqa: BLE001 — reported in the status line, never a crash
                 traceback.print_exc()   # the details, for a bug report
                 self.failed.emit(n, traceback.format_exc(limit=1).strip().splitlines()[-1])
             finally:
-                photo_mod.on_convert = None
+                photo_mod.set_on_convert(None)
         self.busy.emit(False)

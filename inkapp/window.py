@@ -12,7 +12,7 @@ from PySide6.QtCore import QEvent, QTimer, Qt, Signal
 from PySide6.QtGui import QAction, QGuiApplication, QImage, QKeySequence
 from PySide6.QtPrintSupport import QPrintDialog, QPrinter
 from PySide6.QtWidgets import (QAbstractItemView, QAbstractSlider, QAbstractSpinBox, QApplication, QComboBox, QFileDialog,
-                               QHBoxLayout, QLineEdit, QMainWindow, QMessageBox, QWidget)
+                               QHBoxLayout, QLineEdit, QMainWindow, QMenu, QMenuBar, QMessageBox, QWidget)
 from PySide6.QtGui import QPdfWriter
 
 from inkengine import book, photo
@@ -167,10 +167,11 @@ class Window(QMainWindow):
             d = {Qt.Key.Key_Left: -1, Qt.Key.Key_PageUp: -1, Qt.Key.Key_Right: 1, Qt.Key.Key_PageDown: 1}.get(e.key())
             mods = e.modifiers() & ~Qt.KeyboardModifier.KeypadModifier
             focus = QApplication.focusWidget()
-            if d and mods == Qt.KeyboardModifier.NoModifier and not isinstance(
-                    focus, (QLineEdit, QComboBox, QAbstractSlider, QAbstractSpinBox, QAbstractItemView)):
-                self.step_page(d)
-                return True
+            if (d and mods == Qt.KeyboardModifier.NoModifier and QApplication.activePopupWidget() is None
+                    and not isinstance(obj, (QMenu, QMenuBar)) and not isinstance(
+                        focus, (QLineEdit, QComboBox, QAbstractSlider, QAbstractSpinBox, QAbstractItemView, QMenuBar))
+                    and self.step_page(d)):
+                return True   # taken only when there were pages to turn; menus keep their arrow keys
         return super().eventFilter(obj, e)
 
     def _set_mode(self, mode):
@@ -193,13 +194,14 @@ class Window(QMainWindow):
     def step_page(self, d):
         s, v = self.state.settings, view(self.state)
         if v.kind not in ("booklet", "photobook", "fold"):
-            return
+            return False
         self.state.page = max(0, min(self.state.page + d, v.count - 1))
         if v.kind == "photobook" and self.state.photos:   # paging selects that page's photo, to crop what's shown
             self.state.sel = max(0, min(self.state.page - (1 if s.pcover else 0), len(self.state.photos) - 1))
             self.sidebar.fill_photos()
             self.sidebar.load_crop()
         self.schedule()
+        return True
 
     def _swap_page(self, new):
         key = getattr(self.sidebar, "current_key", None)

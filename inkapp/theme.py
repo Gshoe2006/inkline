@@ -79,14 +79,21 @@ def palette(t):
     return p
 
 
+_ARROW_DIR = None
+
+
 def _arrow(colour):
     """A small down-pointing triangle in the given colour, as an image file the stylesheet can use (Qt
-    stylesheets can't draw one from borders, as 2.x's CSS could)."""
+    stylesheets can't draw one from borders, as 2.x's CSS could). Drawn fresh into this run's own
+    temporary folder, so a stale or someone else's file is never picked up."""
     import os
     import tempfile
     from PySide6.QtCore import QPointF
     from PySide6.QtGui import QImage, QPainter, QPolygonF
-    path = os.path.join(tempfile.gettempdir(), f"inkline-arrow-{colour.lstrip('#')}.png")
+    global _ARROW_DIR
+    if _ARROW_DIR is None:
+        _ARROW_DIR = tempfile.mkdtemp(prefix="inkline-")
+    path = os.path.join(_ARROW_DIR, f"arrow-{colour.lstrip('#')}.png")
     if not os.path.exists(path):
         img = QImage(20, 12, QImage.Format.Format_ARGB32)
         img.fill(0)
@@ -130,6 +137,9 @@ QComboBox, QLineEdit, QPushButton {{
 QPushButton {{ font-weight: 600; }}
 QPushButton:hover, QComboBox:hover {{ border-color: {t.accent}; }}
 QPushButton:focus, QComboBox:focus, QLineEdit:focus {{ border: 2px solid {t.accent}; padding: 6px 8px; }}
+QCheckBox:focus {{ border: 2px solid {t.accent}; border-radius: 4px; }}
+QSlider::handle:horizontal:focus {{ border: 2px solid {t.ink}; }}
+QTabBar#modeTabs:focus {{ border: 2px solid {t.accent}; }}
 QComboBox::drop-down {{ border: 0; width: 22px; }}
 QComboBox::down-arrow {{ image: url("{_arrow(t.muted)}"); width: 10px; height: 6px; margin-right: 8px; }}
 QPushButton:disabled {{ color: {t.muted}; border-color: {t.line}; }}
@@ -162,8 +172,8 @@ QLabel#photoName {{ font-size: 12px; }}
 QFrame#infoBar {{ background: {t.bg}; border-bottom: 1px solid {t.line}; }}
 QLabel[role="info"] {{ color: {t.muted}; font-family: {mono}; font-size: 12px; }}
 QLabel[role="infoBold"] {{ color: {t.ink}; font-family: {mono}; font-size: 12px; font-weight: 600; }}
-QWidget#stage {{ background: {t.table}; }}
-QWidget#stage[over="true"] {{ border: 3px dashed {t.accent}; }}
+QWidget#stage {{ background: {t.table}; border: 3px dashed transparent; }}
+QWidget#stage[over="true"] {{ border-color: {t.accent}; }}
 QLabel#busy {{ background: {t.panel}; color: {t.muted}; font-family: {mono}; font-size: 12px; border: 1px solid {t.line};
   border-radius: 10px; padding: 4px 10px; }}
 QMenuBar {{ background: {t.bg}; }}
