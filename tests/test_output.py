@@ -64,3 +64,13 @@ def test_svg_draws_every_wall_the_recording_does():
 def test_settings_read_2x_names():
     s = Settings.from_dict({"mazeShape": "fish", "nameLine": True, "complexity": 7, "style": "dither"})
     assert (s.maze_shape, s.name_line, s.complexity) == ("fish", True, 7)
+
+
+def test_svg_clips_woven_tiles_to_the_design_box():
+    """Edge tiles are cut off by a clip path round the design box, like the PNG and PDF."""
+    s = Settings(gen="truchet", seed=3, frame=True)
+    root = ET.fromstring(output.svg_text(s))
+    ns = "{http://www.w3.org/2000/svg}"
+    clip = next(root.iter(ns + "clipPath"))
+    group = next(g for g in root.iter(ns + "g") if g.get("clip-path") == f"url(#{clip.get('id')})")
+    assert len(list(group.iter(ns + "path"))) == 1          # all the arcs, inside the clip

@@ -4,14 +4,15 @@ GENERATORS maps a pattern name to draw(ctx, box, rnd, complexity, settings, lw=l
 ported from index.html aren't listed.
 """
 
-from . import mandala, maze
+from . import mandala, maze, truchet
 
 GENERATORS = {
     "mandala": mandala.draw,
     "maze": maze.draw,
+    "truchet": truchet.draw,
 }
 
-NAMES = {"mandala": "Mandala", "maze": "Maze"}
+NAMES = {"mandala": "Mandala", "maze": "Maze", "truchet": "Woven tiles"}
 
 # Puzzles that have a solution to show on answer pages.
 HAS_ANSWER = {"maze"}

@@ -1,6 +1,6 @@
 // Records what the 2.5 JavaScript patterns draw, so the Python ports can be checked against them step for step.
 // Needs Node and Playwright (with Chromium) and the 2.5 index.html:
-//   node tests/fixtures/make_fixtures.js [maze] [mandala]     (default: all)
+//   node tests/fixtures/make_fixtures.js [maze] [mandala] [truchet]     (default: all)
 // Writes tests/fixtures/<pattern>_js.json. Only re-run it if the reference changes; the tests read the JSON.
 // INDEX_HTML=path/to/index.html points it at another copy (e.g. one checked out from the v2.5.0 tag).
 const path = require("path"), fs = require("fs");
@@ -23,6 +23,10 @@ const PATTERNS = {
   mandala() {
     // between them: every motif, the fewest rings (complexity 1) and the most (10)
     return [[1, 1], [2, 3], [3, 5], [20261117, 5], [5, 10]].map(([seed, c]) => ({ seed, c }));
+  },
+  truchet() {
+    // complexity 1-3 draws one arc per corner, 4 and up three; 10 is the finest grid
+    return [[1, 1], [20261117, 3], [7, 4], [42, 7], [5, 10]].map(([seed, c]) => ({ seed, c }));
   },
 };
 
@@ -47,6 +51,8 @@ const PATTERNS = {
           quadraticCurveTo(a, b, x, y) { ops.push(["Q", a, b, x, y]); },
           bezierCurveTo(a, b, c, d, x, y) { ops.push(["C", a, b, c, d, x, y]); },
           arc(x, y, r, a0, a1, ccw = false) { ops.push(["A", x, y, r, a0, a1, !!ccw]); },
+          rect(x, y, w, h) { ops.push(["rect", x, y, w, h]); },
+          clip() { ops.push(["clip"]); },
           stroke() { ops.push(["stroke", st.lineWidth, st.strokeStyle, st.lineCap, st.lineJoin]); },
         };
         for (const k of Object.keys(st)) Object.defineProperty(ctx, k, { get: () => st[k], set: v => { st[k] = v; } });
@@ -64,6 +70,7 @@ const PATTERNS = {
           return { ...k, box, lw: LW, grid, mask: mask ? Array.from(mask).join("") : null, ops: ctx.ops };
         }
         if (name === "mandala") genMandala(ctx, box, mulberry32(k.seed), k.c, LW);
+        if (name === "truchet") genTruchet(ctx, box, mulberry32(k.seed), k.c);
         return { ...k, box, lw: LW, ops: ctx.ops };
       });
     }, [name, PATTERNS[name](), BOX, LW]);
