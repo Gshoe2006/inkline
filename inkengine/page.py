@@ -38,6 +38,17 @@ class Settings:
     maze_word: str = "Maze"
     ws_theme: str = "animals"    # word search: a theme from patterns.words.THEMES, or "custom"
     ws_words: str = ""           # word search: your own words, for ws_theme "custom"
+    name_text: str = "Hello"     # name page: the name or word (up to 40 characters)
+    name_bg: str = "none"        # name page: none | flow | contour | truchet underneath
+    # booklets (book.py)
+    pages: int = 10              # design pages, 2..40
+    ramp: bool = True            # difficulty rises page by page
+    mix: bool = False            # every pattern in turn, instead of only gen
+    cover: bool = True
+    page_nums: bool = True
+    key: bool = True             # answer pages for the puzzles
+    fold: bool = False           # print as a fold-and-staple book: two half-size pages per side
+    page_seeds: dict = field(default_factory=dict)   # pages swapped for a new design: {index or "cover": seed}
 
     @classmethod
     def from_dict(cls, d):
@@ -70,7 +81,7 @@ def geometry(s):
 
 @dataclass
 class PageSpec:
-    kind: str = "design"         # design | answers
+    kind: str = "design"         # design | answers | cover | blank
     gen: str = "maze"
     seed: int = 0
     c: int = 5
@@ -78,11 +89,15 @@ class PageSpec:
     name: bool = False
     page_no: int = 0
     label: str = ""
-    items: list = field(default_factory=list)   # answers: the PageSpecs whose solutions this page shows
+    items: list = field(default_factory=list)     # answers: the PageSpecs whose solutions this page shows
+    header: bool = None          # title band at the top; by default when there's a title or name line
+    idx: int = -1                # booklets: which design page this is (0-based)
+    designs: list = field(default_factory=list)   # cover: the booklet's design pages
+    art_seed: int = 0            # cover: the seed for its picture
 
-    @property
-    def header(self):
-        return self.kind == "answers" or bool(self.title or self.name)
+    def __post_init__(self):
+        if self.header is None:
+            self.header = self.kind == "answers" or (self.kind == "design" and bool(self.title or self.name))
 
 
 def single_page(s):
@@ -178,6 +193,28 @@ def draw_page(ctx, g, spec, s):
                 draw_design(ctx, g, slot, "dots", d.seed, d.c, s, ctx.line_width, connect=True)
             elif d.gen in HAS_ANSWER:
                 draw_design(ctx, g, slot, d.gen, d.seed, d.c, s, lw, solve=True)
+        return None
+    if spec.kind == "cover":
+        b, fs = g.box, g.dpi * 0.5
+        ctx.save()
+        ctx.set_font(fs, 700)
+        ctx.text_align, ctx.fill_style = "center", "#000"
+        ctx.fill_text(spec.title, b.x + b.w / 2, b.y + b.h * 0.14, b.w)
+        kinds = list(dict.fromkeys(d.gen for d in spec.designs))
+        n = len(spec.designs)
+        what = (NAMES[kinds[0]].lower() + (" pages" if n > 1 else " page")) if len(kinds) == 1 else "pages"
+        sub = f"{n} {what}" + (" · easy to hard" if s.ramp and n > 1 else "")
+        ctx.set_font(fs * 0.4, 400)
+        ctx.fill_style = "#444"
+        ctx.fill_text(sub, b.x + b.w / 2, b.y + b.h * 0.14 + fs * 0.8, b.w)
+        ctx.restore()
+        art = Box(b.x + b.w * 0.12, b.y + b.h * 0.26, b.w * 0.76, b.h * 0.66)
+        ctx.line_width = lw
+        first = spec.designs[0].gen
+        # a puzzle would give away a page's answer, so puzzle books get a mandala on the cover
+        draw_design(ctx, g, art, "mandala" if first in HAS_ANSWER else first, spec.art_seed, 6, s, lw)
+        return None
+    if spec.kind == "blank":   # padding in a fold-and-staple book
         return None
     raise ValueError(f"unknown page kind {spec.kind!r}")
 

@@ -74,3 +74,20 @@ def test_svg_clips_woven_tiles_to_the_design_box():
     clip = next(root.iter(ns + "clipPath"))
     group = next(g for g in root.iter(ns + "g") if g.get("clip-path") == f"url(#{clip.get('id')})")
     assert len(list(group.iter(ns + "path"))) == 1          # all the arcs, inside the clip
+
+
+def test_name_page_pdf_keeps_its_outline(tmp_path):
+    """The white fill of bubble letters must not eat into the black outline in a PDF."""
+    import shutil
+    import subprocess
+    import pytest
+    if not shutil.which("pdftoppm"):
+        pytest.skip("needs pdftoppm (poppler-utils)")
+    ensure_app()
+    s = Settings(gen="name", name_text="Maya", seed=1, dpi=150)
+    output.write_pdf(tmp_path / "n.pdf", s)
+    output.write_png(tmp_path / "n.png", s)
+    subprocess.run(["pdftoppm", "-r", "150", "-png", "-singlefile", str(tmp_path / "n.pdf"), str(tmp_path / "p")], check=True)
+    dark = lambda img: sum(img.pixelColor(x, y).lightness() < 128 for y in range(0, img.height(), 2) for x in range(0, img.width(), 2))
+    png, pdf = dark(QImage(str(tmp_path / "n.png"))), dark(QImage(str(tmp_path / "p.png")))
+    assert png > 1000 and abs(pdf - png) < 0.1 * png

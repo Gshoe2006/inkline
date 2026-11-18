@@ -1,6 +1,6 @@
 // Records what the 2.5 JavaScript patterns draw, so the Python ports can be checked against them step for step.
 // Needs Node and Playwright (with Chromium) and the 2.5 index.html:
-//   node tests/fixtures/make_fixtures.js [maze] [mandala] [truchet] [contour] [flow] [dots] [sudoku] [words] [nonogram]     (default: all)
+//   node tests/fixtures/make_fixtures.js [maze] [mandala] [truchet] [contour] [flow] [dots] [sudoku] [words] [nonogram] [name] [booklet]     (default: all)
 // Writes tests/fixtures/<pattern>_js.json.gz. Only re-run it if the reference changes; the tests read the JSON.
 // INDEX_HTML=path/to/index.html points it at another copy (e.g. one checked out from the v2.5.0 tag).
 const path = require("path"), fs = require("fs"), zlib = require("zlib");
@@ -60,6 +60,26 @@ const PATTERNS = {
     return [[1, 1], [20261117, 3], [42, 5], [7, 7], [5, 10], [9, 8]].map(([seed, c]) => ({ seed, c, solve: false }))
       .concat([[42, 5], [5, 10]].map(([seed, c]) => ({ seed, c, solve: true })));
   },
+  name() {
+    // one to four lines, each background (drawn from the same seed first), and a single long word
+    return [["Hello", "none", 1, 3], ["Maya", "flow", 20261117, 3], ["Happy Birthday Maya", "contour", 42, 2],
+            ["Alexandrina Rose Montgomery Smith", "truchet", 7, 4], ["  Sam   and  Alex ", "none", 5, 5],
+            ["Supercalifragilistic", "none", 6, 1], ["", "none", 8, 3]]
+      .map(([text, bg, seed, c]) => ({ text, bg, seed, c }));
+  },
+  booklet() {
+    // the page list, the cover and first answer page as drawn, and the fold-and-staple order
+    const base = { gen: "maze", c: 5, pages: 10, ramp: true, mix: false, cover: true, pageNums: true, key: true, title: "", nameLine: false, seed: 20261117, pageSeeds: {} };
+    return [
+      {},
+      { gen: "sudoku", pages: 6, title: "Rainy Day Puzzles", nameLine: true },
+      { mix: true, pages: 12, c: 7 },
+      { gen: "mandala", pages: 3, ramp: false, cover: false, pageNums: false },
+      { gen: "words", pages: 2, key: false, c: 1, title: "Word fun" },
+      { gen: "dots", pages: 5, c: 9, pageSeeds: { 2: 12345, cover: 777 } },
+      { mix: true, pages: 40, c: 10, title: "Big book" },
+    ].map(o => ({ ...base, ...o }));
+  },
   truchet() {
     // complexity 1-3 draws one arc per corner, 4 and up three; 10 is the finest grid
     return [[1, 1], [20261117, 3], [7, 4], [42, 7], [5, 10]].map(([seed, c]) => ({ seed, c }));
@@ -91,6 +111,10 @@ const PATTERNS = {
           rect(x, y, w, h) { ops.push(["rect", x, y, w, h]); },
           clip() { ops.push(["clip"]); },
           closePath() { ops.push(["Z"]); },
+          strokeText(t, x, y) {
+            const m = /^(?:(\d+)\s+)?([\d.]+)px/.exec(st.font);
+            ops.push(["stroke_text", t, x, y, st.lineWidth, st.strokeStyle, m[1] ? +m[1] : 400, +m[2]]);
+          },
           fillRect(x, y, w, h) { ops.push(["fill_rect", x, y, w, h, st.fillStyle]); },
           strokeRect(x, y, w, h) { ops.push(["stroke_rect", x, y, w, h, st.lineWidth, st.strokeStyle]); },
           stroke() { ops.push(["stroke", st.lineWidth, st.strokeStyle, st.lineCap, st.lineJoin]); },
@@ -109,6 +133,22 @@ const PATTERNS = {
       }
       return cases.map(k => {
         const ctx = recorder(), box = { ...(k.box || BOX) };
+        if (name === "booklet") {
+          const set = (id, v) => { const e = document.getElementById(id); if (e.type === "checkbox") e.checked = v; else e.value = v; };
+          set("booklet", true); set("poster", false); set("cbn", false); set("frame", false); set("weight", 4);
+          for (const id of ["gen", "pages", "ramp", "mix", "cover", "pageNums", "key", "title", "nameLine"]) set(id, k[id]);
+          set("complexity", k.c); S.mode = "make"; S.seed = k.seed; S.pageSeeds = k.pageSeeds;
+          const pages = bookPages(), g = geometry();
+          const draw = p => { const r = recorder(); r.setTransform = () => {}; r.fillRect = function (x, y, w, h) { this.ops.push(["fill_rect", x, y, w, h, this.fillStyle]); };
+            r.ops.length = 0; drawPage(r, g, p); return r.ops; };
+          const strip = p => ({ kind: p.kind, gen: p.gen ?? null, seed: p.seed ?? null, c: p.c ?? null, title: p.title ?? "", name: !!p.name,
+                                header: !!p.header, label: p.label ?? "", pageNo: p.pageNo ?? 0, artSeed: p.artSeed ?? null,
+                                items: p.items ? p.items.map(d => d.idx) : null, idx: p.idx ?? null });
+          const cover = pages.find(p => p.kind === "cover"), answers = pages.find(p => p.kind === "answers");
+          const n = pages.length + ((4 - pages.length % 4) % 4);
+          return { ...k, pages: pages.map(strip), coverOps: cover ? draw(cover) : null, answersOps: answers ? draw(answers) : null,
+                   foldOrder: foldOrder(n) };
+        }
         if (name === "maze") {
           document.getElementById("mazeShape").value = k.shape;
           document.getElementById("mazeWord").value = k.word;
@@ -130,6 +170,11 @@ const PATTERNS = {
         if (name === "nonogram") {
           const n = genNonogram(ctx, box, mulberry32(k.seed), k.c, LW, { dpi: 300 }, { solve: k.solve });
           k.info = { size: n.size, attempts: n.attempts, pic: n.pic.join(""), rows: n.rows, cols: n.cols };
+        }
+        if (name === "name") {
+          document.getElementById("nameText").value = k.text;
+          document.getElementById("nameBg").value = k.bg;
+          k.info = genName(ctx, { dpi: 300 }, box, k.c, LW, k.seed);
         }
         if (name === "sudoku") k.info = genSudoku(ctx, box, mulberry32(k.seed), k.c, LW, { dpi: 300 }, { solve: k.solve });
         if (name === "dots") k.info = genDots(ctx, box, mulberry32(k.seed), k.c, LW, { dpi: 300 }, { connect: k.connect });

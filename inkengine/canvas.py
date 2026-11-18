@@ -33,6 +33,7 @@ class State:
     font_weight: int = 400
     text_align: str = "start"      # start | left | center | right | end
     text_baseline: str = "alphabetic"   # alphabetic | middle | top
+    line_dash: tuple = ()          # dash and gap lengths in page pixels; () is a solid line
 
 
 class Canvas:
@@ -138,6 +139,10 @@ class Canvas:
         end = a0 + sweep
         self._cur = (cx + r * math.cos(end), cy + r * math.sin(end))
 
+    def translate(self, x, y):
+        """Move the origin (undone by restore())."""
+        raise NotImplementedError
+
     def circle(self, x, y, r):
         """Stroke a whole circle in a fresh path (index.html's circle() helper)."""
         self.begin_path()
@@ -158,6 +163,10 @@ class Canvas:
         raise NotImplementedError
 
     def fill_text(self, text, x, y, max_width=None):
+        raise NotImplementedError
+
+    def stroke_text(self, text, x, y, max_width=None):
+        """Outline text with the current pen (name pages' bubble letters)."""
         raise NotImplementedError
 
     def clip(self):
@@ -256,6 +265,9 @@ class QtCanvas(Canvas):
         pen.setCapStyle(_CAPS[self.st.line_cap])
         pen.setJoinStyle(_JOINS[self.st.line_join])
         pen.setMiterLimit(5)   # the canvas default limit of 10 line widths, in Qt's half-width units
+        if self.st.line_dash:     # Qt measures dashes in line widths, the canvas in pixels
+            w = max(self.st.line_width, 1e-6)
+            pen.setDashPattern([d / w for d in self.st.line_dash])
         return pen
 
     def _draw_stroke(self, path):
@@ -272,6 +284,9 @@ class QtCanvas(Canvas):
             return
         lines = _as_lines(self.path)
         if lines is None:
+            self._draw_stroke(to_qpath(self.path))
+            return
+        if self.st.line_dash:
             self._draw_stroke(to_qpath(self.path))
             return
         # Qt's raster painter strokes separate lines about 10x faster than one big path with
@@ -296,14 +311,36 @@ class QtCanvas(Canvas):
     def clip(self):
         self.p.setClipPath(to_qpath(self.path), Qt.ClipOperation.IntersectClip)
 
+    def translate(self, x, y):
+        self.p.translate(x, y)
+
     def fill_text(self, text, x, y, max_width=None):
         x, y, scale = self._text_origin(text, x, y, max_width)
         self.p.save()
-        self.p.setFont(make_font(self.st.font_size, self.st.font_weight))
-        self.p.setPen(QColor(self.st.fill_style))
         self.p.translate(x, y)
         self.p.scale(scale, 1)
-        self.p.drawText(QPointF(0, 0), text)
+        font = make_font(self.st.font_size, self.st.font_weight)
+        if _is_white(self.st.fill_style):
+            # White text only ever covers an outline of the same text (name pages' bubble letters).
+            # Fill the same glyph shapes the outline used: in a PDF, drawText writes real text whose
+            # glyphs don't line up exactly with addText's, and the white would eat into the outline.
+            path = QPainterPath()
+            path.addText(QPointF(0, 0), font, text)
+            self.p.fillPath(path, QColor(self.st.fill_style))
+        else:
+            self.p.setFont(font)
+            self.p.setPen(QColor(self.st.fill_style))
+            self.p.drawText(QPointF(0, 0), text)
+        self.p.restore()
+
+    def stroke_text(self, text, x, y, max_width=None):
+        x, y, scale = self._text_origin(text, x, y, max_width)
+        path = QPainterPath()
+        path.addText(QPointF(0, 0), make_font(self.st.font_size, self.st.font_weight), text)
+        self.p.save()
+        self.p.translate(x, y)
+        self.p.scale(scale, 1)
+        self._draw_stroke(path)
         self.p.restore()
 
     def _on_save(self):
@@ -365,8 +402,9 @@ class SvgCanvas(Canvas):
 
     def _stroke_attrs(self):
         s = self.st
+        dash = f' stroke-dasharray="{" ".join(fx(d) for d in s.line_dash)}"' if s.line_dash else ""
         return (f'fill="none" stroke="{s.stroke_style}" stroke-width="{fx(s.line_width)}" '
-                f'stroke-linecap="{s.line_cap}" stroke-linejoin="{s.line_join}"')
+                f'stroke-linecap="{s.line_cap}" stroke-linejoin="{s.line_join}"{dash}')
 
     def stroke(self):
         if self.path:
@@ -390,7 +428,18 @@ class SvgCanvas(Canvas):
         self.out.append(f'<g clip-path="url(#{cid})">')
         self._groups[-1] += 1
 
+    def translate(self, x, y):
+        self.out.append(f'<g transform="translate({fx(x)} {fx(y)})">')
+        self._groups[-1] += 1
+
     def fill_text(self, text, x, y, max_width=None):
+        self._text(text, x, y, max_width, f'fill="{self.st.fill_style}"')
+
+    def stroke_text(self, text, x, y, max_width=None):
+        # White outlines are kept: on name pages they hollow out the bubble letters.
+        self._text(text, x, y, max_width, self._stroke_attrs())
+
+    def _text(self, text, x, y, max_width, paint):
         s = self.st
         anchor = {"center": "middle", "right": "end", "end": "end"}.get(s.text_align, "start")
         baseline = {"middle": ' dominant-baseline="middle"', "top": ' dominant-baseline="text-before-edge"'}.get(s.text_baseline, "")
@@ -399,7 +448,7 @@ class SvgCanvas(Canvas):
             squeeze = f' textLength="{fx(max_width)}" lengthAdjust="spacingAndGlyphs"'
         family = ", ".join(f"'{f}'" if " " in f else f for f in FONT_FAMILIES)
         self.out.append(f'<text x="{fx(x)}" y="{fx(y)}" font-family="{family}" font-size="{fx(s.font_size)}" '
-                        f'font-weight="{s.font_weight}" fill="{s.fill_style}" text-anchor="{anchor}"{baseline}{squeeze}>'
+                        f'font-weight="{s.font_weight}" {paint} text-anchor="{anchor}"{baseline}{squeeze}>'
                         f"{_esc(text)}</text>")
 
     def _on_save(self):
@@ -490,5 +539,12 @@ class RecordingCanvas(Canvas):
         s = self.st
         self.ops.append(("text", text, x, y, s.fill_style, s.font_weight, s.font_size))
 
+    def stroke_text(self, text, x, y, max_width=None):
+        s = self.st
+        self.ops.append(("stroke_text", text, x, y, s.line_width, s.stroke_style, s.font_weight, s.font_size))
+
     def clip(self):
         self.ops.append(("clip",))
+
+    def translate(self, x, y):
+        self.ops.append(("translate", x, y))
