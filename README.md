@@ -31,6 +31,19 @@ python3 packaging/check_selftest.py /tmp/inkline-test
 
 The self-test renders every pattern, the photo converter, a booklet, two posters and a photo book, and exits non-zero if anything fails. GitHub runs both commands on every pull request (`.github/workflows/selftest.yml`) and keeps the rendered files for 7 days.
 
+## Inkline 3.0 engine (in progress)
+
+Inkline 3.0 drops the HTML page: the patterns are being ported from `index.html` to plain Python and Qt in `inkengine/`, one at a time. The 2.x app doesn't use it yet. So far it has the seeded random numbers (same seed, same design as 2.x), one drawing API that writes the preview, PNG, vector PDF and SVG, the page layout, and mazes (every shape, with answer pages).
+
+```sh
+python3 -m inkengine maze -o maze.pdf
+python3 -m inkengine maze --shape heart --complexity 7 --seed 42 --answers -o heart.pdf
+python3 -m inkengine maze --shape word --word Maya --title "Maya's maze" --name-line -o maya.svg
+python3 -m pip install pytest && QT_QPA_PLATFORM=offscreen python3 -m pytest -q tests
+```
+
+The tests check each ported pattern against recordings of what `index.html` draws (`tests/fixtures/`, made by `make_maze_fixtures.js`).
+
 ## Build the installers
 
 ```sh
@@ -48,6 +61,8 @@ Outputs to `dist/`:
 | --- | --- |
 | `index.html` | The image engine and UI (canvas + JavaScript); also works in a plain browser |
 | `inkline.py` | Qt desktop shell: native save dialogs, PDF export, printing |
+| `inkengine/` | The 3.0 engine in Python and Qt (being ported from `index.html`) |
+| `tests/` | Tests for `inkengine/`, with recordings of the 2.x patterns to match |
 | `inkline.svg`, `icons/` | App icon; regenerate with `python3 packaging/make_icon.py` |
 | `inkline.desktop` | Application menu entry |
 | `packaging/` | Build script, Arch PKGBUILD, self-extracting installer stub |
