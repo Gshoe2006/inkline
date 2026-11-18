@@ -33,6 +33,7 @@ class State:
     font_weight: int = 400
     text_align: str = "start"      # start | left | center | right | end
     text_baseline: str = "alphabetic"   # alphabetic | middle | top
+    line_dash: tuple = ()          # dash and gap lengths in page pixels; () is a solid line
 
 
 class Canvas:
@@ -137,6 +138,10 @@ class Canvas:
         self.path.append(("A", cx, cy, r, a0, sweep))
         end = a0 + sweep
         self._cur = (cx + r * math.cos(end), cy + r * math.sin(end))
+
+    def translate(self, x, y):
+        """Move the origin (undone by restore())."""
+        raise NotImplementedError
 
     def circle(self, x, y, r):
         """Stroke a whole circle in a fresh path (index.html's circle() helper)."""
@@ -260,6 +265,9 @@ class QtCanvas(Canvas):
         pen.setCapStyle(_CAPS[self.st.line_cap])
         pen.setJoinStyle(_JOINS[self.st.line_join])
         pen.setMiterLimit(5)   # the canvas default limit of 10 line widths, in Qt's half-width units
+        if self.st.line_dash:     # Qt measures dashes in line widths, the canvas in pixels
+            w = max(self.st.line_width, 1e-6)
+            pen.setDashPattern([d / w for d in self.st.line_dash])
         return pen
 
     def _draw_stroke(self, path):
@@ -276,6 +284,9 @@ class QtCanvas(Canvas):
             return
         lines = _as_lines(self.path)
         if lines is None:
+            self._draw_stroke(to_qpath(self.path))
+            return
+        if self.st.line_dash:
             self._draw_stroke(to_qpath(self.path))
             return
         # Qt's raster painter strokes separate lines about 10x faster than one big path with
@@ -299,6 +310,9 @@ class QtCanvas(Canvas):
 
     def clip(self):
         self.p.setClipPath(to_qpath(self.path), Qt.ClipOperation.IntersectClip)
+
+    def translate(self, x, y):
+        self.p.translate(x, y)
 
     def fill_text(self, text, x, y, max_width=None):
         x, y, scale = self._text_origin(text, x, y, max_width)
@@ -388,8 +402,9 @@ class SvgCanvas(Canvas):
 
     def _stroke_attrs(self):
         s = self.st
+        dash = f' stroke-dasharray="{" ".join(fx(d) for d in s.line_dash)}"' if s.line_dash else ""
         return (f'fill="none" stroke="{s.stroke_style}" stroke-width="{fx(s.line_width)}" '
-                f'stroke-linecap="{s.line_cap}" stroke-linejoin="{s.line_join}"')
+                f'stroke-linecap="{s.line_cap}" stroke-linejoin="{s.line_join}"{dash}')
 
     def stroke(self):
         if self.path:
@@ -411,6 +426,10 @@ class SvgCanvas(Canvas):
         self._clip_n += 1
         self.defs.append(f'<clipPath id="{cid}"><path d="{self._d()}"/></clipPath>')
         self.out.append(f'<g clip-path="url(#{cid})">')
+        self._groups[-1] += 1
+
+    def translate(self, x, y):
+        self.out.append(f'<g transform="translate({fx(x)} {fx(y)})">')
         self._groups[-1] += 1
 
     def fill_text(self, text, x, y, max_width=None):
@@ -526,3 +545,6 @@ class RecordingCanvas(Canvas):
 
     def clip(self):
         self.ops.append(("clip",))
+
+    def translate(self, x, y):
+        self.ops.append(("translate", x, y))

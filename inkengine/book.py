@@ -1,0 +1,137 @@
+"""Booklets: many pages in one PDF, ported from index.html (bookPages, foldOrder, drawFoldSide).
+
+A booklet is a cover, the design pages and answer pages, described as a list of PageSpecs that the
+preview, PDF and printing all walk. Difficulty can ramp up page by page, a mixed booklet cycles
+through every pattern but name pages, and any one page (or the cover) can be swapped for a new
+design without changing the others (Settings.page_seeds). Answer pages show four puzzles each.
+
+Fold-and-staple books print two half-size pages on each side of a landscape sheet, double-sided,
+so that stacking the sheets, folding them and stapling the fold puts every page in reading order.
+"""
+
+from dataclasses import replace
+
+from .box import Box
+from .page import PAPER, Geometry, PageSpec, draw_page, js_round
+from .patterns import HAS_ANSWER, NAMES
+
+# The order a mixed booklet cycles through. Name pages stay out: a booklet shouldn't repeat one word.
+GENS = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "words", "nonogram"]
+
+
+def _page_seed(s, key, default):
+    seeds = s.page_seeds or {}
+    for k in (key, str(key)):     # keys read back from a JSON settings file are strings
+        if k in seeds:
+            return int(seeds[k]) & 0xFFFFFFFF
+    return default
+
+
+def book_pages(s):
+    """Every page of the booklet, in order."""
+    n, c, title, mix, ramp = s.pages, s.complexity, s.title.strip(), s.mix, s.ramp
+    pages, designs = [], []
+    for i in range(n):
+        gen = GENS[i % len(GENS)] if mix else s.gen
+        cx = js_round(1 + (max(c, 2) - 1) * i / (n - 1)) if ramp and n > 1 else c
+        # each page's seed comes from the booklet seed, unless that one page was swapped
+        seed = _page_seed(s, i, (s.seed + i * 7919) & 0xFFFFFFFF)
+        designs.append(PageSpec(kind="design", idx=i, gen=gen, seed=seed, c=cx, title=title, name=s.name_line,
+                                label=f"{NAMES[gen]} {i + 1}"))
+    if s.cover:
+        cover_title = title or ("Colouring & puzzle book" if mix else NAMES[s.gen] + " book")
+        pages.append(PageSpec(kind="cover", title=cover_title, designs=designs,
+                              art_seed=_page_seed(s, "cover", (s.seed ^ 0x5BD1E995) & 0xFFFFFFFF)))
+    pages.extend(designs)
+    puzzles = [d for d in designs if d.gen in HAS_ANSWER]
+    if s.key:
+        for i in range(0, len(puzzles), 4):
+            pages.append(PageSpec(kind="answers", header=True, title="Answers", items=puzzles[i:i + 4]))
+    no = 1
+    for p in pages:
+        if p.kind != "cover" and s.page_nums:
+            p.page_no = no
+            no += 1
+    return pages
+
+
+def page_label(pages, i):
+    """What the preview's pager shows, e.g. "Page 3 of 14" or "Page 1 of 14 · cover"."""
+    kind = pages[i].kind
+    return f"Page {i + 1} of {len(pages)}" + (" · cover" if kind == "cover" else " · answers" if kind == "answers" else "")
+
+
+# --- fold-and-staple ---------------------------------------------------------------------------------
+
+def fold_pages(pages):
+    """The pages padded with blanks to a multiple of 4."""
+    pages = list(pages)
+    while len(pages) % 4:
+        pages.append(PageSpec(kind="blank"))
+    return pages
+
+
+def fold_order(n):
+    """Which two pages (0-based) each printed side carries, for an n-page book: sheet s front, then its
+    back. The outermost sheet holds the first and last pages; the innermost holds the middle spread."""
+    sides = []
+    for sheet in range(n // 4):
+        sides.append((n - 1 - 2 * sheet, 2 * sheet))        # front (outside of the fold)
+        sides.append((2 * sheet + 1, n - 2 - 2 * sheet))    # back (inside)
+    return sides
+
+
+def sheet_geometry(s):
+    """The landscape sheet a fold-and-staple side is printed on."""
+    pw, ph = PAPER[s.paper]
+    W, H = js_round(ph * s.dpi), js_round(pw * s.dpi)
+    return Geometry(ph, pw, s.dpi, W, H, Box(0, 0, W, H))
+
+
+def half_geometry(s):
+    """One half of a landscape sheet: Letter gives 5.5 x 8.5 in pages, A4 gives A5."""
+    pw, ph = PAPER[s.paper]
+    dpi, m = s.dpi, s.margin * s.dpi
+    sheet_w, H = js_round(ph * dpi), js_round(pw * dpi)
+    W = sheet_w // 2
+    return Geometry(round(W / dpi, 2), round(H / dpi, 2), dpi, W, H, Box(m, m, W - 2 * m, H - 2 * m))
+
+
+def draw_fold_side(ctx, s, pages, side):
+    """Printed side `side` of the folded book: two half pages on a landscape sheet, and on each sheet's
+    outside, dashed fold marks at the top and bottom edge."""
+    gs, hg = sheet_geometry(s), half_geometry(s)
+    left, right = fold_order(len(pages))[side]
+    ctx.fill_style = "#fff"
+    ctx.fill_rect(0, 0, gs.W, gs.H)
+    for idx, x in ((left, 0), (right, gs.W - hg.W)):
+        ctx.save()
+        ctx.begin_path()
+        ctx.rect(x, 0, hg.W, hg.H)      # a design never spills onto its neighbour
+        ctx.clip()
+        ctx.translate(x, 0)
+        draw_page(ctx, hg, pages[idx], s)
+        ctx.restore()
+    if side % 2 == 0:
+        k, L = gs.dpi / 150, gs.dpi * 0.2
+        ctx.save()
+        ctx.stroke_style, ctx.line_width, ctx.line_dash = "#999", k, [k * 3, k * 3]
+        ctx.line_cap = "butt"
+        ctx.begin_path()
+        ctx.move_to(gs.W / 2, 0)
+        ctx.line_to(gs.W / 2, L)
+        ctx.move_to(gs.W / 2, gs.H)
+        ctx.line_to(gs.W / 2, gs.H - L)
+        ctx.stroke()
+        ctx.restore()
+
+
+def fold_side_label(pages, side):
+    left, right = fold_order(len(pages))[side]
+    name = lambda i: "blank" if pages[i].kind == "blank" else str(i + 1)
+    return f"Sheet {side // 2 + 1} of {len(pages) // 4} · {'back' if side % 2 else 'front'} (pages {name(left)} & {name(right)})"
+
+
+def swap_page(s, index, seed):
+    """Settings with one booklet page (or "cover") given a new design; the other pages stay the same."""
+    return replace(s, page_seeds={**(s.page_seeds or {}), index: seed})

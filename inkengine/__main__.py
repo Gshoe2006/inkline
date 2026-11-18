@@ -13,6 +13,8 @@
     python3 -m inkengine words --words "mum, dad, grandma, pizza" -o ours.pdf
     python3 -m inkengine nonogram --complexity 6 --answers -o picture.pdf
     python3 -m inkengine name --text "Happy Birthday Maya" --background flow -o card.pdf    (name page)
+    python3 -m inkengine maze --booklet 10 --title "Rainy Day Mazes" -o mazes.pdf
+    python3 -m inkengine mandala --booklet 12 --mix --fold -o book.pdf    (fold-and-staple)
 """
 
 import argparse
@@ -44,6 +46,14 @@ def main(argv=None):
     ap.add_argument("--margin", type=float, default=0.5, choices=[0.25, 0.5, 0.75, 1.0])
     ap.add_argument("--dpi", type=int, default=300, choices=[150, 300])
     ap.add_argument("--answers", action="store_true", help="PDF only: add an answer page")
+    bk = ap.add_argument_group("booklets (PDF only)")
+    bk.add_argument("--booklet", type=int, metavar="PAGES", help="a booklet of 2-40 design pages")
+    bk.add_argument("--mix", action="store_true", help="every pattern in turn (the pattern argument is ignored)")
+    bk.add_argument("--same-difficulty", action="store_true", help="don't ramp difficulty up page by page")
+    bk.add_argument("--no-cover", action="store_true")
+    bk.add_argument("--no-page-numbers", action="store_true")
+    bk.add_argument("--no-answers", action="store_true", help="leave out the answer pages")
+    bk.add_argument("--fold", action="store_true", help="fold-and-staple: two half-size pages per side, print double-sided")
     a = ap.parse_args(argv)
 
     s = Settings(gen=a.pattern, seed=a.seed if a.seed is not None else random.randrange(10**9),
@@ -51,8 +61,18 @@ def main(argv=None):
                  paper=a.paper, orient="landscape" if a.landscape else "portrait", margin=a.margin, dpi=a.dpi,
                  maze_shape=a.shape, maze_word=a.word[:12],
                  ws_theme="custom" if a.words else a.theme, ws_words=a.words[:300],
-                 name_text=a.text[:40], name_bg=a.background)
+                 name_text=a.text[:40], name_bg=a.background,
+                 pages=max(2, min(40, a.booklet or 10)), mix=a.mix, ramp=not a.same_difficulty, cover=not a.no_cover,
+                 page_nums=not a.no_page_numbers, key=not a.no_answers, fold=a.fold)
     from . import output   # imported here so --help works without starting Qt
+    if a.booklet:
+        if not a.out.lower().endswith(".pdf"):
+            ap.error("--booklet needs a .pdf output")
+        n = output.write_book_pdf(a.out, s)
+        print(f"wrote {a.out}: {n} {'printed sides' if s.fold else 'pages'} (seed {s.seed})")
+        if s.fold:
+            print("Print double-sided, flipping on the short edge, then stack, fold and staple.")
+        return
     if a.answers:
         if s.gen not in HAS_ANSWER:
             ap.error(f"--answers: {s.gen} pages have no answers")
