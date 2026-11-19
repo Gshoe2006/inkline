@@ -3,6 +3,9 @@
   <id>io.github.gshoe2006.Inkline</id>
   <name>Inkline</name>
   <summary>Make black and white pages for printing</summary>
+  <developer id="io.github.gshoe2006">
+    <name>Gshoe2006</name>
+  </developer>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>LicenseRef-proprietary</project_license>
   <description>

@@ -14,6 +14,18 @@ A Linux desktop app that converts photos to, or generates, black & white images 
 - **Posters:** print any design or photo big across 2×1 up to 4×4 sheets, with overlap strips, trim marks and sheet labels (A1, A2…) for assembly.
 - **SVG export:** generated designs save as true vector lines at real paper size, for Inkscape, Cricut/Silhouette cutting machines and laser cutters.
 
+## Flatpak
+
+One package for any distro, with PySide6 and numpy inside (about 300 MB with the shared freedesktop runtime). Build and install it from the repository:
+
+```sh
+flatpak install flathub org.freedesktop.Platform//25.08 org.freedesktop.Sdk//25.08
+flatpak-builder --user --install --force-clean build-flatpak packaging/flatpak/io.github.gshoe2006.Inkline.yml
+flatpak run io.github.gshoe2006.Inkline
+```
+
+The Flatpak keeps its own settings and presets, in `~/.var/app/io.github.gshoe2006.Inkline/config/inkline`. Files are opened and saved through your desktop's file dialogs, and printing goes through CUPS as usual.
+
 ## Run from source
 
 Needs Python 3, PySide6 and numpy (Arch: `sudo pacman -S pyside6 python-numpy`). No browser engine: since 3.0 Inkline is a native Qt app.
