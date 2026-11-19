@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QListWidget, QListWi
                                QScrollArea, QTabBar, QVBoxLayout, QWidget)
 
 from inkengine import book, cbn, photo
-from inkengine.patterns import maze, name, words
+from inkengine.patterns import maze, name, spot, words
 
 from . import theme
 from .state import BUILTIN_PRESETS
@@ -21,7 +21,8 @@ from .widgets import (Hint, OptionRow, Pager, Pair, Section, SubOptions, button,
 
 GEN_OPTIONS = [("mandala", "Mandala (colouring page)"), ("maze", "Maze"), ("truchet", "Woven tiles"),
                ("contour", "Topographic contours"), ("flow", "Flow lines"), ("dots", "Dot-to-dot"), ("sudoku", "Sudoku"),
-               ("name", "Name or word (bubble letters)"), ("words", "Word search"), ("nonogram", "Nonogram (picture logic)")]
+               ("name", "Name or word (bubble letters)"), ("words", "Word search"), ("nonogram", "Nonogram (picture logic)"),
+               ("spot", "Spot the difference")]
 GRID_OPTIONS = [("2x2", "2 × 2"), ("3x3", "3 × 3"), ("4x4", "4 × 4"), ("2x1", "2 across × 1"), ("3x2", "3 across × 2"),
                 ("1x2", "1 across × 2"), ("2x3", "2 across × 3")]
 CBN_PATTERN_NOTE = "Repeated spaces share a number, and spaces side by side get different colours."
@@ -180,7 +181,9 @@ class Sidebar(QFrame):
         self.name_opts.add(OptionRow("Name or word", self.name_text))
         self.name_bg = self._combo("name_bg", list(name.BACKGROUNDS.items()))
         self.name_opts.add(OptionRow("Around the letters", self.name_bg))
-        sec.add(self.words_opts, self.maze_opts, self.name_opts)
+        self.spot_opts = SubOptions()
+        self.spot_opts.add(OptionRow("Picture", self._combo("spot_base", list(spot.BASES.items()))))
+        sec.add(self.words_opts, self.maze_opts, self.name_opts, self.spot_opts)
         sec.add(self._slider("complexity", "Complexity", 1, 10, lambda v: f"{v} / 10"))
         sec.add(self._slider("weight", "Line weight", 1, 10, lambda v: f"{v / 150 * 25.4:.2f} mm"))
         sec.add(self._check("frame", "Draw a border around the design"))
@@ -484,6 +487,7 @@ class Sidebar(QFrame):
         self.maze_opts.setVisible(s.gen == "maze" or mix_book)
         self.maze_word_row.setVisible(s.maze_shape == "word")
         self.name_opts.setVisible(s.gen == "name")
+        self.spot_opts.setVisible(s.gen == "spot")
         self.cbn_opts.setVisible(s.cbn)
         if s.gen == "name" and s.name_bg in ("none", "flow"):
             note = "Flow lines and plain pages enclose few spaces: choose Woven tiles or Contours around the letters for more to colour."

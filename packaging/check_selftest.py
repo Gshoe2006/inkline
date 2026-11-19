@@ -12,7 +12,7 @@ import subprocess
 import sys
 import xml.etree.ElementTree as ET
 
-PATTERNS = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "words", "nonogram", "mazeshape", "name", "cbnpattern", "nonophoto"]
+PATTERNS = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "words", "nonogram", "spot", "mazeshape", "name", "cbnpattern", "nonophoto"]
 PAGE_PX = (2550, 3300)                     # Letter at 300 dpi
 PDF_PAGES = {**{n: 1 for n in PATTERNS + ["convert", "engrave", "stipple", "cbn", "testpage"]},
              "booklet": 9,                 # cover + 6 mazes + 2 answer pages

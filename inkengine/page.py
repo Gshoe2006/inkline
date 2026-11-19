@@ -49,6 +49,7 @@ class Settings:
     margin: float = 0.5          # inches
     dpi: int = 300
     maze_shape: str = "rect"
+    spot_base: str = "mandala"   # spot the difference: the picture drawn twice
     maze_word: str = "Maze"
     ws_theme: str = "animals"    # word search: a theme from patterns.words.THEMES, or "custom"
     ws_words: str = ""           # word search: your own words, for ws_theme "custom"
@@ -270,6 +271,14 @@ def draw_page(ctx, g, spec, s, keep=False):
             elif d.gen == "maze":   # same grid as the puzzle page, so it's the same maze
                 grid = maze.grid_size(design_box(g, d, s), d.c, s.maze_shape, s.maze_word)
                 draw_design(ctx, g, slot, "maze", d.seed, d.c, s, ctx.line_width, grid=grid, solve=True)
+            elif d.gen == "spot":   # the puzzle page's own picture and changes, scaled into the slot
+                src = design_box(g, d, s)
+                k = min(slot.w / src.w, slot.h / src.h)
+                ctx.save()
+                ctx.translate(slot.x + (slot.w - src.w * k) / 2 - src.x * k, slot.y + (slot.h - src.h * k) / 2 - src.y * k)
+                ctx.transform(k, 0, 0, k, 0, 0)
+                draw_design(ctx, g, src, "spot", d.seed, d.c, s, lw, solve=True, line=ctx.line_width / k)
+                ctx.restore()
             elif d.gen == "dots":   # same seed draws the same shape, finished
                 draw_design(ctx, g, slot, "dots", d.seed, d.c, s, ctx.line_width, connect=True)
             elif d.gen in HAS_ANSWER:

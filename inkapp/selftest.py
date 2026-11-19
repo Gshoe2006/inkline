@@ -22,7 +22,7 @@ from .sample import sample_photo
 from .state import State
 
 SEED = 20261117
-PATTERNS = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "words", "nonogram"]
+PATTERNS = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "words", "nonogram", "spot"]
 
 
 def _pdf(path, state):
