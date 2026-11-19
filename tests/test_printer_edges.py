@@ -89,6 +89,22 @@ def test_no_printer_shows_nothing(win):
     assert win.preview.page.dead is None and not win.sidebar.margin_hint.isVisibleTo(win)
 
 
+def test_not_remembering_keeps_to_the_default_printer(win, tmp_path):
+    win.remember = False
+    win._remember_printer("Office")
+    assert win.printer_name == "" and win.asked[-1][0] == "" and not (tmp_path / "printer.json").exists()
+
+
+def test_the_strip_is_rounded_up_to_a_hundredth_without_float_error(win):
+    win.edges["Office"] = (0.07, 0.07, 0.07, 0.29)
+    win._remember_printer("Office")
+    _redraw(win, margin=0.25)
+    assert "outer 0.29 in" in win.sidebar.margin_hint.text()
+    win.edges["Office"] = (0.3, 0.07, 0.07, 0.07)
+    win._remember_printer("Office")
+    assert "outer 0.3 in" in win.sidebar.margin_hint.text()
+
+
 def test_the_printer_is_remembered_between_runs(win):
     win._remember_printer("Office")
     from inkapp.window import Window

@@ -624,7 +624,7 @@ class Window(QMainWindow):
         if v.kind == "testpage" or worst <= s.margin + 1e-6:   # the test page is there to measure the printer
             self.sidebar.set_margin_warning("")
             return
-        reach = f"{math.ceil(worst * 100) / 100:g}"
+        reach = f"{math.ceil(round(worst * 100, 6)) / 100:g}"   # up to the next hundredth: 0.07 stays 0.07
         enough = next((label for m, label in MARGINS if m >= worst - 1e-6), None)
         fix = f"Choose a {enough} margin or more." if enough else "No margin choice is wide enough for it."
         self.sidebar.set_margin_warning(f"{name} can't print the outer {reach} in of the page, so the design will be cut off. {fix}")
@@ -764,10 +764,9 @@ class Window(QMainWindow):
         self._start(j, printer, done, "The printer didn't accept the job. Check that it's connected.")
 
     def _remember_printer(self, name):
-        if not name or name == self.printer_name:
-            return
-        self.printer_name = name
-        if self.remember:
+        jobs.forget_printer_margins()   # the printers, or the system's default, may have changed
+        if self.remember and name and name != self.printer_name:
+            self.printer_name = name
             err = config.write("printer.json", {"name": name}, "Printer")
             if err:
                 self._msg(err)

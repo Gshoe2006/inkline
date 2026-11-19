@@ -101,6 +101,10 @@ def printer_margins(name, s, orient):
     return _margin_cache[key]
 
 
+def forget_printer_margins():
+    _margin_cache.clear()
+
+
 def page_layout(s, orient):
     o = QPageLayout.Orientation.Landscape if orient == "landscape" else QPageLayout.Orientation.Portrait
     return QPageLayout(QPageSize(PAPER_IDS[s.paper]), o, QMarginsF(0, 0, 0, 0))
