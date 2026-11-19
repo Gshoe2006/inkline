@@ -62,3 +62,18 @@ def test_the_answer_page_shows_the_same_puzzle_filled_in():
     # every square's digit is written on the answer page (single digits; clues of 10+ are two)
     assert len(digits) >= len(puzzle["solution"])
     assert kakuro.INSTRUCTIONS not in texts
+
+
+def test_no_empty_grey_rows_or_columns_are_drawn():
+    from inkengine.box import Box
+    trimmed = 0
+    for seed in range(1, 40):
+        rec = RecordingCanvas()
+        r = kakuro.draw(rec, Box(0, 0, 1000, 1200), mulberry32(seed), 6, lw=2, dpi=150, solve=True)
+        rows = {q[0] for q in r["solution"]}
+        cols = {q[1] for q in r["solution"]}
+        nr, nc = max(rows) - min(rows) + 2, max(cols) - min(cols) + 2   # the white squares, plus one clue row and column
+        frame = next(op for op in rec.ops if op[0] == "stroke_rect")   # the outer border
+        assert frame[3] / frame[4] == pytest.approx(nc / nr)
+        trimmed += (nr, nc) != (len(r["white"]), len(r["white"]))
+    assert trimmed   # some layouts did leave room to trim

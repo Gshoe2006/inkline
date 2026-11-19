@@ -189,6 +189,13 @@ class Renderer(QObject):
     def latest(self):
         return self._seq
 
+    @property
+    def idle(self):
+        """Nothing drawing and nothing waiting. busy(False) comes from the worker thread, so it can
+        arrive after a new request has already started: check this before treating it as done."""
+        with self._lock:
+            return not self._running and self._pending is None
+
     def _loop(self):
         while True:
             with self._lock:

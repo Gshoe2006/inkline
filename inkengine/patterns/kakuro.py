@@ -251,24 +251,33 @@ def make_kakuro(rnd, c):
 def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, solve=False, **_opts):
     """The puzzle (or, with solve=True, every square filled in)."""
     white, runs, solution, given, N = make_kakuro(rnd, c)
+    # draw only the puzzle: from the clue row and column just before the first white squares to the
+    # last white squares, so no rows or columns of empty grey are printed
+    rows = [r for r, _c in solution]
+    cols = [c2 for _r, c2 in solution]
+    r0, r1, c0, c1 = min(rows) - 1, max(rows), min(cols) - 1, max(cols)
+    nr, nc = r1 - r0 + 1, c1 - c0 + 1
     cap = 0 if solve else min(box.h * 0.08, dpi * 0.35)
-    side = min(box.w, box.h - cap) * 0.94
-    cs = side / N
-    x0, y0 = box.x + (box.w - side) / 2, box.y + (box.h - cap - side) / 2
+    cs = min(box.w / nc, (box.h - cap) / nr) * 0.94
+    gw, gh = nc * cs, nr * cs
+    x0 = box.x + (box.w - gw) / 2 - c0 * cs   # so square (r, c) sits at x0 + c * cs, y0 + r * cs
+    y0 = box.y + (box.h - cap - gh) / 2 - r0 * cs
+    left, top = x0 + c0 * cs, y0 + r0 * cs
     ctx.save()
     ctx.fill_style = "#d4d4d4"   # clue squares: light grey, so a page doesn't drink the ink
-    for r in range(N):
-        for c2 in range(N):
+    for r in range(r0, r1 + 1):
+        for c2 in range(c0, c1 + 1):
             if not white[r][c2]:
                 ctx.fill_rect(x0 + c2 * cs, y0 + r * cs, cs, cs)
     ctx.stroke_style, ctx.line_cap = "#000", "square"
     ctx.line_width = lw * 0.6
     ctx.begin_path()
-    for k in range(N + 1):
-        ctx.move_to(x0 + k * cs, y0)
-        ctx.line_to(x0 + k * cs, y0 + side)
-        ctx.move_to(x0, y0 + k * cs)
-        ctx.line_to(x0 + side, y0 + k * cs)
+    for k in range(nc + 1):
+        ctx.move_to(left + k * cs, top)
+        ctx.line_to(left + k * cs, top + gh)
+    for k in range(nr + 1):
+        ctx.move_to(left, top + k * cs)
+        ctx.line_to(left + gw, top + k * cs)
     ctx.stroke()
     clue = {}
     for across, run, s in runs:
@@ -282,7 +291,7 @@ def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, solve=False, **_opts)
         ctx.line_to(x0 + (c2 + 1) * cs, y0 + (r + 1) * cs)
     ctx.stroke()
     ctx.line_width = lw * 1.3
-    ctx.stroke_rect(x0, y0, side, side)
+    ctx.stroke_rect(left, top, gw, gh)
     fs = cs * 0.3
     ctx.set_font(fs, 700)
     ctx.fill_style, ctx.text_baseline = "#000", "alphabetic"
@@ -303,6 +312,6 @@ def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, solve=False, **_opts)
     if not solve:
         ctx.set_font(min(dpi * 0.13, cap * 0.5), 400)
         ctx.text_align, ctx.fill_style = "center", "#555"
-        ctx.fill_text(INSTRUCTIONS, box.x + box.w / 2, y0 + side + cap * 0.7, box.w)
+        ctx.fill_text(INSTRUCTIONS, box.x + box.w / 2, top + gh + cap * 0.7, box.w)
     ctx.restore()
     return {"white": white, "runs": runs, "solution": solution, "starters": given}
