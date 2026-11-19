@@ -77,3 +77,21 @@ def test_no_empty_grey_rows_or_columns_are_drawn():
         assert frame[3] / frame[4] == pytest.approx(nc / nr)
         trimmed += (nr, nc) != (len(r["white"]), len(r["white"]))
     assert trimmed   # some layouts did leave room to trim
+
+
+def test_the_booklet_preset_makes_a_kakuro_booklet_with_answers(tmp_path, monkeypatch):
+    monkeypatch.setenv("INKLINE_CONFIG_DIR", str(tmp_path))
+    from inkapp.state import BUILTIN_PRESETS
+    from inkapp.window import Window
+    from inkengine import book
+    assert len(BUILTIN_PRESETS) == 20
+    w = Window("3.4.0", remember=False)
+    w._apply_preset("b", "Kakuro booklet with answers")
+    s = w.state.settings
+    assert (s.gen, s.booklet, s.key, s.ramp, s.pages) == ("kakuro", True, True, True, 8)
+    pages = book.book_pages(s)
+    designs = [p for p in pages if p.kind == "design"]
+    assert len(designs) == 8 and all(p.gen == "kakuro" for p in designs)
+    assert designs[0].c < designs[-1].c                       # gets harder page by page
+    assert any(p.kind == "answers" and p.items and all(d.gen == "kakuro" for d in p.items) for p in pages)
+    w.deleteLater()
