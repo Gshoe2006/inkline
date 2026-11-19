@@ -26,6 +26,7 @@ GRID_OPTIONS = [("2x2", "2 × 2"), ("3x3", "3 × 3"), ("4x4", "4 × 4"), ("2x1",
                 ("1x2", "1 across × 2"), ("2x3", "2 across × 3")]
 CBN_PATTERN_NOTE = "Repeated spaces share a number, and spaces side by side get different colours."
 MAX_PHOTOS = 60
+MARGINS = [(0.25, "¼ in"), (0.5, "½ in"), (0.75, "¾ in"), (1.0, "1 in")]   # Paper → Margin
 
 
 class Sidebar(QFrame):
@@ -336,9 +337,15 @@ class Sidebar(QFrame):
         self.testpage_hint = sec.add(Hint("Print it at 100% (“Actual size”), then check the squares with a ruler. Always portrait."))
         sec.add(Pair(OptionRow("Size", self._combo("paper", [("letter", "Letter"), ("a4", "A4")])),
                      OptionRow("Orientation", self._combo("orient", [("portrait", "Portrait"), ("landscape", "Landscape")]))))
-        sec.add(Pair(OptionRow("Margin", self._combo("margin", [(0.25, "¼ in"), (0.5, "½ in"), (0.75, "¾ in"), (1.0, "1 in")])),
+        sec.add(Pair(OptionRow("Margin", self._combo("margin", MARGINS)),
                      OptionRow("Resolution", self._combo("dpi", [(150, "150 dpi (draft)"), (300, "300 dpi")]))))
+        self.margin_hint = sec.add(Hint())   # the printer can't reach that far in: set_margin_warning()
+        self.margin_hint.setVisible(False)
         self.col.addWidget(sec)
+
+    def set_margin_warning(self, text):
+        self.margin_hint.setText(text)
+        self.margin_hint.setVisible(bool(text))
 
     # --- controls bound to a setting ----------------------------------------------------------------
     def _bind(self, key, control, read, write, signal):

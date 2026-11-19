@@ -5,6 +5,7 @@ in ~/.config/inkline/last-settings.json, as 2.x did. Print and Save run their pa
 with progress in the footer. Messages are 2.x's.
 """
 
+import math
 import os
 import time
 from dataclasses import replace
@@ -24,7 +25,7 @@ from . import config, jobs, theme
 from .preview import Preview
 from .render import PREVIEW_DPI, Renderer, render_view, view
 from .sample import sample_photo
-from .sidebar import MAX_PHOTOS, Sidebar
+from .sidebar import MARGINS, MAX_PHOTOS, Sidebar
 from .state import BUILTIN_PRESETS, State, new_seed
 
 IMAGE_FILTER = "Images (*.png *.jpg *.jpeg *.webp *.bmp *.gif *.tif *.tiff)"
@@ -125,6 +126,11 @@ class Window(QMainWindow):
         self.setAcceptDrops(True)
         self.state = State()
         self.saved_presets = config.read("presets.json")
+        # the printer last chosen in the Print dialog ("" is the system's default): its dead edges are shown
+        self.printer_name = config.read("printer.json").get("name", "") if remember else ""
+        if not isinstance(self.printer_name, str):
+            self.printer_name = ""
+        self._view = None
         self.recent = [p for p in config.read("recent.json").get("photos", []) if isinstance(p, str)][:MAX_RECENT] \
             if remember else []
         restored = self._restore()
@@ -600,6 +606,28 @@ class Window(QMainWindow):
         self.preview.set_busy("")
         self.sidebar.ws_note.setText(r.note)
         self.sidebar.sync(r.view)
+        self._view = r.view
+        self._show_printer_edges()
+
+    def _show_printer_edges(self):
+        """Hatch what the printer can't reach, and say so when the design runs into it."""
+        v, s = self._view, self.state.settings
+        found = jobs.printer_margins(self.printer_name, s, jobs.printed_orient(s, v.kind)) if v else None
+        if not found:
+            self.preview.page.set_dead(None)
+            self.sidebar.set_margin_warning("")
+            return
+        name, (left, top, right, bottom), (w, h) = found
+        # a whole poster shows no sheet margins to hatch; the warning still applies to every sheet
+        self.preview.page.set_dead(None if v.kind == "poster" else (left / w, top / h, right / w, bottom / h))
+        worst = max(left, top, right, bottom)
+        if v.kind == "testpage" or worst <= s.margin + 1e-6:   # the test page is there to measure the printer
+            self.sidebar.set_margin_warning("")
+            return
+        reach = f"{math.ceil(round(worst * 100, 6)) / 100:g}"   # up to the next hundredth: 0.07 stays 0.07
+        enough = next((label for m, label in MARGINS if m >= worst - 1e-6), None)
+        fix = f"Choose a {enough} margin or more." if enough else "No margin choice is wide enough for it."
+        self.sidebar.set_margin_warning(f"{name} can't print the outer {reach} in of the page, so the design will be cut off. {fix}")
 
     # --- presets and remembered settings -------------------------------------------------------------
     def _apply_preset(self, group, name):
@@ -730,9 +758,19 @@ class Window(QMainWindow):
         if QPrintDialog(printer, self).exec() != QPrintDialog.DialogCode.Accepted:
             self._msg("Print cancelled.")
             return
+        self._remember_printer(printer.printerName())
         done = (f"Sent {j.count} {'sheets' if j.label == 'poster' else 'pages'} to the printer." if j.count > 1
                 else "Sent to the printer.")
         self._start(j, printer, done, "The printer didn't accept the job. Check that it's connected.")
+
+    def _remember_printer(self, name):
+        jobs.forget_printer_margins()   # the printers, or the system's default, may have changed
+        if self.remember and name and name != self.printer_name:
+            self.printer_name = name
+            err = config.write("printer.json", {"name": name}, "Printer")
+            if err:
+                self._msg(err)
+        self._show_printer_edges()
 
     def _start(self, j, device, done, failed):
         self._device = device   # kept alive while the worker draws on it

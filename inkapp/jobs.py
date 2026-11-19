@@ -70,6 +70,41 @@ def job(state):
     return Job(base_name(state), "page", 1, s.orient, g, lambda ctx, i: draw_page(ctx, g, spec, s))
 
 
+def printed_orient(s, kind):
+    """Which way round the sheet goes through the printer for a view: as job() prints it."""
+    if kind == "testpage":
+        return "portrait"
+    if kind == "fold":
+        return "landscape"
+    return s.orient
+
+
+_margin_cache = {}
+
+
+def printer_margins(name, s, orient):
+    """What a printer can't reach on this paper: (name shown to people, (left, top, right, bottom) in inches,
+    (width, height) of the paper in inches). name "" is the system's default printer. None with no printer."""
+    from PySide6.QtPrintSupport import QPrinter, QPrinterInfo
+    key = (name, s.paper, orient)
+    if key not in _margin_cache:
+        info = QPrinterInfo.printerInfo(name) if name else QPrinterInfo.defaultPrinter()
+        if info.isNull():
+            return None
+        printer = QPrinter(info, QPrinter.PrinterMode.HighResolution)
+        printer.setPageLayout(page_layout(s, orient))
+        layout = printer.pageLayout()
+        layout.setUnits(QPageLayout.Unit.Inch)
+        m, full = layout.minimumMargins(), layout.fullRect(QPageLayout.Unit.Inch)
+        _margin_cache[key] = (info.description() or info.printerName(),
+                              (m.left(), m.top(), m.right(), m.bottom()), (full.width(), full.height()))
+    return _margin_cache[key]
+
+
+def forget_printer_margins():
+    _margin_cache.clear()
+
+
 def page_layout(s, orient):
     o = QPageLayout.Orientation.Landscape if orient == "landscape" else QPageLayout.Orientation.Portrait
     return QPageLayout(QPageSize(PAPER_IDS[s.paper]), o, QMarginsF(0, 0, 0, 0))
