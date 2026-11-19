@@ -22,7 +22,7 @@ from .widgets import (Hint, OptionRow, Pager, Pair, Section, SubOptions, button,
 GEN_OPTIONS = [("mandala", "Mandala (colouring page)"), ("maze", "Maze"), ("truchet", "Woven tiles"),
                ("contour", "Topographic contours"), ("flow", "Flow lines"), ("dots", "Dot-to-dot"), ("sudoku", "Sudoku"),
                ("name", "Name or word (bubble letters)"), ("words", "Word search"), ("nonogram", "Nonogram (picture logic)"),
-               ("spot", "Spot the difference")]
+               ("spot", "Spot the difference"), ("kakuro", "Kakuro (cross sums)")]
 GRID_OPTIONS = [("2x2", "2 × 2"), ("3x3", "3 × 3"), ("4x4", "4 × 4"), ("2x1", "2 across × 1"), ("3x2", "3 across × 2"),
                 ("1x2", "1 across × 2"), ("2x3", "2 across × 3")]
 CBN_PATTERN_NOTE = "Repeated spaces share a number, and spaces side by side get different colours."

@@ -151,7 +151,7 @@ class Window(QMainWindow):
         self.renderer = Renderer()
         self.renderer.finished.connect(self._rendered)
         self.renderer.failed.connect(lambda _n, _why: self._msg("The preview couldn't be drawn. Try another setting, or start fresh from Presets."))
-        self.renderer.busy.connect(lambda on: None if on else self.preview.set_busy(""))
+        self.renderer.busy.connect(lambda on: None if on or not self.renderer.idle else self.preview.set_busy(""))
         self.renderer.converting.connect(lambda: self.preview.set_busy("converting photo…"))
         self.worker = Renderer()        # saving and printing
         self.worker.finished.connect(self._job_done)
