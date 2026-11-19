@@ -28,6 +28,7 @@ from .sidebar import MAX_PHOTOS, Sidebar
 from .state import BUILTIN_PRESETS, State, new_seed
 
 IMAGE_FILTER = "Images (*.png *.jpg *.jpeg *.webp *.bmp *.gif *.tif *.tiff)"
+MAX_RECENT = 10      # File → Open recent lists this many photos
 
 # What Edit → Undo says for a change to each setting ("Undo Complexity"); others use the setting's name.
 STEP_NAMES = {"gen": "Pattern", "complexity": "Complexity", "weight": "Line weight", "frame": "Border", "cbn": "Colour by number",
@@ -124,6 +125,8 @@ class Window(QMainWindow):
         self.setAcceptDrops(True)
         self.state = State()
         self.saved_presets = config.read("presets.json")
+        self.recent = [p for p in config.read("recent.json").get("photos", []) if isinstance(p, str)][:MAX_RECENT] \
+            if remember else []
         restored = self._restore()
         self.last_dir = os.path.expanduser("~/Pictures") if os.path.isdir(os.path.expanduser("~/Pictures")) else os.path.expanduser("~")
 
@@ -214,6 +217,9 @@ class Window(QMainWindow):
 
         f = mb.addMenu("&File")
         act(f, "&Open image…", lambda: self.open_images(self.state.settings.photobook), "Ctrl+O")
+        self.recent_menu = f.addMenu("Open &recent")
+        self.recent_menu.aboutToShow.connect(self._fill_recent)
+        self.recent_menu.setEnabled(bool(self.recent))
         f.addSeparator()
         self.act_pdf = act(f, "Save &PDF…", lambda: self.save("pdf"), "Ctrl+S")
         self.act_png = act(f, "Save P&NG…", lambda: self.save("png"), "Ctrl+Shift+S")
@@ -351,18 +357,57 @@ class Window(QMainWindow):
             self._load_files(files, append)
 
     def _load_files(self, files, append):
-        ok, bad = [], []
+        ok, bad, opened = [], [], []
         for f in (files if append else files[:1]):
             try:
                 p = photo.load_photo(f)
                 p.name = os.path.basename(f)
                 ok.append(p)
+                opened.append(os.path.abspath(f))
             except OSError:
                 bad.append(os.path.basename(f))
         if bad:
             self._msg(f"Couldn't read {', '.join(bad)} as an image. Try PNG, JPEG or WebP.")
+        st = self.state
+        room = MAX_PHOTOS - len(st.photos) if append and st.photos else MAX_PHOTOS
+        self._add_recent(opened[:max(0, room)])   # only the photos add_photos will keep
         if ok:
             self.add_photos(ok, append)
+
+    # File → Open recent: the photos opened lately, newest first, kept in recent.json
+    def _add_recent(self, paths):
+        if not paths or not self.remember:
+            return
+        newest = list(dict.fromkeys(reversed(paths)))   # newest first, each file once
+        self._set_recent(newest + [p for p in self.recent if p not in newest])
+
+    def _set_recent(self, paths):
+        self.recent = paths[:MAX_RECENT]
+        self.recent_menu.setEnabled(bool(self.recent))
+        if self.remember:
+            err = config.write("recent.json", {"photos": self.recent}, "Recent photos")
+            if err:
+                self._msg(err)
+
+    def _fill_recent(self):
+        m = self.recent_menu
+        m.clear()
+        for i, path in enumerate(self.recent):
+            label = os.path.basename(path).replace("&", "&&")
+            a = m.addAction(f"&{i + 1} {label}" if i < 9 else f"1&0 {label}")
+            a.setToolTip(path)
+            a.triggered.connect(lambda _c=False, p=path: self.open_recent(p))
+        m.setToolTipsVisible(True)
+        m.addSeparator()
+        m.addAction("&Clear list", lambda: self._set_recent([]))
+
+    def open_recent(self, path):
+        if not os.path.isfile(path):
+            self._msg(f"Couldn't find {os.path.basename(path)}. It may have been moved or deleted.")
+            self._set_recent([p for p in self.recent if p != path])
+            return
+        self.last_dir = os.path.dirname(path)
+        self._load_files([path], self.state.settings.photobook)
 
     def add_photos(self, new, append):
         st = self.state
