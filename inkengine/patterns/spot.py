@@ -84,7 +84,9 @@ def changes(half, base, seed, c, s, lw, dpi):
     size = min(gw, gh) * (0.06 - 0.003 * c)       # grid cells: changes get smaller as complexity goes up
     # enclosed spaces only: one touching the edge is the background round the picture
     inner = [(rid, o) for rid, o in enumerate(info) if not o["edge"] and o["area"] > 4]
-    fills = [(rid, o) for rid, o in inner if 0.4 * size ** 2 <= o["area"] <= 5 * size ** 2 and o["r"] >= 1.5]
+    # a filled space is the easiest change to see, so only modest ones, and at most a third of the changes
+    fills = [(rid, o) for rid, o in inner if 0.4 * size ** 2 <= o["area"] <= 1.6 * size ** 2 and o["r"] >= 1.5]
+    most_fills = math.ceil(n / 3)
     S = np.pad(np.cumsum(np.cumsum(ink, 0), 1), ((1, 0), (1, 0)))
     g = max(1.5, size * 0.28)                     # a gap's radius, in grid cells
 
@@ -97,7 +99,7 @@ def changes(half, base, seed, c, s, lw, dpi):
     D = d.reshape(gh, gw)
     L = label.reshape(gh, gw)
     edge_region = np.array([o["edge"] for o in info] + [False], bool)[L]
-    dys, dxs = np.nonzero(D >= max(2.5, size * 0.3))
+    dys, dxs = np.nonzero(D >= max(2.0, size * 0.45))   # room for a dot big enough to see
     ok = (dxs > 2 * size) & (dxs < gw - 2 * size) & (dys > 2 * size) & (dys < gh - 2 * size)
     dys, dxs = dys[ok], dxs[ok]
     ys, xs = np.nonzero(ink)
@@ -105,15 +107,21 @@ def changes(half, base, seed, c, s, lw, dpi):
     xs, ys = xs[ok], ys[ok]
     out, used = [], set()
 
+    spacing = [size]   # room kept between changes; given up only if the picture can't fit them all otherwise
+
     def clear(x, y, rad):
-        return all(math.hypot(x - q[1], y - q[2]) >= rad + q[3] + size for q in out)
+        return all(math.hypot(x - q[1], y - q[2]) >= rad + q[3] + spacing[0] for q in out)
 
     def try_fill():
         rid, o = fills[pick(rnd, len(fills))]
         rad = max(o["r"] * 1.6, math.sqrt(o["area"] / math.pi))
-        if rid not in used and clear(o["x"], o["y"], rad):
-            used.add(rid)
-            return ("fill", o["x"], o["y"], rad, np.nonzero(L == rid))
+        if rid in used or not clear(o["x"], o["y"], rad):
+            return None
+        rows = np.nonzero(L == rid)
+        if rows[0].min() < 2 or rows[1].min() < 2 or rows[0].max() >= gh - 2 or rows[1].max() >= gw - 2:
+            return None   # keep clear of the copy's edges, where the picture is cut off
+        used.add(rid)
+        return ("fill", o["x"], o["y"], rad, rows)
 
     def surrounded(x, y, reach):   # ink close by to the left, right, above and below: inside the picture
         return (ink[y, max(0, x - reach):x].any() and ink[y, x + 1:x + 1 + reach].any()
@@ -134,16 +142,22 @@ def changes(half, base, seed, c, s, lw, dpi):
     def try_gap():
         k = pick(rnd, len(xs))
         x, y = int(xs[k]), int(ys[k])
-        if 0.12 <= density(x, y, g) <= 0.5 and clear(x, y, g):
+        if 0.08 <= density(x, y, g) <= 0.6 and clear(x, y, g):
             return ("gap", x, y, g, None)
 
     tries = {"fill": try_fill if fills else None, "dot": try_dot if len(dxs) else None, "gap": try_gap if len(xs) else None}
     misses = dict.fromkeys(KINDS, 0)
     turn = 0
     while len(out) < n:
-        kinds = [k for k in KINDS if tries[k] and misses[k] < 60]
+        if sum(1 for q in out if q[0] == "fill") >= most_fills:
+            tries["fill"] = None
+        kinds = [k for k in KINDS if tries[k] and misses[k] < 400]
         if not kinds:
-            break
+            if spacing[0] == 0:
+                break
+            spacing[0] = 0                         # last resort: closer together, but never touching
+            misses = dict.fromkeys(KINDS, 0)
+            continue
         kind = kinds[turn % len(kinds)]           # take turns among the kinds the picture still allows
         got = tries[kind]()
         if got:
@@ -233,9 +247,10 @@ def draw(ctx, box, rnd, c, settings=None, lw=1.0, seed=0, dpi=300, solve=False, 
                 ctx.arc(half.x + x, half.y + y, ring, 0, 2 * math.pi)
                 ctx.stroke()
         ctx.restore()
-    ctx.save()
-    ctx.set_font(fs, 600)
-    ctx.fill_style, ctx.text_align = "#000", "center"
-    ctx.fill_text(f"Find the {len(found)} differences", tx, ty)
-    ctx.restore()
+    if not solve:   # an answer page names the puzzle already
+        ctx.save()
+        ctx.set_font(fs, 600)
+        ctx.fill_style, ctx.text_align = "#000", "center"
+        ctx.fill_text(f"Find the {len(found)} differences", tx, ty)
+        ctx.restore()
     return found

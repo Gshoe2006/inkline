@@ -35,7 +35,7 @@ MAX_RECENT = 10      # File → Open recent lists this many photos
 STEP_NAMES = {"gen": "Pattern", "complexity": "Complexity", "weight": "Line weight", "frame": "Border", "cbn": "Colour by number",
               "cbn_colours": "Colours", "seed": "New design", "page_seeds": "New design for this page", "booklet": "Booklet",
               "pages": "Design pages", "ramp": "Get harder", "mix": "Mix every pattern", "cover": "Cover page",
-              "page_nums": "Page numbers", "key": "Answer pages", "maze_shape": "Maze shape", "spot_base": "Picture", "maze_word": "Word or name",
+              "page_nums": "Page numbers", "key": "Answer pages", "maze_shape": "Maze shape", "maze_word": "Word or name", "spot_base": "Picture",
               "ws_theme": "Words from", "ws_words": "Your words", "name_text": "Name or word", "name_bg": "Around the letters",
               "mode": "Mode", "style": "Style", "brightness": "Brightness", "contrast": "Contrast", "threshold": "Threshold",
               "dot": "Dot size", "fit": "Placement", "invert": "Invert", "pnono_size": "Squares across",

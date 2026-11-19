@@ -31,6 +31,20 @@ def test_changes_are_all_there_spread_out_and_repeatable(base, seed):
             assert math.hypot(x - x2, y - y2) >= r + r2       # never on top of each other
 
 
+@pytest.mark.parametrize("base", list(spot.BASES))
+@pytest.mark.parametrize("c", [1, 10])
+@pytest.mark.parametrize("orient", ["portrait", "landscape"])
+def test_every_puzzle_gets_all_its_changes_and_few_fills(base, c, orient):
+    from inkengine.page import line_width
+    for seed in (3, 7, 8):   # seeds that once came up short (3 of 10 on a dense mandala)
+        s = Settings(gen="spot", spot_base=base, complexity=c, seed=seed, orient=orient, dpi=150)
+        g = geometry(s)
+        a, _b, _c = spot.layout(design_box(g, single_page(s), s))
+        kinds = [k for k, *_ in spot.changes(a, base, seed, c, s, line_width(s, g), g.dpi)]
+        assert len(kinds) == spot.count(c)
+        assert kinds.count("fill") <= math.ceil(spot.count(c) / 3)   # the easiest kind to see stays a minority
+
+
 def test_mandala_changes_stay_inside_the_picture():
     for seed in (1, 77, 4242, 9):
         s = Settings(gen="spot", spot_base="mandala", complexity=4, seed=seed, dpi=150)
@@ -41,16 +55,19 @@ def test_mandala_changes_stay_inside_the_picture():
             assert math.hypot(x - cx, y - cy) < radius               # no added shape out in the margin
 
 
-def test_the_answer_page_circles_the_same_changes():
+def test_the_answer_page_circles_the_same_changes(monkeypatch):
+    from inkengine import patterns
     s = Settings(gen="spot", spot_base="truchet", complexity=6, seed=31, dpi=150, booklet=True)
     g = geometry(s)
     page = replace(single_page(s), label="Spot the difference", page_no=2)
     found = draw_page(RecordingCanvas(), g, page, s)
+    seen = []
+    monkeypatch.setitem(patterns.GENERATORS, "spot", lambda *a, **k: seen.append(spot.draw(*a, **k)) or seen[-1])
     rec = RecordingCanvas()
     draw_page(rec, g, answer_page([page]), s)
     assert len(found) == spot.count(6)
-    caption = [op for op in rec.ops if op[0] == "text" and "differences" in str(op)]
-    assert caption and f"Find the {len(found)} differences" in str(caption[0])
+    assert [q[:4] for q in seen[0]] == [q[:4] for q in found]          # the very same changes, in the same places
+    assert not [op for op in rec.ops if op[0] == "text" and "differences" in str(op)]   # no caption repeated
 
 
 def test_svg_stays_vector():

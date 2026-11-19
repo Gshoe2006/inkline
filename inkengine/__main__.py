@@ -29,7 +29,7 @@ import sys
 
 from .page import PageSpec, Settings, answer_page, single_page
 from . import photo, poster
-from .patterns import GENERATORS, HAS_ANSWER, NAMES, maze, name, words
+from .patterns import GENERATORS, HAS_ANSWER, NAMES, maze, name, spot, words
 
 
 def main(argv=None):
@@ -46,6 +46,7 @@ def main(argv=None):
     ap.add_argument("--words", default="", help='word search: your own words, e.g. "mum, dad, pizza" (sets --theme custom)')
     ap.add_argument("--text", default="Hello", help="name page: the name or word (up to 40 characters)")
     ap.add_argument("--background", default="none", choices=sorted(name.BACKGROUNDS), help="name page: pattern under the letters")
+    ap.add_argument("--picture", default="mandala", choices=sorted(spot.BASES), help="spot the difference: the picture drawn twice")
     ph = ap.add_argument_group("photos (pattern: photo)")
     ph.add_argument("--image", nargs="+", metavar="PICTURE",
                     help="the picture to convert (PNG, JPEG...); several make a photo book (PDF): a page each, plus a cover")
@@ -89,7 +90,7 @@ def main(argv=None):
                  paper=a.paper, orient="landscape" if a.landscape else "portrait", margin=a.margin, dpi=a.dpi,
                  maze_shape=a.shape, maze_word=a.word[:12],
                  ws_theme="custom" if a.words else a.theme, ws_words=a.words[:300],
-                 name_text=a.text[:40], name_bg=a.background,
+                 name_text=a.text[:40], name_bg=a.background, spot_base=a.picture,
                  pages=max(2, min(40, a.booklet or 10)), mix=a.mix, ramp=not a.same_difficulty, cover=not a.no_cover,
                  page_nums=not a.no_page_numbers, key=not a.no_answers, fold=a.fold,
                  poster=bool(a.poster), grid=a.poster or "2x2", overlap=a.overlap,
