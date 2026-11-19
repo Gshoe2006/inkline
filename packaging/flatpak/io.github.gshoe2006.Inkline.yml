@@ -1,0 +1,58 @@
+# Inkline as a Flatpak: one package for every distro, with PySide6 and numpy inside.
+#
+# Build and install (from the repository root):
+#   flatpak-builder --user --install --force-clean build-flatpak packaging/flatpak/io.github.gshoe2006.Inkline.yml
+#   flatpak run io.github.gshoe2006.Inkline
+#
+# PySide6's own wheel brings its Qt, so the plain freedesktop runtime is enough: Flathub's KDE runtime
+# has no PySide6 to share. Only PySide6's Essentials are bundled (QtCore, QtGui, QtWidgets and
+# QtPrintSupport are all Inkline uses).
+id: io.github.gshoe2006.Inkline
+runtime: org.freedesktop.Platform
+runtime-version: '25.08'
+sdk: org.freedesktop.Sdk
+command: inkline
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  - --socket=cups                 # Print…
+  - --env=QT_QPA_PLATFORMTHEME=xdgdesktopportal   # file dialogs through the desktop's portal
+modules:
+  - name: python-deps
+    buildsystem: simple
+    build-commands:
+      - pip3 install --no-index --no-deps --no-compile --prefix=/app *.whl
+    sources:
+      - type: file
+        url: https://files.pythonhosted.org/packages/7b/3c/7597d8dcb36aa8315427635ec6ec9d850ffbad4ce78b9118ac854889f2d3/pyside6_essentials-6.12.0-cp310-abi3-manylinux_2_34_x86_64.whl
+        sha256: 16f4b5e41daf49235ae048458243da9efe5f3d8040f9cc5aa454ce69893d3bd9
+      - type: file
+        url: https://files.pythonhosted.org/packages/49/c2/a04fa003b4360e99d8e3fc2829abacf37396ace63ea1cd616402209ec7c6/shiboken6-6.12.0-cp310-abi3-manylinux_2_34_x86_64.whl
+        sha256: 3bde565bb0890044b5c7f63808adddede5abc241e9395a2bfed61919884d6240
+      - type: file
+        url: https://files.pythonhosted.org/packages/40/d6/68dd5a83914bbcaf32b3165993f7955979916708cb0156d1e28231e18803/numpy-2.5.5-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
+        sha256: 824025655df929268bfe6b47ed91a00d14209a6f760847cf150be446829e1ce4
+
+  - name: inkline
+    buildsystem: simple
+    build-commands:
+      - install -d /app/lib/inkline
+      - cp -r inkengine inkapp /app/lib/inkline/
+      - install -m644 inkline.py inkline.svg VERSION /app/lib/inkline/
+      - find /app/lib/inkline -name __pycache__ -prune -exec rm -rf {} +
+      - install -Dm755 packaging/flatpak/inkline.sh /app/bin/inkline
+      - install -Dm644 inkline.desktop /app/share/applications/${FLATPAK_ID}.desktop
+      - desktop-file-edit --set-icon=${FLATPAK_ID} --set-key=StartupWMClass --set-value=${FLATPAK_ID} /app/share/applications/${FLATPAK_ID}.desktop
+      - install -Dm644 inkline.svg /app/share/icons/hicolor/scalable/apps/${FLATPAK_ID}.svg
+      - for d in icons/hicolor/*/apps; do s=${d#icons/hicolor/}; s=${s%/apps}; install -Dm644 $d/inkline.png /app/share/icons/hicolor/$s/apps/${FLATPAK_ID}.png; done
+      - install -Dm644 packaging/flatpak/${FLATPAK_ID}.metainfo.xml /app/share/metainfo/${FLATPAK_ID}.metainfo.xml
+    sources:
+      - type: dir
+        path: ../..
+        skip:
+          - build-flatpak
+          - .flatpak-builder
+          - tests
+          - dist

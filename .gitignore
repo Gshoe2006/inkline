@@ -12,3 +12,5 @@ pkg/
 
 # Self-test output (CI writes here too)
 selftest-output/
+build-flatpak/
+.flatpak-builder/

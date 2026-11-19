@@ -29,7 +29,7 @@ def main():
     from PySide6.QtWidgets import QApplication
 
     QApplication.setApplicationName("Inkline")
-    QGuiApplication.setDesktopFileName("inkline")
+    QGuiApplication.setDesktopFileName(os.environ.get("FLATPAK_ID") or "inkline")   # a Flatpak names it by its app ID
     app = QApplication(sys.argv)
     icon = os.path.join(HERE, "inkline.svg")
     if os.path.exists(icon):
