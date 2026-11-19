@@ -7,7 +7,7 @@ anywhere on the window are opened (the window handles drop and paste).
 """
 
 from PySide6.QtCore import QPointF, QRectF, Qt, Signal
-from PySide6.QtGui import QColor, QFont, QPainter, QPen
+from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen
 from PySide6.QtWidgets import QFrame, QGraphicsDropShadowEffect, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from inkengine.poster import row_name, sheet_rect
@@ -27,6 +27,7 @@ class Page(QWidget):
         super().__init__()
         self.image = None
         self.poster = None        # a poster's geometry: draw the sheet overlay
+        self.dead = None          # the printer's dead strip: (left, top, right, bottom) as shares of the page
         self.pannable = False
         self._drag = None
         self.setMinimumSize(200, 200)
@@ -58,7 +59,25 @@ class Page(QWidget):
         p.drawImage(r, self.image)
         if self.poster:
             self._overlay(p, r)
+        if self.dead:
+            self._dead_strip(p, r)
         p.end()
+
+    def set_dead(self, shares):
+        if shares != self.dead:
+            self.dead = shares
+            self.update()
+
+    def _dead_strip(self, p, r):
+        """Hatch the edge of the sheet the printer can't reach (preview only)."""
+        left, top, right, bottom = self.dead
+        brush = QBrush(QColor(theme.tokens().muted), Qt.BrushStyle.BDiagPattern)
+        lw, th, rw, bh = left * r.width(), top * r.height(), right * r.width(), bottom * r.height()
+        for strip in (QRectF(r.x(), r.y(), r.width(), th), QRectF(r.x(), r.bottom() - bh, r.width(), bh),
+                      QRectF(r.x(), r.y() + th, lw, r.height() - th - bh),
+                      QRectF(r.right() - rw, r.y() + th, rw, r.height() - th - bh)):
+            if strip.width() > 0 and strip.height() > 0:
+                p.fillRect(strip, brush)
 
     def _overlay(self, p, r):
         """Sheet outlines, shared overlap strips and sheet names over the whole poster (preview only)."""
