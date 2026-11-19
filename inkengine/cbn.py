@@ -119,12 +119,11 @@ def mode_filter(val, w, h, k):
     if h < 3 or w < 3:
         return out.reshape(-1)
     inner = V[1:-1, 1:-1]
-    cnt = np.zeros((k,) + inner.shape, np.int64)
-    for dy in (-1, 0, 1):
-        for dx in (-1, 0, 1):
-            q = V[1 + dy:h - 1 + dy, 1 + dx:w - 1 + dx]
-            for c in range(k):
-                cnt[c] += q == c
+    cnt = np.empty((k,) + inner.shape, np.uint8)
+    for c in range(k):                               # votes for c in each 3x3: a row sum, then a column sum
+        b = (V == c).view(np.uint8)
+        row = b[:, :-2] + b[:, 1:-1] + b[:, 2:]
+        cnt[c] = row[:-2] + row[1:-1] + row[2:]
     top = cnt.max(axis=0)
     first = cnt.argmax(axis=0)                       # the first crayon with the most votes
     own = np.take_along_axis(cnt, np.clip(inner, 0, k - 1)[None], axis=0)[0]
@@ -134,144 +133,197 @@ def mode_filter(val, w, h, k):
 
 
 # --- regions -------------------------------------------------------------------------------------------
+#
+# These work on whole numpy arrays but give exactly what index.html's pixel-by-pixel loops gave: the same
+# region numbers, the same 32-bit distances (so the same ties), the same choices in the same order.
 
 def components(val, w, h):
-    """Regions: 4-connected cells of equal value (-1 is nothing). (label, count); label -1 for nothing."""
-    N = w * h
-    label = [-1] * N
-    n = 0
-    for i in range(N):
-        vi = val[i]
-        if vi < 0 or label[i] >= 0:
-            continue
-        stack = [i]
-        label[i] = n
-        while stack:
-            q = stack.pop()
-            x = q % w
-            if x > 0 and label[q - 1] < 0 and val[q - 1] == vi:
-                label[q - 1] = n
-                stack.append(q - 1)
-            if x < w - 1 and label[q + 1] < 0 and val[q + 1] == vi:
-                label[q + 1] = n
-                stack.append(q + 1)
-            if q >= w and label[q - w] < 0 and val[q - w] == vi:
-                label[q - w] = n
-                stack.append(q - w)
-            if q < N - w and label[q + w] < 0 and val[q + w] == vi:
-                label[q + w] = n
-                stack.append(q + w)
-        n += 1
-    return label, n
+    """Regions: 4-connected cells of equal value (-1 is nothing). (label, count); label -1 for nothing.
+    Regions are numbered in the order their first cell comes in a row-by-row scan, as the flood fill did."""
+    V = np.asarray(val, np.int64).reshape(h, w)
+    # runs: stretches of one value along a row, numbered in scan order
+    start = np.ones((h, w), bool)
+    start[:, 1:] = V[:, 1:] != V[:, :-1]
+    run = np.cumsum(start.reshape(-1)) - 1
+    nrun = int(run[-1]) + 1 if run.size else 0
+    runval = V.reshape(-1)[start.reshape(-1)]
+    R = run.reshape(h, w)
+    # runs that touch the run below with the same value are one region
+    same = (V[:-1] == V[1:]) & (V[:-1] >= 0)
+    pair = np.unique(R[:-1][same] * nrun + R[1:][same])
+    a, b = pair // nrun, pair % nrun
+    parent = np.arange(nrun)
+    while a.size:                                    # union-find: hook each root onto the smaller one
+        ra, rb = parent[a], parent[b]
+        keep = ra != rb
+        a, b, ra, rb = a[keep], b[keep], ra[keep], rb[keep]
+        if not a.size:
+            break
+        np.minimum.at(parent, np.maximum(ra, rb), np.minimum(ra, rb))
+        while True:                                  # point every run straight at its root
+            nxt = parent[parent]
+            if np.array_equal(nxt, parent):
+                break
+            parent = nxt
+    valid = runval >= 0
+    roots = np.unique(parent[valid])                 # each root is its region's first run, so its first cell
+    runlabel = np.full(nrun, -1, np.int64)
+    runlabel[valid] = np.searchsorted(roots, parent[valid])
+    return runlabel[run], len(roots)
+
+
+def _waves(rows, cols, w, key):
+    """The cells (rows x cols) grouped by key(y, x), in key order: cells with the same key don't depend on
+    each other in a chamfer pass, so each group is done at once."""
+    ys, xs = np.meshgrid(rows, cols, indexing="ij")
+    k = key(ys, xs).reshape(-1)
+    flat = (ys * w + xs).reshape(-1)
+    order = np.argsort(k, kind="stable")
+    k, flat = k[order], flat[order]
+    cuts = np.flatnonzero(np.diff(k)) + 1
+    return np.split(flat, cuts)
+
+
+_wave_cache = {}
 
 
 def distance(label, w, h):
     """Distance from each region cell to the nearest cell outside its region (two chamfer passes),
-    in 32-bit floats as index.html's Float32Array."""
-    N = w * h
-    d = array("f", bytes(4 * N))
-    for i in range(N):
-        l = label[i]
-        if l < 0:
-            continue
-        x, y = i % w, i // w
-        edge = (x == 0 or y == 0 or x == w - 1 or y == h - 1 or label[i - 1] != l or label[i + 1] != l
-                or label[i - w] != l or label[i + w] != l)
-        d[i] = 1 if edge else 1e9
-    D = SQRT2
-    for y in range(1, h):
-        for i in range(y * w + 1, y * w + w - 1):
-            if d[i] > 1:
-                d[i] = min(d[i], d[i - 1] + 1, d[i - w] + 1, d[i - w - 1] + D, d[i - w + 1] + D)
-    for y in range(h - 2, -1, -1):
-        for i in range(y * w + w - 2, y * w, -1):
-            if d[i] > 1:
-                d[i] = min(d[i], d[i + 1] + 1, d[i + w] + 1, d[i + w + 1] + D, d[i + w - 1] + D)
+    in 32-bit floats as index.html's Float32Array: each cell is the smallest of its neighbours plus 1 or
+    sqrt 2, worked out in 64 bits and stored in 32, in the same order as the JavaScript's loops."""
+    L = np.asarray(label, np.int64).reshape(h, w)
+    inside = L >= 0
+    edge = np.zeros((h, w), bool)
+    edge[0, :] = edge[-1, :] = True
+    edge[:, 0] = edge[:, -1] = True
+    edge[:, 1:] |= L[:, 1:] != L[:, :-1]
+    edge[:, :-1] |= L[:, :-1] != L[:, 1:]
+    edge[1:, :] |= L[1:, :] != L[:-1, :]
+    edge[:-1, :] |= L[:-1, :] != L[1:, :]
+    d = np.where(inside, np.where(edge, 1, 1e9), 0).astype(np.float32).reshape(-1)
+    if h < 2 or w < 3:
+        return d
+    key = (w, h)
+    if key not in _wave_cache:
+        # forward: (y, x) needs (y, x-1) and the row above at x-1, x, x+1, all with a smaller 2y + x
+        fwd = _waves(np.arange(1, h), np.arange(1, w - 1), w, lambda y, x: 2 * y + x)
+        # backward: the mirror image
+        bwd = _waves(np.arange(h - 2, -1, -1), np.arange(w - 2, 0, -1), w, lambda y, x: 2 * (h - 1 - y) + (w - 1 - x))
+        if len(_wave_cache) > 4:
+            _wave_cache.clear()
+        _wave_cache[key] = (fwd, bwd)
+    fwd, bwd = _wave_cache[key]
+    step = np.array([1.0, 1.0, SQRT2, SQRT2])[:, None]
+    for waves, offs in ((fwd, np.array([-1, -w, -w - 1, -w + 1])), (bwd, np.array([1, w, w + 1, w - 1]))):
+        offs = offs[:, None]
+        for i in waves:
+            cur = d[i]
+            todo = cur > 1
+            if not todo.any():
+                continue
+            i, cur = i[todo], cur[todo]
+            near = (d[i[None, :] + offs].astype(np.float64) + step).min(axis=0)
+            d[i] = np.minimum(cur.astype(np.float64), near).astype(np.float32)
     return d
 
 
-def region_info(label, n, val, w, h):
+def region_info(label, n, val, w, h, d=None):
     """Per region: value c, area, coordinate sums, deepest point (x, y) and its depth r, and whether it
-    touches the edge."""
-    d = distance(label, w, h)
-    info = [{"c": -1, "area": 0, "sx": 0, "sy": 0, "x": 0, "y": 0, "r": 0.0, "edge": False} for _ in range(n)]
-    for i in range(w * h):
-        l = label[i]
-        if l < 0:
-            continue
-        o, x, y = info[l], i % w, i // w
-        o["c"] = val[i]
-        o["area"] += 1
-        o["sx"] += x
-        o["sy"] += y
-        if x == 0 or y == 0 or x == w - 1 or y == h - 1:
-            o["edge"] = True
-        if d[i] > o["r"]:
-            o["r"], o["x"], o["y"] = d[i], x, y
+    touches the edge. The deepest point is the first cell, row by row, at the region's greatest depth."""
+    if d is None:
+        d = distance(label, w, h)
+    L = np.asarray(label, np.int64).reshape(-1)
+    V = np.asarray(val, np.int64).reshape(-1)
+    cells = np.flatnonzero(L >= 0)
+    lab = L[cells]
+    xs, ys = cells % w, cells // w
+    area = np.bincount(lab, minlength=n)
+    sx = np.bincount(lab, weights=xs, minlength=n)
+    sy = np.bincount(lab, weights=ys, minlength=n)
+    border = (xs == 0) | (ys == 0) | (xs == w - 1) | (ys == h - 1)
+    edge = np.bincount(lab[border], minlength=n) > 0
+    c = np.full(n, -1, np.int64)
+    c[lab] = V[cells]
+    dc = d[cells]
+    top = np.zeros(n, np.float32)
+    np.maximum.at(top, lab, dc)
+    deep = dc == top[lab]
+    regions, first = np.unique(lab[deep], return_index=True)
+    at = np.zeros(n, np.int64)
+    at[regions] = cells[np.flatnonzero(deep)[first]]
+    info = []
+    for l, (cl, ar, x_, y_, e, r, i) in enumerate(zip(c.tolist(), area.tolist(), sx.tolist(), sy.tolist(), edge.tolist(),
+                                                       top.tolist(), at.tolist())):
+        info.append({"c": cl, "area": ar, "sx": int(x_), "sy": int(y_), "x": i % w if r > 0 else 0,
+                     "y": i // w if r > 0 else 0, "r": r, "edge": e})
     return info
 
 
 def merge(val, w, h, min_r):
     """Each region too narrow for its number joins the neighbour it shares the most border with, until none
-    are left (val is changed in place). (label, info)."""
+    are left. (label, info, d): d is the distance map of the final regions, for spots()."""
+    V = np.array(val, np.int64).reshape(-1)
     N = w * h
+    pos = np.arange(N)
+    x = pos % w
     for pas in range(13):
-        label, n = components(val, w, h)
-        info = region_info(label, n, val, w, h)
-        small = [o["r"] < min_r for o in info]
-        if pas == 12 or not any(small):
-            return label, info
-        border = {}
-        for i in range(N):
-            l = label[i]
-            if l < 0 or not small[l]:
-                continue
-            x = i % w
-            for j in ((i - 1) if x > 0 else -1, (i + 1) if x < w - 1 else -1, i - w, i + w):
-                m = label[j] if 0 <= j < N else -1
-                if m < 0 or m == l:
-                    continue
-                t = border.setdefault(l, {})
-                t[m] = t.get(m, 0) + 1
-        to = [-1] * n   # prefer a big neighbour, so two small ones don't just swap colours
-        for l, t in border.items():
-            best, score = -1, 0
-            for m, k in t.items():
-                sc = k * (0.3 if small[m] else 1)
-                if sc > score:
-                    score, best = sc, m
-            if best >= 0:
-                to[l] = info[best]["c"]
-        changed = False
-        for i in range(N):
-            l = label[i]
-            if l >= 0 and to[l] >= 0 and to[l] != val[i]:
-                val[i] = to[l]
-                changed = True
-        if not changed:
-            return label, info
+        label, n = components(V, w, h)
+        d = distance(label, w, h)
+        info = region_info(label, n, V, w, h, d)
+        small = np.array([o["r"] < min_r for o in info], bool)
+        if pas == 12 or not small.any():
+            return label, info, d
+        # every (small region, neighbour) cell edge, with where it was first met in the JavaScript's scan
+        ls, ms, firsts = [], [], []
+        src = (label >= 0) & small[np.maximum(label, 0)]
+        for k, (off, ok) in enumerate(((-1, x > 0), (1, x < w - 1), (-w, pos >= w), (w, pos < N - w))):
+            i = np.flatnonzero(src & ok)
+            m = label[i + off]
+            keep = (m >= 0) & (m != label[i])
+            ls.append(label[i][keep])
+            ms.append(m[keep])
+            firsts.append(i[keep] * 4 + k)
+        l, m, first = np.concatenate(ls), np.concatenate(ms), np.concatenate(firsts)
+        to = np.full(n, -1, np.int64)
+        if l.size:
+            order = np.argsort(first, kind="stable")
+            l, m, first = l[order], m[order], first[order]
+            pair, at, cnt = np.unique(l * n + m, return_index=True, return_counts=True)
+            pl, pm, pf = pair // n, pair % n, first[at]
+            score = cnt * np.where(small[pm], 0.3, 1.0)   # prefer a big neighbour, so two small ones don't just swap colours
+            best = np.lexsort((pf, -score, pl))            # per region: highest score, then first met
+            pl, pm = pl[best], pm[best]
+            lead = np.ones(len(pl), bool)
+            lead[1:] = pl[1:] != pl[:-1]
+            cs = np.array([o["c"] for o in info], np.int64)
+            to[pl[lead]] = cs[pm[lead]]
+        t = np.where(label >= 0, to[np.maximum(label, 0)], -1)
+        change = (t >= 0) & (t != V)
+        if not change.any():
+            return label, info, d
+        V[change] = t[change]
 
 
-def spots(label, info, w, h, min_r, gap):
+def spots(label, info, w, h, min_r, gap, d=None):
     """Where numbers go: each region's deepest point, then more wherever it's still wide enough (ridge
     points of the distance map) and at least gap from its other numbers. [(region, x, y, depth)]."""
-    d = distance(label, w, h)
+    if d is None:
+        d = distance(label, w, h)
+    L = np.asarray(label, np.int64).reshape(h, w)
+    D = d.reshape(h, w).astype(np.float64)          # 64-bit, so min_r is compared as the JavaScript did
     out = [[(rid, o["x"], o["y"], o["r"])] for rid, o in enumerate(info)]
-    cand = []
-    for y in range(1, h - 1):
-        for x in range(1, w - 1):
-            i = y * w + x
-            if label[i] < 0 or d[i] < min_r:
-                continue
-            if d[i] >= d[i - 1] and d[i] >= d[i + 1] and d[i] >= d[i - w] and d[i] >= d[i + w]:
-                cand.append(i)
-    cand.sort(key=lambda i: -d[i])   # stable, as JavaScript's sort
+    c = D[1:-1, 1:-1]
+    ridge = ((L[1:-1, 1:-1] >= 0) & (c >= min_r) & (c >= D[1:-1, :-2]) & (c >= D[1:-1, 2:])
+             & (c >= D[:-2, 1:-1]) & (c >= D[2:, 1:-1]))
+    yy, xx = np.nonzero(ridge)
+    yy, xx = yy + 1, xx + 1                          # row by row, as the JavaScript's loops
+    depth = D[yy, xx]
+    order = np.argsort(-depth, kind="stable")        # stable, as JavaScript's sort
     g2 = gap * gap
-    for i in cand:
-        l, x, y = label[i], i % w, i // w
+    for l, x, y, r in zip(L[yy, xx][order].tolist(), xx[order].tolist(), yy[order].tolist(), depth[order].tolist()):
         lst = out[l]
         if all((q[1] - x) ** 2 + (q[2] - y) ** 2 >= g2 for q in lst):
-            lst.append((l, x, y, d[i]))
+            lst.append((l, x, y, r))
     return [q for lst in out for q in lst]
 
 
@@ -281,24 +333,13 @@ def trace(label, w, h):
     never pulls lines apart at a junction. Each line is simplified (Douglas-Peucker) and rounded (Chaikin
     twice). Lines are flat [x0, y0, x1, y1, ...] lists in grid-corner units, rounded to 32-bit floats."""
     W = w + 1
-
-    def at(x, y):
-        return -1 if x < 0 or y < 0 or x >= w or y >= h else label[y * w + x]
-
-    ev0, ev1 = [], []
-    for y in range(h):
-        row = y * w
-        for x in range(w + 1):
-            a = label[row + x - 1] if x > 0 else -1
-            b = label[row + x] if x < w else -1
-            if a != b:
-                ev0.append(y * W + x)
-                ev1.append((y + 1) * W + x)
-    for y in range(h + 1):
-        for x in range(w):
-            if at(x, y - 1) != at(x, y):
-                ev0.append(y * W + x)
-                ev1.append(y * W + x + 1)
+    P = np.full((h + 2, w + 2), -1, np.int64)        # the labels with a ring of nothing round them
+    P[1:-1, 1:-1] = np.asarray(label, np.int64).reshape(h, w)
+    # vertical edges row by row, then horizontal ones row by row, as the JavaScript listed them
+    vy, vx = np.nonzero(P[1:-1, :-1] != P[1:-1, 1:])  # x = 0..w: between cell x-1 and cell x
+    hy, hx = np.nonzero(P[:-1, 1:-1] != P[1:, 1:-1])  # y = 0..h: between cell y-1 and cell y
+    ev0 = np.concatenate([vy * W + vx, hy * W + hx]).tolist()
+    ev1 = np.concatenate([(vy + 1) * W + vx, hy * W + hx + 1]).tolist()
     deg, adj = {}, {}
     for e, a in enumerate(ev0):
         for v in (a, ev1[e]):
@@ -396,13 +437,12 @@ def process_photo(D, mask, ww, wh, p):
     for _ in range(3):
         val = mode_filter(val, ww, wh, len(pal))
     min_r = 7 + (254 - p["t"]) / 254 * 8   # narrowest region, in 1/150 in: 7 (most detail) to 15
-    val = val.tolist()
-    label, info = merge(val, ww, wh, min_r)
+    label, info, d = merge(val, ww, wh, min_r)
     used = sorted({o["c"] for o in info})
     renum = {c: j for j, c in enumerate(used)}   # crayons merged away leave the key
     cbn = {"pal": [pal[j] for j in used], "colour": [renum[o["c"]] for o in info],
-           "spots": spots(label, info, ww, wh, min_r, 2 * 150), "lines": trace(label, ww, wh)}
-    return label, cbn
+           "spots": spots(label, info, ww, wh, min_r, 2 * 150, d), "lines": trace(label, ww, wh)}
+    return label.tolist(), cbn
 
 
 # --- drawing -------------------------------------------------------------------------------------------
@@ -529,16 +569,12 @@ def pattern(g, box, spec, lw, s, raster=None):
         groups[gi]["total"] += o["area"]
     # neighbouring groups: spaces facing each other across a line
     step = math.ceil(lw * sc) + 3
-    N = w * h
-    for i in range(N):
-        l = label[i]
-        if l < 0 or grp[l] < 0:
-            continue
-        for j in ((i + step) if i % w + step < w else -1, (i + step * w) if i + step * w < N else -1):
-            m = label[j] if j >= 0 else -1
-            if m >= 0 and grp[m] >= 0 and grp[m] != grp[l]:
-                groups[grp[l]]["near"].add(grp[m])
-                groups[grp[m]]["near"].add(grp[l])
+    G = np.array(grp + [-1], np.int64)[label.reshape(h, w)]   # each cell's group (-1 for none; label -1 → -1)
+    for a, b in ((G[:, :-step], G[:, step:]), (G[:-step], G[step:])):
+        near = (a >= 0) & (b >= 0) & (a != b)
+        for ga, gb in set(zip(a[near].tolist(), b[near].tolist())):
+            groups[ga]["near"].add(gb)
+            groups[gb]["near"].add(ga)
     use = [0.0] * k   # biggest groups first; each takes the least-used colour its neighbours don't have
     for G in sorted(groups, key=lambda G: -G["total"]):
         taken = {groups[j]["c"] for j in G["near"]}
@@ -556,7 +592,7 @@ def pattern(g, box, spec, lw, s, raster=None):
     renum = {c: j for j, c in enumerate(used)}
     pts = [(renum[groups[grp[rid]]["c"]] + 1, box.x + (o["x"] + 0.5) / sc, box.y + (o["y"] + 0.5) / sc, o["r"] / sc, rid)
            for rid, o in enumerate(info) if o["keep"]]
-    r = {"spots": pts, "names": [PATTERN_COLOURS[c] for c in used], "label": label, "w": w, "h": h, "s": sc}
+    r = {"spots": pts, "names": [PATTERN_COLOURS[c] for c in used], "label": label.tolist(), "w": w, "h": h, "s": sc}
     if raster is None:
         if len(_pattern_cache) > 20:
             del _pattern_cache[next(iter(_pattern_cache))]
