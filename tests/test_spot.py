@@ -98,3 +98,18 @@ def test_answer_circles_never_overlap(base, orient, seed, dpi):
     for i, p in enumerate(first):
         for q in first[i + 1:]:
             assert math.hypot(p[1] - q[1], p[2] - q[2]) >= p[3] + q[3]
+
+
+def test_the_booklet_preset_makes_a_spot_the_difference_booklet_with_answers(tmp_path, monkeypatch):
+    monkeypatch.setenv("INKLINE_CONFIG_DIR", str(tmp_path))
+    from inkapp.window import Window
+    from inkengine import book
+    w = Window("3.3.0", remember=False)
+    w._apply_preset("b", "Spot the difference booklet with answers")
+    s = w.state.settings
+    assert (s.gen, s.spot_base, s.booklet, s.key) == ("spot", "mandala", True, True)
+    pages = book.book_pages(s)
+    assert sum(p.kind == "design" and p.gen == "spot" for p in pages) == s.pages
+    assert any(p.kind == "answers" and p.items and all(d.gen == "spot" for d in p.items) for p in pages)
+    assert w.history.undoText() == "“Spot the difference booklet with answers”"
+    w.deleteLater()

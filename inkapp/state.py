@@ -16,6 +16,7 @@ BUILTIN_PRESETS = {
     "Name maze": {"mode": "make", "gen": "maze", "mazeShape": "word", "mazeWord": "Maya", "complexity": 4, "weight": 4, "booklet": False, "poster": False},
     "Nonogram booklet with answers": {"mode": "make", "gen": "nonogram", "booklet": True, "pages": 8, "ramp": True, "mix": False, "cover": True, "pageNums": True, "key": True, "poster": False},
     "Dot-to-dot booklet with answers": {"mode": "make", "gen": "dots", "booklet": True, "pages": 8, "ramp": True, "mix": False, "cover": True, "pageNums": True, "key": True, "poster": False, "weight": 4},
+    "Spot the difference booklet with answers": {"mode": "make", "gen": "spot", "spotBase": "mandala", "booklet": True, "pages": 8, "ramp": True, "mix": False, "cover": True, "pageNums": True, "key": True, "poster": False},
     "Newspaper halftone photo": {"mode": "convert", "style": "halftone", "dot": 3, "contrast": 120, "brightness": 0, "invert": False},
     "Engraved photo": {"mode": "convert", "style": "engrave", "dot": 2, "contrast": 110, "brightness": 0, "invert": False},
     "Colour-by-number mandala": {"mode": "make", "gen": "mandala", "cbn": True, "cbnColours": 6, "complexity": 3, "weight": 5, "frame": False, "booklet": False, "poster": False},
