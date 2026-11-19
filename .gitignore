@@ -14,3 +14,4 @@ pkg/
 selftest-output/
 build-flatpak/
 .flatpak-builder/
+repo-flatpak/

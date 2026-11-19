@@ -16,13 +16,14 @@ A Linux desktop app that converts photos to, or generates, black & white images 
 
 ## Flatpak
 
-One package for any distro, with PySide6 and numpy inside (about 300 MB with the shared freedesktop runtime). Build and install it from the repository:
+One package for any distro, with PySide6 and numpy inside (about 300 MB with the shared freedesktop runtime). With `flatpak` and `flatpak-builder` installed, build and install it from a copy of the repository:
 
 ```sh
-flatpak install flathub org.freedesktop.Platform//25.08 org.freedesktop.Sdk//25.08
-flatpak-builder --user --install --force-clean build-flatpak packaging/flatpak/io.github.gshoe2006.Inkline.yml
-flatpak run io.github.gshoe2006.Inkline
+sh packaging/flatpak/build.sh            # sets up Flathub and the runtime the first time, then builds and installs
+flatpak run io.github.gshoe2006.Inkline  # or start Inkline from your app menu
 ```
+
+`sh packaging/flatpak/build.sh --bundle` also writes `dist/inkline-<version>.flatpak`, one file anyone can install with `flatpak install --user inkline-<version>.flatpak` (they need Flathub added for the runtime). `packaging/flatpak/inkline.sh` is the launcher inside the Flatpak; it doesn't run on its own.
 
 The Flatpak keeps its own settings and presets, in `~/.var/app/io.github.gshoe2006.Inkline/config/inkline`. Files are opened and saved through your desktop's file dialogs, and printing goes through CUPS as usual.
 
