@@ -6,10 +6,20 @@ and tests get one here, on the offscreen platform when there is no display.
 
 import os
 
+from PySide6.QtCore import QHashSeed
 from PySide6.QtGui import QFont, QGuiApplication
 
 # The same fonts index.html asks for, in the same order.
 FONT_FAMILIES = ["Cantarell", "Noto Sans", "Inter", "DejaVu Sans", "sans-serif"]
+
+# Same drawing, same PDF bytes. Qt's PDF engine keeps the fonts a document uses in a QHash and writes
+# them out in hash order, which decides each font's object number and subset tag (QTAAAA+Inter-Bold...).
+# Qt seeds QHash randomly per process, so a PDF with several weights came out with its fonts shuffled
+# from run to run (the text still used the right weights). A fixed seed makes that order repeatable.
+# A QHash takes the seed when it first allocates, so this only has to happen before any PDF is
+# painted; it's done once, at import, because changing the seed isn't thread-safe and print jobs
+# paint on a worker thread. Inkline never hashes untrusted keys, so randomized hashing buys nothing.
+QHashSeed.setDeterministicGlobalSeed()
 
 
 def ensure_app():
