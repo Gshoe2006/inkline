@@ -205,16 +205,14 @@ def gauss_blur(src, w, h, sigma):
     for e in ex:
         total += e
     k = (np.array(ex, np.float32).astype(np.float64) / total).astype(np.float32).astype(np.float64)
-    img = src.reshape(h, w).astype(np.float64)
-    cols = np.arange(w)
+    img = np.pad(src.reshape(h, w).astype(np.float64), ((0, 0), (r, r)), mode="edge")   # clamped edges
     a = np.zeros((h, w))
-    for n, i in enumerate(range(-r, r + 1)):
-        a = a + img[:, np.clip(cols + i, 0, w - 1)] * k[n]
-    tmp = a.astype(np.float32).astype(np.float64)
-    rows = np.arange(h)
+    for n in range(2 * r + 1):                       # tap by tap, left to right, as the JavaScript summed
+        a += img[:, n:n + w] * k[n]
+    tmp = np.pad(a.astype(np.float32).astype(np.float64), ((r, r), (0, 0)), mode="edge")
     a = np.zeros((h, w))
-    for n, i in enumerate(range(-r, r + 1)):
-        a = a + tmp[np.clip(rows + i, 0, h - 1), :] * k[n]
+    for n in range(2 * r + 1):
+        a += tmp[n:n + h, :] * k[n]
     return a.astype(np.float32).reshape(-1)
 
 
