@@ -77,3 +77,24 @@ def test_svg_stays_vector():
     draw_page(svg, g, single_page(s), s)
     out = str(svg)
     assert "<image" not in out and out.count("<path") > 10
+
+
+# pages where the circles used to touch: close changes on busy pictures at the highest complexity
+@pytest.mark.parametrize("base, orient, seed, dpi", [("contour", "landscape", 5, 150), ("mandala", "landscape", 3, 150),
+                                                     ("mandala", "portrait", 8, 300)])
+def test_answer_circles_never_overlap(base, orient, seed, dpi):
+    from inkengine.page import line_width
+    s = Settings(gen="spot", spot_base=base, complexity=10, seed=seed, orient=orient, dpi=dpi, booklet=True)
+    g = geometry(s)
+    lw = line_width(s, g)
+    box = design_box(g, single_page(s), s)
+    plain, rec = RecordingCanvas(), RecordingCanvas()
+    found = spot.draw(plain, box, None, 10, s, lw=lw, seed=seed, dpi=g.dpi)
+    spot.draw(rec, box, None, 10, s, lw=lw, seed=seed, dpi=g.dpi, solve=True)
+    arcs = lambda c: [op for op in c.ops if op[0] == "A"]
+    rings = arcs(rec)[len(arcs(plain)):]           # what solve adds: a circle per change in each copy
+    assert len(rings) == 2 * len(found)
+    first = rings[::2]
+    for i, p in enumerate(first):
+        for q in first[i + 1:]:
+            assert math.hypot(p[1] - q[1], p[2] - q[2]) >= p[3] + q[3]

@@ -240,8 +240,10 @@ def draw(ctx, box, rnd, c, settings=None, lw=1.0, seed=0, dpi=300, solve=False, 
         ctx.save()
         ctx.line_width = lw * 2.5
         ctx.stroke_style = "#000"
-        for _kind, x, y, r, _extra in found:
+        for i, (_kind, x, y, r, _extra) in enumerate(found):
             ring = max(r * 1.5, min(a.w, a.h) * 0.03)   # big enough to see round a small dot or gap
+            near = min((math.hypot(x - q[1], y - q[2]) for j, q in enumerate(found) if j != i), default=ring * 3)
+            ring = max(r * 1.05, min(ring, near / 2 - lw * 2))   # never touching a neighbour's circle
             for half in (a, b):
                 ctx.begin_path()
                 ctx.arc(half.x + x, half.y + y, ring, 0, 2 * math.pi)
