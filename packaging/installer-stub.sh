@@ -74,7 +74,7 @@ tail -n +"$LINE" "$0" | tar -xz -C "$TMP"
 
 mkdir -p "$APP" "$BIN" "$DESK" "$ICONS/scalable/apps"
 rm -rf "$APP/inkengine" "$APP/inkapp" "$APP/index.html"   # 2.x's page goes; 3.0 is native
-cp "$TMP/inkline.py" "$TMP/inkline.svg" "$TMP/VERSION" "$APP/"
+cp "$TMP/inkline.py" "$TMP/inkline.svg" "$TMP/VERSION" "$TMP/LICENSE" "$APP/"
 cp -R "$TMP/inkengine" "$TMP/inkapp" "$APP/"
 cp "$TMP/inkline.svg" "$ICONS/scalable/apps/inkline.svg"
 for png in "$TMP"/icons/hicolor/*/apps/inkline.png; do

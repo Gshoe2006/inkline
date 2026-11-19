@@ -5,13 +5,13 @@
 #   sh packaging/flatpak/build.sh --bundle   also write dist/inkline-<version>.flatpak, one file to share
 #   sh packaging/flatpak/build.sh --run      start Inkline when it's done
 #
-# The first run sets up Flathub and the freedesktop 25.08 runtime (about 1 GB). Afterwards start
+# The first run sets up Flathub and the freedesktop 26.08 runtime (about 1 GB). Afterwards start
 # Inkline from your app menu or with: flatpak run io.github.gshoe2006.Inkline
 # (packaging/flatpak/inkline.sh is the launcher inside the Flatpak; it doesn't run on its own.)
 set -eu
 
 APP=io.github.gshoe2006.Inkline
-RUNTIME=25.08
+RUNTIME=26.08
 
 say() { printf '%s\n' "$*"; }
 fail() { say "build.sh: $*" >&2; exit 1; }

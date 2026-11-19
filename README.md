@@ -103,3 +103,7 @@ Outputs to `dist/`:
 1. Bump `VERSION` (or `pkgrel` in `packaging/arch/PKGBUILD` for packaging-only changes).
 2. Run `packaging/build.sh`.
 3. Install with `sudo pacman -U dist/inkline-*.pkg.tar.zst`.
+
+## Licence
+
+Inkline is free software, released under the GNU General Public License version 3 (GPL-3.0-only); see [LICENSE](LICENSE).

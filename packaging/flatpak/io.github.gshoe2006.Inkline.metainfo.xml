@@ -7,7 +7,7 @@
     <name>Gshoe2006</name>
   </developer>
   <metadata_license>CC0-1.0</metadata_license>
-  <project_license>LicenseRef-proprietary</project_license>
+  <project_license>GPL-3.0-only</project_license>
   <description>
     <p>Inkline makes colouring pages, puzzles and black and white photo prints, ready to print at true paper size.</p>
     <ul>
@@ -21,6 +21,29 @@
   <launchable type="desktop-id">io.github.gshoe2006.Inkline.desktop</launchable>
   <url type="homepage">https://github.com/Gshoe2006/inkline</url>
   <url type="bugtracker">https://github.com/Gshoe2006/inkline/issues</url>
+  <url type="vcs-browser">https://github.com/Gshoe2006/inkline</url>
+  <branding>
+    <color type="primary" scheme_preference="light">#a7e3f2</color>
+    <color type="primary" scheme_preference="dark">#0b4f66</color>
+  </branding>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </supports>
+  <screenshots>
+    <screenshot type="default">
+      <caption>A mandala colouring page, true to paper size</caption>
+      <image>https://raw.githubusercontent.com/Gshoe2006/inkline/main/docs/screenshots/colouring-page.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Spot the difference, with answer pages in booklets</caption>
+      <image>https://raw.githubusercontent.com/Gshoe2006/inkline/main/docs/screenshots/spot-the-difference.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>A photo turned into halftone dots</caption>
+      <image>https://raw.githubusercontent.com/Gshoe2006/inkline/main/docs/screenshots/photo-halftone.png</image>
+    </screenshot>
+  </screenshots>
   <content_rating type="oars-1.1"/>
   <releases>
     <release version="3.4.1" date="2026-11-19"/>

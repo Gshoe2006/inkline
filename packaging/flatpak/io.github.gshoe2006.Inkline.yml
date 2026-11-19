@@ -9,7 +9,7 @@
 # QtPrintSupport are all Inkline uses).
 id: io.github.gshoe2006.Inkline
 runtime: org.freedesktop.Platform
-runtime-version: '25.08'
+runtime-version: '26.08'
 sdk: org.freedesktop.Sdk
 command: inkline
 finish-args:
@@ -32,8 +32,8 @@ modules:
         url: https://files.pythonhosted.org/packages/49/c2/a04fa003b4360e99d8e3fc2829abacf37396ace63ea1cd616402209ec7c6/shiboken6-6.12.0-cp310-abi3-manylinux_2_34_x86_64.whl
         sha256: 3bde565bb0890044b5c7f63808adddede5abc241e9395a2bfed61919884d6240
       - type: file
-        url: https://files.pythonhosted.org/packages/40/d6/68dd5a83914bbcaf32b3165993f7955979916708cb0156d1e28231e18803/numpy-2.5.5-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
-        sha256: 824025655df929268bfe6b47ed91a00d14209a6f760847cf150be446829e1ce4
+        url: https://files.pythonhosted.org/packages/a4/1f/fcdce1061fba2bfb2e9bfda01fbd8132d5f7522a4f7c8e2b2f629d54ee38/numpy-2.5.5-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
+        sha256: c48960d420e90cf305cb1fde0d4e6082cc90512cda87a9acf0b6e04e91cf4abe
 
   - name: inkline
     buildsystem: simple
@@ -48,6 +48,7 @@ modules:
       - install -Dm644 inkline.svg /app/share/icons/hicolor/scalable/apps/${FLATPAK_ID}.svg
       - for d in icons/hicolor/*/apps; do s=${d#icons/hicolor/}; s=${s%/apps}; install -Dm644 $d/inkline.png /app/share/icons/hicolor/$s/apps/${FLATPAK_ID}.png; done
       - install -Dm644 packaging/flatpak/${FLATPAK_ID}.metainfo.xml /app/share/metainfo/${FLATPAK_ID}.metainfo.xml
+      - install -Dm644 LICENSE /app/share/licenses/${FLATPAK_ID}/LICENSE
     sources:
       - type: dir
         path: ../..
