@@ -5,12 +5,13 @@ the line width, the design's seed (some patterns seed their noise with it) and t
 ported from index.html aren't listed.
 """
 
-from . import contour, dots, flow, mandala, maze, name, nonogram, spot, sudoku, truchet, words
+from . import contour, dots, flow, kakuro, mandala, maze, name, nonogram, spot, sudoku, truchet, words
 
 GENERATORS = {
     "contour": contour.draw,
     "dots": dots.draw,
     "flow": flow.draw,
+    "kakuro": kakuro.draw,
     "mandala": mandala.draw,
     "maze": maze.draw,
     "name": name.draw,
@@ -21,7 +22,7 @@ GENERATORS = {
     "words": words.draw,
 }
 
-NAMES = {"contour": "Contours", "dots": "Dot-to-dot", "flow": "Flow lines", "mandala": "Mandala", "maze": "Maze", "name": "Name page", "nonogram": "Nonogram", "spot": "Spot the difference", "sudoku": "Sudoku", "truchet": "Woven tiles", "words": "Word search"}
+NAMES = {"contour": "Contours", "dots": "Dot-to-dot", "flow": "Flow lines", "kakuro": "Kakuro", "mandala": "Mandala", "maze": "Maze", "name": "Name page", "nonogram": "Nonogram", "spot": "Spot the difference", "sudoku": "Sudoku", "truchet": "Woven tiles", "words": "Word search"}
 
 # Puzzles that have a solution to show on answer pages.
-HAS_ANSWER = {"maze", "dots", "sudoku", "words", "nonogram", "spot"}
+HAS_ANSWER = {"maze", "dots", "sudoku", "words", "nonogram", "spot", "kakuro"}
