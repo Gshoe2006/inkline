@@ -71,7 +71,8 @@ class Page(QWidget):
     def _dead_strip(self, p, r):
         """Hatch the edge of the sheet the printer can't reach (preview only)."""
         left, top, right, bottom = self.dead
-        brush = QBrush(QColor(theme.tokens().muted), Qt.BrushStyle.BDiagPattern)
+        # drawn on the paper, which is white in both themes: the light theme's muted grey shows on it
+        brush = QBrush(QColor(theme.LIGHT.muted), Qt.BrushStyle.BDiagPattern)
         lw, th, rw, bh = left * r.width(), top * r.height(), right * r.width(), bottom * r.height()
         for strip in (QRectF(r.x(), r.y(), r.width(), th), QRectF(r.x(), r.bottom() - bh, r.width(), bh),
                       QRectF(r.x(), r.y() + th, lw, r.height() - th - bh),
