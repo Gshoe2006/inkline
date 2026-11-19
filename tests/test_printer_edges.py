@@ -35,18 +35,30 @@ def win(tmp_path, monkeypatch):
     w = Window("3.1.1", remember=True)
     w.asked, w.edges = asked, edges
     w.show()
-    _wait(600)
+    _settled(w)
     yield w
     w.close()
     w.deleteLater()
     _wait(50)
 
 
+def _settled(w, timeout=20):
+    """Wait until the preview has really been drawn again: nothing scheduled, and the busy note gone.
+    A fixed wait isn't enough on a slow machine (CI drew the test page after 0.7 s had passed)."""
+    end = time.time() + timeout
+    _wait(60)
+    while time.time() < end:
+        if not w._render_timer.isActive() and not w.preview.busy.isVisibleTo(w):
+            return
+        _wait(20)
+    raise AssertionError("the preview didn't finish drawing")
+
+
 def _redraw(w, **kw):
     w.state.update(**kw)
     w.sidebar.load()
     w.schedule()
-    _wait(700)
+    _settled(w)
 
 
 def test_the_default_printer_is_hatched_with_no_warning_inside_the_margin(win):
