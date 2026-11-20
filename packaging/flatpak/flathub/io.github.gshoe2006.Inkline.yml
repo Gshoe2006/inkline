@@ -1,6 +1,7 @@
 # The manifest for Flathub (https://github.com/flathub/flathub). It's the local manifest
 # (../io.github.gshoe2006.Inkline.yml) with Inkline's source fetched from GitHub at a release tag,
-# pinned to that tag's commit, as Flathub requires. For each release, set tag and commit below.
+# pinned to that tag's commit, as Flathub requires. For each release, set tag and commit below
+# (tags are the plain version, such as 3.4.2; the commit is git rev-list -n 1 <tag>).
 #
 # Check it as Flathub's bot does:
 #   flatpak run --command=flatpak-builder-lint org.flatpak.Builder manifest io.github.gshoe2006.Inkline.yml
@@ -49,5 +50,5 @@ modules:
     sources:
       - type: git
         url: https://github.com/Gshoe2006/inkline.git
-        tag: v@TAG@
-        commit: @COMMIT@
+        tag: 3.4.2
+        commit: 79e17ef425b6cdc37d1b7ff58808afb885f815a3
