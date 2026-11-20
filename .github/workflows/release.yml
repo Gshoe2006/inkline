@@ -9,6 +9,10 @@
 # Nothing is published unless every step passes. To release: in one pull request, bump VERSION and
 # add a "## <version>" section to CHANGELOG.md, then merge it. "Run workflow" on the Actions tab
 # releases the current VERSION if that hasn't happened yet (for example after fixing a failed build).
+#
+# Tick "Test build only" under Run workflow to do everything but publish: the notes check, the
+# self-test and all three builds, with the packages kept for 7 days under the run's Artifacts.
+# Releases are only ever published from main.
 name: Release
 
 on:
@@ -16,6 +20,11 @@ on:
     branches: [main]
     paths: [VERSION]
   workflow_dispatch:
+    inputs:
+      test_only:
+        description: "Test build only: build and keep the packages, publish nothing"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -29,7 +38,8 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       version: ${{ steps.version.outputs.version }}
-      release: ${{ steps.version.outputs.release }}
+      build: ${{ steps.version.outputs.build }}
+      publish: ${{ steps.version.outputs.publish }}
     steps:
       - uses: actions/checkout@v4
 
@@ -37,6 +47,7 @@ jobs:
         id: version
         env:
           GH_TOKEN: ${{ github.token }}
+          TEST_ONLY: ${{ inputs.test_only == true }}
         run: |
           V=$(tr -d '[:space:]' < VERSION)
           echo "version=$V" >> "$GITHUB_OUTPUT"
@@ -44,15 +55,25 @@ jobs:
             echo "::error file=VERSION::VERSION should look like 3.4.3, not '$V'."
             exit 1
           fi
-          if gh release view "$V" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+          RELEASED=false
+          gh release view "$V" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 && RELEASED=true
+          if [ "$TEST_ONLY" = true ]; then
+            echo "::notice::Test build of Inkline $V: everything runs except publishing."
+            BUILD=true PUBLISH=false
+          elif [ "$RELEASED" = true ]; then
             echo "::notice::Inkline $V is already released, so there's nothing to do."
-            echo "release=false" >> "$GITHUB_OUTPUT"
+            BUILD=false PUBLISH=false
+          elif [ "$GITHUB_REF" != refs/heads/main ]; then
+            echo "::notice::Releases are only published from main, so this run on $GITHUB_REF_NAME builds without publishing."
+            BUILD=true PUBLISH=false
           else
-            echo "release=true" >> "$GITHUB_OUTPUT"
+            BUILD=true PUBLISH=true
           fi
+          echo "build=$BUILD" >> "$GITHUB_OUTPUT"
+          echo "publish=$PUBLISH" >> "$GITHUB_OUTPUT"
 
       - name: Are there release notes for it?
-        if: steps.version.outputs.release == 'true'
+        if: steps.version.outputs.build == 'true'
         run: |
           python3 packaging/release_notes.py > /dev/null
           V=${{ steps.version.outputs.version }}
@@ -61,12 +82,12 @@ jobs:
 
   selftest:
     needs: check
-    if: needs.check.outputs.release == 'true'
+    if: needs.check.outputs.build == 'true'
     uses: ./.github/workflows/selftest.yml
 
   run-and-arch:
     needs: check
-    if: needs.check.outputs.release == 'true'
+    if: needs.check.outputs.build == 'true'
     runs-on: ubuntu-24.04
     container: archlinux:base-devel
     timeout-minutes: 20
@@ -100,8 +121,10 @@ jobs:
 
   flatpak:
     needs: check
-    if: needs.check.outputs.release == 'true'
-    runs-on: ubuntu-24.04
+    if: needs.check.outputs.build == 'true'
+    # flatpak-builder runs the machine's own appstreamcli on the metainfo; 24.04's is too old for it
+    # ("file-read-error"), so build on the newest Ubuntu, nearer the tools Arch ships
+    runs-on: ubuntu-26.04
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
@@ -109,7 +132,7 @@ jobs:
       - name: Install Flatpak tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends flatpak flatpak-builder
+          sudo apt-get install -y --no-install-recommends flatpak flatpak-builder elfutils   # elfutils: eu-strip, which flatpak-builder runs on the host
 
       - name: Build the .flatpak
         run: |
@@ -125,6 +148,7 @@ jobs:
 
   release:
     needs: [check, selftest, run-and-arch, flatpak]
+    if: needs.check.outputs.publish == 'true'
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -156,3 +180,17 @@ jobs:
         env:
           PORTAL_TOKEN: ${{ secrets.PORTAL_TOKEN }}
         run: sh packaging/notify_portal.sh --warn
+
+  test-build-done:
+    needs: [check, selftest, run-and-arch, flatpak]
+    if: needs.check.outputs.build == 'true' && needs.check.outputs.publish != 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Say where the packages are
+        run: |
+          {
+            echo "### Test build of Inkline ${{ needs.check.outputs.version }} passed"
+            echo
+            echo "Nothing was published. The self-test passed, and the .run installer, the Arch package and"
+            echo "the .flatpak built. Download them under **Artifacts** below (kept for 7 days)."
+          } >> "$GITHUB_STEP_SUMMARY"
