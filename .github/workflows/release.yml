@@ -122,7 +122,9 @@ jobs:
   flatpak:
     needs: check
     if: needs.check.outputs.build == 'true'
-    runs-on: ubuntu-24.04
+    # flatpak-builder runs the machine's own appstreamcli on the metainfo; 24.04's is too old for it
+    # ("file-read-error"), so build on the newest Ubuntu, nearer the tools Arch ships
+    runs-on: ubuntu-26.04
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
