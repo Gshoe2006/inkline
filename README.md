@@ -95,14 +95,21 @@ Outputs to `dist/`:
 | `tests/` | Tests for `inkengine/`, with recordings of what Inkline 2.5 drew to match |
 | `inkline.svg`, `icons/` | App icon; regenerate with `python3 packaging/make_icon.py` |
 | `inkline.desktop` | Application menu entry |
-| `packaging/` | Build script, Arch PKGBUILD, self-extracting installer stub |
+| `packaging/` | Build script, Arch PKGBUILD, self-extracting installer stub, release notes script |
+| `CHANGELOG.md` | What changed in each release; each section becomes that release's notes |
 | `VERSION` | App version used by both installers |
 
 ## Releasing a new version
 
-1. Bump `VERSION` (or `pkgrel` in `packaging/arch/PKGBUILD` for packaging-only changes).
-2. Run `packaging/build.sh`.
-3. Install with `sudo pacman -U dist/inkline-*.pkg.tar.zst`.
+In one pull request:
+
+1. Bump `VERSION`.
+2. Add a section to the top of `CHANGELOG.md` headed `## <version>` (for example `## 3.4.3 - 2026-11-21`) saying what changed. It becomes the release notes word for word, with its `###` headings shown as `##`.
+3. Add `<release version="<version>" date="<date>"/>` to `packaging/flatpak/io.github.gshoe2006.Inkline.metainfo.xml`.
+
+When it merges, `.github/workflows/release.yml` checks there are notes for the version, runs the self-test, builds the `.run` installer, the Arch package and the `.flatpak`, and publishes the GitHub Release "Inkline <version>" with all three attached. It then tells the app portal, so the release shows there within a minute or two (this needs the `PORTAL_TOKEN` secret, otherwise the portal shows it on its next 3-hourly run). If any step fails nothing is published: fix it and press *Run workflow* on the Release workflow. `python3 packaging/release_notes.py` prints the notes the release will get.
+
+For a packaging-only change, bump `pkgrel` in `packaging/arch/PKGBUILD`, run `packaging/build.sh` and install with `sudo pacman -U dist/inkline-*.pkg.tar.zst`; no release is made.
 
 ## Licence
 

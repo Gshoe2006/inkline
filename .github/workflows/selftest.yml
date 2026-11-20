@@ -8,12 +8,15 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  workflow_call:         # release.yml runs this before it publishes a release
 
 permissions:
   contents: read
 
 concurrency:
-  group: selftest-${{ github.ref }}
+  # github.workflow is the caller's name when release.yml calls this, so the two runs on a
+  # release push don't cancel each other
+  group: selftest-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
