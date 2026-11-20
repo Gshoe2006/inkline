@@ -1,0 +1,169 @@
+# Publishes a GitHub Release whenever VERSION changes on main to a version that has no release yet.
+#
+#   1. check    VERSION is a new version, and CHANGELOG.md has notes for it
+#   2. selftest the same self-test every pull request runs (selftest.yml)
+#   3. build    the .run installer and the Arch package (in Arch Linux), and the .flatpak
+#   4. release  tags the commit, publishes "Inkline <version>" with those notes and the three files,
+#               then tells the app portal (Gshoe2006/Apps) to show it straight away
+#
+# Nothing is published unless every step passes. To release: in one pull request, bump VERSION and
+# add a "## <version>" section to CHANGELOG.md, then merge it. "Run workflow" on the Actions tab
+# releases the current VERSION if that hasn't happened yet (for example after fixing a failed build).
+name: Release
+
+on:
+  push:
+    branches: [main]
+    paths: [VERSION]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      release: ${{ steps.version.outputs.release }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Is this a new version?
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V=$(tr -d '[:space:]' < VERSION)
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          if ! printf '%s' "$V" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error file=VERSION::VERSION should look like 3.4.3, not '$V'."
+            exit 1
+          fi
+          if gh release view "$V" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::notice::Inkline $V is already released, so there's nothing to do."
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Are there release notes for it?
+        if: steps.version.outputs.release == 'true'
+        run: |
+          python3 packaging/release_notes.py > /dev/null
+          V=${{ steps.version.outputs.version }}
+          grep -q "<release version=\"$V\"" packaging/flatpak/io.github.gshoe2006.Inkline.metainfo.xml ||
+            echo "::warning file=packaging/flatpak/io.github.gshoe2006.Inkline.metainfo.xml::No <release version=\"$V\"> entry. Flathub and app stores list releases from this file."
+
+  selftest:
+    needs: check
+    if: needs.check.outputs.release == 'true'
+    uses: ./.github/workflows/selftest.yml
+
+  run-and-arch:
+    needs: check
+    if: needs.check.outputs.release == 'true'
+    runs-on: ubuntu-24.04
+    container: archlinux:base-devel
+    timeout-minutes: 20
+    steps:
+      - name: Install build tools
+        run: pacman -Syu --noconfirm --needed git python
+
+      - uses: actions/checkout@v4
+
+      - name: Build the .run installer and the Arch package
+        run: |
+          # A fresh checkout gives every file the same time, so keep build.sh from redrawing the
+          # icons (that needs librsvg); the committed ones are already current.
+          touch inkline.svg
+          # makepkg refuses to run as root
+          useradd -m builder
+          chown -R builder "$GITHUB_WORKSPACE"
+          sudo -u builder sh packaging/build.sh
+          V=${{ needs.check.outputs.version }}
+          test -f "dist/inkline-$V.run"
+          ls dist/inkline-"$V"-*.pkg.tar.zst
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: run-and-arch
+          path: |
+            dist/inkline-*.run
+            dist/inkline-*.pkg.tar.zst
+          if-no-files-found: error
+          retention-days: 7
+
+  flatpak:
+    needs: check
+    if: needs.check.outputs.release == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Flatpak tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends flatpak flatpak-builder
+
+      - name: Build the .flatpak
+        run: |
+          sh packaging/flatpak/build.sh --bundle
+          test -f "dist/inkline-${{ needs.check.outputs.version }}.flatpak"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flatpak
+          path: dist/inkline-*.flatpak
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    needs: [check, selftest, run-and-arch, flatpak]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          V: ${{ needs.check.outputs.version }}
+        run: |
+          python3 packaging/release_notes.py "$V" > notes.md
+          ls -l dist
+          gh release create "$V" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Inkline $V" \
+            --notes-file notes.md
+          echo "::notice::Published Inkline $V: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$V"
+
+      # A release made with this workflow's token doesn't start other workflows, so
+      # notify-portal.yml won't run for it: tell the portal from here instead.
+      - name: Tell the app portal
+        env:
+          PORTAL_TOKEN: ${{ secrets.PORTAL_TOKEN }}
+        run: |
+          if [ -z "$PORTAL_TOKEN" ]; then
+            echo "::notice::PORTAL_TOKEN isn't set, so the portal will pick this release up on its next scheduled run."
+            exit 0
+          fi
+          curl -fsS -X POST \
+            -H "Authorization: Bearer $PORTAL_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/repos/Gshoe2006/Apps/dispatches \
+            -d '{"event_type":"app-released"}' ||
+            echo "::warning::Couldn't reach the portal (is PORTAL_TOKEN still valid?). The release is published, and the portal will show it on its next scheduled run."
