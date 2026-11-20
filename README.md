@@ -109,6 +109,8 @@ In one pull request:
 
 When it merges, `.github/workflows/release.yml` checks there are notes for the version, runs the self-test, builds the `.run` installer, the Arch package and the `.flatpak`, and publishes the GitHub Release "Inkline <version>" with all three attached. It then tells the app portal, so the release shows there within a minute or two (this needs the `PORTAL_TOKEN` secret, otherwise the portal shows it on its next 3-hourly run). If any step fails nothing is published: fix it and press *Run workflow* on the Release workflow. `python3 packaging/release_notes.py` prints the notes the release will get.
 
+To check the release builds without publishing anything, open the Release workflow on the Actions tab, press *Run workflow*, tick *Test build only* and run it: the packages it builds are kept for 7 days under the run's *Artifacts*.
+
 For a packaging-only change, bump `pkgrel` in `packaging/arch/PKGBUILD`, run `packaging/build.sh` and install with `sudo pacman -U dist/inkline-*.pkg.tar.zst`; no release is made.
 
 ## Licence
