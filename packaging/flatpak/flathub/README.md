@@ -10,10 +10,10 @@ pinned to the tag's commit, as Flathub requires.
    `io.github.gshoe2006.Inkline` against https://github.com/Gshoe2006/inkline, and it downloads the
    screenshots listed in the AppStream file from there. While the repository is private, its
    checker reports `appid-url-not-reachable` and `appstream-missing-screenshots`.
-2. **Publish a release** that includes `LICENSE`, `docs/screenshots/` and this folder, with a tag
-   such as `v3.4.2`.
-3. **Fill in the manifest:** replace `@TAG@` with the version (`3.4.2`) and `@COMMIT@` with that
-   tag's full commit hash (`git rev-list -n 1 v3.4.2`).
+2. **Publish a release** that includes `LICENSE`, `docs/screenshots/` and this folder. Inkline's
+   release tags are the plain version, such as `3.4.2`.
+3. **Fill in the manifest:** set `tag` to the release's tag and `commit` to that tag's full commit
+   hash (`git rev-list -n 1 3.4.2`). It's filled in for 3.4.2.
 4. **Run Flathub's checker,** with the manifest named exactly `io.github.gshoe2006.Inkline.yml`:
    ```sh
    flatpak install --user flathub org.flatpak.Builder
