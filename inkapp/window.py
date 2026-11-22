@@ -21,7 +21,7 @@ from PySide6.QtGui import QPdfWriter
 from inkengine import book, photo
 from inkengine.page import PAGE_KEYS, Settings, design_box, geometry, single_page
 
-from . import config, jobs, project, theme
+from . import config, jobs, project, recovery, theme
 from .preview import Preview
 from .render import PREVIEW_DPI, Renderer, render_view, view
 from .sample import sample_photo
@@ -43,6 +43,7 @@ STEP_NAMES = {"gen": "Pattern", "complexity": "Complexity", "weight": "Line weig
               "ppage_nums": "Page numbers", "title": "Title", "name_line": "Name line", "poster": "Poster", "grid": "Sheets",
               "overlap": "Overlap", "testpage": "Printer test page", "fold": "Fold-and-staple", "paper": "Paper size",
               "orient": "Orientation", "margin": "Margin", "dpi": "Resolution", "page_list": "Pages"}
+KEEP_SECONDS = 60     # unsaved work is copied for recovery at most this often
 MERGE_SECONDS = 1.5   # changes to the same thing this close together (a slider drag, typing) are one step
 BOOKLET_LOOK = ("weight", "frame", "title", "name_line", "paper", "orient", "margin", "fold")   # drawn on every page
 
@@ -179,6 +180,9 @@ class Window(QMainWindow):
         self.status.connect(self.sidebar.set_status)
         self._render_timer = QTimer(self, singleShot=True, interval=40, timeout=self._render)
         self._remember_timer = QTimer(self, singleShot=True, interval=400, timeout=self._save_settings)
+        # a copy of unsaved work, to get it back if Inkline closes unexpectedly (not for windows that remember nothing)
+        self.keeper = recovery.Keeper(version) if remember else None
+        self._keep_timer = QTimer(self, singleShot=True, interval=KEEP_SECONDS * 1000, timeout=self._keep_copy)
         self._busy_saving = False
         self._pan_start = None
         self.history = QUndoStack(self)
@@ -200,6 +204,7 @@ class Window(QMainWindow):
             self._msg("Reopened with your last settings. Presets → Start fresh resets them.")
         self._last = _Snapshot(self.state)   # where the history starts: nothing to undo yet
         self.history.cleanChanged.connect(self._update_title)
+        self.history.cleanChanged.connect(lambda clean: self._keep_copy() if clean else None)   # undone back to saved
         self._update_title()
         self.schedule()
 
@@ -588,6 +593,7 @@ class Window(QMainWindow):
         self.history.clear()        # Undo doesn't reach back into the work that was open before
         self._last = _Snapshot(st)
         self.history.setClean()
+        self._keep_copy()           # nothing unsaved now: no copy
         self._update_title()
         self.schedule()
         self.remember_soon()
@@ -650,10 +656,57 @@ class Window(QMainWindow):
             QApplication.restoreOverrideCursor()
         self.project_path = os.path.abspath(path)
         self.history.setClean()
+        self._keep_copy()           # saved: the recovery copy goes
         self._update_title()
         self._add_recent_project(self.project_path)
         self._msg(f"Saved {os.path.basename(path)}.")
         return True
+
+    # --- getting work back after Inkline closes unexpectedly -----------------------------------------------
+    def _worth_keeping(self):
+        """Unsaved work that isn't remembered anywhere else: settings are (last-settings.json), photos and a
+        booklet's own pages aren't, and an open project's changes aren't in its file."""
+        st = self.state
+        return not self.history.isClean() and bool(st.photos or st.settings.page_list or self.project_path)
+
+    def _keep_copy(self):
+        if self.keeper is None:
+            return
+        if not self._worth_keeping():
+            self._keep_timer.stop()
+            self.keeper.forget()
+            return
+        st = self.state   # a snapshot, as the preview draws from: the worker never sees the work change under it
+        snap = State(replace(st.settings), [replace(p) for p in st.photos], st.sel, st.page, st.book_sel)
+        self.keeper.keep(snap, self.project_path)
+
+    def offer_recovery(self):
+        """At start: if a session closed without saving its work, offer to bring that work back."""
+        if self.keeper is None:
+            return False
+        for path in recovery.leftovers():
+            try:
+                proj, data = project.read(path)
+            except (project.ProjectError, OSError):
+                recovery.discard(path)   # a damaged copy is no use to anyone
+                continue
+            box = QMessageBox(QMessageBox.Icon.Question, "Recover unsaved work?",
+                              "Inkline closed before your work was saved. Recover it?",
+                              QMessageBox.StandardButton.Discard, self)
+            recover = box.addButton("Recover", QMessageBox.ButtonRole.AcceptRole)
+            box.setInformativeText(recovery.describe(path, data))
+            box.setDefaultButton(recover)
+            box.exec()
+            if box.clickedButton() is recover:
+                src = (data.get("recovery") or {}).get("project")
+                self._use_project(proj, src if isinstance(src, str) and src else None)
+                self.history.resetClean()   # recovered, not saved: the title shows it and closing asks
+                self._update_title()
+                self._keep_copy()           # this session keeps it now
+                self._msg("Recovered your unsaved work. Save it as a project to keep it.")
+            recovery.discard(path)
+            return box.clickedButton() is recover
+        return False
 
     # File → Open recent project: the projects opened or saved lately, newest first, kept in recent.json
     def _add_recent_project(self, path):
@@ -840,6 +893,8 @@ class Window(QMainWindow):
             self._last = now   # no edit, but the next step starts from the page and photo chosen now
             return
         self.history.push(_Step(self, self._last, now, name or now.what(self._last), self._gesture(), timed))
+        if self.keeper is not None and not self._keep_timer.isActive():
+            self._keep_timer.start()   # a copy within the minute, then again a minute after the next change
         self._last = now
 
     def _gesture(self):
@@ -1152,4 +1207,8 @@ class Window(QMainWindow):
             return
         if self.remember and self._remember_timer.isActive():
             self._save_settings()
+        if self.keeper is not None:   # closed properly: nothing to recover
+            self._keep_timer.stop()
+            self.keeper.finish()
+            recovery.release()
         super().closeEvent(e)
