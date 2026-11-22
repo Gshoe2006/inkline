@@ -235,3 +235,26 @@ def test_thumbnails_are_darker_than_the_page_scaled_down(monkeypatch):
     monkeypatch.setattr(thumbs, "THICKEN", 1)
     monkeypatch.setattr(thumbs, "DARKEN", 1)
     assert shown > 2 * ink(thumbs.draw(s, spec))   # thin lines show as more than a faint grey
+
+
+def test_pictures_fit_their_slot_and_come_back_after_convert(win):
+    _booklet(win)
+    _thumbs_done(win)
+    slot = win.sidebar._thumb_rows[0]
+    assert slot.width() <= 36 and slot.height() <= 36
+    win._set_mode("convert")
+    win.sidebar.fill_pages()
+    win._set_mode("make")
+    _thumbs_done(win)
+    assert all(not _thumb(win, i).isNull() for i in range(6))
+
+
+def test_fold_and_staple_pages_are_half_sheets(win):
+    from inkapp import thumbs
+    _booklet(win)
+    _set(win, orient="landscape")
+    _thumbs_done(win)
+    assert _thumb(win, 0).width() > _thumb(win, 0).height()
+    _set(win, fold=True)                       # half a landscape sheet: a portrait page, whatever the orientation
+    _thumbs_done(win)
+    assert _thumb(win, 0).width() < _thumb(win, 0).height() == thumbs.THUMB_H

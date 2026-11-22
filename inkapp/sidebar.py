@@ -574,7 +574,7 @@ class Sidebar(QFrame):
         for i, (label, spec) in enumerate(zip(rows, designs)):
             k = thumbs.key(s, spec)
             self._thumb_keys.setdefault(k, []).append(i)
-            label.setFixedSize(w + 2, h + 2)   # the page and its 1 px edge
+            label.setFixedSize(w + 2, h + 2)   # the page and its 1 px edge: at most the 36 px slot
             img = self.thumbs.get(k)
             label.setPixmap(QPixmap.fromImage(img) if img is not None else QPixmap())
         self.thumbs.request(s, designs[:len(rows)])

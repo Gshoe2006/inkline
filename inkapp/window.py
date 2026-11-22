@@ -43,8 +43,8 @@ STEP_NAMES = {"gen": "Pattern", "complexity": "Complexity", "weight": "Line weig
               "ppage_nums": "Page numbers", "title": "Title", "name_line": "Name line", "poster": "Poster", "grid": "Sheets",
               "overlap": "Overlap", "testpage": "Printer test page", "fold": "Fold-and-staple", "paper": "Paper size",
               "orient": "Orientation", "margin": "Margin", "dpi": "Resolution", "page_list": "Pages"}
-MERGE_SECONDS = 1.5
-BOOKLET_LOOK = ("weight", "frame", "title", "name_line", "paper", "orient", "margin")   # drawn on every page   # changes to the same thing this close together (a slider drag, typing) are one step
+MERGE_SECONDS = 1.5   # changes to the same thing this close together (a slider drag, typing) are one step
+BOOKLET_LOOK = ("weight", "frame", "title", "name_line", "paper", "orient", "margin", "fold")   # drawn on every page
 
 
 class _Snapshot:
@@ -342,9 +342,10 @@ class Window(QMainWindow):
 
     def _set_mode(self, mode):
         self.state.update(mode=mode)
-        if self.state.listing:
+        if self.state.listing:   # back to the booklet built page by page: its rows and their pictures
             self.state.mirror()
             self.sidebar.load()
+            self.sidebar.fill_pages()
         if mode == "convert" and not self.state.photos:
             self.state.photos = [sample_photo()]
             self.state.sel = 0

@@ -17,11 +17,13 @@ from PySide6.QtCore import QObject, Qt, Signal
 from PySide6.QtGui import QColor, QImage, QPainter
 
 from inkengine.canvas import QtCanvas
+from inkengine.book import half_geometry
 from inkengine.page import draw_page, geometry
 
 from .theme import PAPER_COLOUR
 
-THUMB_H = 36         # px: the row's picture is a page this tall (and as wide as the paper's shape makes it)
+THUMB_H = 34         # px: the row's picture is a page this tall (and as wide as its shape makes it), plus a
+                     # 1 px edge all round: 36, the photo list's picture slot
 DRAW_DPI = 30        # drawn at this resolution, then scaled down smoothly
 CACHE = 200          # thumbnails kept
 # At this size a page's lines are a fraction of a pixel wide and come out faint grey. Drawn twice as thick (so a
@@ -31,22 +33,29 @@ THICKEN = 2
 DARKEN = 2
 
 
+def _page_geometry(s):
+    """A design page's geometry: the paper, or for a fold-and-staple book half a sheet (always portrait)."""
+    return half_geometry(s) if s.fold else geometry(s)
+
+
 def thumb_size(s):
-    """The thumbnail's (width, height) for the settings' paper and orientation."""
-    g = geometry(replace(s, dpi=72))
+    """The thumbnail's (width, height) for the page's shape."""
+    g = _page_geometry(replace(s, dpi=72))
     return (max(1, round(THUMB_H * g.W / g.H)), THUMB_H) if g.H >= g.W else (THUMB_H, max(1, round(THUMB_H * g.H / g.W)))
 
 
 def key(s, spec):
-    """What a design page's thumbnail shows: equal keys, equal pictures (its page number isn't drawn)."""
-    booklet = (s.weight, s.frame, s.title, s.name_line, s.paper, s.orient, s.margin)
-    return (spec.gen, spec.seed, spec.c, tuple(sorted(spec.opts.items())), booklet)
+    """What a design page's thumbnail shows: equal keys, equal pictures. Its page number isn't drawn; its label
+    ("Maze 3") is, in the title band, only when there is one."""
+    booklet = (s.weight, s.frame, s.title, s.name_line, s.paper, s.orient, s.margin, s.fold)
+    label = spec.label if spec.header else ""
+    return (spec.gen, spec.seed, spec.c, tuple(sorted(spec.opts.items())), label, booklet)
 
 
 def draw(s, spec):
     """A design page as a thumbnail QImage (any thread)."""
     ss = replace(s, dpi=DRAW_DPI, page_nums=False, weight=s.weight * THICKEN)
-    g = geometry(ss)
+    g = _page_geometry(ss)
     img = QImage(g.W, g.H, QImage.Format.Format_RGB32)
     img.fill(QColor(PAPER_COLOUR))
     p = QPainter(img)
