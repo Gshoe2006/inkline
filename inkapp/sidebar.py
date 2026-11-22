@@ -114,8 +114,8 @@ class Sidebar(QFrame):
         lay.addWidget(self.print_btn)
         trio = QHBoxLayout()
         trio.setSpacing(theme.PAIR_GAP)
-        self.png_btn = button("PNG", tip="Save PNG (Ctrl+Shift+S)")
-        self.pdf_btn = button("PDF", tip="Save PDF (Ctrl+S)")
+        self.png_btn = button("PNG", tip="Save PNG (Ctrl+Shift+E)")
+        self.pdf_btn = button("PDF", tip="Save PDF (Ctrl+E)")
         self.svg_btn = button("SVG", tip="Vector lines for Inkscape, Cricut, Silhouette or laser cutters")
         for b, kind in ((self.png_btn, "png"), (self.pdf_btn, "pdf"), (self.svg_btn, "svg")):
             b.clicked.connect(lambda _c=False, k=kind: self.save.emit(k))
@@ -130,7 +130,7 @@ class Sidebar(QFrame):
         self.progress.setAccessibleName("Saving progress")
         self.progress.hide()
         lay.addWidget(self.progress)
-        keys = label("Ctrl+P print · Ctrl+S PDF · Ctrl+N new design · ← → pages", "keys")
+        keys = label("Ctrl+P print · Ctrl+E PDF · Ctrl+S save project · Ctrl+N new design · ← → pages", "keys")
         keys.setWordWrap(True)
         lay.addWidget(keys)
         return f
@@ -625,7 +625,7 @@ class Sidebar(QFrame):
         # the footer's buttons: PNG isn't for posters; SVG suits designs and the vector photo styles
         poster = s.poster and not s.testpage
         self.png_btn.setEnabled(not poster)
-        self.png_btn.setToolTip("Posters save as PDF (one page per sheet) or print directly" if poster else "Save PNG (Ctrl+Shift+S)")
+        self.png_btn.setToolTip("Posters save as PDF (one page per sheet) or print directly" if poster else "Save PNG (Ctrl+Shift+E)")
         vector = not make and s.style in photo.VECTOR_STYLES
         self.svg_btn.setEnabled((make or vector) and not s.testpage and not fold)
         tips = {"engrave": "Engraving lines save as vector paths, for laser engravers and plotters",

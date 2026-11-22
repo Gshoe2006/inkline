@@ -11,9 +11,10 @@
   <description>
     <p>Inkline makes colouring pages, puzzles and black and white photo prints, ready to print at true paper size.</p>
     <ul>
-      <li>Make one up: mandalas, mazes, dot-to-dots, sudoku, nonograms, spot the difference, word search, name pages in bubble letters, woven tiles, contours and flow lines</li>
+      <li>Make one up: mandalas, mazes, dot-to-dots, sudoku, kakuro, nonograms, spot the difference, word search, name pages in bubble letters, woven tiles, contours and flow lines</li>
       <li>Convert a photo: dithering, halftone dots, engraving lines, stippling, a line drawing to colour in, colour by number or a nonogram</li>
-      <li>Booklets and photo books with covers, page numbers and answer pages, including fold-and-staple books</li>
+      <li>Booklets and photo books with covers, page numbers and answer pages, including fold-and-staple books; build a booklet page by page, each page with its own pattern</li>
+      <li>Save your work as a project file, with its photos inside, to open again later</li>
       <li>Posters across several sheets, and a printer test page</li>
       <li>Print, or save as PDF, PNG or SVG</li>
     </ul>

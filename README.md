@@ -6,9 +6,10 @@ A Linux desktop app that converts photos to, or generates, black & white images 
 - **Convert a photo:** Floyd–Steinberg, Atkinson and ordered dithering, halftone dots, engraving lines and stippling dots (both also save as SVG), solid black & white, a line drawing (colouring page), colour by number (regions of similar colour, each numbered, with a key naming the crayon to use; also saves as SVG), or a nonogram puzzle that reveals the photo (always solvable by logic alone), with rotate, zoom and pan to crop.
 - **Photo books:** turn several photos into one colouring-book PDF, one page each with its own crop, plus an optional cover, title, name line and page numbers.
 - **Fold-and-staple books:** booklets and photo books can print two half-size pages per side, double-sided, so the sheets fold and staple into a real little book in page order.
-- **Booklets:** turn any pattern (or every pattern but name pages, mixed) into a multi-page PDF with a cover, a title and name line, page numbers, difficulty that ramps up page by page, a *New design for this page* button to swap any single page (answers follow), and answer pages for mazes, dot-to-dots, sudoku, word search, nonograms, spot the difference and kakuro.
+- **Booklets:** turn any pattern (or every pattern but name pages, mixed) into a multi-page PDF with a cover, a title and name line, page numbers, difficulty that ramps up page by page, a *New design for this page* button to swap any single page (answers follow), and answer pages for mazes, dot-to-dots, sudoku, word search, nonograms, spot the difference and kakuro. Or build a booklet page by page: *Edit pages one by one* lists its pages, each with its own pattern, options and complexity, to add, reorder, duplicate (with a new design) or remove.
+- **Projects:** *File → Save project* (Ctrl+S) keeps everything you're making in one `.inkline` file, with the photos inside it, so it opens again later or on another computer even if the original pictures have moved. *File → Open project…* (Ctrl+Shift+O) and *Open recent project* bring it back; the window title shows the project's name and whether it has unsaved changes. `python3 inkline.py book.inkline` starts Inkline with a project open.
 - **Presets:** twenty built-in starting points (start fresh, colouring page, name page, maze worksheet, maze booklet, name maze, word search booklet, sudoku booklet, nonogram booklet, dot-to-dot booklet, spot the difference booklet, kakuro booklet, colour-by-number mandala, halftone photo, engraved photo, stippled photo, colour-by-number photo, photo nonogram, photo colouring page, wall poster) plus your own saved settings.
-- **Picks up where you left off:** settings and the current design are restored on the next start (*Presets → Start fresh* resets them). Shortcuts: Ctrl+P print, Ctrl+S PDF, Ctrl+Shift+S PNG, Ctrl+N new design, Ctrl+Z undo, Ctrl+Shift+Z redo, Ctrl+H undo history, ←/→ booklet pages. Recently opened photos are under *File → Open recent*.
+- **Picks up where you left off:** settings and the current design are restored on the next start (*Presets → Start fresh* resets them). Shortcuts: Ctrl+P print, Ctrl+S save project, Ctrl+Shift+S save project as, Ctrl+E save PDF, Ctrl+Shift+E save PNG, Ctrl+O open image, Ctrl+Shift+O open project, Ctrl+N new design, Ctrl+Z undo, Ctrl+Shift+Z redo, Ctrl+H undo history, ←/→ booklet pages. Recently opened photos are under *File → Open recent image*.
 - **Printer test page:** true-size squares and rulers, edge-margin marks, every dither style and dot size, and every line weight, to check your printer at a glance.
 - **Print-ready output:** Letter or A4 at 150/300 dpi, with Print, Save PNG and Save PDF at true paper size. The preview hatches the edge your printer can't reach and warns if the design runs into it.
 - **Posters:** print any design or photo big across 2×1 up to 4×4 sheets, with overlap strips, trim marks and sheet labels (A1, A2…) for assembly.
@@ -89,8 +90,8 @@ Outputs to `dist/`:
 
 | Path | What it is |
 | --- | --- |
-| `inkline.py` | Starts the app (or `--selftest DIR`) |
-| `inkapp/` | The window: sidebar, preview, menus, saving and printing, presets (Qt Widgets) |
+| `inkline.py` | Starts the app (with a project: `inkline.py FILE.inkline`; or `--selftest DIR`) |
+| `inkapp/` | The window: sidebar, preview, menus, saving and printing, presets, project files (Qt Widgets) |
 | `inkengine/` | The drawing engine: every pattern, photo style, booklet and poster, as PNG, PDF and SVG (also a command line) |
 | `tests/` | Tests for `inkengine/`, with recordings of what Inkline 2.5 drew to match |
 | `inkline.svg`, `icons/` | App icon; regenerate with `python3 packaging/make_icon.py` |
