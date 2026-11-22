@@ -170,6 +170,7 @@ QLabel#dropText {{ color: {t.muted}; font-size: 13px; }}
 QLabel#dropText[named="true"] {{ color: {t.ink}; font-weight: 600; }}
 QLabel#photoName, QLabel#pageName {{ font-size: 12px; }}
 QLabel#pageThumb {{ background: {PAPER_COLOUR}; border: 1px solid {t.line}; }}
+QTextBrowser#whatsNew {{ background: {t.panel}; border: 1px solid {t.line}; border-radius: 6px; padding: 8px; }}
 QToolButton#designOption {{ background: {PAPER_COLOUR}; color: {LIGHT.muted}; border: 1px solid {t.line}; border-radius: 6px; padding: 1px; }}   /* "Drawing…" on white paper, in both themes */
 QToolButton#designOption:hover, QToolButton#designOption:focus {{ border: 2px solid {t.accent}; padding: 0; }}
 

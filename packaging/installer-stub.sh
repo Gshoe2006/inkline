@@ -77,7 +77,7 @@ tail -n +"$LINE" "$0" | tar -xz -C "$TMP"
 
 mkdir -p "$APP" "$BIN" "$DESK" "$ICONS/scalable/apps" "$ICONS/scalable/mimetypes" "$MIME/packages"
 rm -rf "$APP/inkengine" "$APP/inkapp" "$APP/index.html"   # 2.x's page goes; 3.0 is native
-cp "$TMP/inkline.py" "$TMP/inkline.svg" "$TMP/VERSION" "$TMP/LICENSE" "$APP/"
+cp "$TMP/inkline.py" "$TMP/inkline.svg" "$TMP/VERSION" "$TMP/LICENSE" "$TMP/CHANGELOG.md" "$APP/"
 cp -R "$TMP/inkengine" "$TMP/inkapp" "$APP/"
 cp "$TMP/inkline.svg" "$ICONS/scalable/apps/inkline.svg"
 # .inkline projects: their own icon in the file manager, and a double-click opens them in Inkline

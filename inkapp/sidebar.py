@@ -7,7 +7,7 @@ Photo ("Convert a photo"), then Page text, Poster and Paper.
 """
 
 from PySide6.QtCore import QPoint, QSize, Qt, Signal
-from PySide6.QtGui import QPixmap
+from PySide6.QtGui import QKeySequence, QPixmap, QShortcut
 from PySide6.QtWidgets import (QAbstractItemView, QFrame, QHBoxLayout, QLabel, QListWidget, QListWidgetItem,
                                QProgressBar, QScrollArea, QTabBar, QVBoxLayout, QWidget)
 
@@ -53,6 +53,7 @@ class Sidebar(QFrame):
     book_page_copied = Signal(int)
     book_page_removed = Signal(int)
     page_answer = Signal(bool)    # the page being edited: its answer on the answer pages, or not
+    pages_copy = Signal()         # Ctrl+C in the page list: the selected page onto the clipboard
     crop = Signal(str)            # rotl | rotr | reset | zoom | pan
     print_ = Signal()
     save = Signal(str)            # png | pdf | svg
@@ -242,6 +243,8 @@ class Sidebar(QFrame):
         self.page_count_row = self.book_opts.add(_row(self.page_count, self.page_add, stretch_first=True))
         self.page_list = _PageList()
         self.page_list.moved.connect(lambda i, j: self.book_page_moved.emit(i, j - i))
+        copy = QShortcut(QKeySequence.StandardKey.Copy, self.page_list, context=Qt.ShortcutContext.WidgetShortcut)
+        copy.activated.connect(self.pages_copy)
         self.page_list.setObjectName("pageList")
         self.page_list.setAccessibleName("Booklet pages")
         self.page_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
