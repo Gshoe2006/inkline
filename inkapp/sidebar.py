@@ -510,9 +510,11 @@ class Sidebar(QFrame):
         row_h = 60   # two lines: the name doesn't fit beside four buttons in the sidebar's width
         for i, p in enumerate(pl):
             gen = p.get("gen") if p.get("gen") in NAMES else st.settings.gen
-            text = f"{i + 1}. {NAMES[gen]} · {p.get('complexity', cx)}/10"
+            detail = _page_detail(gen, p)
+            text = f"{i + 1}. {NAMES[gen]}{f' · {detail}' if detail else ''} · {p.get('complexity', cx)}/10"
             item = QListWidgetItem()
-            item.setToolTip(text)
+            item.setToolTip(text + (f"\nWords: {p['ws_words']}" if gen == "words" and p.get("ws_theme") == "custom"
+                                    and p.get("ws_words") else ""))
             item.setData(Qt.ItemDataRole.AccessibleTextRole, f"Page {text}")
             item.setSizeHint(QSize(0, row_h))
             lst.addItem(item)
@@ -681,6 +683,18 @@ class Sidebar(QFrame):
 
     def set_status(self, text):
         self.status.setText(text)
+
+
+def _page_detail(gen, p):
+    """What tells a page apart from others of its pattern, for its row: a word search's words, a word maze's word,
+    a name page's name."""
+    if gen == "words":
+        return "Your words" if p.get("ws_theme") == "custom" else words.THEME_NAMES.get(p.get("ws_theme"), "")
+    if gen == "maze" and p.get("maze_shape") == "word":
+        return p.get("maze_word", "").strip()
+    if gen == "name":
+        return p.get("name_text", "").strip()
+    return ""
 
 
 class _PageList(QListWidget):

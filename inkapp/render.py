@@ -83,7 +83,7 @@ def render_view(state):
     """The preview image and its info bar, for whatever the state shows."""
     ensure_app()
     s, v = state.settings, view(state)
-    P = None
+    P, note = None, ""
     if v.kind == "testpage":
         from dataclasses import replace
         from inkengine.testpage import draw_test_page
@@ -121,8 +121,13 @@ def render_view(state):
         spec = v.pages[v.index] if v.pages else single_page(s, state.photo)
         img = _blank(g.W, g.H)
         p = QPainter(img)
-        draw_page(QtCanvas(p, g.W, g.H), g, spec, s)
+        drawn = draw_page(QtCanvas(p, g.W, g.H), g, spec, s)
         p.end()
+        if s.mode == "make" and spec.kind == "design" and spec.gen == "words":
+            # a word search (a single page or a booklet's) says which words didn't fit: its grid doesn't
+            # depend on the drawing's size, so the one just drawn is the one that prints
+            from inkengine.patterns import words
+            note = words.note(drawn) if isinstance(drawn, dict) else ""
     paper = _paper_name(s)
     if v.kind == "testpage":
         info = [[("Printer test page", True), (f" {_num(g.w)} × {_num(g.h)} in", False)],
@@ -137,19 +142,7 @@ def render_view(state):
             info = [[(paper, True), (f" {_num(g.w)} × {_num(g.h)} in", False)],
                     [(str(s.dpi), True), (f" dpi · {pg.W} × {pg.H} px", False)]]
         info.append([("ink coverage ", False), (f"{cov:.1f}%", True)])
-    note = _word_note(s) if s.mode == "make" and s.gen == "words" and v.kind == "page" else ""
     return Rendered(img, v, info, poster=P, scale=PREVIEW_DPI / s.dpi, note=note)
-
-
-def _word_note(s):
-    """What 2.x's word search note says about words left out, for this page's word search."""
-    from inkengine.canvas import RecordingCanvas
-    from inkengine.page import design_box
-    from inkengine.patterns import words
-    from inkengine.rng import mulberry32
-    g = geometry(s)
-    ws = words.draw(RecordingCanvas(), design_box(g, single_page(s), s), mulberry32(s.seed), s.complexity, s, dpi=g.dpi)
-    return words.note(ws)
 
 
 def _blank(w, h):
