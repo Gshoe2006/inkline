@@ -99,3 +99,51 @@ def test_the_button_and_menu_open_it(win, monkeypatch):
     acts = {a.text().replace("&", ""): a for m in win.menuBar().actions() for a in m.menu().actions()}
     acts["More designs…"].trigger()
     assert len(opened) == 2 and acts["More designs…"].shortcut().toString() == "Ctrl+Shift+N"
+
+
+def test_enter_chooses_the_design_with_the_focus(win):
+    from PySide6.QtCore import Qt
+    from PySide6.QtGui import QKeyEvent
+    from PySide6.QtCore import QEvent
+    from inkapp.options import Options
+    dlg = Options(win, *win.design_options())
+    dlg.show()
+    dlg.buttons[2].setFocus()
+    QApplication.instance().processEvents()
+    pick = dlg.seeds[2]
+    QApplication.sendEvent(dlg, QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Return, Qt.KeyboardModifier.NoModifier))
+    assert win.state.settings.seed == pick
+
+
+def test_buttons_say_drawing_until_their_picture_arrives(win):
+    from inkapp.options import Options
+    dlg = Options(win, *win.design_options())
+    assert all(b.text() == "Drawing…" for b in dlg.buttons)
+    _drawn(dlg)
+    assert all(b.text() == "" and not b.icon().isNull() for b in dlg.buttons)
+    from PySide6.QtCore import Qt
+    assert dlg.testAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)   # nothing left behind, drawing
+
+
+def test_a_posters_design_is_shown_on_one_page_and_fold_shows_the_side_in_view(win):
+    _set(win, poster=True, grid="3x2")
+    candidate, _chosen, what = win.design_options()
+    s2, spec = candidate(5)
+    assert not s2.poster and not s2.fold and what == "the poster's design (shown on one page)"
+    _set(win, poster=False, booklet=True, pages=6, mix=True, fold=True)
+    win.step_page(1)                                               # sheet 1's back: pages 2 and 15 (padded)
+    candidate, _chosen, _what = win.design_options()
+    from inkengine import book as bk
+    v_pages = bk.fold_pages(bk.book_pages(win.state.settings))
+    left, right = bk.fold_order(len(v_pages))[win.state.page]
+    first = next(p for p in (v_pages[left], v_pages[right]) if p.kind == "design")
+    assert candidate(9)[1].idx == first.idx
+
+
+def test_new_design_is_one_step_named_so_even_with_swapped_pages(win):
+    _set(win, booklet=True, pages=4)
+    win.state.update(page_seeds={1: 42})
+    win.sidebar.load()
+    win._changed("page_seeds")
+    win.new_design()
+    assert win.history.undoText() == "New design"

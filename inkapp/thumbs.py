@@ -116,6 +116,11 @@ class Thumbnails(QObject):
         if start:
             threading.Thread(target=self._loop, daemon=True).start()
 
+    def cancel(self):
+        """Drop the drawings not started yet (the one being drawn finishes)."""
+        with self._lock:
+            self._queue = []
+
     @property
     def idle(self):
         with self._lock:

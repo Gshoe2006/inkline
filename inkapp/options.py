@@ -16,6 +16,7 @@ from .widgets import Hint, button
 
 COUNT = 6                     # designs shown at once (3 across, 2 down)
 LOOK = thumbs.Look(h=190, dpi=40, thicken=1.3, darken=1.4)   # big enough to judge; lines still read
+FRAME = 16                    # px round each picture inside its button: the edge, and room for the focus ring
 
 
 class Options(QDialog):
@@ -23,6 +24,7 @@ class Options(QDialog):
 
     def __init__(self, parent, candidate, chosen, what):
         super().__init__(parent)
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)   # one at a time: nothing left drawing after closing
         self.setWindowTitle("More designs")
         self.candidate, self.chosen = candidate, chosen
         self.thumbs = thumbs.Thumbnails(LOOK)
@@ -38,7 +40,7 @@ class Options(QDialog):
             b = QToolButton()
             b.setObjectName("designOption")
             b.setIconSize(QSize(LOOK.h, LOOK.h))
-            b.setFixedSize(LOOK.h + 16, LOOK.h + 16)
+            b.setFixedSize(LOOK.h + FRAME, LOOK.h + FRAME)
             b.setAccessibleName(f"Design {i + 1}")
             b.setCursor(Qt.CursorShape.PointingHandCursor)
             b.clicked.connect(lambda _c=False, i=i: self._pick(i))
@@ -51,6 +53,10 @@ class Options(QDialog):
         self.more.clicked.connect(self.reroll)
         cancel = button("Cancel")
         cancel.clicked.connect(self.reject)
+        for b in (self.more, cancel):   # Enter on a design chooses it; it doesn't press these
+            b.setAutoDefault(False)
+            b.setDefault(False)
+        self.finished.connect(lambda _r: self.thumbs.cancel())
         row.addWidget(self.more)
         row.addStretch(1)
         row.addWidget(cancel)
@@ -67,6 +73,8 @@ class Options(QDialog):
             self.keys.append(thumbs.key(s, spec))
             specs.append(spec)
             b.setIcon(QIcon())
+            b.setText("Drawing…")   # until its picture arrives (colour by number takes a moment)
+            b.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
             b.setToolTip(f"seed {seed}")
         self._settings = s
         self.thumbs.request(s, specs)
@@ -76,6 +84,15 @@ class Options(QDialog):
         for b, key in zip(self.buttons, self.keys):
             if key == k and img is not None:
                 b.setIcon(QIcon(QPixmap.fromImage(img)))
+                b.setText("")
+                b.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
+
+    def keyPressEvent(self, e):
+        b = self.focusWidget()
+        if e.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter) and b in self.buttons:
+            b.click()   # Enter, like Space, chooses the design that has the focus
+            return
+        super().keyPressEvent(e)
 
     def _pick(self, i):
         self.chosen(self.seeds[i])
