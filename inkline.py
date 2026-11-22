@@ -44,8 +44,10 @@ def main():
     if len(sys.argv) > 2 and sys.argv[1] == "--selftest":
         from inkapp import selftest
         sys.exit(selftest.main(sys.argv[2]))
-    from inkapp import theme
+    from inkapp import config, theme
     from inkapp.window import Window
+    theme.remember_desktop(app)   # the desktop's own look, for View → Use my desktop's style
+    theme.DESKTOP["on"] = bool(theme.desktop_style_name()) and config.read("preferences.json").get("desktop_style") is True
     theme.apply(app)
     win = Window(app_version())
     win.show()
