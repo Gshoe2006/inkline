@@ -12,7 +12,7 @@ so that stacking the sheets, folding them and stapling the fold puts every page 
 from dataclasses import replace
 
 from .box import Box
-from .page import PAPER, Geometry, PageSpec, draw_page, js_round, page_settings
+from .page import PAGE_ONLY, PAPER, Geometry, PageSpec, draw_page, js_round, page_settings
 from .patterns import HAS_ANSWER, NAMES
 
 # The order a mixed booklet cycles through. Name pages stay out: a booklet shouldn't repeat one word.
@@ -34,7 +34,7 @@ def book_pages(s):
     for i, p in enumerate(s.page_list or []):   # built page by page: each page brings its own settings
         gen = p.get("gen", s.gen)
         gen = gen if gen in NAMES else s.gen
-        opts = {k: v for k, v in p.items() if k not in ("gen", "seed", "complexity")}
+        opts = {k: v for k, v in p.items() if k not in ("gen", "seed", "complexity") + PAGE_ONLY}
         designs.append(PageSpec(kind="design", idx=i, gen=gen, seed=int(p.get("seed", s.seed)) & 0xFFFFFFFF,
                                 c=max(1, min(10, int(p.get("complexity", c)))), title=title, name=s.name_line,
                                 label=f"{NAMES[gen]} {i + 1}", opts=opts))
@@ -52,7 +52,10 @@ def book_pages(s):
                               art_seed=_page_seed(s, "cover", (s.seed ^ 0x5BD1E995) & 0xFFFFFFFF)))
     pages.extend(designs)
     from .cbn import is_cbn_design
-    puzzles = [d for d in designs if d.gen in HAS_ANSWER or is_cbn_design(d.gen, page_settings(s, d))]   # colour by number gets a shaded answer
+    # puzzles, and colour by number (a shaded answer); a page built page by page can leave its answer out
+    puzzles = [d for d in designs if is_cbn_design(d.gen, page_settings(s, d)) or d.gen in HAS_ANSWER]
+    if s.page_list:
+        puzzles = [d for d in puzzles if s.page_list[d.idx].get("answer", True) is not False]
     if s.key:
         for i in range(0, len(puzzles), 4):
             pages.append(PageSpec(kind="answers", header=True, title="Answers", items=puzzles[i:i + 4]))

@@ -230,6 +230,7 @@ class Window(QMainWindow):
         sb.book_page_moved.connect(self._move_book_page)
         sb.book_page_copied.connect(self._copy_book_page)
         sb.book_page_removed.connect(self._remove_book_page)
+        sb.page_answer.connect(self._set_page_answer)
         sb.crop.connect(self._crop)
         sb.print_.connect(self.print_)
         sb.save.connect(self.save)
@@ -419,6 +420,16 @@ class Window(QMainWindow):
         self.sidebar.show_selected_page()
         self.schedule()
         self.remember_soon()   # the remembered settings show the page being edited
+
+    def _set_page_answer(self, on):
+        if self.state.book_page is None:
+            return
+        self._step_name = "Include its answer" if on else "Leave its answer out"
+        self.state.write_page(answer=on)
+        self.sidebar.fill_pages()
+        self.sidebar.sync()
+        self.schedule()
+        self.remember_soon()
 
     def _add_book_page(self):
         pl = self.state.settings.page_list

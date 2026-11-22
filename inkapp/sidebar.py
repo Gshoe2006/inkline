@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QFrame, QHBoxLayout, QLabel, Q
                                QProgressBar, QScrollArea, QTabBar, QVBoxLayout, QWidget)
 
 from inkengine import book, cbn, photo
+from inkengine.page import PAGE_KEYS, has_answer
 from inkengine.patterns import NAMES, maze, name, spot, words
 
 from . import theme, thumbs
@@ -50,6 +51,7 @@ class Sidebar(QFrame):
     book_page_moved = Signal(int, int)
     book_page_copied = Signal(int)
     book_page_removed = Signal(int)
+    page_answer = Signal(bool)    # the page being edited: its answer on the answer pages, or not
     crop = Signal(str)            # rotl | rotr | reset | zoom | pan
     print_ = Signal()
     save = Signal(str)            # png | pdf | svg
@@ -203,6 +205,10 @@ class Sidebar(QFrame):
         self.cbn_opts.add(self._slider("cbn_colours", "Colours", 3, 12))
         self.cbn_note = self.cbn_opts.add(Hint(CBN_PATTERN_NOTE))
         sec.add(self.cbn_opts)
+        # a booklet built page by page: this page's solution on the answer pages (shown for puzzles and colour by number)
+        self.page_answer_check = check("Include its answer in the answer pages")
+        self.page_answer_check.toggled.connect(lambda on: None if self._loading else self.page_answer.emit(on))
+        sec.add(self.page_answer_check)
         self.seed = label("", "seed")
         new = button("New design", "primary", "New design (Ctrl+N)")
         new.setObjectName("newDesign")
@@ -512,6 +518,8 @@ class Sidebar(QFrame):
             gen = p.get("gen") if p.get("gen") in NAMES else st.settings.gen
             detail = _page_detail(gen, p)
             text = f"{i + 1}. {NAMES[gen]}{f' · {detail}' if detail else ''} · {p.get('complexity', cx)}/10"
+            if p.get("answer", True) is False and st.settings.key and has_answer(gen, page_settings(st.settings, p)):
+                text += " · no answer"
             item = QListWidgetItem()
             item.setToolTip(text + (f"\nWords: {p['ws_words']}" if gen == "words" and p.get("ws_theme") == "custom"
                                     and p.get("ws_words") else ""))
@@ -621,6 +629,12 @@ class Sidebar(QFrame):
         page = self.state.book_page if listing else None
         self.seed.setText(f"seed {page.get('seed', s.seed) if page else s.seed}")
         self.design_note.setVisible(page is not None)
+        answers = page is not None and s.key and has_answer(s.gen, s)
+        self.page_answer_check.setVisible(answers)
+        if answers:
+            was, self._loading = self._loading, True
+            self.page_answer_check.setChecked(page.get("answer", True) is not False)
+            self._loading = was
         if page is not None:
             self.design_note.setText(f"Editing page {self.state.book_sel + 1} of {len(s.page_list)} of the booklet. "
                                      "Line weight and border apply to every page.")
@@ -683,6 +697,12 @@ class Sidebar(QFrame):
 
     def set_status(self, text):
         self.status.setText(text)
+
+
+def page_settings(s, p):
+    """The settings a page of page_list is drawn with (its own on top of the booklet's)."""
+    from dataclasses import replace
+    return replace(s, **{k: p[k] for k in PAGE_KEYS if k in p})
 
 
 def _page_detail(gen, p):
