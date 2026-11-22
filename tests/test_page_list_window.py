@@ -258,3 +258,59 @@ def test_fold_and_staple_pages_are_half_sheets(win):
     _set(win, fold=True)                       # half a landscape sheet: a portrait page, whatever the orientation
     _thumbs_done(win)
     assert _thumb(win, 0).width() < _thumb(win, 0).height() == thumbs.THUMB_H
+
+
+def test_dragging_a_page_moves_it_any_distance(win):
+    _booklet(win)
+    sb, h = win.sidebar, win.history
+    pl0 = list(win.state.settings.page_list)
+    sb.book_page_selected.emit(1)
+    lst = sb.page_list
+    assert lst.count() == 6                                # choosing a page doesn't rebuild the list (a drag goes on)
+    lst.setCurrentRow(5)
+    lst.moved.emit(5, 0)                                   # dropped at the top
+    pl = win.state.settings.page_list
+    assert pl == [pl0[5]] + pl0[:5] and h.undoText() == "Move page"
+    assert win.state.book_sel == 0 and lst.currentRow() == 0   # the dragged page is the one being edited
+    h.undo()
+    assert win.state.settings.page_list == pl0
+
+
+def test_where_a_drop_lands(win):
+    _booklet(win)
+    lst = win.sidebar.page_list
+    lst.show()
+    r0, r2 = lst.visualRect(lst.model().index(0, 0)), lst.visualRect(lst.model().index(2, 0))
+    assert lst.drop_row(r0.top() + 2) == 0 and lst.drop_row(r0.bottom() - 2) == 1
+    assert lst.drop_row(r2.center().y() + 3) == 3
+    assert lst.drop_row(10000) == lst.count()
+
+
+def test_a_drop_on_its_own_place_changes_nothing(win):
+    _booklet(win)
+    lst, n = win.sidebar.page_list, win.history.count()
+    got = []
+    lst.moved.connect(lambda i, j: got.append((i, j)))
+    lst.setCurrentRow(2)
+    for dst in (2, 3):                                     # just above or just below itself
+        to = dst - 1 if dst > 2 else dst
+        if to != 2:
+            lst.moved.emit(2, to)
+    assert got == [] and win.history.count() == n
+
+
+def test_a_real_drop_event_moves_the_page(win):
+    from PySide6.QtCore import QPointF, Qt
+    from PySide6.QtGui import QDropEvent
+    _booklet(win)
+    lst = win.sidebar.page_list
+    lst.show()
+    pl0 = list(win.state.settings.page_list)
+    lst.setCurrentRow(0)
+    data = lst.model().mimeData([lst.model().index(0, 0)])
+    below_row_3 = lst.visualRect(lst.model().index(3, 0)).bottom() - 2
+    e = QDropEvent(QPointF(20, below_row_3), Qt.DropAction.MoveAction, data, Qt.MouseButton.LeftButton,
+                   Qt.KeyboardModifier.NoModifier)
+    lst.dropEvent(e)
+    assert win.state.settings.page_list == pl0[1:4] + [pl0[0]] + pl0[4:]
+    assert lst.count() == 6 and lst.currentRow() == 3     # filled again from the settings, the page still selected

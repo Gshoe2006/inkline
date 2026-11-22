@@ -406,8 +406,13 @@ class Window(QMainWindow):
     def _select_book_page(self, i):
         if not self._listing() or i == self.state.book_sel:
             return
-        self.state.book_sel = i
-        self._list_changed()   # not an edit: the undo history doesn't change
+        self.state.book_sel = i   # not an edit: the undo history doesn't change
+        self.state.mirror()
+        self._show_book_page()
+        # the list isn't filled again, so a drag that starts with this click goes on
+        self.sidebar.load()
+        self.sidebar.show_selected_page()
+        self.schedule()
 
     def _add_book_page(self):
         pl = self.state.settings.page_list
@@ -428,15 +433,17 @@ class Window(QMainWindow):
         self._list_changed()
 
     def _move_book_page(self, i, d):
+        """Move page i by d places (↑ ↓ are ±1; a drag can be any distance)."""
         pl = list(self.state.settings.page_list)
         j = i + d
-        if not 0 <= j < len(pl):
+        if d == 0 or not (0 <= i < len(pl) and 0 <= j < len(pl)):
             return
-        pl[i], pl[j] = pl[j], pl[i]
+        order = list(range(len(pl)))
+        order.insert(j, order.pop(i))
         self._step_name = "Move page"
-        self.state.update(page_list=pl)
-        sel = self.state.book_sel
-        self.state.book_sel = j if sel == i else i if sel == j else sel   # the page being edited stays selected
+        self.state.update(page_list=[pl[k] for k in order])
+        old = max(0, min(self.state.book_sel, len(pl) - 1))
+        self.state.book_sel = order.index(old)   # the page being edited stays selected, wherever it went
         self._list_changed()
 
     def _remove_book_page(self, i):

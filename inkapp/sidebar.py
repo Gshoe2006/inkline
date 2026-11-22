@@ -6,10 +6,10 @@ defaults are 2.x's. The sections, in 2.x's order: Presets, then Design and Bookl
 Photo ("Convert a photo"), then Page text, Poster and Paper.
 """
 
-from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtCore import QPoint, QSize, Qt, Signal
 from PySide6.QtGui import QPixmap
-from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QListWidget, QListWidgetItem, QProgressBar,
-                               QScrollArea, QTabBar, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QAbstractItemView, QFrame, QHBoxLayout, QLabel, QListWidget, QListWidgetItem,
+                               QProgressBar, QScrollArea, QTabBar, QVBoxLayout, QWidget)
 
 from inkengine import book, cbn, photo
 from inkengine.patterns import NAMES, maze, name, spot, words
@@ -229,14 +229,15 @@ class Sidebar(QFrame):
         self.page_add = button("Add page", "mini", "Add a page like the last one, with a new design")
         self.page_add.clicked.connect(self.book_page_added)
         self.page_count_row = self.book_opts.add(_row(self.page_count, self.page_add, stretch_first=True))
-        self.page_list = QListWidget()
+        self.page_list = _PageList()
+        self.page_list.moved.connect(lambda i, j: self.book_page_moved.emit(i, j - i))
         self.page_list.setObjectName("pageList")
         self.page_list.setAccessibleName("Booklet pages")
         self.page_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.page_list.currentRowChanged.connect(lambda i: None if self._loading or i < 0 else self.book_page_selected.emit(i))
         self.book_opts.add(self.page_list)
-        self.page_list_hint = self.book_opts.add(Hint("Click a page to change it in Design above. Line weight, border, "
-                                                      "title and paper apply to every page."))
+        self.page_list_hint = self.book_opts.add(Hint("Click a page to change it in Design above, or drag it to move it. "
+                                                      "Line weight, border, title and paper apply to every page."))
         self.book_opts.add(self._check("cover", "Cover page"))
         self.book_opts.add(self._check("page_nums", "Page numbers"))
         self.book_opts.add(self._check("key", "Answer pages for puzzles (mazes, dot-to-dots, sudoku, word search, nonograms) "
@@ -561,6 +562,13 @@ class Sidebar(QFrame):
                                  "Add a page like the last one, with a new design")
         self._loading = False
 
+    def show_selected_page(self):
+        """Highlight the page being edited, without filling the list again (a drag may be starting on it)."""
+        if self.page_list.currentRow() != self.state.book_sel:
+            was, self._loading = self._loading, True
+            self.page_list.setCurrentRow(self.state.book_sel)
+            self._loading = was
+
     def refresh_thumbs(self):
         """Each row's picture of its page: from the cache, or a blank page until it's drawn in the background."""
         st = self.state
@@ -673,6 +681,35 @@ class Sidebar(QFrame):
 
     def set_status(self, text):
         self.status.setText(text)
+
+
+class _PageList(QListWidget):
+    """The booklet's page list: drag a page to move it. The drop only says where it went (moved); the window
+    makes the change, as an undo step, and the list is filled again from the settings."""
+
+    moved = Signal(int, int)   # (from, to): the page's row before, and after
+
+    def __init__(self):
+        super().__init__()
+        self.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
+        self.setDefaultDropAction(Qt.DropAction.MoveAction)
+        self.setDropIndicatorShown(True)
+
+    def drop_row(self, y):
+        """Where a page dropped at y (viewport pixels) lands, as a row in the list before the move."""
+        idx = self.indexAt(QPoint(10, int(y)))
+        if not idx.isValid():
+            return self.count() if y > 0 else 0
+        r = self.visualRect(idx)
+        return idx.row() + (1 if y > r.center().y() else 0)
+
+    def dropEvent(self, e):
+        src, dst = self.currentRow(), self.drop_row(e.position().y())
+        e.setDropAction(Qt.DropAction.IgnoreAction)   # the list isn't changed here: it's filled again
+        e.accept()
+        to = dst - 1 if dst > src else dst
+        if src >= 0 and to != src:
+            self.moved.emit(src, to)
 
 
 class _Elided(QLabel):
