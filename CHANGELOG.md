@@ -6,6 +6,47 @@ To release a new version, add a section headed `## <version>` (the same text as 
 pull request that bumps `VERSION`. When it merges, `.github/workflows/release.yml` builds the packages
 and publishes a GitHub Release with that section as its notes.
 
+## 4.5.0 - 2026-11-22
+
+Inkline 4.5 lets you reuse pages between booklets, and tells you what's new after an update.
+
+### What's new
+
+- **Copy and paste booklet pages.** In a booklet built page by page, press Ctrl+C in the page list, or choose **Edit → Copy page**, to copy the selected page; **Edit → Copy all pages** copies them all. Then press Ctrl+V, or **Edit → Paste**, in this booklet or another Inkline window's: the pages go after the selected page, exactly as copied (same designs, same words), as one Undo step. A booklet still holds up to 40 design pages. A picture on the clipboard still pastes as a photo.
+- **What's new after an update.** From the next update on, the first start of a new version shows what changed since the version you used last. **Help → What's new** shows it any time.
+
+### Good to know
+
+- **Copied pages paste while Inkline is open.** When you close Inkline, pages it copied stay on the clipboard as a plain list of their names.
+
+### Fixed
+
+- Inkline could crash as it quit after something had been copied to the clipboard.
+
+### Upgrading
+
+Nothing changes in what Inkline needs: Python 3 with PySide6 and numpy. Your presets, settings, projects, recent files and printer carry over.
+
+**Arch / CachyOS / Manjaro**
+```sh
+sudo pacman -U inkline-4.5.0-1-any.pkg.tar.zst
+```
+
+**Any other distro**
+```sh
+sh inkline-4.5.0.run            # or --system for every user
+```
+
+**Flatpak**
+```sh
+flatpak install --user inkline-4.5.0.flatpak     # if a .flatpak file is attached to this release
+sh packaging/flatpak/build.sh                    # or build it from a copy of the source
+```
+
+### Found a problem?
+
+Please open an issue saying what you did, what you expected, and what happened. Include your distro, and the printer if it's about printing.
+
 ## 4.4.0 - 2026-11-22
 
 Inkline 4.4 lets you choose a design from several, instead of trying New design one guess at a time.
