@@ -175,3 +175,63 @@ def test_the_design_section_leaves_the_pages_alone_while_the_booklet_isnt_made(w
     _set(win, poster=False, booklet=True)
     assert win.state.settings.gen == pl0[0]["gen"] and win.state.settings.complexity == pl0[0]["complexity"]
     assert win.history.undoText() != ""
+
+
+def _thumbs_done(w, ms=8000):
+    app = QApplication.instance()
+    end = time.time() + ms / 1000
+    while time.time() < end and not w.sidebar.thumbs.idle:
+        app.processEvents()
+        time.sleep(0.01)
+    _wait(app, 50)
+
+
+def _thumb(w, i):
+    return w.sidebar._thumb_rows[i].pixmap()
+
+
+def test_each_row_shows_its_own_page(win):
+    _booklet(win)
+    _thumbs_done(win)
+    from inkapp import thumbs
+    pix = [_thumb(win, i) for i in range(6)]
+    assert all(not p.isNull() for p in pix)
+    w, h = thumbs.thumb_size(win.state.settings)
+    assert (pix[0].width(), pix[0].height()) == (w, h) and h == thumbs.THUMB_H and w < h   # a portrait page
+    assert len({p.toImage().bits().tobytes() for p in pix}) == 6                         # six different pictures
+    first = pix[0].toImage()
+    win.sidebar.book_page_moved.emit(0, 1)                    # moved: the picture moves with it, from the cache
+    assert win.sidebar.thumbs.idle and _thumb(win, 1).toImage() == first
+
+
+def test_a_change_draws_that_page_again(win):
+    _booklet(win)
+    _thumbs_done(win)
+    before = [_thumb(win, i).toImage() for i in range(6)]
+    win.sidebar.book_page_selected.emit(2)
+    win.new_design()
+    _thumbs_done(win)
+    after = [_thumb(win, i).toImage() for i in range(6)]
+    assert after[2] != before[2] and [a for i, a in enumerate(after) if i != 2] == [b for i, b in enumerate(before) if i != 2]
+    _set(win, frame=True)                                     # the booklet's border is drawn on every page
+    _thumbs_done(win)
+    assert all(_thumb(win, i).toImage() != after[i] for i in range(6))
+    _set(win, orient="landscape")
+    _thumbs_done(win)
+    assert _thumb(win, 0).width() > _thumb(win, 0).height()
+
+
+def test_thumbnails_are_darker_than_the_page_scaled_down(monkeypatch):
+    from inkapp import thumbs
+    import numpy as np
+    from inkengine.page import Settings
+
+    def ink(img):
+        a = np.frombuffer(img.constBits(), np.uint8, img.sizeInBytes()).reshape(img.height(), img.bytesPerLine())
+        return 255 - a[:, :img.width()].mean()
+    s = Settings(booklet=True, page_list=[{"gen": "truchet", "seed": 1, "complexity": 3}])
+    spec = [p for p in book.book_pages(s) if p.kind == "design"][0]
+    shown = ink(thumbs.draw(s, spec))
+    monkeypatch.setattr(thumbs, "THICKEN", 1)
+    monkeypatch.setattr(thumbs, "DARKEN", 1)
+    assert shown > 2 * ink(thumbs.draw(s, spec))   # thin lines show as more than a faint grey

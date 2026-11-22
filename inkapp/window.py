@@ -43,7 +43,8 @@ STEP_NAMES = {"gen": "Pattern", "complexity": "Complexity", "weight": "Line weig
               "ppage_nums": "Page numbers", "title": "Title", "name_line": "Name line", "poster": "Poster", "grid": "Sheets",
               "overlap": "Overlap", "testpage": "Printer test page", "fold": "Fold-and-staple", "paper": "Paper size",
               "orient": "Orientation", "margin": "Margin", "dpi": "Resolution", "page_list": "Pages"}
-MERGE_SECONDS = 1.5   # changes to the same thing this close together (a slider drag, typing) are one step
+MERGE_SECONDS = 1.5
+BOOKLET_LOOK = ("weight", "frame", "title", "name_line", "paper", "orient", "margin")   # drawn on every page   # changes to the same thing this close together (a slider drag, typing) are one step
 
 
 class _Snapshot:
@@ -314,6 +315,8 @@ class Window(QMainWindow):
         if st.book_page is not None and key in PAGE_KEYS and key != "seed":
             st.write_page(**{key: getattr(st.settings, key)})   # the Design section edits the selected page
             self.sidebar.fill_pages()
+        elif st.listing and key in BOOKLET_LOOK:
+            self.sidebar.refresh_thumbs()   # every page's picture shows the booklet's line weight, border and paper
         if key in ("booklet", "poster", "photobook"):
             st.mirror()   # back to a booklet built page by page: Design shows the page being edited again
             self.sidebar.load()
