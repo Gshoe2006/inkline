@@ -314,3 +314,13 @@ def test_a_real_drop_event_moves_the_page(win):
     lst.dropEvent(e)
     assert win.state.settings.page_list == pl0[1:4] + [pl0[0]] + pl0[4:]
     assert lst.count() == 6 and lst.currentRow() == 3     # filled again from the settings, the page still selected
+
+
+def test_undo_shows_the_page_the_list_highlights(win):
+    _booklet(win)
+    win.sidebar.book_page_selected.emit(0)
+    _set(win, complexity=9)                      # an edit to page 1
+    win.sidebar.book_page_selected.emit(4)       # then look at page 5
+    win.history.undo()
+    assert win.state.book_sel == 0 and win.sidebar.page_list.currentRow() == 0
+    assert win.state.page == 1                   # the preview turned back to page 1 (after the cover)

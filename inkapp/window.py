@@ -413,6 +413,7 @@ class Window(QMainWindow):
         self.sidebar.load()
         self.sidebar.show_selected_page()
         self.schedule()
+        self.remember_soon()   # the remembered settings show the page being edited
 
     def _add_book_page(self):
         pl = self.state.settings.page_list
@@ -866,6 +867,8 @@ class Window(QMainWindow):
             st.sel = max(0, min(snap.sel, len(st.photos) - 1))
             st.book_sel = snap.book_sel
             st.mirror()
+            if st.listing:
+                self._show_book_page()   # the preview shows the page the list highlights
             self._last = _Snapshot(st)
             self.sidebar.load()
             self.sidebar.fill_photos()
