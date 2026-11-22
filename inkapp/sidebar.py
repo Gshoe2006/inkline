@@ -35,6 +35,7 @@ MARGINS = [(0.25, "¼ in"), (0.5, "½ in"), (0.75, "¾ in"), (1.0, "1 in")]   # 
 class Sidebar(QFrame):
     changed = Signal(str)         # a setting changed (its name): draw again and remember
     reroll = Signal()             # New design
+    more_designs = Signal()       # More designs…: several to choose from
     page_step = Signal(int)       # the pager: -1 or +1
     swap_page = Signal(bool)      # New design for this page (True) / Back to original (False)
     open_images = Signal(bool)    # Open image… (False) / Add photos… (True)
@@ -215,6 +216,10 @@ class Sidebar(QFrame):
         new.clicked.connect(self.reroll)
         self.new_design = new
         sec.add(_row(self.seed, new, stretch_first=True))
+        more = button("More designs…", "mini", "Choose from six designs (Ctrl+Shift+N)")
+        more.clicked.connect(self.more_designs)
+        self.more_btn = more
+        sec.add(_tools(more))
         mk.addWidget(sec)
 
         # Make one up: Booklet

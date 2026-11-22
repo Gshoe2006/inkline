@@ -214,6 +214,7 @@ class Window(QMainWindow):
         sb.changed.connect(self._changed)
         sb.mode_changed.connect(self._set_mode)
         sb.reroll.connect(self.new_design)
+        sb.more_designs.connect(self.more_designs)
         sb.page_step.connect(self.step_page)
         sb.swap_page.connect(self._swap_page)
         sb.open_images.connect(self.open_images)
@@ -287,6 +288,7 @@ class Window(QMainWindow):
         act(e, "&History…", self.show_history, "Ctrl+H")
         v = mb.addMenu("&View")
         act(v, "&New design", self.new_design, "Ctrl+N")
+        act(v, "&More designs…", self.more_designs, "Ctrl+Shift+N")
         act(v, "Pre&vious page\t←", lambda: self.step_page(-1))
         act(v, "Ne&xt page\t→", lambda: self.step_page(1))
         v.addSeparator()
@@ -372,7 +374,60 @@ class Window(QMainWindow):
             self.sidebar.fill_pages()
         else:
             self.state.update(seed=new_seed(), page_seeds={})   # a fresh booklet drops any swapped pages
+        self._step_name = "New design"   # however many settings that changed
         self._changed("seed")
+
+    def design_options(self):
+        """What More designs… offers, for whatever New design would change: (candidate(seed) -> (settings,
+        spec), chosen(seed), what it changes), or None outside Make one up."""
+        st = self.state
+        s = st.settings
+        if s.mode != "make":
+            return None
+        if self._listing():   # a booklet built page by page: the page being edited
+            designs = [p for p in book.book_pages(s) if p.kind == "design"]
+            i = max(0, min(st.book_sel, len(designs) - 1))
+            spec = designs[i]
+
+            def chosen(seed):
+                st.write_page(seed=seed)
+                self.sidebar.fill_pages()
+                self._step_name = "New design"
+                self._changed("seed")
+            return (lambda seed: (s, replace(spec, seed=seed))), chosen, f"page {i + 1}"
+        if s.booklet and not s.poster:   # a quick booklet: its seed, seen on the design page shown
+            v = view(st)
+            if v.kind == "fold" and v.pages:   # a folded side: the first design page on it
+                shown = [v.pages[k] for k in book.fold_order(len(v.pages))[v.index]]
+            else:
+                shown = [v.pages[v.index]] if v.kind == "booklet" and v.pages else []
+            i = next((p.idx for p in shown if p.kind == "design"), 0)
+
+            def candidate(seed):
+                s2 = replace(s, seed=seed, page_seeds={})
+                return s2, [d for d in book.book_pages(s2) if d.kind == "design"][i]
+
+            def chosen(seed):
+                st.update(seed=seed, page_seeds={})
+                self._step_name = "New design"
+                self._changed("seed")
+            return candidate, chosen, f"the whole booklet (each shows page {i + 1 + (1 if s.cover else 0)})"
+
+        def chosen(seed):
+            st.update(seed=seed, page_seeds={})   # as New design does
+            self._step_name = "New design"
+            self._changed("seed")
+        # a single page, or a poster's design, shown on one page (a poster's sheets would be too small to judge)
+        one = replace(s, poster=False, fold=False, booklet=False)
+        return (lambda seed: (replace(one, seed=seed), single_page(replace(one, seed=seed)))), chosen, \
+            "the poster's design (shown on one page)" if s.poster else "this page"
+
+    def more_designs(self):
+        offer = self.design_options()
+        if offer is None:
+            return
+        from .options import Options
+        Options(self, *offer).exec()
 
     # --- a booklet built page by page -----------------------------------------------------------------------
     def _listing(self):
