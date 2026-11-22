@@ -408,3 +408,41 @@ def test_rows_follow_the_answer_pages_switch_and_new_pages_have_their_answer(win
     assert "answer" not in win.state.settings.page_list[2]
     win.sidebar.book_page_copied.emit(1)                   # a copy keeps the page as it is
     assert win.state.settings.page_list[2]["answer"] is False
+
+
+def test_keys_in_the_page_list_do_what_the_row_buttons_do(win):
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    _booklet(win)                                          # 6 pages
+    lst, h = win.sidebar.page_list, win.history
+    lst.setFocus()
+    win.sidebar.book_page_selected.emit(2)
+    pl0 = list(win.state.settings.page_list)
+    QTest.keyClick(lst, Qt.Key.Key_Down, Qt.KeyboardModifier.AltModifier)
+    assert win.state.settings.page_list[3] == pl0[2] and win.state.book_sel == 3 and h.undoText() == "Move page"
+    QTest.keyClick(lst, Qt.Key.Key_Up, Qt.KeyboardModifier.AltModifier)
+    QTest.keyClick(lst, Qt.Key.Key_Up, Qt.KeyboardModifier.AltModifier)
+    assert win.state.settings.page_list[1] == pl0[2] and win.state.book_sel == 1      # again and again
+    QTest.keyClick(lst, Qt.Key.Key_D, Qt.KeyboardModifier.ControlModifier)
+    pl = win.state.settings.page_list
+    assert len(pl) == 7 and pl[2]["gen"] == pl[1]["gen"] and h.undoText() == "Duplicate page"
+    QTest.keyClick(lst, Qt.Key.Key_Delete)
+    assert len(win.state.settings.page_list) == 6 and h.undoText() == "Remove page"
+    win.sidebar.book_page_selected.emit(0)
+    before, steps = list(win.state.settings.page_list), h.count()
+    QTest.keyClick(lst, Qt.Key.Key_Up, Qt.KeyboardModifier.AltModifier)              # the first can't go up
+    assert win.state.settings.page_list == before and h.count() == steps
+    tips = [b.toolTip() for b in lst.itemWidget(lst.item(0)).findChildren(type(win.sidebar.page_add))]
+    assert tips == ["Move up (Alt+↑)", "Move down (Alt+↓)", "Duplicate with a new design (Ctrl+D)", "Remove (Delete)"]
+
+
+def test_delete_never_removes_the_last_page(win):
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    _set(win, gen="maze", booklet=True, pages=2, mix=False, ramp=False)
+    win.sidebar.pages_edit.emit(True)
+    lst = win.sidebar.page_list
+    lst.setFocus()
+    QTest.keyClick(lst, Qt.Key.Key_Delete)
+    QTest.keyClick(lst, Qt.Key.Key_Delete)
+    assert len(win.state.settings.page_list) == 1

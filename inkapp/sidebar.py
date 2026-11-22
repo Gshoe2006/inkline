@@ -243,8 +243,14 @@ class Sidebar(QFrame):
         self.page_count_row = self.book_opts.add(_row(self.page_count, self.page_add, stretch_first=True))
         self.page_list = _PageList()
         self.page_list.moved.connect(lambda i, j: self.book_page_moved.emit(i, j - i))
-        copy = QShortcut(QKeySequence.StandardKey.Copy, self.page_list, context=Qt.ShortcutContext.WidgetShortcut)
-        copy.activated.connect(self.pages_copy)
+        # with the page list focused, the selected page: copy, remove, duplicate, move (as its row's buttons do)
+        keys = ((QKeySequence.StandardKey.Copy, self.pages_copy),
+                (QKeySequence(Qt.Key.Key_Delete), lambda: self._page_key("remove")),
+                (QKeySequence("Ctrl+D"), lambda: self._page_key("copy")),
+                (QKeySequence("Alt+Up"), lambda: self._page_key("up")),
+                (QKeySequence("Alt+Down"), lambda: self._page_key("down")))
+        for key, fn in keys:
+            QShortcut(key, self.page_list, context=Qt.ShortcutContext.WidgetShortcut).activated.connect(fn)
         self.page_list.setObjectName("pageList")
         self.page_list.setAccessibleName("Booklet pages")
         self.page_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -581,11 +587,12 @@ class Sidebar(QFrame):
             right.addLayout(btns)
             rl.addLayout(right, 1)
             full = len(pl) >= MAX_BOOK_PAGES
-            for txt, tip, fn, off in (("↑", "Move up", lambda _c=False, i=i: self.book_page_moved.emit(i, -1), i == 0),
-                                      ("↓", "Move down", lambda _c=False, i=i: self.book_page_moved.emit(i, 1), i == len(pl) - 1),
-                                      ("⧉", "Duplicate with a new design", lambda _c=False, i=i: self.book_page_copied.emit(i), full),
-                                      ("✕", "Remove", lambda _c=False, i=i: self.book_page_removed.emit(i), len(pl) < 2)):
-                b = button(txt, "mini", tip)
+            for txt, tip, key, fn, off in (
+                    ("↑", "Move up", "Alt+↑", lambda _c=False, i=i: self.book_page_moved.emit(i, -1), i == 0),
+                    ("↓", "Move down", "Alt+↓", lambda _c=False, i=i: self.book_page_moved.emit(i, 1), i == len(pl) - 1),
+                    ("⧉", "Duplicate with a new design", "Ctrl+D", lambda _c=False, i=i: self.book_page_copied.emit(i), full),
+                    ("✕", "Remove", "Delete", lambda _c=False, i=i: self.book_page_removed.emit(i), len(pl) < 2)):
+                b = button(txt, "mini", f"{tip} ({key})")
                 b.setAccessibleName(tip)
                 b.setEnabled(not off)
                 b.clicked.connect(fn)
@@ -601,6 +608,22 @@ class Sidebar(QFrame):
         self.page_add.setToolTip(f"A booklet has at most {MAX_BOOK_PAGES} design pages" if n >= MAX_BOOK_PAGES else
                                  "Add a page like the last one, with a new design")
         self._loading = False
+
+    def _page_key(self, what):
+        """A page-list shortcut on the selected page: whatever its row's button would do (and nothing where that
+        button is off: the first page can't move up, the last page can't be removed)."""
+        pl, i = self.state.settings.page_list or [], self.page_list.currentRow()
+        if not self.state.listing or not 0 <= i < len(pl):
+            return
+        if what == "up" and i > 0:
+            self.book_page_moved.emit(i, -1)
+        elif what == "down" and i < len(pl) - 1:
+            self.book_page_moved.emit(i, 1)
+        elif what == "copy" and len(pl) < MAX_BOOK_PAGES:
+            self.book_page_copied.emit(i)
+        elif what == "remove" and len(pl) > 1:
+            self.book_page_removed.emit(i)
+        self.page_list.setFocus()   # the list is filled again: keep the keys working on the page that moved
 
     def show_selected_page(self):
         """Highlight the page being edited, without filling the list again (a drag may be starting on it)."""
