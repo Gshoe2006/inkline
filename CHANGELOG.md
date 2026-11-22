@@ -6,6 +6,48 @@ To release a new version, add a section headed `## <version>` (the same text as 
 pull request that bumps `VERSION`. When it merges, `.github/workflows/release.yml` builds the packages
 and publishes a GitHub Release with that section as its notes.
 
+## 4.6.1 - 2026-11-22
+
+Inkline 4.6.1 lets you edit a booklet's page list from the keyboard.
+
+### What's new
+
+- **Keys for the page list.** In a booklet built page by page, with the page list selected: **Delete** removes the selected page, **Ctrl+D** duplicates it with a new design, and **Alt+↑** / **Alt+↓** move it. They do just what the page's buttons do, each as one Undo step, and nothing where a button would be greyed out (the first page can't move up, the last page can't be removed). The buttons' tooltips name their keys, and after clicking one the keys keep working.
+
+### Upgrading
+
+Nothing changes in what Inkline needs. Your presets, settings, projects, recent files and printer carry over.
+
+**Debian / Ubuntu / Linux Mint / Pop!_OS**
+```sh
+sudo apt install ./inkline_4.6.1-1_amd64.deb
+```
+
+**Arch / CachyOS / Manjaro**
+```sh
+sudo pacman -U inkline-4.6.1-1-any.pkg.tar.zst
+```
+
+**Any distro, nothing installed**
+```sh
+chmod +x inkline-4.6.1-x86_64.AppImage && ./inkline-4.6.1-x86_64.AppImage
+```
+
+**Any other distro**
+```sh
+sh inkline-4.6.1.run            # or --system for every user
+```
+
+**Flatpak**
+```sh
+flatpak install --user inkline-4.6.1.flatpak     # if a .flatpak file is attached to this release
+sh packaging/flatpak/build.sh                    # or build it from a copy of the source
+```
+
+### Found a problem?
+
+Please open an issue saying what you did, what you expected, and what happened. Include your distro, and the printer if it's about printing.
+
 ## 4.6.0 - 2026-11-22
 
 Inkline 4.6 comes in two new packages: a `.deb` for Debian and Ubuntu, and an AppImage that runs on almost any Linux system without installing anything.
