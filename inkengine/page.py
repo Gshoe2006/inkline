@@ -6,7 +6,7 @@ SVG and printing all lay a page out the same way.
 
 import math
 import re
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass, field, fields, replace
 
 from .box import Box
 from .patterns import GENERATORS, HAS_ANSWER, NAMES
@@ -65,6 +65,8 @@ class Settings:
     key: bool = True             # answer pages for the puzzles
     fold: bool = False           # print as a fold-and-staple book: two half-size pages per side
     page_seeds: dict = field(default_factory=dict)   # pages swapped for a new design: {index or "cover": seed}
+    # a booklet built page by page: each a dict of PAGE_KEYS; empty means generate it from pages/ramp/mix
+    page_list: list = field(default_factory=list)
     # posters (poster.py)
     poster: bool = False
     grid: str = "2x2"            # sheets across x down: 2x2, 3x3, 4x4, 2x1, 3x2, 1x2, 2x3
@@ -99,12 +101,37 @@ class Settings:
             k = re.sub(r"(?<!^)([A-Z])", r"_\1", k).lower()
             if k == "page_seeds" and isinstance(v, dict):
                 out[k] = v
+            elif k == "page_list" and isinstance(v, list):
+                out[k] = [clean_page(p, types) for p in v if isinstance(p, dict)]
             elif k in types:
                 out[k] = _coerce(v, types[k])   # 2.x's form stores everything as text: "5", "0.25", "true"
         return cls(**{k: v for k, v in out.items() if v is not None})
 
     def to_dict(self):
         return {f.name: getattr(self, f.name) for f in fields(self)}
+
+
+# What each page of a booklet built page by page keeps for itself; the rest is the booklet's.
+PAGE_KEYS = ("gen", "seed", "complexity", "cbn", "cbn_colours", "maze_shape", "maze_word", "ws_theme", "ws_words",
+             "name_text", "name_bg", "spot_base")
+
+
+def clean_page(p, types=None):
+    """A page_list entry with only PAGE_KEYS, each of the right type (as read from a file)."""
+    if types is None:
+        types = {f.name: type(f.default) for f in fields(Settings) if not isinstance(f.default, type(field()))}
+    out = {}
+    for k in PAGE_KEYS:
+        if k in p:
+            v = _coerce(p[k], types[k])
+            if v is not None:
+                out[k] = v
+    return out
+
+
+def page_settings(s, spec):
+    """The settings a design page is drawn with: the booklet's, with the page's own on top."""
+    return replace(s, **spec.opts) if getattr(spec, "opts", None) else s
 
 
 @dataclass
@@ -146,6 +173,7 @@ class PageSpec:
     art_seed: int = 0            # cover: the seed for its picture
     photo: object = None         # photo, pcover: the photo.Photo to convert
     count: int = 0               # pcover: how many photo pages follow
+    opts: dict = field(default_factory=dict)      # design: this page's own settings (a booklet built page by page)
 
     def __post_init__(self):
         if self.header is None:
@@ -243,6 +271,7 @@ def draw_page(ctx, g, spec, s, keep=False):
         return convert(ctx, g.box, g.dpi, s, spec.photo, view=view)
     draw_bands(ctx, g, spec)
     if spec.kind == "design":
+        s = page_settings(s, spec)   # a page built page by page draws with its own pattern settings
         box = design_box(g, spec, s)
         if s.frame:
             ctx.line_width = lw * 1.6
@@ -257,6 +286,7 @@ def draw_page(ctx, g, spec, s, keep=False):
         gap, fs = g.dpi * 0.3, g.dpi * 0.14
         cw, ch = (area.w - gap) / 2, (area.h - gap) / 2
         for k, d in enumerate(spec.items):
+            sd = page_settings(s, d)   # each puzzle with its own page's settings
             cell = Box(area.x + (k % 2) * (cw + gap), area.y + (k // 2) * (ch + gap), cw, ch)
             ctx.save()
             ctx.set_font(fs, 600)
@@ -266,23 +296,23 @@ def draw_page(ctx, g, spec, s, keep=False):
             ctx.line_width = max(1, lw * 0.45)
             slot = Box(cell.x, cell.y + fs * 1.6, cell.w, cell.h - fs * 1.6).inset(fs * 0.6)
             from . import cbn
-            if cbn.is_cbn_design(d.gen, s):   # shaded by number
-                cbn.draw_answer(ctx, g, slot, d, s, lw)
+            if cbn.is_cbn_design(d.gen, sd):   # shaded by number
+                cbn.draw_answer(ctx, g, slot, d, sd, lw)
             elif d.gen == "maze":   # same grid as the puzzle page, so it's the same maze
-                grid = maze.grid_size(design_box(g, d, s), d.c, s.maze_shape, s.maze_word)
-                draw_design(ctx, g, slot, "maze", d.seed, d.c, s, ctx.line_width, grid=grid, solve=True)
+                grid = maze.grid_size(design_box(g, d, sd), d.c, sd.maze_shape, sd.maze_word)
+                draw_design(ctx, g, slot, "maze", d.seed, d.c, sd, ctx.line_width, grid=grid, solve=True)
             elif d.gen == "spot":   # the puzzle page's own picture and changes, scaled into the slot
-                src = design_box(g, d, s)
+                src = design_box(g, d, sd)
                 k = min(slot.w / src.w, slot.h / src.h)
                 ctx.save()
                 ctx.translate(slot.x + (slot.w - src.w * k) / 2 - src.x * k, slot.y + (slot.h - src.h * k) / 2 - src.y * k)
                 ctx.transform(k, 0, 0, k, 0, 0)
-                draw_design(ctx, g, src, "spot", d.seed, d.c, s, lw, solve=True, line=ctx.line_width / k)
+                draw_design(ctx, g, src, "spot", d.seed, d.c, sd, lw, solve=True, line=ctx.line_width / k)
                 ctx.restore()
             elif d.gen == "dots":   # same seed draws the same shape, finished
-                draw_design(ctx, g, slot, "dots", d.seed, d.c, s, ctx.line_width, connect=True)
+                draw_design(ctx, g, slot, "dots", d.seed, d.c, sd, ctx.line_width, connect=True)
             elif d.gen in HAS_ANSWER:
-                draw_design(ctx, g, slot, d.gen, d.seed, d.c, s, lw, solve=True)
+                draw_design(ctx, g, slot, d.gen, d.seed, d.c, sd, lw, solve=True)
         return None
     if spec.kind == "cover":
         b, fs = g.box, g.dpi * 0.5

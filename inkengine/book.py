@@ -12,7 +12,7 @@ so that stacking the sheets, folding them and stapling the fold puts every page 
 from dataclasses import replace
 
 from .box import Box
-from .page import PAPER, Geometry, PageSpec, draw_page, js_round
+from .page import PAPER, Geometry, PageSpec, draw_page, js_round, page_settings
 from .patterns import HAS_ANSWER, NAMES
 
 # The order a mixed booklet cycles through. Name pages stay out: a booklet shouldn't repeat one word.
@@ -31,7 +31,14 @@ def book_pages(s):
     """Every page of the booklet, in order."""
     n, c, title, mix, ramp = s.pages, s.complexity, s.title.strip(), s.mix, s.ramp
     pages, designs = [], []
-    for i in range(n):
+    for i, p in enumerate(s.page_list or []):   # built page by page: each page brings its own settings
+        gen = p.get("gen", s.gen)
+        gen = gen if gen in NAMES else s.gen
+        opts = {k: v for k, v in p.items() if k not in ("gen", "seed", "complexity")}
+        designs.append(PageSpec(kind="design", idx=i, gen=gen, seed=int(p.get("seed", s.seed)) & 0xFFFFFFFF,
+                                c=max(1, min(10, int(p.get("complexity", c)))), title=title, name=s.name_line,
+                                label=f"{NAMES[gen]} {i + 1}", opts=opts))
+    for i in range(0 if s.page_list else n):
         gen = GENS[i % len(GENS)] if mix else s.gen
         cx = js_round(1 + (max(c, 2) - 1) * i / (n - 1)) if ramp and n > 1 else c
         # each page's seed comes from the booklet seed, unless that one page was swapped
@@ -39,12 +46,13 @@ def book_pages(s):
         designs.append(PageSpec(kind="design", idx=i, gen=gen, seed=seed, c=cx, title=title, name=s.name_line,
                                 label=f"{NAMES[gen]} {i + 1}"))
     if s.cover:
-        cover_title = title or ("Colouring & puzzle book" if mix else NAMES[s.gen] + " book")
+        kinds = {d.gen for d in designs}
+        cover_title = title or ("Colouring & puzzle book" if mix or len(kinds) > 1 else NAMES[designs[0].gen] + " book")
         pages.append(PageSpec(kind="cover", title=cover_title, designs=designs,
                               art_seed=_page_seed(s, "cover", (s.seed ^ 0x5BD1E995) & 0xFFFFFFFF)))
     pages.extend(designs)
     from .cbn import is_cbn_design
-    puzzles = [d for d in designs if d.gen in HAS_ANSWER or is_cbn_design(d.gen, s)]   # colour by number gets a shaded answer
+    puzzles = [d for d in designs if d.gen in HAS_ANSWER or is_cbn_design(d.gen, page_settings(s, d))]   # colour by number gets a shaded answer
     if s.key:
         for i in range(0, len(puzzles), 4):
             pages.append(PageSpec(kind="answers", header=True, title="Answers", items=puzzles[i:i + 4]))
