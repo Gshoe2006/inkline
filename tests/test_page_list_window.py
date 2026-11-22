@@ -324,3 +324,35 @@ def test_undo_shows_the_page_the_list_highlights(win):
     win.history.undo()
     assert win.state.book_sel == 0 and win.sidebar.page_list.currentRow() == 0
     assert win.state.page == 1                   # the preview turned back to page 1 (after the cover)
+
+
+def test_a_booklet_word_search_page_says_which_words_didnt_fit():
+    from inkapp.render import render_view
+    from inkapp.state import State
+    from inkengine.page import Settings
+    long_words = "mum, dad, extraordinarily, pizza"
+    st = State(Settings(booklet=True, cover=True, page_list=[
+        {"gen": "maze", "seed": 1, "complexity": 3},
+        {"gen": "words", "seed": 2, "complexity": 1, "ws_theme": "custom", "ws_words": long_words}]))
+    st.page = 2                                            # cover, maze, then the word search
+    assert "Left out: EXTRAORDINARILY" in render_view(st).note
+    st.page = 1
+    assert render_view(st).note == ""                     # the maze has nothing to say
+    single = State(Settings(gen="words", complexity=1, ws_theme="custom", ws_words=long_words))
+    assert "Left out: EXTRAORDINARILY" in render_view(single).note   # a single page, as before
+
+
+def test_rows_tell_pages_of_one_pattern_apart(win):
+    _set(win, gen="words", booklet=True, pages=3, mix=False, ramp=False)
+    win.sidebar.pages_edit.emit(True)
+    win.sidebar.book_page_selected.emit(0)
+    _set(win, ws_theme="custom")
+    _set(win, ws_words="mum, dad, pizza")
+    win.sidebar.book_page_selected.emit(1)
+    _set(win, ws_theme="ocean")
+    lst = win.sidebar.page_list
+    tips = [lst.item(i).toolTip() for i in range(3)]
+    assert tips[0].startswith("1. Word search · Your words · ") and tips[0].endswith("Words: mum, dad, pizza")
+    assert tips[1].startswith("2. Word search · Ocean · ") and tips[2].startswith("3. Word search · Animals · ")
+    pl = win.state.settings.page_list
+    assert (pl[0]["ws_theme"], pl[0]["ws_words"], pl[1]["ws_theme"]) == ("custom", "mum, dad, pizza", "ocean")
