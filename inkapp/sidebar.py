@@ -395,7 +395,7 @@ class Sidebar(QFrame):
         if s.fold:
             sheets = jobs.fold_sheets(picked, len(book.fold_pages(pages)))
             names = jobs.describe_pages(sheets, 0).replace("page", "sheet")
-            return f"Prints {names}, both sides: they hold {what}."
+            return f"Prints {names}, both sides: {'they hold' if len(sheets) > 1 else 'it holds'} {what}."
         return f"Prints and saves {what} of {len(pages)}."
 
     def set_margin_warning(self, text):

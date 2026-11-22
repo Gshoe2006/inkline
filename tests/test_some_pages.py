@@ -30,13 +30,14 @@ def test_reading_a_choice_of_pages():
     ("20", "There's no page 20: this book has 14 pages."),
     ("0", "There's no page 0"),
     ("two", "“two” isn't a page"),
+    (" , ;", "No pages there"),
 ])
 def test_a_choice_that_doesnt_make_sense_says_why(text, why):
     with pytest.raises(ValueError, match=why):
         jobs.parse_pages(text, _pages())
     with pytest.raises(ValueError, match="no cover page"):
         jobs.parse_pages("cover", _pages(cover=False))
-    with pytest.raises(ValueError, match="no answer pages"):
+    with pytest.raises(ValueError, match="This book has no answer pages"):
         jobs.parse_pages("answers", _pages(key=False))
 
 
@@ -94,7 +95,11 @@ def test_the_field_shows_for_books_and_says_what_will_print(win):
     assert sb.only_hint.text() == "There's no page 30: this book has 14 pages."
     _set(win, fold=True)
     sb.only_pages.setText("3")
-    assert sb.only_hint.text() == "Prints sheet 2, both sides: they hold page 3."
+    assert sb.only_hint.text() == "Prints sheet 2, both sides: it holds page 3."
+    sb.only_pages.setText("3, 9")
+    assert sb.only_hint.text() == "Prints sheets 2 and 4, both sides: they hold pages 3 and 9."
+    _set(win, poster=True)                                   # another kind of output: the choice goes
+    assert sb.only_pages.text() == ""
 
 
 def test_print_and_save_use_the_choice_or_say_whats_wrong(win, monkeypatch):
@@ -111,3 +116,22 @@ def test_print_and_save_use_the_choice_or_say_whats_wrong(win, monkeypatch):
     asked.clear()
     win.save("pdf")
     assert not asked[0][1].endswith("-p2")
+
+
+def test_fold_jobs_count_sheets():
+    j = jobs.job(State(Settings(booklet=True, pages=10, gen="maze", fold=True)), "3")
+    assert j.amount() == "1 sheet (both sides)"
+    assert jobs.job(State(Settings(booklet=True, pages=10, gen="maze"))).amount() == "14-page booklet"
+
+
+def test_the_print_dialog_offers_no_page_range_of_its_own(win, monkeypatch):
+    from PySide6.QtPrintSupport import QAbstractPrintDialog, QPrintDialog
+    seen = {}
+
+    def exec_(dialog):
+        seen["range"] = dialog.testOption(QAbstractPrintDialog.PrintDialogOption.PrintPageRange)
+        return QPrintDialog.DialogCode.Rejected
+    monkeypatch.setattr(QPrintDialog, "exec", exec_)
+    _set(win, booklet=True, pages=4, gen="maze")
+    win.print_()
+    assert seen == {"range": False}

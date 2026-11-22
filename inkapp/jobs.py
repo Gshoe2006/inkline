@@ -35,6 +35,13 @@ class Job:
     def unit(self):
         return "sheet" if self.label == "poster" else "page"
 
+    def amount(self):
+        """ "14-page booklet", "2 sheets (both sides)": what the job prints, for the status line."""
+        if self.duplex:   # a fold-and-staple book: two printed sides per sheet
+            n = self.count // 2
+            return f"{n} sheet{'s' if n != 1 else ''} (both sides)"
+        return f"{self.count}-{self.unit} {self.label}"
+
 
 def base_name(state):
     """2.x's file names: inkline-maze-12345, or inkline-<photo name>."""
@@ -63,7 +70,7 @@ def parse_pages(text, pages):
         elif token in ("answers", "answer", "answer pages"):
             found = [i for i, p in enumerate(pages) if p.kind == "answers"]
             if not found:
-                raise ValueError("This booklet has no answer pages.")
+                raise ValueError("This book has no answer pages.")
             chosen.update(found)
         elif m := re.fullmatch(r"(\d+)\s*(?:-\s*(\d+))?", token):
             a, b = int(m.group(1)), int(m.group(2) or m.group(1))
@@ -74,6 +81,8 @@ def parse_pages(text, pages):
             chosen.update(range(a - 1, b))
         else:
             raise ValueError(f"“{token}” isn't a page. Use page numbers, ranges like 3-5, “cover” or “answers”.")
+    if not chosen:
+        raise ValueError("No pages there. Use page numbers, ranges like 3-5, “cover” or “answers”.")
     return sorted(chosen)
 
 

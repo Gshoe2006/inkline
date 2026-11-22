@@ -12,7 +12,7 @@ from dataclasses import replace
 
 from PySide6.QtCore import QEvent, QTimer, Qt, Signal
 from PySide6.QtGui import QAction, QGuiApplication, QImage, QKeySequence, QUndoCommand, QUndoStack
-from PySide6.QtPrintSupport import QPrintDialog, QPrinter
+from PySide6.QtPrintSupport import QAbstractPrintDialog, QPrintDialog, QPrinter
 from PySide6.QtWidgets import (QAbstractItemView, QAbstractSlider, QAbstractSpinBox, QApplication, QComboBox, QDialog,
                                QFileDialog, QHBoxLayout, QLineEdit, QMainWindow, QMenu, QMenuBar, QMessageBox, QUndoView,
                                QVBoxLayout, QWidget)
@@ -326,6 +326,7 @@ class Window(QMainWindow):
         elif st.listing and key == "key":
             self.sidebar.fill_pages()   # rows say "no answer" only while there are answer pages   # every page's picture shows the booklet's line weight, border and paper
         if key in ("booklet", "poster", "photobook"):
+            self.sidebar.only_pages.clear()   # a choice of pages was for that book: a different one starts with all
             st.mirror()   # back to a booklet built page by page: Design shows the page being edited again
             self.sidebar.load()
             self.sidebar.fill_pages()
@@ -604,6 +605,7 @@ class Window(QMainWindow):
         self.sidebar.fill_pages()
         self.sidebar.load_crop()
         self.act_test.setChecked(False)
+        self.sidebar.only_pages.clear()   # another book: every page again
         self.history.clear()        # Undo doesn't reach back into the work that was open before
         self._last = _Snapshot(st)
         self.history.setClean()
@@ -998,6 +1000,7 @@ class Window(QMainWindow):
         self._step_name = f"“{name}”"   # Edit → Undo “Maze booklet with answers”
         self.state.apply_preset(p)
         self.state.mirror()
+        self.sidebar.only_pages.clear()
         self.sidebar.load()
         self.sidebar.fill_pages()
         if self.state.settings.mode == "convert" and not self.state.photos:
@@ -1091,7 +1094,7 @@ class Window(QMainWindow):
             dev.setResolution(j.geometry.dpi)
             dev.setTitle(j.name)
             dev.setCreator("Inkline")
-            done = f"Saved {j.count}-page {j.label} as {os.path.basename(path)}" if j.count > 1 else f"Saved {os.path.basename(path)}"
+            done = f"Saved {j.amount()} as {os.path.basename(path)}" if j.count > 1 else f"Saved {os.path.basename(path)}"
             self._start(j, dev, done, f"Couldn't write {path}. Check the folder permissions.")
             return
         ext, filt = ("png", "PNG image (*.png)") if kind == "png" else ("svg", "SVG vector image (*.svg)")
@@ -1133,11 +1136,14 @@ class Window(QMainWindow):
         if j.duplex:   # fold-and-staple books: double-sided, flipping on the short edge
             printer.setDuplex(QPrinter.DuplexMode.DuplexShortSide)
         self._msg("Opening the print dialog…")
-        if QPrintDialog(printer, self).exec() != QPrintDialog.DialogCode.Accepted:
+        dialog = QPrintDialog(printer, self)
+        # which pages print is chosen under Paper → Print or save only: the dialog's own range would be ignored
+        dialog.setOption(QAbstractPrintDialog.PrintDialogOption.PrintPageRange, False)
+        if dialog.exec() != QPrintDialog.DialogCode.Accepted:
             self._msg("Print cancelled.")
             return
         self._remember_printer(printer.printerName())
-        done = (f"Sent {j.count} {'sheets' if j.label == 'poster' else 'pages'} to the printer." if j.count > 1
+        done = (f"Sent {j.amount() if j.duplex else f'{j.count} {j.unit}s'} to the printer." if j.count > 1
                 else "Sent to the printer.")
         self._start(j, printer, done, "The printer didn't accept the job. Check that it's connected.")
 
