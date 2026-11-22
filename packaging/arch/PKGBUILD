@@ -7,7 +7,7 @@ arch=('any')
 license=('GPL-3.0-or-later')
 depends=('python' 'pyside6' 'python-numpy')
 optdepends=('cups: printing to local and network printers')
-source=('inkline.py' 'inkline.svg' 'inkline.desktop' 'VERSION' 'LICENSE' 'inkline-app.tar.gz' 'inkline-icons.tar.gz')
+source=('inkline.py' 'inkline.svg' 'inkline.desktop' 'inkline-mime.xml' 'VERSION' 'LICENSE' 'inkline-app.tar.gz' 'inkline-icons.tar.gz')
 sha256sums=()
 
 package() {
@@ -20,6 +20,9 @@ package() {
   install -Dm644 LICENSE         "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
   install -Dm644 inkline.svg     "$pkgdir/usr/share/icons/hicolor/scalable/apps/inkline.svg"
   install -Dm644 inkline.desktop "$pkgdir/usr/share/applications/inkline.desktop"
+  install -Dm644 inkline-mime.xml "$pkgdir/usr/share/mime/packages/inkline.xml"   # .inkline projects (pacman's hook updates the database)
+  install -Dm644 hicolor/scalable/mimetypes/application-x-inkline-project.svg \
+    "$pkgdir/usr/share/icons/hicolor/scalable/mimetypes/application-x-inkline-project.svg"
   for png in hicolor/*/apps/inkline.png; do
     install -Dm644 "$png" "$pkgdir/usr/share/icons/$png"
   done

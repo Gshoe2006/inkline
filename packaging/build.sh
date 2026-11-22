@@ -7,7 +7,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 SRC="$(dirname "$HERE")"
 DIST="$SRC/dist"
 VERSION="$(cat "$SRC/VERSION")"
-FILES="inkline.py inkline.svg inkline.desktop VERSION LICENSE"
+FILES="inkline.py inkline.svg inkline.desktop inkline-mime.xml VERSION LICENSE"
 PKGS="inkengine inkapp"   # the engine and the window, as Python packages
 mkdir -p "$DIST"
 

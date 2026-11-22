@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Generates Inkline's app icon (inkline.svg) and the PNG sizes desktops use (icons/hicolor/NxN/apps).
+"""Generates Inkline's app icon (inkline.svg), the PNG sizes desktops use (icons/hicolor/NxN/apps), and the icon
+file managers show for a project file (icons/hicolor/scalable/mimetypes/application-x-inkline-project.svg).
 
 Run from anywhere: python3 packaging/make_icon.py   (PNG export needs rsvg-convert, from librsvg)
 """
@@ -97,11 +98,30 @@ SMALL = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width=
 '''
 
 
+# A project file: a sheet of paper with the emblem on it (no app tile: file managers show documents as pages).
+PROJECT = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <title>Inkline project</title>
+  <path d="M60,20 H170 L210,60 V226 a10,10 0 0 1 -10,10 H60 a10,10 0 0 1 -10,-10 V30 a10,10 0 0 1 10,-10 Z" fill="#000" opacity=".18" transform="translate(2 4)"/>
+  <path d="M60,20 H170 L210,60 V226 a10,10 0 0 1 -10,10 H60 a10,10 0 0 1 -10,-10 V30 a10,10 0 0 1 10,-10 Z" fill="{PAPER}" stroke="#9aa3ad" stroke-width="4"/>
+  <path d="M170,20 V50 a10,10 0 0 0 10,10 H210 Z" fill="{FOLD}" stroke="#9aa3ad" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M130,78 A52,52 0 0 0 130,182 Z" fill="{INK}"/>
+  <circle cx="130" cy="130" r="52" fill="none" stroke="{INK}" stroke-width="12"/>
+  <path d="M130,102 A28,28 0 0 1 130,158" fill="none" stroke="{INK}" stroke-width="12"/>
+  <path d="M84,206 H176" stroke="{CYAN}" stroke-width="10" stroke-linecap="round"/>
+</svg>
+'''
+
+
 def main():
     svg_path = os.path.join(ROOT, "inkline.svg")
     with open(svg_path, "w") as f:
         f.write(SVG)
     print("wrote", svg_path)
+    project_path = os.path.join(ROOT, "icons", "hicolor", "scalable", "mimetypes", "application-x-inkline-project.svg")
+    os.makedirs(os.path.dirname(project_path), exist_ok=True)
+    with open(project_path, "w") as f:
+        f.write(PROJECT)
+    print("wrote", project_path)
     if not shutil.which("rsvg-convert"):
         print("rsvg-convert not found, skipped PNG sizes")
         return
