@@ -522,7 +522,7 @@ class Sidebar(QFrame):
             rl.addWidget(icon)
             right = QVBoxLayout()
             right.setContentsMargins(0, 0, 0, 0)
-            right.setSpacing(2)
+            right.setSpacing(theme.LABEL_GAP)
             nm = _Elided(text)
             nm.setObjectName("pageName")
             right.addWidget(nm)

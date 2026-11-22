@@ -61,7 +61,8 @@ class _Snapshot:
         """The settings that count as edits. In a booklet built page by page the Design section's top-level
         values only show the selected page (State.mirror), so choosing another page isn't a change."""
         d = self.settings.to_dict()
-        if self.settings.page_list:
+        s = self.settings
+        if s.page_list and s.booklet and s.mode == "make" and not s.poster:
             d = {k: v for k, v in d.items() if k not in PAGE_KEYS or k == "seed"}
         return d
 
@@ -302,7 +303,9 @@ class Window(QMainWindow):
             st.write_page(**{key: getattr(st.settings, key)})   # the Design section edits the selected page
             self.sidebar.fill_pages()
         if key in ("booklet", "poster", "photobook"):
+            st.mirror()   # back to a booklet built page by page: Design shows the page being edited again
             self.sidebar.load()
+            self.sidebar.fill_pages()
         self.sidebar.sync()
         self.act_test.setChecked(s.testpage)
         self.schedule()
@@ -324,6 +327,9 @@ class Window(QMainWindow):
 
     def _set_mode(self, mode):
         self.state.update(mode=mode)
+        if self.state.listing:
+            self.state.mirror()
+            self.sidebar.load()
         if mode == "convert" and not self.state.photos:
             self.state.photos = [sample_photo()]
             self.state.sel = 0
@@ -345,8 +351,7 @@ class Window(QMainWindow):
 
     # --- a booklet built page by page -----------------------------------------------------------------------
     def _listing(self):
-        s = self.state.settings
-        return bool(s.page_list) and s.booklet and s.mode == "make" and not s.poster
+        return self.state.listing
 
     def _show_book_page(self):
         """Turn the preview to the page being edited (a folded side holds several, so it stays put)."""
@@ -369,7 +374,7 @@ class Window(QMainWindow):
             st.book_sel = p.idx if p is not None and p.kind == "design" else 0
         else:
             self._step_name = "Back to quick booklet"
-            st.update(page_list=[], pages=max(2, min(40, len(s.page_list))))
+            st.update(page_list=[], pages=max(2, min(MAX_BOOK_PAGES, len(s.page_list))))
             st.book_sel = 0
         self._list_changed()
 

@@ -160,3 +160,18 @@ def test_every_row_has_named_buttons(win):
     lst = win.sidebar.page_list
     names = [b.accessibleName() for b in lst.itemWidget(lst.item(0)).findChildren(QPushButton)]
     assert names == ["Move up", "Move down", "Duplicate with a new design", "Remove"]
+
+
+def test_the_design_section_leaves_the_pages_alone_while_the_booklet_isnt_made(win):
+    _booklet(win)
+    pl0 = win.state.settings.page_list
+    _set(win, booklet=False)
+    _set(win, gen="maze", complexity=9)          # the single page
+    assert win.state.settings.page_list == pl0
+    _set(win, booklet=True)
+    _set(win, poster=True)
+    _set(win, complexity=2)
+    assert win.state.settings.page_list == pl0
+    _set(win, poster=False, booklet=True)
+    assert win.state.settings.gen == pl0[0]["gen"] and win.state.settings.complexity == pl0[0]["complexity"]
+    assert win.history.undoText() != ""

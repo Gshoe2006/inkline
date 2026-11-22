@@ -72,11 +72,17 @@ class State:
     # The Design section edits the selected page: its settings are copied into the top-level ones (the
     # controls show those), and a change to one is written back into that page. The list itself is never
     # changed in place, so an undo step's settings keep the list as it was.
+    @property
+    def listing(self):
+        """Whether the booklet built page by page is what's being made (it's kept, unused, while it isn't)."""
+        s = self.settings
+        return bool(s.page_list) and s.booklet and s.mode == "make" and not s.poster
+
     def mirror(self):
         """Show the selected page's settings in the top-level ones (its seed stays its own: the cover art uses
         the booklet's)."""
         pl = self.settings.page_list
-        if not pl:
+        if not self.listing:
             return
         self.book_sel = max(0, min(self.book_sel, len(pl) - 1))
         p = pl[self.book_sel]
@@ -91,7 +97,7 @@ class State:
     @property
     def book_page(self):
         pl = self.settings.page_list
-        return pl[self.book_sel] if pl and 0 <= self.book_sel < len(pl) else None
+        return pl[self.book_sel] if self.listing and 0 <= self.book_sel < len(pl) else None
 
 
 def _named(preset, key):
