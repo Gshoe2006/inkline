@@ -230,6 +230,7 @@ class Window(QMainWindow):
         sb.book_page_moved.connect(self._move_book_page)
         sb.book_page_copied.connect(self._copy_book_page)
         sb.book_page_removed.connect(self._remove_book_page)
+        sb.page_answer.connect(self._set_page_answer)
         sb.crop.connect(self._crop)
         sb.print_.connect(self.print_)
         sb.save.connect(self.save)
@@ -321,7 +322,9 @@ class Window(QMainWindow):
             st.write_page(**{key: getattr(st.settings, key)})   # the Design section edits the selected page
             self.sidebar.fill_pages()
         elif st.listing and key in BOOKLET_LOOK:
-            self.sidebar.refresh_thumbs()   # every page's picture shows the booklet's line weight, border and paper
+            self.sidebar.refresh_thumbs()
+        elif st.listing and key == "key":
+            self.sidebar.fill_pages()   # rows say "no answer" only while there are answer pages   # every page's picture shows the booklet's line weight, border and paper
         if key in ("booklet", "poster", "photobook"):
             st.mirror()   # back to a booklet built page by page: Design shows the page being edited again
             self.sidebar.load()
@@ -420,12 +423,23 @@ class Window(QMainWindow):
         self.schedule()
         self.remember_soon()   # the remembered settings show the page being edited
 
+    def _set_page_answer(self, on):
+        if self.state.book_page is None:
+            return
+        self._step_name = "Include its answer" if on else "Leave its answer out"
+        self.state.write_page(answer=on)
+        self.sidebar.fill_pages()
+        self.sidebar.sync()
+        self.schedule()
+        self.remember_soon()
+
     def _add_book_page(self):
         pl = self.state.settings.page_list
         if not pl or len(pl) >= MAX_BOOK_PAGES:
             return
         self._step_name = "Add page"
-        self.state.update(page_list=[*pl, {**pl[-1], "seed": new_seed()}])
+        new = {k: v for k, v in pl[-1].items() if k != "answer"}   # a new page has its answer, like any new page
+        self.state.update(page_list=[*pl, {**new, "seed": new_seed()}])
         self.state.book_sel = len(pl)
         self._list_changed()
 

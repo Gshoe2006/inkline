@@ -153,8 +153,20 @@ PAGE_KEYS = ("gen", "seed", "complexity", "cbn", "cbn_colours", "maze_shape", "m
              "name_text", "name_bg", "spot_base")
 
 
+# Page-only keys: not settings of their own (nothing at the top level mirrors them). "answer": False leaves
+# that page's solution off the answer pages.
+PAGE_ONLY = ("answer",)
+
+
+def has_answer(gen, s):
+    """Whether a design of this pattern, drawn with these settings, has a solution for the answer pages."""
+    from .cbn import is_cbn_design
+    return gen in HAS_ANSWER or is_cbn_design(gen, s)
+
+
 def clean_page(p, types=None, choices=None):
-    """A page_list entry with only PAGE_KEYS, each of the right type and allowed (as read from a file)."""
+    """A page_list entry with only PAGE_KEYS (and PAGE_ONLY), each of the right type and allowed (as read
+    from a file)."""
     if types is None:
         types = {f.name: type(f.default) for f in fields(Settings) if not isinstance(f.default, type(field()))}
     choices = _choices() if choices is None else choices
@@ -165,6 +177,11 @@ def clean_page(p, types=None, choices=None):
             v = None if v is None else _allowed(k, v, choices)
             if v is not None:
                 out[k] = v
+    if "answer" in p:   # only a clear yes or no: anything else is dropped (the answer stays on)
+        v = p["answer"]
+        v = v if isinstance(v, bool) else {"true": True, "false": False}.get(str(v).strip().lower())
+        if v is not None:
+            out["answer"] = v
     return out
 
 

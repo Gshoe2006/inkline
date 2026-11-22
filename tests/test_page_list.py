@@ -65,3 +65,24 @@ def test_a_saved_list_reads_back_with_only_page_settings_of_the_right_type():
     messy = Settings.from_dict({"pageList": [{"gen": "maze", "complexity": "7", "cbn": "true", "frame": True, "junk": 1}, "nope"]})
     assert messy.page_list == [{"gen": "maze", "complexity": 7, "cbn": True}]   # booklet-wide keys and junk dropped
     assert set(clean_page({k: None for k in PAGE_KEYS})) <= set(PAGE_KEYS)
+
+
+def test_a_page_can_leave_its_answer_out():
+    pl = [dict(p) for p in PAGES]
+    pl[0]["answer"] = False                      # the maze: no solution in the back
+    pl[2]["answer"] = False                      # the colour-by-number mandala: no shaded key
+    s = Settings(booklet=True, page_list=pl)
+    answered = [d.gen for p in book.book_pages(s) if p.kind == "answers" for d in p.items]
+    assert answered == ["words", "spot", "kakuro"]
+    designs = [p for p in book.book_pages(s) if p.kind == "design"]
+    assert "answer" not in designs[0].opts       # not a drawing setting: the page itself draws as before
+    back = Settings.from_dict(json.loads(json.dumps(s.to_dict())))
+    assert back.page_list[0]["answer"] is False and "answer" not in back.page_list[1]
+    assert Settings.from_dict({"pageList": [{"gen": "maze", "answer": "false"}]}).page_list[0]["answer"] is False
+
+
+def test_only_a_clear_yes_or_no_sets_a_pages_answer():
+    for junk in ("maybe", None, 0, [], "no", 1):
+        assert "answer" not in Settings.from_dict({"pageList": [{"gen": "maze", "answer": junk}]}).page_list[0]
+    for value, want in ((False, False), ("false", False), (" TRUE ", True), (True, True)):
+        assert Settings.from_dict({"pageList": [{"gen": "maze", "answer": value}]}).page_list[0]["answer"] is want

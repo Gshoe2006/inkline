@@ -356,3 +356,55 @@ def test_rows_tell_pages_of_one_pattern_apart(win):
     assert tips[1].startswith("2. Word search · Ocean · ") and tips[2].startswith("3. Word search · Animals · ")
     pl = win.state.settings.page_list
     assert (pl[0]["ws_theme"], pl[0]["ws_words"], pl[1]["ws_theme"]) == ("custom", "mum, dad, pizza", "ocean")
+
+
+def test_each_puzzle_can_leave_its_answer_out(win):
+    _set(win, gen="maze", booklet=True, pages=3, mix=False, ramp=False, key=True)
+    win.sidebar.pages_edit.emit(True)
+    sb, h = win.sidebar, win.history
+    sb.book_page_selected.emit(1)
+    chk = sb.page_answer_check
+    assert chk.isVisibleTo(sb) and chk.isChecked()
+    chk.setChecked(False)                                  # as a click does
+    pl = win.state.settings.page_list
+    assert pl[1]["answer"] is False and "answer" not in pl[0]
+    answered = [d.idx for p in book.book_pages(win.state.settings) if p.kind == "answers" for d in p.items]
+    assert answered == [0, 2]
+    assert sb.page_list.item(1).toolTip().endswith("· no answer") and h.undoText() == "Leave its answer out"
+    sb.book_page_selected.emit(0)
+    assert chk.isChecked()                                 # the other page still has its answer
+    sb.book_page_selected.emit(1)
+    assert not chk.isChecked()
+    h.undo()
+    assert "answer" not in win.state.settings.page_list[1] and chk.isChecked()
+
+
+def test_the_switch_shows_only_where_there_is_an_answer(win):
+    _set(win, gen="mandala", booklet=True, pages=2, mix=False, ramp=False, key=True, cbn=False)
+    win.sidebar.pages_edit.emit(True)
+    sb = win.sidebar
+    assert not sb.page_answer_check.isVisibleTo(sb)        # a plain colouring page has no answer
+    _set(win, cbn=True)
+    assert sb.page_answer_check.isVisibleTo(sb)            # colour by number has a shaded one
+    _set(win, key=False)
+    assert not sb.page_answer_check.isVisibleTo(sb)        # no answer pages at all
+    _set(win, booklet=False)
+    _set(win, key=True)
+    assert not sb.page_answer_check.isVisibleTo(sb)        # a single page
+
+
+def test_rows_follow_the_answer_pages_switch_and_new_pages_have_their_answer(win):
+    _set(win, gen="maze", booklet=True, pages=2, mix=False, ramp=False, key=True)
+    win.sidebar.pages_edit.emit(True)
+    win.sidebar.book_page_selected.emit(1)
+    win.sidebar.page_answer_check.setChecked(False)
+    lst = win.sidebar.page_list
+    assert lst.item(1).toolTip().endswith("· no answer")
+    _set(win, key=False)
+    assert not lst.item(1).toolTip().endswith("· no answer")
+    _set(win, key=True)
+    assert lst.item(1).toolTip().endswith("· no answer")
+    win.sidebar.book_page_added.emit()                     # like the last page, but with its answer
+    assert "answer" not in win.state.settings.page_list[2]
+    win.sidebar.book_page_copied.emit(1)                   # a copy keeps the page as it is
+    assert win.state.settings.page_list[2]["answer"] is False
