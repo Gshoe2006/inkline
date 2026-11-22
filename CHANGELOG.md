@@ -6,6 +6,54 @@ To release a new version, add a section headed `## <version>` (the same text as 
 pull request that bumps `VERSION`. When it merges, `.github/workflows/release.yml` builds the packages
 and publishes a GitHub Release with that section as its notes.
 
+## 4.6.0 - 2026-11-22
+
+Inkline 4.6 comes in two new packages: a `.deb` for Debian and Ubuntu, and an AppImage that runs on almost any Linux system without installing anything.
+
+### What's new
+
+- **A package for Debian, Ubuntu and their relatives** (Linux Mint, Pop!_OS and others): `inkline_4.6.0-1_amd64.deb`. Install it with `sudo apt install ./inkline_4.6.0-1_amd64.deb`, and apt fetches what it needs. It works on Debian 12 and newer, and Ubuntu 22.04 and newer. Those systems don't package a new enough PySide6, so the `.deb` brings its own copy and uses your system's Python and numpy.
+- **An AppImage:** `inkline-4.6.0-x86_64.AppImage`, one file with everything inside, Python included. Make it executable and run it. To have it in your app menu and open `.inkline` projects with a double-click, use an AppImage manager such as Gear Lever or AppImageLauncher.
+- **Every release now has five packages,** and the release builds them all and checks the `.deb` and the AppImage by running Inkline's self-test with them before anything is published.
+
+Nothing changes in how Inkline looks or works.
+
+### Upgrading
+
+Nothing changes in what Inkline needs. Your presets, settings, projects, recent files and printer carry over.
+
+**Debian / Ubuntu / Linux Mint / Pop!_OS**
+```sh
+sudo apt install ./inkline_4.6.0-1_amd64.deb
+```
+
+**Arch / CachyOS / Manjaro**
+```sh
+sudo pacman -U inkline-4.6.0-1-any.pkg.tar.zst
+```
+
+**Any distro, nothing installed**
+```sh
+chmod +x inkline-4.6.0-x86_64.AppImage && ./inkline-4.6.0-x86_64.AppImage
+```
+
+**Any other distro**
+```sh
+sh inkline-4.6.0.run            # or --system for every user
+```
+
+**Flatpak**
+```sh
+flatpak install --user inkline-4.6.0.flatpak     # if a .flatpak file is attached to this release
+sh packaging/flatpak/build.sh                    # or build it from a copy of the source
+```
+
+Use one kind of package at a time: if you switch, remove the old one first, or you may see Inkline twice in your app menu.
+
+### Found a problem?
+
+Please open an issue saying what you did, what you expected, and what happened. Include your distro, and the printer if it's about printing.
+
 ## 4.5.0 - 2026-11-22
 
 Inkline 4.5 lets you reuse pages between booklets, and tells you what's new after an update.
