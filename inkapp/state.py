@@ -3,7 +3,7 @@
 import random
 from dataclasses import dataclass, field, replace
 
-from inkengine.page import Settings
+from inkengine.page import PAGE_KEYS, Settings
 
 # 2.x's built-in presets, in its order and words (its keys; Settings.from_dict reads them).
 BUILTIN_PRESETS = {
@@ -46,6 +46,7 @@ class State:
     photos: list = field(default_factory=list)   # photo.Photo, each with its own crop
     sel: int = 0                                  # the photo being cropped
     page: int = 0                                 # the booklet / photo book page (or folded side) shown
+    book_sel: int = 0                             # the booklet page being edited, when it's built page by page
 
     @property
     def photo(self):
@@ -55,14 +56,42 @@ class State:
         """The settings with a preset's values on top (2.x's keys or 3.0's)."""
         merged = {**self.settings.to_dict(), **{k: v for k, v in Settings.from_dict(preset).to_dict().items()
                                                  if _named(preset, k)}}
+        if not _named(preset, "page_list"):   # a preset starts a quick booklet: pages, ramp and mix apply again
+            merged["page_list"] = []
         self.settings = Settings.from_dict(merged)
         self.page = 0
+        self.book_sel = 0
 
     def preset_values(self):
         return {k: v for k, v in self.settings.to_dict().items() if k not in NOT_IN_PRESETS}
 
     def update(self, **changes):
         self.settings = replace(self.settings, **changes)
+
+    # --- a booklet built page by page --------------------------------------------------------------------
+    # The Design section edits the selected page: its settings are copied into the top-level ones (the
+    # controls show those), and a change to one is written back into that page. The list itself is never
+    # changed in place, so an undo step's settings keep the list as it was.
+    def mirror(self):
+        """Show the selected page's settings in the top-level ones (its seed stays its own: the cover art uses
+        the booklet's)."""
+        pl = self.settings.page_list
+        if not pl:
+            return
+        self.book_sel = max(0, min(self.book_sel, len(pl) - 1))
+        p = pl[self.book_sel]
+        self.update(**{k: p[k] for k in PAGE_KEYS if k in p and k != "seed"})
+
+    def write_page(self, **changes):
+        """Change the selected page (a new list with a new copy of that page)."""
+        pl = list(self.settings.page_list)
+        pl[self.book_sel] = {**pl[self.book_sel], **changes}
+        self.update(page_list=pl)
+
+    @property
+    def book_page(self):
+        pl = self.settings.page_list
+        return pl[self.book_sel] if pl and 0 <= self.book_sel < len(pl) else None
 
 
 def _named(preset, key):

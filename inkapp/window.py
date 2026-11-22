@@ -19,13 +19,13 @@ from PySide6.QtWidgets import (QAbstractItemView, QAbstractSlider, QAbstractSpin
 from PySide6.QtGui import QPdfWriter
 
 from inkengine import book, photo
-from inkengine.page import Settings, design_box, geometry, single_page
+from inkengine.page import PAGE_KEYS, Settings, design_box, geometry, single_page
 
 from . import config, jobs, theme
 from .preview import Preview
 from .render import PREVIEW_DPI, Renderer, render_view, view
 from .sample import sample_photo
-from .sidebar import MARGINS, MAX_PHOTOS, Sidebar
+from .sidebar import MARGINS, MAX_BOOK_PAGES, MAX_PHOTOS, Sidebar
 from .state import BUILTIN_PRESETS, State, new_seed
 
 IMAGE_FILTER = "Images (*.png *.jpg *.jpeg *.webp *.bmp *.gif *.tif *.tiff)"
@@ -42,7 +42,7 @@ STEP_NAMES = {"gen": "Pattern", "complexity": "Complexity", "weight": "Line weig
               "pnono_answer": "Show the answer", "pcbn_colours": "Colours", "photobook": "Photo book", "pcover": "Cover page",
               "ppage_nums": "Page numbers", "title": "Title", "name_line": "Name line", "poster": "Poster", "grid": "Sheets",
               "overlap": "Overlap", "testpage": "Printer test page", "fold": "Fold-and-staple", "paper": "Paper size",
-              "orient": "Orientation", "margin": "Margin", "dpi": "Resolution"}
+              "orient": "Orientation", "margin": "Margin", "dpi": "Resolution", "page_list": "Pages"}
 MERGE_SECONDS = 1.5   # changes to the same thing this close together (a slider drag, typing) are one step
 
 
@@ -55,9 +55,18 @@ class _Snapshot:
         self.photos = list(state.photos)
         self.crops = [(p.rot, p.zoom, p.panx, p.pany) for p in state.photos]
         self.sel = state.sel
+        self.book_sel = state.book_sel
+
+    def edits(self):
+        """The settings that count as edits. In a booklet built page by page the Design section's top-level
+        values only show the selected page (State.mirror), so choosing another page isn't a change."""
+        d = self.settings.to_dict()
+        if self.settings.page_list:
+            d = {k: v for k, v in d.items() if k not in PAGE_KEYS or k == "seed"}
+        return d
 
     def same(self, other):
-        return (self.settings == other.settings and [id(p) for p in self.photos] == [id(p) for p in other.photos]
+        return (self.edits() == other.edits() and [id(p) for p in self.photos] == [id(p) for p in other.photos]
                 and self.crops == other.crops)
 
     def what(self, before):
@@ -71,6 +80,12 @@ class _Snapshot:
             return "Crop"
         a, b = self.settings.to_dict(), before.settings.to_dict()
         changed = [k for k in a if a[k] != b[k]]
+        if "page_list" in changed and self.settings.page_list and before.settings.page_list:
+            # a page's own setting changed: its top-level copy changed with it, and names the step
+            pa, pb = self.settings.page_list, before.settings.page_list
+            if len(pa) == len(pb):
+                keys = {k for x, y in zip(pa, pb) for k in set(x) | set(y) if x.get(k) != y.get(k)}
+                changed = sorted(keys) if keys else changed
         if len(changed) == 1:
             return STEP_NAMES.get(changed[0], changed[0].replace("_", " ").capitalize())
         return "Changes"
@@ -134,6 +149,7 @@ class Window(QMainWindow):
         self.recent = [p for p in config.read("recent.json").get("photos", []) if isinstance(p, str)][:MAX_RECENT] \
             if remember else []
         restored = self._restore()
+        self.state.mirror()
         self.last_dir = os.path.expanduser("~/Pictures") if os.path.isdir(os.path.expanduser("~/Pictures")) else os.path.expanduser("~")
 
         central = QWidget()
@@ -197,6 +213,12 @@ class Window(QMainWindow):
         sb.photo_selected.connect(self._select_photo)
         sb.photo_moved.connect(self._move_photo)
         sb.photo_removed.connect(self._remove_photo)
+        sb.pages_edit.connect(self._edit_pages)
+        sb.book_page_selected.connect(self._select_book_page)
+        sb.book_page_added.connect(self._add_book_page)
+        sb.book_page_moved.connect(self._move_book_page)
+        sb.book_page_copied.connect(self._copy_book_page)
+        sb.book_page_removed.connect(self._remove_book_page)
         sb.crop.connect(self._crop)
         sb.print_.connect(self.print_)
         sb.save.connect(self.save)
@@ -274,6 +296,11 @@ class Window(QMainWindow):
             st.page = (1 if s.pcover else 0) + st.sel
         elif key == "fold":
             st.page = 0
+        elif key == "cover" and st.book_page is not None:
+            self._show_book_page()
+        if st.book_page is not None and key in PAGE_KEYS and key != "seed":
+            st.write_page(**{key: getattr(st.settings, key)})   # the Design section edits the selected page
+            self.sidebar.fill_pages()
         if key in ("booklet", "poster", "photobook"):
             self.sidebar.load()
         self.sidebar.sync()
@@ -309,8 +336,97 @@ class Window(QMainWindow):
     def new_design(self):
         if self.state.settings.mode != "make":
             return
-        self.state.update(seed=new_seed(), page_seeds={})   # a fresh booklet drops any swapped pages
+        if self._listing():   # a booklet built page by page: a new design for the page being edited
+            self.state.write_page(seed=new_seed())
+            self.sidebar.fill_pages()
+        else:
+            self.state.update(seed=new_seed(), page_seeds={})   # a fresh booklet drops any swapped pages
         self._changed("seed")
+
+    # --- a booklet built page by page -----------------------------------------------------------------------
+    def _listing(self):
+        s = self.state.settings
+        return bool(s.page_list) and s.booklet and s.mode == "make" and not s.poster
+
+    def _show_book_page(self):
+        """Turn the preview to the page being edited (a folded side holds several, so it stays put)."""
+        s = self.state.settings
+        if not s.fold:
+            self.state.page = (1 if s.cover else 0) + self.state.book_sel
+
+    def _edit_pages(self, on):
+        st = self.state
+        s = st.settings
+        if on:
+            # the booklet as it is now, page for page: each page keeps its pattern, design and complexity
+            pages = book.book_pages(s)
+            designs = [p for p in pages if p.kind == "design"]
+            shown = view(st)
+            p = shown.pages[shown.index] if shown.kind == "booklet" and shown.pages else None
+            base = {k: getattr(s, k) for k in PAGE_KEYS}
+            self._step_name = "Edit pages one by one"
+            st.update(page_list=[{**base, "gen": d.gen, "seed": d.seed, "complexity": d.c} for d in designs])
+            st.book_sel = p.idx if p is not None and p.kind == "design" else 0
+        else:
+            self._step_name = "Back to quick booklet"
+            st.update(page_list=[], pages=max(2, min(40, len(s.page_list))))
+            st.book_sel = 0
+        self._list_changed()
+
+    def _list_changed(self):
+        """After the page list changed: show the page being edited, in the controls and the preview."""
+        self.state.mirror()
+        self._show_book_page()
+        self.sidebar.load()
+        self.sidebar.fill_pages()
+        self.schedule()
+        self.remember_soon()
+
+    def _select_book_page(self, i):
+        if not self._listing() or i == self.state.book_sel:
+            return
+        self.state.book_sel = i
+        self._list_changed()   # not an edit: the undo history doesn't change
+
+    def _add_book_page(self):
+        pl = self.state.settings.page_list
+        if not pl or len(pl) >= MAX_BOOK_PAGES:
+            return
+        self._step_name = "Add page"
+        self.state.update(page_list=[*pl, {**pl[-1], "seed": new_seed()}])
+        self.state.book_sel = len(pl)
+        self._list_changed()
+
+    def _copy_book_page(self, i):
+        pl = self.state.settings.page_list
+        if len(pl) >= MAX_BOOK_PAGES:
+            return
+        self._step_name = "Duplicate page"
+        self.state.update(page_list=[*pl[:i + 1], {**pl[i], "seed": new_seed()}, *pl[i + 1:]])   # same settings, a new design
+        self.state.book_sel = i + 1
+        self._list_changed()
+
+    def _move_book_page(self, i, d):
+        pl = list(self.state.settings.page_list)
+        j = i + d
+        if not 0 <= j < len(pl):
+            return
+        pl[i], pl[j] = pl[j], pl[i]
+        self._step_name = "Move page"
+        self.state.update(page_list=pl)
+        sel = self.state.book_sel
+        self.state.book_sel = j if sel == i else i if sel == j else sel   # the page being edited stays selected
+        self._list_changed()
+
+    def _remove_book_page(self, i):
+        pl = self.state.settings.page_list
+        if len(pl) < 2:
+            return
+        self._step_name = "Remove page"
+        self.state.update(page_list=pl[:i] + pl[i + 1:])
+        sel = self.state.book_sel
+        self.state.book_sel = sel - 1 if sel > i else sel
+        self._list_changed()
 
     def step_page(self, d):
         s, v = self.state.settings, view(self.state)
@@ -321,6 +437,12 @@ class Window(QMainWindow):
             self.state.sel = max(0, min(self.state.page - (1 if s.pcover else 0), len(self.state.photos) - 1))
             self.sidebar.fill_photos()
             self.sidebar.load_crop()
+        p = v.pages[max(0, min(self.state.page, v.count - 1))] if v.kind == "booklet" and v.pages else None
+        if p is not None and p.kind == "design" and self._listing() and p.idx != self.state.book_sel:
+            self.state.book_sel = p.idx   # paging to a design page edits that page
+            self.state.mirror()
+            self.sidebar.load()
+            self.sidebar.fill_pages()
         self.schedule()
         return True
 
@@ -553,6 +675,7 @@ class Window(QMainWindow):
         name, self._step_name = getattr(self, "_step_name", None), None
         now = _Snapshot(self.state)
         if now.same(self._last):
+            self._last = now   # no edit, but the next step starts from the page and photo chosen now
             return
         self.history.push(_Step(self, self._last, now, name or now.what(self._last), self._gesture(), timed))
         self._last = now
@@ -580,9 +703,12 @@ class Window(QMainWindow):
             for p, (rot, zoom, panx, pany) in zip(st.photos, snap.crops):
                 p.rot, p.zoom, p.panx, p.pany = rot, zoom, panx, pany
             st.sel = max(0, min(snap.sel, len(st.photos) - 1))
+            st.book_sel = snap.book_sel
+            st.mirror()
             self._last = _Snapshot(st)
             self.sidebar.load()
             self.sidebar.fill_photos()
+            self.sidebar.fill_pages()
             self.sidebar.load_crop()
             self.act_test.setChecked(st.settings.testpage)
             self.schedule()
@@ -636,7 +762,9 @@ class Window(QMainWindow):
             return
         self._step_name = f"“{name}”"   # Edit → Undo “Maze booklet with answers”
         self.state.apply_preset(p)
+        self.state.mirror()
         self.sidebar.load()
+        self.sidebar.fill_pages()
         if self.state.settings.mode == "convert" and not self.state.photos:
             self.state.photos = [sample_photo()]
             self.sidebar.fill_photos()

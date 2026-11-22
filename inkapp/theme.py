@@ -161,13 +161,13 @@ QTabBar#modeTabs::tab {{ background: transparent; color: {t.muted}; font-size: 1
   margin: 3px; border-radius: 6px; }}
 QTabBar#modeTabs::tab:selected {{ background: {t.panel}; color: {t.ink}; }}
 
-QListWidget#photoList {{ background: {t.panel}; border: 0; font-size: 12px; }}
-QListWidget#photoList::item {{ border: 1px solid {t.line}; border-radius: 6px; padding: 4px; margin-bottom: 4px; }}
-QListWidget#photoList::item:selected {{ border-color: {t.accent}; background: {t.field}; color: {t.ink}; }}
+QListWidget#photoList, QListWidget#pageList {{ background: {t.panel}; border: 0; font-size: 12px; }}
+QListWidget#photoList::item, QListWidget#pageList::item {{ border: 1px solid {t.line}; border-radius: 6px; padding: 4px; margin-bottom: 4px; }}
+QListWidget#photoList::item:selected, QListWidget#pageList::item:selected {{ border-color: {t.accent}; background: {t.field}; color: {t.ink}; }}
 QFrame#drop {{ border: 2px dashed {t.line}; border-radius: 8px; }}
 QLabel#dropText {{ color: {t.muted}; font-size: 13px; }}
 QLabel#dropText[named="true"] {{ color: {t.ink}; font-weight: 600; }}
-QLabel#photoName {{ font-size: 12px; }}
+QLabel#photoName, QLabel#pageName {{ font-size: 12px; }}
 
 QFrame#infoBar {{ background: {t.bg}; border-bottom: 1px solid {t.line}; }}
 QLabel[role="info"] {{ color: {t.muted}; font-family: {mono}; font-size: 12px; }}
