@@ -7,6 +7,7 @@ inside the file as PNG, so a project still opens when the pictures it was made f
 import base64
 import json
 import os
+import threading
 from dataclasses import dataclass, field, replace
 
 from PySide6.QtCore import QBuffer, QByteArray, QIODevice
@@ -33,6 +34,22 @@ class Project:
     skipped: int = 0      # photos in the file that couldn't be read (left out)
 
 
+_PACKED = {}                  # photo id -> its PNG, base64: a photo's picture never changes (its crop is kept apart),
+_PACKED_LOCK = threading.Lock()   # so saving again, or a recovery copy every minute, doesn't pack it again
+
+
+def _packed(photo):
+    with _PACKED_LOCK:
+        text = _PACKED.get(photo.id)
+    if text is None:
+        text = _png(photo.image)
+        with _PACKED_LOCK:
+            if len(_PACKED) > 200:
+                _PACKED.clear()
+            _PACKED[photo.id] = text
+    return text
+
+
 def _png(img):
     buf = QBuffer()
     buf.open(QIODevice.OpenModeFlag.WriteOnly)
@@ -48,20 +65,22 @@ def _image(text):
     return img.convertToFormat(QImage.Format.Format_ARGB32)
 
 
-def to_json(state, version="dev"):
+def to_json(state, version="dev", extra=None):
     s = replace(state.settings, testpage=False)   # the printer test page is a look at the printer, not part of the work
     return {
         "app": "Inkline", "format": FORMAT, "version": version,
         "settings": s.to_dict(),
-        "photos": [{"name": p.name, "png": _png(p.image), "rot": p.rot, "zoom": p.zoom, "panx": p.panx, "pany": p.pany,
+        "photos": [{"name": p.name, "png": _packed(p), "rot": p.rot, "zoom": p.zoom, "panx": p.panx, "pany": p.pany,
                     "neutral": p.neutral} for p in state.photos],
         "sel": state.sel, "bookSel": state.book_sel,
+        **(extra or {}),
     }
 
 
-def save(path, state, version="dev"):
-    """Write the project (atomically: a crash never leaves half a file). Raises OSError."""
-    data = json.dumps(to_json(state, version), ensure_ascii=False)
+def save(path, state, version="dev", extra=None):
+    """Write the project (atomically: a crash never leaves half a file). Raises OSError. extra: more keys to
+    keep in the file (a recovery copy's note of where the work came from)."""
+    data = json.dumps(to_json(state, version, extra), ensure_ascii=False)
     tmp = path + ".tmp"
     try:
         with open(tmp, "w", encoding="utf-8") as f:
@@ -119,12 +138,17 @@ def _from_json(data):
 
 def load(path):
     """The project in a file. Raises ProjectError with a reason fit to show (OSError if it can't be opened)."""
+    return read(path)[0]
+
+
+def read(path):
+    """(the project, the file's JSON object), for keys beyond the project's own (a recovery copy's)."""
     with open(path, encoding="utf-8") as f:
         try:
             data = json.load(f)
         except (ValueError, RecursionError):
             raise ProjectError("isn't an Inkline project, or it's damaged") from None
-    return from_json(data)
+    return from_json(data), data
 
 
 def title(path):
