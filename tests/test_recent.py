@@ -87,7 +87,7 @@ def test_clear_list_and_the_limit(make, tmp_path):
     w.recent_menu.actions()[-1].trigger()        # Clear list
     assert w.recent == [] and not w.recent_menu.isEnabled()
     with open(tmp_path / "config" / "recent.json", encoding="utf-8") as f:
-        assert json.load(f) == {"photos": []}
+        assert json.load(f)["photos"] == []
 
 
 def test_nothing_is_kept_when_not_remembering(make, tmp_path):

@@ -6,6 +6,58 @@ To release a new version, add a section headed `## <version>` (the same text as 
 pull request that bumps `VERSION`. When it merges, `.github/workflows/release.yml` builds the packages
 and publishes a GitHub Release with that section as its notes.
 
+## 4.0.0 - 2026-11-22
+
+Inkline 4.0 lets you build a booklet page by page, and keep your work in a project file to open again later.
+
+### What's new
+
+- **Booklets built page by page.** Turn on **Make a multi-page booklet**, then press **Edit pages one by one**. The booklet becomes a list of its pages, and nothing about it changes until you do.
+  - Click a page to change it in the **Design** section: its pattern, that pattern's options (maze shape, word search words, name text and so on), complexity and colour by number. Line weight, border, title and paper stay the same for every page.
+  - Each row shows the page's pattern and complexity, such as "3. Maze · 5/10", with buttons to move it up or down, duplicate it with a new design, or remove it. **Add page** adds one like the last, with a new design. A booklet holds up to 40 design pages.
+  - **New design** changes only the page you're editing, and turning pages with ← → picks the page shown.
+  - Every change to the list can be undone. **Back to quick booklet**, or choosing a preset, goes back to Design pages, Get harder and Mix.
+- **Project files.** **File → Save project** (Ctrl+S) keeps everything you're making in one `.inkline` file: the settings, a booklet's own pages, and every photo with its crop.
+  - The photos are stored inside the file, so a project still opens when the original pictures have moved, or on another computer.
+  - **File → Open project…** (Ctrl+Shift+O) and **Open recent project** bring it back. You can also drop a project on the window. Installed from the Arch package or the `.run` installer, `inkline book.inkline` starts Inkline with that project open.
+  - The window title shows the project's name, with a mark when it has unsaved changes. Inkline asks before unsaved work is lost, when you start a new project, open another, or close the window.
+
+### Changed
+
+- **New save shortcuts.** Ctrl+S now saves the project, and Ctrl+Shift+S saves it under a new name, as in most apps. **Save PDF is now Ctrl+E, and Save PNG is Ctrl+Shift+E.**
+- **File → Open recent** is now **Open recent image**, next to **Open recent project**.
+- **Settings read from files are checked.** Values from remembered settings, presets and projects are brought into their usual ranges, so a damaged file can't freeze or crash Inkline.
+
+### Good to know
+
+- **Work that isn't a project is remembered as before:** your settings come back the next time you open Inkline. Photos don't, so closing with unsaved photos now asks whether to save them as a project.
+- **Projects with photos can be large,** because the photos are stored at full size.
+- **Opening a project starts a fresh undo history.**
+
+### Upgrading
+
+Nothing changes in what Inkline needs: Python 3 with PySide6 and numpy. Your presets, settings, recent photos and printer carry over.
+
+**Arch / CachyOS / Manjaro**
+```sh
+sudo pacman -U inkline-4.0.0-1-any.pkg.tar.zst
+```
+
+**Any other distro**
+```sh
+sh inkline-4.0.0.run            # or --system for every user
+```
+
+**Flatpak**
+```sh
+flatpak install --user inkline-4.0.0.flatpak     # if a .flatpak file is attached to this release
+sh packaging/flatpak/build.sh                    # or build it from a copy of the source
+```
+
+### Found a problem?
+
+Please open an issue saying what you did, what you expected, and what happened. Include your distro, and the printer if it's about printing.
+
 ## 3.4.2 - 2026-11-19
 
 Inkline is now free software, and its Flatpak is ready for Flathub.

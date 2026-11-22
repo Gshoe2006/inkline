@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QListWidget, QListWi
                                QScrollArea, QTabBar, QVBoxLayout, QWidget)
 
 from inkengine import book, cbn, photo
-from inkengine.patterns import maze, name, spot, words
+from inkengine.patterns import NAMES, maze, name, spot, words
 
 from . import theme
 from .state import BUILTIN_PRESETS
@@ -27,6 +27,7 @@ GRID_OPTIONS = [("2x2", "2 × 2"), ("3x3", "3 × 3"), ("4x4", "4 × 4"), ("2x1",
                 ("1x2", "1 across × 2"), ("2x3", "2 across × 3")]
 CBN_PATTERN_NOTE = "Repeated spaces share a number, and spaces side by side get different colours."
 MAX_PHOTOS = 60
+MAX_BOOK_PAGES = 40   # design pages in a booklet built page by page, as the quick booklet's slider
 MARGINS = [(0.25, "¼ in"), (0.5, "½ in"), (0.75, "¾ in"), (1.0, "1 in")]   # Paper → Margin
 
 
@@ -43,6 +44,12 @@ class Sidebar(QFrame):
     photo_selected = Signal(int)
     photo_moved = Signal(int, int)
     photo_removed = Signal(int)
+    pages_edit = Signal(bool)     # Edit pages one by one (True) / Back to quick booklet (False)
+    book_page_selected = Signal(int)
+    book_page_added = Signal()
+    book_page_moved = Signal(int, int)
+    book_page_copied = Signal(int)
+    book_page_removed = Signal(int)
     crop = Signal(str)            # rotl | rotr | reset | zoom | pan
     print_ = Signal()
     save = Signal(str)            # png | pdf | svg
@@ -107,8 +114,8 @@ class Sidebar(QFrame):
         lay.addWidget(self.print_btn)
         trio = QHBoxLayout()
         trio.setSpacing(theme.PAIR_GAP)
-        self.png_btn = button("PNG", tip="Save PNG (Ctrl+Shift+S)")
-        self.pdf_btn = button("PDF", tip="Save PDF (Ctrl+S)")
+        self.png_btn = button("PNG", tip="Save PNG (Ctrl+Shift+E)")
+        self.pdf_btn = button("PDF", tip="Save PDF (Ctrl+E)")
         self.svg_btn = button("SVG", tip="Vector lines for Inkscape, Cricut, Silhouette or laser cutters")
         for b, kind in ((self.png_btn, "png"), (self.pdf_btn, "pdf"), (self.svg_btn, "svg")):
             b.clicked.connect(lambda _c=False, k=kind: self.save.emit(k))
@@ -123,7 +130,7 @@ class Sidebar(QFrame):
         self.progress.setAccessibleName("Saving progress")
         self.progress.hide()
         lay.addWidget(self.progress)
-        keys = label("Ctrl+P print · Ctrl+S PDF · Ctrl+N new design · ← → pages", "keys")
+        keys = label("Ctrl+P print · Ctrl+E PDF · Ctrl+S save project · Ctrl+N new design · ← → pages", "keys")
         keys.setWordWrap(True)
         lay.addWidget(keys)
         return f
@@ -163,6 +170,7 @@ class Sidebar(QFrame):
         mk.setContentsMargins(0, 0, 0, 0)
         mk.setSpacing(theme.SECTION_GAP)
         sec = Section("Design")
+        self.design_note = sec.add(Hint())   # which booklet page the section edits, when it's built page by page
         self.gen = self._combo("gen", GEN_OPTIONS)
         sec.add(OptionRow("Pattern", self.gen))
         self.words_opts = SubOptions()
@@ -205,9 +213,28 @@ class Sidebar(QFrame):
         sec = Section("Booklet")
         sec.add(self._check("booklet", "Make a multi-page booklet"))
         self.book_opts = SubOptions()
-        self.book_opts.add(self._slider("pages", "Design pages", 2, 40))
-        self.book_opts.add(self._check("ramp", "Get harder page by page"))
-        self.book_opts.add(self._check("mix", "Mix every pattern (except name pages)"))
+        self.pages_row = self.book_opts.add(self._slider("pages", "Design pages", 2, 40))
+        self.ramp_check = self.book_opts.add(self._check("ramp", "Get harder page by page"))
+        self.mix_check = self.book_opts.add(self._check("mix", "Mix every pattern (except name pages)"))
+        self.pages_edit_btn = button("Edit pages one by one", "mini",
+                                     "Choose each page's pattern and complexity, and reorder, copy or remove pages")
+        self.pages_edit_btn.clicked.connect(lambda: self.pages_edit.emit(True))
+        self.pages_quick_btn = button("Back to quick booklet", "mini", "Make the pages from Design pages, "
+                                      "Get harder and Mix again (Undo brings your pages back)")
+        self.pages_quick_btn.clicked.connect(lambda: self.pages_edit.emit(False))
+        self.book_opts.add(_tools(self.pages_edit_btn, self.pages_quick_btn))
+        self.page_count = label("")
+        self.page_add = button("Add page", "mini", "Add a page like the last one, with a new design")
+        self.page_add.clicked.connect(self.book_page_added)
+        self.page_count_row = self.book_opts.add(_row(self.page_count, self.page_add, stretch_first=True))
+        self.page_list = QListWidget()
+        self.page_list.setObjectName("pageList")
+        self.page_list.setAccessibleName("Booklet pages")
+        self.page_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.page_list.currentRowChanged.connect(lambda i: None if self._loading or i < 0 else self.book_page_selected.emit(i))
+        self.book_opts.add(self.page_list)
+        self.page_list_hint = self.book_opts.add(Hint("Click a page to change it in Design above. Line weight, border, "
+                                                      "title and paper apply to every page."))
         self.book_opts.add(self._check("cover", "Cover page"))
         self.book_opts.add(self._check("page_nums", "Page numbers"))
         self.book_opts.add(self._check("key", "Answer pages for puzzles (mazes, dot-to-dots, sudoku, word search, nonograms) "
@@ -221,14 +248,7 @@ class Sidebar(QFrame):
         self.page_new.clicked.connect(lambda: self.swap_page.emit(True))
         self.page_orig.clicked.connect(lambda: self.swap_page.emit(False))
         self.page_orig.hide()   # shown once the page shown has been swapped
-        tools = QWidget()
-        tl = QHBoxLayout(tools)
-        tl.setContentsMargins(0, 0, 0, 0)
-        tl.setSpacing(theme.PAIR_GAP)
-        tl.addWidget(self.page_new)
-        tl.addWidget(self.page_orig)
-        tl.addStretch(1)
-        self.book_opts.add(tools)
+        self.book_opts.add(_tools(self.page_new, self.page_orig))
         self.book_opts.add(Hint("PDF and Print use every page. PNG and SVG save the page shown."))
         sec.add(self.book_opts)
         mk.addWidget(sec)
@@ -476,13 +496,70 @@ class Sidebar(QFrame):
         self.src.style().polish(self.src)
         self._loading = False
 
+    def fill_pages(self):
+        """The booklet's pages, when it's built page by page: a row each, as the photo book's photo list."""
+        self._loading = True
+        lst, st = self.page_list, self.state
+        pl = st.settings.page_list or []
+        cx = st.settings.complexity
+        lst.clear()
+        row_h = 60   # two lines: the name doesn't fit beside four buttons in the sidebar's width
+        for i, p in enumerate(pl):
+            gen = p.get("gen") if p.get("gen") in NAMES else st.settings.gen
+            text = f"{i + 1}. {NAMES[gen]} · {p.get('complexity', cx)}/10"
+            item = QListWidgetItem()
+            item.setToolTip(text)
+            item.setData(Qt.ItemDataRole.AccessibleTextRole, f"Page {text}")
+            item.setSizeHint(QSize(0, row_h))
+            lst.addItem(item)
+            row = QWidget()
+            rl = QHBoxLayout(row)
+            rl.setContentsMargins(4, 4, 4, 4)
+            rl.setSpacing(6)
+            icon = QLabel()
+            icon.setPixmap(_pattern_icon(gen))
+            icon.setFixedSize(36, 36)
+            rl.addWidget(icon)
+            right = QVBoxLayout()
+            right.setContentsMargins(0, 0, 0, 0)
+            right.setSpacing(theme.LABEL_GAP)
+            nm = _Elided(text)
+            nm.setObjectName("pageName")
+            right.addWidget(nm)
+            btns = QHBoxLayout()
+            btns.setContentsMargins(0, 0, 0, 0)
+            btns.setSpacing(6)
+            right.addLayout(btns)
+            rl.addLayout(right, 1)
+            full = len(pl) >= MAX_BOOK_PAGES
+            for txt, tip, fn, off in (("↑", "Move up", lambda _c=False, i=i: self.book_page_moved.emit(i, -1), i == 0),
+                                      ("↓", "Move down", lambda _c=False, i=i: self.book_page_moved.emit(i, 1), i == len(pl) - 1),
+                                      ("⧉", "Duplicate with a new design", lambda _c=False, i=i: self.book_page_copied.emit(i), full),
+                                      ("✕", "Remove", lambda _c=False, i=i: self.book_page_removed.emit(i), len(pl) < 2)):
+                b = button(txt, "mini", tip)
+                b.setAccessibleName(tip)
+                b.setEnabled(not off)
+                b.clicked.connect(fn)
+                btns.addWidget(b)
+            btns.addStretch(1)
+            lst.setItemWidget(item, row)
+        lst.setFixedHeight(min(260, max(1, len(pl)) * (row_h + 4) + 4))
+        lst.setCurrentRow(st.book_sel if pl else -1)
+        n = len(pl)
+        self.page_count.setText(f"{n} design page{'' if n == 1 else 's'}")
+        self.page_add.setEnabled(0 < n < MAX_BOOK_PAGES)
+        self.page_add.setToolTip(f"A booklet has at most {MAX_BOOK_PAGES} design pages" if n >= MAX_BOOK_PAGES else
+                                 "Add a page like the last one, with a new design")
+        self._loading = False
+
     def sync(self, view=None):
         """Show what applies and fill in the live values (2.x's syncOutputs)."""
         s = self.state.settings
         make = s.mode == "make"
         self.make_panel.setVisible(make)
         self.photo_panel.setVisible(not make)
-        mix_book = s.booklet and s.mix
+        listing = s.booklet and bool(s.page_list)   # built page by page: Design edits the selected page
+        mix_book = s.booklet and s.mix and not listing
         self.words_opts.setVisible(s.gen == "words")
         self.ws_words_row.setVisible(s.ws_theme == "custom")
         self.maze_opts.setVisible(s.gen == "maze" or mix_book)
@@ -497,8 +574,17 @@ class Sidebar(QFrame):
         else:
             note = "Works on mandalas, woven tiles, contours and name pages; choose one of those to see it."
         self.cbn_note.setText(note)
-        self.seed.setText(f"seed {s.seed}")
+        page = self.state.book_page if listing else None
+        self.seed.setText(f"seed {page.get('seed', s.seed) if page else s.seed}")
+        self.design_note.setVisible(page is not None)
+        if page is not None:
+            self.design_note.setText(f"Editing page {self.state.book_sel + 1} of {len(s.page_list)} of the booklet. "
+                                     "Line weight and border apply to every page.")
         self.book_opts.setVisible(s.booklet)
+        for w in (self.pages_row, self.ramp_check, self.mix_check, self.pages_edit_btn):
+            w.setVisible(not listing)
+        for w in (self.pages_quick_btn, self.page_count_row, self.page_list, self.page_list_hint):
+            w.setVisible(listing)
         self.pbook_opts.setVisible(s.photobook)
         self.pcbn_opts.setVisible(s.style == "cbn")
         self.pnono_opts.setVisible(s.style == "nono")
@@ -527,16 +613,19 @@ class Sidebar(QFrame):
             p = view.pages[view.index] if view.pages and view.kind == "booklet" else None
             key = p.idx if p is not None and p.kind == "design" else "cover" if p is not None and p.kind == "cover" else None
             self.page_new.setEnabled(key is not None and not s.fold)
+            # built page by page, a page's New design is Design's own button; the cover keeps its New cover art
+            self.page_new.setVisible(not listing or key == "cover")
             self.page_new.setToolTip("Turn off fold-and-staple to pick a single page" if s.fold else
                                      "Answer pages follow their puzzles" if key is None else "")
             self.page_new.setText("New cover art" if p is not None and p.kind == "cover" else "New design for this page")
             seeds = s.page_seeds or {}
-            self.page_orig.setVisible(key is not None and (key in seeds or str(key) in seeds) and not s.fold)
+            self.page_orig.setVisible(key is not None and (key in seeds or str(key) in seeds) and not s.fold
+                                      and (not listing or key == "cover"))
             self.current_key = key
         # the footer's buttons: PNG isn't for posters; SVG suits designs and the vector photo styles
         poster = s.poster and not s.testpage
         self.png_btn.setEnabled(not poster)
-        self.png_btn.setToolTip("Posters save as PDF (one page per sheet) or print directly" if poster else "Save PNG (Ctrl+Shift+S)")
+        self.png_btn.setToolTip("Posters save as PDF (one page per sheet) or print directly" if poster else "Save PNG (Ctrl+Shift+E)")
         vector = not make and s.style in photo.VECTOR_STYLES
         self.svg_btn.setEnabled((make or vector) and not s.testpage and not fold)
         tips = {"engrave": "Engraving lines save as vector paths, for laser engravers and plotters",
@@ -550,6 +639,29 @@ class Sidebar(QFrame):
 
     def set_status(self, text):
         self.status.setText(text)
+
+
+_ICONS = {}   # a small picture of each pattern, for the booklet's page list (drawn once, the first time it's needed)
+
+
+def _pattern_icon(gen, size=36):
+    if gen not in _ICONS:
+        from PySide6.QtGui import QColor, QImage, QPainter
+        from inkengine.canvas import QtCanvas
+        from inkengine.page import Settings, draw_page, geometry, single_page
+        s = Settings(gen=gen, seed=7, complexity=3, weight=6, frame=False, title="", name_line=False, margin=0.3, dpi=40)
+        g = geometry(s)
+        img = QImage(g.W, g.H, QImage.Format.Format_RGB32)
+        img.fill(QColor("white"))
+        p = QPainter(img)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        draw_page(QtCanvas(p, g.W, g.H), g, single_page(s, None), s)
+        p.end()
+        side = min(g.W, g.H) - 24
+        crop = img.copy((g.W - side) // 2, (g.H - side) // 2, side, side)
+        _ICONS[gen] = QPixmap.fromImage(crop.scaled(size, size, Qt.AspectRatioMode.KeepAspectRatio,
+                                                    Qt.TransformationMode.SmoothTransformation))
+    return _ICONS[gen]
 
 
 class _Elided(QLabel):
@@ -567,6 +679,18 @@ class _Elided(QLabel):
 
     def minimumSizeHint(self):
         return QSize(0, super().minimumSizeHint().height())
+
+
+def _tools(*buttons):
+    """Mini buttons side by side, from the left."""
+    w = QWidget()
+    lay = QHBoxLayout(w)
+    lay.setContentsMargins(0, 0, 0, 0)
+    lay.setSpacing(theme.PAIR_GAP)
+    for b in buttons:
+        lay.addWidget(b)
+    lay.addStretch(1)
+    return w
 
 
 def _row(first, second, stretch_first=False):
