@@ -46,6 +46,10 @@ modules:
       - install -Dm644 inkline.desktop /app/share/applications/${FLATPAK_ID}.desktop
       - desktop-file-edit --set-icon=${FLATPAK_ID} --set-key=StartupWMClass --set-value=${FLATPAK_ID} /app/share/applications/${FLATPAK_ID}.desktop
       - install -Dm644 inkline.svg /app/share/icons/hicolor/scalable/apps/${FLATPAK_ID}.svg
+      # .inkline projects: Flatpak only shares files named after the app ID, so the type's icon is renamed too
+      - sed "s|<!-- icon -->|<icon name=\"${FLATPAK_ID}.application-x-inkline-project\"/>|" inkline-mime.xml > inkline-mime.flatpak.xml
+      - install -Dm644 inkline-mime.flatpak.xml /app/share/mime/packages/${FLATPAK_ID}.xml
+      - install -Dm644 icons/hicolor/scalable/mimetypes/application-x-inkline-project.svg /app/share/icons/hicolor/scalable/mimetypes/${FLATPAK_ID}.application-x-inkline-project.svg
       - for d in icons/hicolor/*/apps; do s=${d#icons/hicolor/}; s=${s%/apps}; install -Dm644 $d/inkline.png /app/share/icons/hicolor/$s/apps/${FLATPAK_ID}.png; done
       - install -Dm644 packaging/flatpak/${FLATPAK_ID}.metainfo.xml /app/share/metainfo/${FLATPAK_ID}.metainfo.xml
       - install -Dm644 LICENSE /app/share/licenses/${FLATPAK_ID}/LICENSE

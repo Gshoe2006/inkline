@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Inkline's project files (.inkline), so file managers show them with their own icon and open them in Inkline.
+     Installed as share/mime/packages/inkline.xml (the Flatpak names it after its app ID and fills in the icon). -->
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-inkline-project">
+    <comment>Inkline project</comment>
+    <sub-class-of type="application/json"/>
+    <!-- icon -->
+    <glob pattern="*.inkline"/>
+  </mime-type>
+</mime-info>

@@ -25,6 +25,12 @@ def app_version():
         return "dev"
 
 
+def startup_project(args):
+    """The project to open at start: the first .inkline file named (a double-click in the file manager runs
+    `inkline FILE`), or None."""
+    return next((a for a in args if a.lower().endswith(".inkline") and not a.startswith("-")), None)
+
+
 def main():
     from PySide6.QtGui import QGuiApplication, QIcon
     from PySide6.QtWidgets import QApplication
@@ -43,8 +49,9 @@ def main():
     theme.apply(app)
     win = Window(app_version())
     win.show()
-    if len(sys.argv) > 1 and sys.argv[1].lower().endswith(".inkline"):
-        win.open_project(sys.argv[1])
+    path = startup_project(sys.argv[1:])
+    if path:
+        win.open_project(path)
     sys.exit(app.exec())
 
 

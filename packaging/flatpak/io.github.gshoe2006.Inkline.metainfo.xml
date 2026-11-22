@@ -20,6 +20,9 @@
     </ul>
   </description>
   <launchable type="desktop-id">io.github.gshoe2006.Inkline.desktop</launchable>
+  <provides>
+    <mediatype>application/x-inkline-project</mediatype>
+  </provides>
   <url type="homepage">https://github.com/Gshoe2006/inkline</url>
   <url type="bugtracker">https://github.com/Gshoe2006/inkline/issues</url>
   <url type="vcs-browser">https://github.com/Gshoe2006/inkline</url>

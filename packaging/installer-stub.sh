@@ -37,16 +37,19 @@ APP="$PREFIX/share/inkline"
 BIN="$PREFIX/bin"
 DESK="$PREFIX/share/applications"
 ICONS="$PREFIX/share/icons/hicolor"
+MIME="$PREFIX/share/mime"
 
 refresh_menus() {
   command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$DESK" >/dev/null 2>&1 || true
   command -v gtk-update-icon-cache >/dev/null 2>&1 && gtk-update-icon-cache -q -t -f "$ICONS" >/dev/null 2>&1 || true
+  [ -d "$MIME/packages" ] && command -v update-mime-database >/dev/null 2>&1 && update-mime-database "$MIME" >/dev/null 2>&1 || true
 }
 
 if [ "$ACTION" = uninstall ]; then
   if [ ! -d "$APP" ]; then echo "Inkline isn't installed in $PREFIX."; exit 0; fi
   rm -rf "$APP"
   rm -f "$BIN/inkline" "$DESK/inkline.desktop" "$ICONS/scalable/apps/inkline.svg" "$ICONS"/*/apps/inkline.png
+  rm -f "$MIME/packages/inkline.xml" "$ICONS/scalable/mimetypes/application-x-inkline-project.svg"
   refresh_menus
   echo "Inkline has been removed from $PREFIX."
   exit 0
@@ -72,11 +75,14 @@ trap 'rm -rf "$TMP"' EXIT
 LINE=$(awk '/^__INKLINE_PAYLOAD__$/ { print NR + 1; exit }' "$0")
 tail -n +"$LINE" "$0" | tar -xz -C "$TMP"
 
-mkdir -p "$APP" "$BIN" "$DESK" "$ICONS/scalable/apps"
+mkdir -p "$APP" "$BIN" "$DESK" "$ICONS/scalable/apps" "$ICONS/scalable/mimetypes" "$MIME/packages"
 rm -rf "$APP/inkengine" "$APP/inkapp" "$APP/index.html"   # 2.x's page goes; 3.0 is native
 cp "$TMP/inkline.py" "$TMP/inkline.svg" "$TMP/VERSION" "$TMP/LICENSE" "$APP/"
 cp -R "$TMP/inkengine" "$TMP/inkapp" "$APP/"
 cp "$TMP/inkline.svg" "$ICONS/scalable/apps/inkline.svg"
+# .inkline projects: their own icon in the file manager, and a double-click opens them in Inkline
+cp "$TMP/inkline-mime.xml" "$MIME/packages/inkline.xml"
+cp "$TMP/icons/hicolor/scalable/mimetypes/application-x-inkline-project.svg" "$ICONS/scalable/mimetypes/"
 for png in "$TMP"/icons/hicolor/*/apps/inkline.png; do
   size="$(basename "$(dirname "$(dirname "$png")")")"
   mkdir -p "$ICONS/$size/apps" && cp "$png" "$ICONS/$size/apps/inkline.png"
@@ -84,7 +90,7 @@ done
 
 printf '#!/bin/sh\nexec python3 "%s/inkline.py" "$@"\n' "$APP" > "$BIN/inkline"
 chmod 755 "$BIN/inkline"
-sed "s|^Exec=.*|Exec=$BIN/inkline|" "$TMP/inkline.desktop" > "$DESK/inkline.desktop"
+sed "s|^Exec=inkline|Exec=$BIN/inkline|" "$TMP/inkline.desktop" > "$DESK/inkline.desktop"
 
 # A copy of this installer stays with the app, so it can uninstall itself later.
 cp "$0" "$APP/installer.run"
