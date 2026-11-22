@@ -6,6 +6,47 @@ To release a new version, add a section headed `## <version>` (the same text as 
 pull request that bumps `VERSION`. When it merges, `.github/workflows/release.yml` builds the packages
 and publishes a GitHub Release with that section as its notes.
 
+## 4.1.0 - 2026-11-22
+
+Inkline 4.1 makes a booklet's page list easier to find your way around, and lets your file manager open projects.
+
+### What's new
+
+- **A picture of each page.** In a booklet built page by page, every row of the page list now shows a small picture of that page: its pattern, design and complexity, with the booklet's line weight, border, title and paper. Pictures are drawn in the background, so the list never waits, and editing a page redraws only its own picture.
+- **Drag pages to reorder them.** Drag any page in the list to a new place, any distance, and drop it. A line shows where it will land, the whole move is one Undo step, and the page you're editing stays selected. ↑ ↓ still move a page one place.
+- **Open projects from your file manager.** `.inkline` projects now have their own icon, and double-clicking one opens it in Inkline, as does *Open with → Inkline*. This works with the Arch package, the `.run` installer and the Flatpak.
+
+### Fixed
+
+- After Undo or Redo in a booklet built page by page, the preview now shows the page the list highlights.
+- Releases now attach only the three packages. Inkline 4.0.0 also had the self-test's sample files attached by mistake.
+
+### Upgrading
+
+Nothing changes in what Inkline needs: Python 3 with PySide6 and numpy. Your presets, settings, projects, recent files and printer carry over.
+
+**Arch / CachyOS / Manjaro**
+```sh
+sudo pacman -U inkline-4.1.0-1-any.pkg.tar.zst
+```
+
+**Any other distro**
+```sh
+sh inkline-4.1.0.run            # or --system for every user
+```
+
+**Flatpak**
+```sh
+flatpak install --user inkline-4.1.0.flatpak     # if a .flatpak file is attached to this release
+sh packaging/flatpak/build.sh                    # or build it from a copy of the source
+```
+
+If project files don't show their icon straight away, log out and back in, so your desktop picks up the new file type.
+
+### Found a problem?
+
+Please open an issue saying what you did, what you expected, and what happened. Include your distro, and the printer if it's about printing.
+
 ## 4.0.0 - 2026-11-22
 
 Inkline 4.0 lets you build a booklet page by page, and keep your work in a project file to open again later.
