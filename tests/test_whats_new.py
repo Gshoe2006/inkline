@@ -167,3 +167,19 @@ def test_closing_leaves_copied_pages_as_plain_text(win):
     win.close()                                  # the window's own data would crash PySide as the app quits
     md = QGuiApplication.clipboard().mimeData()
     assert not md.hasFormat("application/x-inkline-pages") and md.text().startswith("Inkline booklet pages: ")
+
+
+def test_closing_leaves_another_inklines_pages_alone(win):
+    _booklet(win)
+    win.copy_pages()
+    win._clip_id = "someone-else"                # as if another Inkline had copied them
+    win._release_clipboard()
+    assert QGuiApplication.clipboard().mimeData().hasFormat("application/x-inkline-pages")
+    QGuiApplication.clipboard().setText("")      # no Python-made data left at exit
+
+
+def test_whats_new_isnt_shown_when_it_cant_be_remembered(tmp_path, monkeypatch):
+    monkeypatch.setenv("INKLINE_CONFIG_DIR", str(tmp_path))
+    config.write("seen-version.json", {"version": "4.4.0"}, "x")
+    monkeypatch.setattr(config, "write", lambda *a: "Couldn't save")
+    assert whatsnew.due("4.5.0", True) is None

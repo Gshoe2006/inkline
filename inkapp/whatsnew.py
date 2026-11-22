@@ -82,7 +82,8 @@ def due(version, remember):
     if not remember or _version(version) is None:
         return None
     seen = config.read("seen-version.json").get("version")
-    config.write("seen-version.json", {"version": version}, "What's new")
+    if config.write("seen-version.json", {"version": version}, "What's new"):
+        return None   # it can't be remembered (a read-only settings folder): rather nothing than every start
     if not isinstance(seen, str) or _version(seen) is None:
         # never recorded: a first install shows nothing; an update from before this note (settings already there)
         # shows this version's

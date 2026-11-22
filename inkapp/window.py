@@ -7,6 +7,7 @@ with progress in the footer. Messages are 2.x's.
 
 import json
 import math
+import uuid
 import os
 import time
 from dataclasses import replace
@@ -156,6 +157,7 @@ class Window(QMainWindow):
         self.recent = [p for p in recent.get("photos", []) if isinstance(p, str)][:MAX_RECENT]
         self.recent_projects = [p for p in recent.get("projects", []) if isinstance(p, str)][:MAX_RECENT]
         self.project_path = None   # the .inkline file open, if any
+        self._clip_id = uuid.uuid4().hex   # marks the booklet pages this window puts on the clipboard
         restored = self._restore()
         self.state.mirror()
         self.last_dir = os.path.expanduser("~/Pictures") if os.path.isdir(os.path.expanduser("~/Pictures")) else os.path.expanduser("~")
@@ -526,7 +528,8 @@ class Window(QMainWindow):
         pl = self.state.settings.page_list
         pages = list(pl) if everything else [pl[self.state.book_sel]]
         md = QMimeData()
-        md.setData(PAGES_MIME, json.dumps({"app": "Inkline", "pages": pages}).encode("utf-8"))
+        # "from": this window, so closing it only touches pages it put there itself, not another Inkline's
+        md.setData(PAGES_MIME, json.dumps({"app": "Inkline", "from": self._clip_id, "pages": pages}).encode("utf-8"))
         names = [NAMES.get(p.get("gen"), "page") for p in pages]
         md.setText("Inkline booklet pages: " + ", ".join(names))
         QGuiApplication.clipboard().setMimeData(md)
@@ -538,7 +541,13 @@ class Window(QMainWindow):
         made in Python and still on the clipboard when Qt shuts down crashes PySide 6.12 as the app quits."""
         cb = QGuiApplication.clipboard()
         md = cb.mimeData()
-        if md is not None and md.hasFormat(PAGES_MIME):
+        if md is None or not md.hasFormat(PAGES_MIME):
+            return
+        try:
+            mine = json.loads(bytes(md.data(PAGES_MIME)).decode("utf-8")).get("from") == self._clip_id
+        except (ValueError, AttributeError, UnicodeDecodeError):
+            mine = False
+        if mine:
             cb.setText(md.text())
 
     def paste_pages(self, raw):
