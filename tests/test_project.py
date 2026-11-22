@@ -86,7 +86,8 @@ def test_a_project_keeps_settings_pages_and_photos_with_their_crops(tmp_path):
     ("not json at all", "isn't an Inkline project, or it's damaged"),
     ('{"settings": {}}', "isn't an Inkline project"),
     ('{"app": "Inkline", "format": 99, "version": "9.0.0", "settings": {}}', "newer Inkline (9.0.0)"),
-    ('{"app": "Inkline", "settings": {}, "photos": [{"png": "bm9wZQ=="}]}', "photo that couldn't be read"),
+    ('{"app": "Inkline", "settings": "nope"}', "isn't an Inkline project"),
+    ("[" * 100000, "isn't an Inkline project, or it's damaged"),
 ])
 def test_a_file_that_isnt_a_project_says_why(tmp_path, content, why):
     QApplication.instance() or QApplication([])
@@ -165,7 +166,58 @@ def test_a_missing_or_broken_project_leaves_the_work_alone(win, tmp_path):
     bad = tmp_path / "bad.inkline"
     bad.write_text("{", encoding="utf-8")
     assert not win.open_project(str(bad))
-    assert "Couldn't open bad.inkline: it isn't an Inkline project, or it's damaged." in win.sidebar.status.text()
+    assert win.sidebar.status.text().startswith("Couldn't open bad.inkline: it isn't an Inkline project, or it's damaged.")
     win.recent_projects = [str(tmp_path / "gone.inkline")]
     assert not win.open_project(str(tmp_path / "gone.inkline"))
     assert win.recent_projects == [] and win.state.settings is before
+
+
+@pytest.mark.parametrize("bad", [
+    {"photos": 5}, {"sel": 1e300}, {"format": "Infinity"}, {"settings": {"complexity": 1e999}},
+    {"settings": {"complexity": int("9" * 400)}}, {"settings": {"gen": {"x": 1}, "paper": [1]}},
+])
+def test_odd_files_open_safely_or_say_theyre_damaged(bad):
+    data = {**project.to_json(State()), **bad}
+    if "settings" in bad:
+        data["settings"] = {**project.to_json(State())["settings"], **bad["settings"]}
+    try:
+        p = project.from_json(json.loads(json.dumps(data)))
+    except project.ProjectError:
+        return
+    s = p.settings
+    assert 1 <= s.complexity <= 10 and s.paper in ("letter", "a4") and isinstance(s.gen, str)
+
+
+def test_settings_from_a_file_stay_in_range():
+    from inkengine.page import Settings
+    s = Settings.from_dict({"grid": "999x999", "complexity": 100000000, "paper": "[1]", "margin": float("inf"),
+                            "gen": "nope", "title": "x" * 500, "pageSeeds": {"3": "12", "cover": 4, "junk": 1, "4": "x"},
+                            "pageList": [{"gen": "maze", "complexity": 99, "mazeShape": "blob"}] * 50})
+    d = Settings()
+    assert (s.grid, s.complexity, s.paper, s.margin, s.gen) == (d.grid, 10, d.paper, d.margin, d.gen)
+    assert len(s.title) == 80 and s.page_seeds == {"3": 12, "cover": 4}
+    assert len(s.page_list) == 40 and s.page_list[0] == {"gen": "maze", "complexity": 10}
+
+
+def test_a_damaged_photo_is_left_out_not_the_project(win, tmp_path):
+    data = project.to_json(State())
+    data["photos"] = [{"png": project._png(_img()), "name": "ok.png"}, {"png": "!!", "name": "bad.png"}]
+    path = tmp_path / "p.inkline"
+    path.write_text(json.dumps(data), encoding="utf-8")
+    assert win.open_project(str(path))
+    assert [p.name for p in win.state.photos] == ["ok.png"]
+    assert win.sidebar.status.text() == "Opened p.inkline, without 1 damaged photo."
+
+
+def test_untitled_photos_ask_before_closing(win, answers):
+    asked, queue = answers
+    win.add_photos([Photo(_img(), name="a.png")], False)
+    queue.append(QMessageBox.StandardButton.Cancel)
+    assert not win.close() and asked == ["Save your work as a project first?"]
+
+
+def test_a_missing_recent_project_doesnt_ask_about_the_work(win, tmp_path, answers):
+    asked, _queue = answers
+    _set(win, weight=9)
+    assert not win.open_project(str(tmp_path / "gone.inkline")) and asked == []
+    assert win.sidebar.status.text() == "Couldn't find gone.inkline. It may have been moved or deleted."

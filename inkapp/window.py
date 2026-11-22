@@ -542,7 +542,8 @@ class Window(QMainWindow):
         name = project.title(self.project_path) if self.project_path else ""
         # untitled work shows no unsaved mark: it was never a file (and the settings are remembered anyway)
         self.setWindowTitle(f"{name}[*] — Inkline {self.version}" if name else f"Inkline {self.version}")
-        self.setWindowModified(not self.history.isClean())
+        if name:
+            self.setWindowModified(not self.history.isClean())
 
     def _ask_to_save(self):
         """Before the work is replaced: True to go on (saved, or the changes aren't wanted), False to stop."""
@@ -586,27 +587,34 @@ class Window(QMainWindow):
         self._msg("New project. Settings are back to their defaults.")
 
     def open_project(self, path=None):
-        if not self._ask_to_save():
-            return False
-        if path is None:
+        asked = path is None
+        if asked:   # asked before the file is chosen, as other apps do
+            if not self._ask_to_save():
+                return False
             path, _ = QFileDialog.getOpenFileName(self, "Open project", self.last_dir, project.FILTER)
             if not path:
                 return False
         name = os.path.basename(path)
+        if not os.path.isfile(path):   # found missing before asking about the work open now
+            self._msg(f"Couldn't find {name}. It may have been moved or deleted.")
+            if path in self.recent_projects:
+                self._set_recent_projects([p for p in self.recent_projects if p != path])
+            return False
+        if not asked and not self._ask_to_save():
+            return False
         try:
             proj = project.load(path)
         except project.ProjectError as why:
-            self._msg(f"Couldn't open {name}: it {why}.")
+            self._msg(f"Couldn't open {name}: it {why}. Choose another project, or a copy of this one.")
             return False
         except OSError:
-            self._msg(f"Couldn't open {name}. It may have been moved or deleted, or you can't read it.")
-            if path in self.recent_projects:
-                self._set_recent_projects([p for p in self.recent_projects if p != path])
+            self._msg(f"Couldn't open {name}. Check that you're allowed to read it.")
             return False
         self.last_dir = os.path.dirname(os.path.abspath(path))
         self._use_project(proj, os.path.abspath(path))
         self._add_recent_project(self.project_path)
-        self._msg(f"Opened {project.title(path)}.")
+        lost = proj.skipped
+        self._msg(f"Opened {name}, without {lost} damaged photo{'s' if lost > 1 else ''}." if lost else f"Opened {name}.")
         return True
 
     def save_project(self):
@@ -632,7 +640,7 @@ class Window(QMainWindow):
         self.history.setClean()
         self._update_title()
         self._add_recent_project(self.project_path)
-        self._msg(f"Saved {project.title(path)}.")
+        self._msg(f"Saved {os.path.basename(path)}.")
         return True
 
     # File → Open recent project: the projects opened or saved lately, newest first, kept in recent.json
@@ -1119,8 +1127,13 @@ class Window(QMainWindow):
                                                  "colouring pages, puzzles, booklets, posters and photo conversions.")
 
     def closeEvent(self, e):
-        # an open project with changes asks first; work that was never a project is remembered as before
-        if self.project_path is not None and not self._ask_to_save():
+        if self._busy_saving:   # a PDF or print job is still drawing from the work
+            self._msg("Wait for the save or print to finish, then close Inkline.")
+            e.ignore()
+            return
+        # unsaved changes to a project, or to photos (they aren't remembered), ask first; untitled settings
+        # are remembered as before
+        if (self.project_path is not None or self.state.photos) and not self._ask_to_save():
             e.ignore()
             return
         if self.remember and self._remember_timer.isActive():

@@ -27,10 +27,44 @@ def _coerce(v, kind):
         if kind is int:
             return int(float(v))
         if kind is float:
-            return float(v)
-        return str(v)
-    except (TypeError, ValueError):
+            f = float(v)
+            return f if math.isfinite(f) else None
+        return v if isinstance(v, str) else str(v) if isinstance(v, (int, float)) else None
+    except (TypeError, ValueError, OverflowError):
         return None
+
+
+# What each setting may be, for settings read from a file (remembered settings, presets, projects): a number
+# outside its range is brought into it; text that isn't one of its choices, or is too long, falls back.
+RANGES = {"seed": (0, 4294967295), "complexity": (1, 10), "weight": (1, 10), "margin": (0, 2), "dpi": (36, 1200),
+          "pages": (2, 40), "overlap": (0, 1), "brightness": (-100, 100), "contrast": (20, 300), "threshold": (1, 254),
+          "dot": (1, 8), "pnono_size": (10, 30), "pcbn_colours": (4, 16), "cbn_colours": (3, 12)}
+LENGTHS = {"title": 80, "maze_word": 12, "ws_words": 300, "name_text": 40}
+
+
+def _choices():
+    from . import poster
+    from .patterns import name, spot, words
+    try:
+        from .photo import STYLES
+    except ImportError:      # the engine without Qt: no photo styles to check against
+        STYLES = None
+    return {"gen": set(NAMES), "paper": set(PAPER), "orient": {"portrait", "landscape"}, "maze_shape": set(maze.SHAPE_NAMES),
+            "spot_base": set(spot.BASES), "ws_theme": set(words.THEME_NAMES) | {"custom"}, "name_bg": set(name.BACKGROUNDS),
+            "grid": set(poster.GRIDS), "mode": {"make", "convert"}, "fit": {"contain", "cover"},
+            **({"style": set(STYLES)} if STYLES else {})}
+
+
+def _allowed(k, v, choices):
+    """v brought into what setting k allows, or None for its default."""
+    if k in RANGES:
+        lo, hi = RANGES[k]
+        return type(v)(max(lo, min(hi, v)))
+    if k in LENGTHS:
+        return v[:LENGTHS[k]]
+    if k in choices and v not in choices[k]:
+        return None
+    return v
 
 
 @dataclass
@@ -96,15 +130,18 @@ class Settings:
         """Settings from a dict. 2.x names (mazeShape, nameLine) are read as maze_shape, name_line;
         keys this version doesn't know are ignored."""
         types = {f.name: type(f.default) for f in fields(cls) if not isinstance(f.default, type(field()))}
+        choices = _choices()
         out = {}
         for k, v in d.items():
             k = re.sub(r"(?<!^)([A-Z])", r"_\1", k).lower()
             if k == "page_seeds" and isinstance(v, dict):
-                out[k] = v
+                out[k] = {pk: s for pk, s in ((pk, _coerce(s, int)) for pk, s in v.items())
+                          if s is not None and (pk == "cover" or str(pk).isdigit())}
             elif k == "page_list" and isinstance(v, list):
-                out[k] = [clean_page(p, types) for p in v if isinstance(p, dict)]
+                out[k] = [clean_page(p, types, choices) for p in v[:40] if isinstance(p, dict)]
             elif k in types:
-                out[k] = _coerce(v, types[k])   # 2.x's form stores everything as text: "5", "0.25", "true"
+                v = _coerce(v, types[k])   # 2.x's form stores everything as text: "5", "0.25", "true"
+                out[k] = None if v is None else _allowed(k, v, choices)
         return cls(**{k: v for k, v in out.items() if v is not None})
 
     def to_dict(self):
@@ -116,14 +153,16 @@ PAGE_KEYS = ("gen", "seed", "complexity", "cbn", "cbn_colours", "maze_shape", "m
              "name_text", "name_bg", "spot_base")
 
 
-def clean_page(p, types=None):
-    """A page_list entry with only PAGE_KEYS, each of the right type (as read from a file)."""
+def clean_page(p, types=None, choices=None):
+    """A page_list entry with only PAGE_KEYS, each of the right type and allowed (as read from a file)."""
     if types is None:
         types = {f.name: type(f.default) for f in fields(Settings) if not isinstance(f.default, type(field()))}
+    choices = _choices() if choices is None else choices
     out = {}
     for k in PAGE_KEYS:
         if k in p:
             v = _coerce(p[k], types[k])
+            v = None if v is None else _allowed(k, v, choices)
             if v is not None:
                 out[k] = v
     return out

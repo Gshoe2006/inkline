@@ -30,12 +30,14 @@ class Project:
     photos: list = field(default_factory=list)
     sel: int = 0          # the photo being cropped
     book_sel: int = 0     # the booklet page being edited
+    skipped: int = 0      # photos in the file that couldn't be read (left out)
 
 
 def _png(img):
     buf = QBuffer()
     buf.open(QIODevice.OpenModeFlag.WriteOnly)
-    img.save(buf, "PNG")
+    if not img.save(buf, "PNG"):
+        raise OSError("couldn't pack a photo")
     return base64.b64encode(bytes(buf.data())).decode("ascii")
 
 
@@ -78,6 +80,15 @@ def _num(v, default, lo, hi):
 
 
 def from_json(data):
+    try:
+        return _from_json(data)
+    except ProjectError:
+        raise
+    except Exception:   # anything else odd in the file (wrong types, absurd numbers, deep nesting): it's damaged
+        raise ProjectError("isn't an Inkline project, or it's damaged") from None
+
+
+def _from_json(data):
     if not isinstance(data, dict) or data.get("app") != "Inkline" or not isinstance(data.get("settings"), dict):
         raise ProjectError("isn't an Inkline project")
     try:
@@ -87,21 +98,23 @@ def from_json(data):
     if fmt > FORMAT:
         raise ProjectError(f"was saved by a newer Inkline ({data.get('version', 'unknown version')}). Update Inkline to open it")
     s = Settings.from_dict({**Settings().to_dict(), **Settings.from_dict(data["settings"]).to_dict()})
-    photos = []
-    for p in data.get("photos") or []:
+    photos, skipped = [], 0
+    listed = data.get("photos") or []
+    for p in listed if isinstance(listed, list) else []:
         if not isinstance(p, dict):
             continue
         try:
             img = _image(p.get("png"))
         except (ValueError, TypeError):
-            raise ProjectError("has a photo that couldn't be read. The file may be damaged") from None
+            skipped += 1   # one damaged photo doesn't lose the rest of the project
+            continue
         rot = int(_num(p.get("rot"), 0, 0, 270)) // 90 * 90
         photos.append(Photo(img, rot=rot, zoom=_num(p.get("zoom"), 100, 100, 400), panx=_num(p.get("panx"), 0, -100, 100),
                             pany=_num(p.get("pany"), 0, -100, 100), neutral=bool(p.get("neutral", False)),
                             name=str(p.get("name") or "photo")))
     sel = int(_num(data.get("sel"), 0, 0, max(0, len(photos) - 1)))
     book_sel = int(_num(data.get("bookSel"), 0, 0, max(0, len(s.page_list) - 1)))
-    return Project(replace(s, testpage=False), photos, sel, book_sel)
+    return Project(replace(s, testpage=False), photos, sel, book_sel, skipped)
 
 
 def load(path):
@@ -109,7 +122,7 @@ def load(path):
     with open(path, encoding="utf-8") as f:
         try:
             data = json.load(f)
-        except ValueError:
+        except (ValueError, RecursionError):
             raise ProjectError("isn't an Inkline project, or it's damaged") from None
     return from_json(data)
 
