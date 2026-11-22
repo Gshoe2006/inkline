@@ -2,8 +2,9 @@
 #
 #   1. check    VERSION is a new version, and CHANGELOG.md has notes for it
 #   2. selftest the same self-test every pull request runs (selftest.yml)
-#   3. build    the .run installer and the Arch package (in Arch Linux), and the .flatpak
-#   4. release  tags the commit, publishes "Inkline <version>" with those notes and the three files,
+#   3. build    the .run installer and the Arch package (in Arch Linux), the .flatpak, the Debian/Ubuntu
+#               .deb and the AppImage
+#   4. release  tags the commit, publishes "Inkline <version>" with those notes and the five files,
 #               then tells the app portal (Gshoe2006/Apps) to show it straight away
 #
 # Nothing is published unless every step passes. To release: in one pull request, bump VERSION and
@@ -11,7 +12,7 @@
 # releases the current VERSION if that hasn't happened yet (for example after fixing a failed build).
 #
 # Tick "Test build only" under Run workflow to do everything but publish: the notes check, the
-# self-test and all three builds, with the packages kept for 7 days under the run's Artifacts.
+# self-test and all five builds, with the packages kept for 7 days under the run's Artifacts.
 # Releases are only ever published from main.
 name: Release
 
@@ -146,8 +147,65 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  deb:
+    needs: check
+    if: needs.check.outputs.build == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the .deb
+        run: |
+          sh packaging/debian/build-deb.sh
+          test -f "dist/inkline_${{ needs.check.outputs.version }}-1_amd64.deb"
+
+      - name: Install it and run the self-test with it
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y poppler-utils "./dist/inkline_${{ needs.check.outputs.version }}-1_amd64.deb"   # poppler-utils: check_selftest reads the PDFs
+          QT_QPA_PLATFORM=offscreen inkline --selftest deb-selftest
+          python3 packaging/check_selftest.py deb-selftest
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deb
+          path: dist/inkline_*.deb
+          if-no-files-found: error
+          retention-days: 7
+
+  appimage:
+    needs: check
+    if: needs.check.outputs.build == 'true'
+    # built on the oldest supported Ubuntu, so the AppImage runs on distributions at least as new
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the AppImage
+        run: |
+          pip install uv
+          sh packaging/appimage/build-appimage.sh
+          test -f "dist/inkline-${{ needs.check.outputs.version }}-x86_64.AppImage"
+
+      - name: Run the self-test with it
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libegl1 libxkbcommon0 libfontconfig1 libdbus-1-3 poppler-utils   # poppler-utils: check_selftest reads the PDFs
+          QT_QPA_PLATFORM=offscreen APPIMAGE_EXTRACT_AND_RUN=1 \
+            "./dist/inkline-${{ needs.check.outputs.version }}-x86_64.AppImage" --selftest appimage-selftest
+          python3 packaging/check_selftest.py appimage-selftest
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: appimage
+          path: dist/inkline-*.AppImage
+          if-no-files-found: error
+          retention-days: 7
+
   release:
-    needs: [check, selftest, run-and-arch, flatpak]
+    needs: [check, selftest, run-and-arch, flatpak, deb, appimage]
     if: needs.check.outputs.publish == 'true'
     runs-on: ubuntu-24.04
     permissions:
@@ -164,6 +222,14 @@ jobs:
         with:
           name: flatpak
           path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: deb
+          path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: appimage
+          path: dist
 
       - name: Publish the release
         env:
@@ -172,7 +238,7 @@ jobs:
         run: |
           python3 packaging/release_notes.py "$V" > notes.md
           ls -l dist
-          test "$(ls dist | wc -l)" = 3 || { echo "::error::Expected the 3 packages in dist, found: $(ls dist)"; exit 1; }
+          test "$(ls dist | wc -l)" = 5 || { echo "::error::Expected the 5 packages in dist, found: $(ls dist)"; exit 1; }
           gh release create "$V" dist/* \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
@@ -188,7 +254,7 @@ jobs:
         run: sh packaging/notify_portal.sh --warn
 
   test-build-done:
-    needs: [check, selftest, run-and-arch, flatpak]
+    needs: [check, selftest, run-and-arch, flatpak, deb, appimage]
     if: needs.check.outputs.build == 'true' && needs.check.outputs.publish != 'true'
     runs-on: ubuntu-24.04
     steps:
@@ -197,6 +263,6 @@ jobs:
           {
             echo "### Test build of Inkline ${{ needs.check.outputs.version }} passed"
             echo
-            echo "Nothing was published. The self-test passed, and the .run installer, the Arch package and"
-            echo "the .flatpak built. Download them under **Artifacts** below (kept for 7 days)."
+            echo "Nothing was published. The self-test passed, and the .run installer, the Arch package, the"
+            echo ".flatpak, the .deb and the AppImage built. Download them under **Artifacts** below (kept for 7 days)."
           } >> "$GITHUB_STEP_SUMMARY"

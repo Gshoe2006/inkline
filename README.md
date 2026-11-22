@@ -15,6 +15,20 @@ A Linux desktop app that converts photos to, or generates, black & white images 
 - **Posters:** print any design or photo big across 2×1 up to 4×4 sheets, with overlap strips, trim marks and sheet labels (A1, A2…) for assembly.
 - **SVG export:** generated designs save as true vector lines at real paper size, for Inkscape, Cricut/Silhouette cutting machines and laser cutters.
 
+## Install
+
+Each [release](https://github.com/Gshoe2006/inkline/releases) has a package for most Linux systems:
+
+| You use | Download | Install |
+| --- | --- | --- |
+| Debian 12+, Ubuntu 22.04+, Linux Mint, Pop!_OS | `inkline_<version>-1_amd64.deb` | `sudo apt install ./inkline_<version>-1_amd64.deb` |
+| Arch, CachyOS, Manjaro | `inkline-<version>-1-any.pkg.tar.zst` | `sudo pacman -U inkline-<version>-1-any.pkg.tar.zst` |
+| Any distro, nothing installed | `inkline-<version>-x86_64.AppImage` | `chmod +x inkline-*.AppImage`, then run it |
+| Any distro, sandboxed | `inkline-<version>.flatpak` | `flatpak install --user inkline-<version>.flatpak` |
+| Any distro, your own Python | `inkline-<version>.run` | `sh inkline-<version>.run` |
+
+The `.deb` brings its own PySide6 (Debian and Ubuntu don't package a new enough one) and uses the system's Python and numpy. The AppImage brings everything, Python included; for it to appear in your app menu and open `.inkline` projects with a double-click, use an AppImage manager such as Gear Lever or AppImageLauncher.
+
 ## Flatpak
 
 One package for any distro, with PySide6 and numpy inside (about 300 MB with the shared freedesktop runtime). With `flatpak` and `flatpak-builder` installed, build and install it from a copy of the repository:
@@ -81,7 +95,14 @@ The tests check every pattern and photo style against recordings of what Inkline
 packaging/build.sh
 ```
 
-Outputs to `dist/`:
+The Debian package and the AppImage have scripts of their own (both download what they bundle, checked):
+
+```sh
+sh packaging/debian/build-deb.sh          # dist/inkline_<version>-1_amd64.deb (needs dpkg-deb)
+sh packaging/appimage/build-appimage.sh   # dist/inkline-<version>-x86_64.AppImage (needs uv: pip install uv)
+```
+
+`packaging/build.sh` outputs to `dist/`:
 
 - `inkline-<version>-<rel>-any.pkg.tar.zst` — Arch / CachyOS / Manjaro package: `sudo pacman -U dist/inkline-*.pkg.tar.zst`
 - `inkline-<version>.run` — universal installer for any distro: `sh dist/inkline-*.run` (`--system`, `--uninstall`, `--help`)
@@ -109,7 +130,7 @@ In one pull request:
 2. Add a section to the top of `CHANGELOG.md` headed `## <version>` (for example `## 3.4.3 - 2026-11-21`) saying what changed. It becomes the release notes word for word, with its `###` headings shown as `##`.
 3. Add `<release version="<version>" date="<date>"/>` to `packaging/flatpak/io.github.gshoe2006.Inkline.metainfo.xml`.
 
-When it merges, `.github/workflows/release.yml` checks there are notes for the version, runs the self-test, builds the `.run` installer, the Arch package and the `.flatpak`, and publishes the GitHub Release "Inkline <version>" with all three attached. It then tells the app portal, so the release shows there within a minute or two (this needs the `PORTAL_TOKEN` secret, otherwise the portal shows it on its next 3-hourly run). If any step fails nothing is published: fix it and press *Run workflow* on the Release workflow. `python3 packaging/release_notes.py` prints the notes the release will get.
+When it merges, `.github/workflows/release.yml` checks there are notes for the version, runs the self-test, builds the `.run` installer, the Arch package, the `.flatpak`, the `.deb` and the AppImage (installing the `.deb` and running the AppImage to self-test each), and publishes the GitHub Release "Inkline <version>" with all five attached. It then tells the app portal, so the release shows there within a minute or two (this needs the `PORTAL_TOKEN` secret, otherwise the portal shows it on its next 3-hourly run). If any step fails nothing is published: fix it and press *Run workflow* on the Release workflow. `python3 packaging/release_notes.py` prints the notes the release will get.
 
 To check the release builds without publishing anything, open the Release workflow on the Actions tab, press *Run workflow*, tick *Test build only* and run it: the packages it builds are kept for 7 days under the run's *Artifacts*.
 
