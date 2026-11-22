@@ -5,6 +5,7 @@ Starts the native window (inkapp) over the drawing engine (inkengine). No browse
 everything with Qt and Python.
 
     python3 inkline.py                     the app
+    python3 inkline.py FILE.inkline        the app, with that project open
     python3 inkline.py --selftest DIR      headless check: writes every kind of output into DIR
 """
 
@@ -42,6 +43,8 @@ def main():
     theme.apply(app)
     win = Window(app_version())
     win.show()
+    if len(sys.argv) > 1 and sys.argv[1].lower().endswith(".inkline"):
+        win.open_project(sys.argv[1])
     sys.exit(app.exec())
 
 

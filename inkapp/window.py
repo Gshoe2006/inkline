@@ -21,7 +21,7 @@ from PySide6.QtGui import QPdfWriter
 from inkengine import book, photo
 from inkengine.page import PAGE_KEYS, Settings, design_box, geometry, single_page
 
-from . import config, jobs, theme
+from . import config, jobs, project, theme
 from .preview import Preview
 from .render import PREVIEW_DPI, Renderer, render_view, view
 from .sample import sample_photo
@@ -147,8 +147,10 @@ class Window(QMainWindow):
         if not isinstance(self.printer_name, str):
             self.printer_name = ""
         self._view = None
-        self.recent = [p for p in config.read("recent.json").get("photos", []) if isinstance(p, str)][:MAX_RECENT] \
-            if remember else []
+        recent = config.read("recent.json") if remember else {}
+        self.recent = [p for p in recent.get("photos", []) if isinstance(p, str)][:MAX_RECENT]
+        self.recent_projects = [p for p in recent.get("projects", []) if isinstance(p, str)][:MAX_RECENT]
+        self.project_path = None   # the .inkline file open, if any
         restored = self._restore()
         self.state.mirror()
         self.last_dir = os.path.expanduser("~/Pictures") if os.path.isdir(os.path.expanduser("~/Pictures")) else os.path.expanduser("~")
@@ -196,6 +198,8 @@ class Window(QMainWindow):
         if restored:
             self._msg("Reopened with your last settings. Presets → Start fresh resets them.")
         self._last = _Snapshot(self.state)   # where the history starts: nothing to undo yet
+        self.history.cleanChanged.connect(self._update_title)
+        self._update_title()
         self.schedule()
 
     # --- wiring -------------------------------------------------------------------------------------
@@ -245,8 +249,16 @@ class Window(QMainWindow):
             return a
 
         f = mb.addMenu("&File")
+        act(f, "Ne&w project", self.new_project)
+        act(f, "Open pro&ject…", lambda: self.open_project(), "Ctrl+Shift+O")
+        self.recent_projects_menu = f.addMenu("Open recen&t project")
+        self.recent_projects_menu.aboutToShow.connect(self._fill_recent_projects)
+        self.recent_projects_menu.setEnabled(bool(self.recent_projects))
+        act(f, "Sa&ve project", self.save_project)
+        act(f, "Save project &as…", self.save_project_as)
+        f.addSeparator()
         act(f, "&Open image…", lambda: self.open_images(self.state.settings.photobook), "Ctrl+O")
-        self.recent_menu = f.addMenu("Open &recent")
+        self.recent_menu = f.addMenu("Open &recent image")
         self.recent_menu.aboutToShow.connect(self._fill_recent)
         self.recent_menu.setEnabled(bool(self.recent))
         f.addSeparator()
@@ -517,10 +529,132 @@ class Window(QMainWindow):
     def _set_recent(self, paths):
         self.recent = paths[:MAX_RECENT]
         self.recent_menu.setEnabled(bool(self.recent))
+        self._write_recent("Recent photos")
+
+    def _write_recent(self, what):
         if self.remember:
-            err = config.write("recent.json", {"photos": self.recent}, "Recent photos")
+            err = config.write("recent.json", {"photos": self.recent, "projects": self.recent_projects}, what)
             if err:
                 self._msg(err)
+
+    # --- projects (.inkline files) ------------------------------------------------------------------------
+    def _update_title(self, *_a):
+        name = project.title(self.project_path) if self.project_path else ""
+        # untitled work shows no unsaved mark: it was never a file (and the settings are remembered anyway)
+        self.setWindowTitle(f"{name}[*] — Inkline {self.version}" if name else f"Inkline {self.version}")
+        self.setWindowModified(not self.history.isClean())
+
+    def _ask_to_save(self):
+        """Before the work is replaced: True to go on (saved, or the changes aren't wanted), False to stop."""
+        if self.history.isClean():
+            return True
+        name = project.title(self.project_path) if self.project_path else ""
+        box = QMessageBox(QMessageBox.Icon.Question, "Save changes?",
+                          f"Save the changes to “{name}”?" if name else "Save your work as a project first?",
+                          QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Discard
+                          | QMessageBox.StandardButton.Cancel, self)
+        box.button(QMessageBox.StandardButton.Discard).setText("Don't save")
+        box.setInformativeText("Your changes will be lost if you don't save them.")
+        box.setDefaultButton(QMessageBox.StandardButton.Save)
+        answer = box.exec()
+        if answer == QMessageBox.StandardButton.Save:
+            return self.save_project()
+        return answer == QMessageBox.StandardButton.Discard
+
+    def _use_project(self, proj, path):
+        """Make what the project holds the work in the window, with a fresh history."""
+        st = self.state
+        st.settings, st.photos, st.sel, st.book_sel, st.page = proj.settings, list(proj.photos), proj.sel, proj.book_sel, 0
+        st.mirror()
+        self.project_path = path
+        self.sidebar.load()
+        self.sidebar.fill_photos()
+        self.sidebar.fill_pages()
+        self.sidebar.load_crop()
+        self.act_test.setChecked(False)
+        self.history.clear()        # Undo doesn't reach back into the work that was open before
+        self._last = _Snapshot(st)
+        self.history.setClean()
+        self._update_title()
+        self.schedule()
+        self.remember_soon()
+
+    def new_project(self):
+        if not self._ask_to_save():
+            return
+        self._use_project(project.Project(State().settings), None)
+        self._msg("New project. Settings are back to their defaults.")
+
+    def open_project(self, path=None):
+        if not self._ask_to_save():
+            return False
+        if path is None:
+            path, _ = QFileDialog.getOpenFileName(self, "Open project", self.last_dir, project.FILTER)
+            if not path:
+                return False
+        name = os.path.basename(path)
+        try:
+            proj = project.load(path)
+        except project.ProjectError as why:
+            self._msg(f"Couldn't open {name}: it {why}.")
+            return False
+        except OSError:
+            self._msg(f"Couldn't open {name}. It may have been moved or deleted, or you can't read it.")
+            if path in self.recent_projects:
+                self._set_recent_projects([p for p in self.recent_projects if p != path])
+            return False
+        self.last_dir = os.path.dirname(os.path.abspath(path))
+        self._use_project(proj, os.path.abspath(path))
+        self._add_recent_project(self.project_path)
+        self._msg(f"Opened {project.title(path)}.")
+        return True
+
+    def save_project(self):
+        if self.project_path is None:
+            return self.save_project_as()
+        return self._write_project(self.project_path)
+
+    def save_project_as(self):
+        name = project.title(self.project_path) if self.project_path else "My project"
+        path = self._ask_path("Save project", name, project.EXT, project.FILTER)
+        return self._write_project(path) if path else False
+
+    def _write_project(self, path):
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)   # big photos take a moment to pack
+        try:
+            project.save(path, self.state, self.version)
+        except (OSError, ValueError):
+            self._msg(f"Couldn't save {os.path.basename(path)}. Check that the folder exists and you can write to it.")
+            return False
+        finally:
+            QApplication.restoreOverrideCursor()
+        self.project_path = os.path.abspath(path)
+        self.history.setClean()
+        self._update_title()
+        self._add_recent_project(self.project_path)
+        self._msg(f"Saved {project.title(path)}.")
+        return True
+
+    # File → Open recent project: the projects opened or saved lately, newest first, kept in recent.json
+    def _add_recent_project(self, path):
+        self._set_recent_projects([path] + [p for p in self.recent_projects if p != path])
+
+    def _set_recent_projects(self, paths):
+        self.recent_projects = paths[:MAX_RECENT]
+        self.recent_projects_menu.setEnabled(bool(self.recent_projects))
+        self._write_recent("Recent projects")
+
+    def _fill_recent_projects(self):
+        m = self.recent_projects_menu
+        m.clear()
+        for i, path in enumerate(self.recent_projects):
+            label = project.title(path).replace("&", "&&")
+            a = m.addAction(f"&{i + 1} {label}" if i < 9 else f"1&0 {label}")
+            a.setToolTip(path)
+            a.triggered.connect(lambda _c=False, p=path: self.open_project(p))
+        m.setToolTipsVisible(True)
+        m.addSeparator()
+        m.addAction("&Clear list", lambda: self._set_recent_projects([]))
 
     def _fill_recent(self):
         m = self.recent_menu
@@ -646,7 +780,10 @@ class Window(QMainWindow):
         self.preview.set_drop(False)
         md = e.mimeData()
         files = [u.toLocalFile() for u in md.urls() if u.isLocalFile()]
-        if files:
+        projects = [f for f in files if f.lower().endswith("." + project.EXT)]
+        if projects:   # a project dropped on the window opens (only the first, as Open project opens one)
+            self.open_project(projects[0])
+        elif files:
             self._load_files(files, self.state.settings.photobook)
         elif md.hasImage():   # an image dragged straight from a browser or another app
             img = QImage(md.imageData())
@@ -982,6 +1119,10 @@ class Window(QMainWindow):
                                                  "colouring pages, puzzles, booklets, posters and photo conversions.")
 
     def closeEvent(self, e):
+        # an open project with changes asks first; work that was never a project is remembered as before
+        if self.project_path is not None and not self._ask_to_save():
+            e.ignore()
+            return
         if self.remember and self._remember_timer.isActive():
             self._save_settings()
         super().closeEvent(e)
