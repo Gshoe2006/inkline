@@ -177,8 +177,9 @@ def clean_page(p, types=None, choices=None):
             v = None if v is None else _allowed(k, v, choices)
             if v is not None:
                 out[k] = v
-    if "answer" in p:
-        v = _coerce(p["answer"], bool)
+    if "answer" in p:   # only a clear yes or no: anything else is dropped (the answer stays on)
+        v = p["answer"]
+        v = v if isinstance(v, bool) else {"true": True, "false": False}.get(str(v).strip().lower())
         if v is not None:
             out["answer"] = v
     return out

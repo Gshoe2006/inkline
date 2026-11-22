@@ -322,7 +322,9 @@ class Window(QMainWindow):
             st.write_page(**{key: getattr(st.settings, key)})   # the Design section edits the selected page
             self.sidebar.fill_pages()
         elif st.listing and key in BOOKLET_LOOK:
-            self.sidebar.refresh_thumbs()   # every page's picture shows the booklet's line weight, border and paper
+            self.sidebar.refresh_thumbs()
+        elif st.listing and key == "key":
+            self.sidebar.fill_pages()   # rows say "no answer" only while there are answer pages   # every page's picture shows the booklet's line weight, border and paper
         if key in ("booklet", "poster", "photobook"):
             st.mirror()   # back to a booklet built page by page: Design shows the page being edited again
             self.sidebar.load()
@@ -436,7 +438,8 @@ class Window(QMainWindow):
         if not pl or len(pl) >= MAX_BOOK_PAGES:
             return
         self._step_name = "Add page"
-        self.state.update(page_list=[*pl, {**pl[-1], "seed": new_seed()}])
+        new = {k: v for k, v in pl[-1].items() if k != "answer"}   # a new page has its answer, like any new page
+        self.state.update(page_list=[*pl, {**new, "seed": new_seed()}])
         self.state.book_sel = len(pl)
         self._list_changed()
 

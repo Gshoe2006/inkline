@@ -12,8 +12,8 @@ so that stacking the sheets, folding them and stapling the fold puts every page 
 from dataclasses import replace
 
 from .box import Box
-from .page import PAGE_ONLY, PAPER, Geometry, PageSpec, draw_page, js_round, page_settings
-from .patterns import HAS_ANSWER, NAMES
+from .page import PAGE_ONLY, PAPER, Geometry, PageSpec, draw_page, has_answer, js_round, page_settings
+from .patterns import NAMES
 
 # The order a mixed booklet cycles through. Name pages stay out: a booklet shouldn't repeat one word.
 GENS = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "words", "nonogram"]
@@ -51,9 +51,8 @@ def book_pages(s):
         pages.append(PageSpec(kind="cover", title=cover_title, designs=designs,
                               art_seed=_page_seed(s, "cover", (s.seed ^ 0x5BD1E995) & 0xFFFFFFFF)))
     pages.extend(designs)
-    from .cbn import is_cbn_design
     # puzzles, and colour by number (a shaded answer); a page built page by page can leave its answer out
-    puzzles = [d for d in designs if is_cbn_design(d.gen, page_settings(s, d)) or d.gen in HAS_ANSWER]
+    puzzles = [d for d in designs if has_answer(d.gen, page_settings(s, d))]
     if s.page_list:
         puzzles = [d for d in puzzles if s.page_list[d.idx].get("answer", True) is not False]
     if s.key:

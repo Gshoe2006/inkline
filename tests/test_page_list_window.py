@@ -391,3 +391,20 @@ def test_the_switch_shows_only_where_there_is_an_answer(win):
     _set(win, booklet=False)
     _set(win, key=True)
     assert not sb.page_answer_check.isVisibleTo(sb)        # a single page
+
+
+def test_rows_follow_the_answer_pages_switch_and_new_pages_have_their_answer(win):
+    _set(win, gen="maze", booklet=True, pages=2, mix=False, ramp=False, key=True)
+    win.sidebar.pages_edit.emit(True)
+    win.sidebar.book_page_selected.emit(1)
+    win.sidebar.page_answer_check.setChecked(False)
+    lst = win.sidebar.page_list
+    assert lst.item(1).toolTip().endswith("· no answer")
+    _set(win, key=False)
+    assert not lst.item(1).toolTip().endswith("· no answer")
+    _set(win, key=True)
+    assert lst.item(1).toolTip().endswith("· no answer")
+    win.sidebar.book_page_added.emit()                     # like the last page, but with its answer
+    assert "answer" not in win.state.settings.page_list[2]
+    win.sidebar.book_page_copied.emit(1)                   # a copy keeps the page as it is
+    assert win.state.settings.page_list[2]["answer"] is False

@@ -79,3 +79,10 @@ def test_a_page_can_leave_its_answer_out():
     back = Settings.from_dict(json.loads(json.dumps(s.to_dict())))
     assert back.page_list[0]["answer"] is False and "answer" not in back.page_list[1]
     assert Settings.from_dict({"pageList": [{"gen": "maze", "answer": "false"}]}).page_list[0]["answer"] is False
+
+
+def test_only_a_clear_yes_or_no_sets_a_pages_answer():
+    for junk in ("maybe", None, 0, [], "no", 1):
+        assert "answer" not in Settings.from_dict({"pageList": [{"gen": "maze", "answer": junk}]}).page_list[0]
+    for value, want in ((False, False), ("false", False), (" TRUE ", True), (True, True)):
+        assert Settings.from_dict({"pageList": [{"gen": "maze", "answer": value}]}).page_list[0]["answer"] is want

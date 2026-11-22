@@ -518,7 +518,7 @@ class Sidebar(QFrame):
             gen = p.get("gen") if p.get("gen") in NAMES else st.settings.gen
             detail = _page_detail(gen, p)
             text = f"{i + 1}. {NAMES[gen]}{f' · {detail}' if detail else ''} · {p.get('complexity', cx)}/10"
-            if p.get("answer", True) is False and st.settings.key and has_answer(gen, page_settings(st.settings, p)):
+            if p.get("answer", True) is False and st.settings.key and has_answer(gen, _own_settings(st.settings, p)):
                 text += " · no answer"
             item = QListWidgetItem()
             item.setToolTip(text + (f"\nWords: {p['ws_words']}" if gen == "words" and p.get("ws_theme") == "custom"
@@ -699,7 +699,7 @@ class Sidebar(QFrame):
         self.status.setText(text)
 
 
-def page_settings(s, p):
+def _own_settings(s, p):
     """The settings a page of page_list is drawn with (its own on top of the booklet's)."""
     from dataclasses import replace
     return replace(s, **{k: p[k] for k in PAGE_KEYS if k in p})
