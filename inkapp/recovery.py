@@ -16,6 +16,8 @@ import glob
 import os
 import threading
 import time
+import sys
+import traceback
 import uuid
 from datetime import datetime
 
@@ -129,8 +131,9 @@ class Keeper:
         self.version = version
         try:
             hold()
-        except OSError:      # no lock (an odd filesystem): copies still work, crashes just aren't told apart
-            pass
+            self.enabled = True
+        except OSError:      # no lock (an odd filesystem): without one, another Inkline would take this one's
+            self.enabled = False   # copy for a crash's and remove it, so no copies are kept at all
         self._lock = threading.Lock()
         self._next = None
         self._running = False
@@ -138,6 +141,8 @@ class Keeper:
         self._thread = None
 
     def keep(self, snapshot, source):
+        if not self.enabled:
+            return
         with self._lock:
             self._next = (snapshot, source, self._gen)
             start = not self._running
@@ -180,8 +185,10 @@ class Keeper:
                 os.makedirs(config.config_dir(), exist_ok=True)
                 project.save(path_for(), snapshot, self.version,
                              {"recovery": {"project": source, "saved": time.time()}})
-            except (OSError, ValueError):
-                continue          # no copy this time: the work itself is untouched
+            except Exception:     # noqa: BLE001 — no copy this time (the work itself is untouched); the next
+                if not isinstance(sys.exc_info()[1], OSError):   # change tries again, so this thread goes on
+                    traceback.print_exc()
+                continue
             with self._lock:
                 stale = gen != self._gen
             if stale:             # saved or closed while this was being written

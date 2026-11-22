@@ -185,3 +185,49 @@ def test_stray_lock_files_from_ended_sessions_are_tidied(make):
     open(stray, "w").close()
     assert recovery.leftovers() == [] and not os.path.exists(stray)
     assert os.path.exists(recovery._lock_path(recovery.path_for()))   # this session's own stays while it runs
+
+
+def test_an_unexpected_error_doesnt_stop_later_copies(make, monkeypatch):
+    w = make()
+    w.add_photos([_photo()], False)
+    calls = []
+    real = project.save
+
+    def flaky(*a, **k):
+        calls.append(1)
+        if len(calls) == 1:
+            raise RuntimeError("something odd")
+        return real(*a, **k)
+    monkeypatch.setattr(project, "save", flaky)
+    w._keep_copy()
+    _settle(w)
+    assert w.keeper.idle and not os.path.exists(recovery.path_for())
+    w._keep_copy()                                   # the next try works
+    _settle(w)
+    assert os.path.isfile(recovery.path_for())
+
+
+def test_redo_after_undoing_back_to_saved_keeps_a_copy_again(make, tmp_path):
+    w = make()
+    w.add_photos([_photo()], False)
+    w._write_project(str(tmp_path / "p.inkline"))
+    w.state.update(weight=9)
+    w.sidebar.load()
+    w._changed("weight")
+    w.history.undo()                                 # back to what's saved: no copy
+    _settle(w)
+    assert not os.path.exists(recovery.path_for())
+    w._keep_timer.stop()
+    w.history.redo()                                 # unsaved again
+    assert w._keep_timer.isActive()
+
+
+def test_without_a_lock_no_copies_are_kept(make, monkeypatch):
+    def no_lock():
+        raise OSError("no locks here")
+    monkeypatch.setattr(recovery, "hold", no_lock)
+    w = make()
+    w.add_photos([_photo()], False)
+    w._keep_copy()
+    _settle(w)
+    assert not w.keeper.enabled and not os.path.exists(recovery.path_for())

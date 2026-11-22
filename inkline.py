@@ -49,9 +49,9 @@ def main():
     theme.apply(app)
     win = Window(app_version())
     win.show()
-    win.offer_recovery()   # work from a session that closed without saving, if there is any
+    recovered = win.offer_recovery()   # work from a session that closed without saving, if there is any
     path = startup_project(sys.argv[1:])
-    if path:
+    if path and not recovered:   # recovered work isn't put aside for the project named: it can be opened next
         win.open_project(path)
     sys.exit(app.exec())
 

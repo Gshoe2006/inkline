@@ -934,6 +934,8 @@ class Window(QMainWindow):
         finally:
             self._restoring = False
         self.remember_soon()
+        if self.keeper is not None and not self._keep_timer.isActive():
+            self._keep_timer.start()   # undone or redone away from what's saved: a copy, as for any change
 
     def _render(self):
         st = self.state
