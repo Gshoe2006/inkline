@@ -170,6 +170,8 @@ QLabel#dropText {{ color: {t.muted}; font-size: 13px; }}
 QLabel#dropText[named="true"] {{ color: {t.ink}; font-weight: 600; }}
 QLabel#photoName, QLabel#pageName {{ font-size: 12px; }}
 QLabel#pageThumb {{ background: {PAPER_COLOUR}; border: 1px solid {t.line}; }}
+QToolButton#designOption {{ background: {PAPER_COLOUR}; border: 1px solid {t.line}; border-radius: 6px; }}
+QToolButton#designOption:hover, QToolButton#designOption:focus {{ border: 2px solid {t.accent}; }}
 
 QFrame#infoBar {{ background: {t.bg}; border-bottom: 1px solid {t.line}; }}
 QLabel[role="info"] {{ color: {t.muted}; font-family: {mono}; font-size: 12px; }}

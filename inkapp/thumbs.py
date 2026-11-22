@@ -38,10 +38,20 @@ def _page_geometry(s):
     return half_geometry(s) if s.fold else geometry(s)
 
 
-def thumb_size(s):
-    """The thumbnail's (width, height) for the page's shape."""
+def thumb_size(s, h=THUMB_H):
+    """The thumbnail's (width, height) for the page's shape: its long side is h."""
     g = _page_geometry(replace(s, dpi=72))
-    return (max(1, round(THUMB_H * g.W / g.H)), THUMB_H) if g.H >= g.W else (THUMB_H, max(1, round(THUMB_H * g.H / g.W)))
+    return (max(1, round(h * g.W / g.H)), h) if g.H >= g.W else (h, max(1, round(h * g.H / g.W)))
+
+
+class Look:
+    """How thumbnails of one size are drawn: their long side, the resolution they're drawn at, and how much
+    thicker and darker their lines are made so they read at that size."""
+
+    def __init__(self, h=THUMB_H, dpi=DRAW_DPI, thicken=THICKEN, darken=DARKEN):
+        self.h, self.dpi, self.thicken, self.darken = h, dpi, thicken, darken
+
+
 
 
 def key(s, spec):
@@ -52,9 +62,10 @@ def key(s, spec):
     return (spec.gen, spec.seed, spec.c, tuple(sorted(spec.opts.items())), label, booklet)
 
 
-def draw(s, spec):
+def draw(s, spec, look=None):
     """A design page as a thumbnail QImage (any thread)."""
-    ss = replace(s, dpi=DRAW_DPI, page_nums=False, weight=s.weight * THICKEN)
+    look = look or Look(THUMB_H, DRAW_DPI, THICKEN, DARKEN)   # read now, so tests can change the module's values
+    ss = replace(s, dpi=look.dpi, page_nums=False, weight=s.weight * look.thicken)
     g = _page_geometry(ss)
     img = QImage(g.W, g.H, QImage.Format.Format_RGB32)
     img.fill(QColor(PAPER_COLOUR))
@@ -62,11 +73,11 @@ def draw(s, spec):
     p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
     draw_page(QtCanvas(p, g.W, g.H), g, replace(spec, page_no=0), ss)
     p.end()
-    w, h = thumb_size(s)
+    w, h = thumb_size(s, look.h)
     small = img.scaled(w, h, Qt.AspectRatioMode.IgnoreAspectRatio,
                        Qt.TransformationMode.SmoothTransformation).convertToFormat(QImage.Format.Format_Grayscale8)
     a = np.frombuffer(small.constBits(), np.uint8, small.sizeInBytes()).reshape(h, small.bytesPerLine())[:, :w]
-    dark = np.ascontiguousarray((a / 255.0) ** DARKEN * 255, dtype=np.uint8)
+    dark = np.ascontiguousarray((a / 255.0) ** look.darken * 255, dtype=np.uint8)
     return QImage(dark.data, w, h, w, QImage.Format.Format_Grayscale8).copy()
 
 
@@ -74,8 +85,9 @@ class Thumbnails(QObject):
     ready = Signal(object)   # a thumbnail's key: it's in the cache now
     _done = Signal(object, object)   # (key, image) from the worker; stored on the UI thread, which owns the cache
 
-    def __init__(self):
+    def __init__(self, look=None):
         super().__init__()
+        self.look = look   # None: the page list's size
         self._done.connect(self._put)
         self._cache = OrderedDict()
         self._lock = threading.Lock()
@@ -117,7 +129,7 @@ class Thumbnails(QObject):
                     return
                 k, s, spec = self._queue.pop(0)
             try:
-                img = draw(s, spec)
+                img = draw(s, spec, self.look)
             except Exception:   # noqa: BLE001 — that row keeps its blank page; never a crash
                 traceback.print_exc()
                 continue
