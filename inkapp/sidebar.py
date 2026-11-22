@@ -258,7 +258,7 @@ class Sidebar(QFrame):
         self.page_orig.clicked.connect(lambda: self.swap_page.emit(False))
         self.page_orig.hide()   # shown once the page shown has been swapped
         self.book_opts.add(_tools(self.page_new, self.page_orig))
-        self.book_opts.add(Hint("PDF and Print use every page. PNG and SVG save the page shown."))
+        self.book_opts.add(Hint("PDF and Print use every page, or only those chosen under Paper. PNG and SVG save the page shown."))
         sec.add(self.book_opts)
         mk.addWidget(sec)
         self.col.addWidget(self.make_panel)
@@ -298,7 +298,7 @@ class Sidebar(QFrame):
         self.ppager.prev.connect(lambda: self.page_step.emit(-1))
         self.ppager.next.connect(lambda: self.page_step.emit(1))
         self.pbook_opts.add(self.ppager)
-        self.pbook_opts.add(Hint("Click a photo to crop it; each photo keeps its own crop. PDF and Print use every page."))
+        self.pbook_opts.add(Hint("Click a photo to crop it; each photo keeps its own crop. PDF and Print use every page, or only those chosen under Paper."))
         self.photo_panel.add(self.pbook_opts)
         rotl, rotr, reset = button("↺", tip="Rotate left 90°"), button("↻", tip="Rotate right 90°"), button("Reset")
         rotl.setAccessibleName("Rotate left")
@@ -367,6 +367,13 @@ class Sidebar(QFrame):
         self.fold_check = self._check("fold", "Fold-and-staple book (2 pages per sheet)")
         self.fold_hint = Hint()
         sec.add(self.fold_check, self.fold_hint)
+        # Print and Save PDF of a booklet or photo book: every page, or only some (not a setting: never remembered,
+        # so a range typed for one reprint can't shorten a later print unnoticed)
+        self.only_pages = line_edit(placeholder="All pages, or e.g. 3-5, 8, cover", max_length=80)
+        self.only_pages.setAccessibleName("Print or save only these pages")
+        self.only_pages.textChanged.connect(lambda _t: self.sync())
+        self.only_row = sec.add(OptionRow("Print or save only", self.only_pages))
+        self.only_hint = sec.add(Hint())
         self.testpage_hint = sec.add(Hint("Print it at 100% (“Actual size”), then check the squares with a ruler. Always portrait."))
         sec.add(Pair(OptionRow("Size", self._combo("paper", [("letter", "Letter"), ("a4", "A4")])),
                      OptionRow("Orientation", self._combo("orient", [("portrait", "Portrait"), ("landscape", "Landscape")]))))
@@ -375,6 +382,21 @@ class Sidebar(QFrame):
         self.margin_hint = sec.add(Hint())   # the printer can't reach that far in: set_margin_warning()
         self.margin_hint.setVisible(False)
         self.col.addWidget(sec)
+
+    def _only_note(self, s, photo_book):
+        """What Print and Save PDF will do with the pages typed, or what's wrong with them."""
+        from . import jobs
+        pages = book.photo_book_pages(s, self.state.photos) if photo_book else book.book_pages(s)
+        try:
+            picked = jobs.parse_pages(self.only_pages.text(), pages)
+        except ValueError as why:
+            return str(why)
+        what = jobs.describe_pages(picked, len(pages))
+        if s.fold:
+            sheets = jobs.fold_sheets(picked, len(book.fold_pages(pages)))
+            names = jobs.describe_pages(sheets, 0).replace("page", "sheet")
+            return f"Prints {names}, both sides: {'they hold' if len(sheets) > 1 else 'it holds'} {what}."
+        return f"Prints and saves {what} of {len(pages)}."
 
     def set_margin_warning(self, text):
         self.margin_hint.setText(text)
@@ -665,6 +687,11 @@ class Sidebar(QFrame):
                                    "Print double-sided, flipping on the short edge. Stack the sheets in order, fold in half, "
                                    "staple along the fold.")
         self.testpage_hint.setVisible(s.testpage)
+        multi = (is_book or is_pbook) and not s.testpage
+        self.only_row.setVisible(multi)
+        self.only_hint.setVisible(multi and bool(self.only_pages.text().strip()))
+        if multi and self.only_pages.text().strip():
+            self.only_hint.setText(self._only_note(s, is_pbook))
         if view is not None:
             self.pager.set_text(view.label)
             self.ppager.set_text(view.label)

@@ -35,6 +35,13 @@ class Job:
     def unit(self):
         return "sheet" if self.label == "poster" else "page"
 
+    def amount(self):
+        """ "14-page booklet", "2 sheets (both sides)": what the job prints, for the status line."""
+        if self.duplex:   # a fold-and-staple book: two printed sides per sheet
+            n = self.count // 2
+            return f"{n} sheet{'s' if n != 1 else ''} (both sides)"
+        return f"{self.count}-{self.unit} {self.label}"
+
 
 def base_name(state):
     """2.x's file names: inkline-maze-12345, or inkline-<photo name>."""
@@ -46,7 +53,61 @@ def base_name(state):
     return "inkline-" + re.sub(r"[^\w-]+", "-", nm).lower()
 
 
-def job(state):
+def parse_pages(text, pages):
+    """Which pages (0-based, in order) a list like "3-5, 8, cover, answers" picks, counting as the pager does
+    (the cover, when there is one, is page 1). Empty text picks every page. Raises ValueError with a message
+    to show when the text doesn't make sense."""
+    text = (text or "").strip().lower().replace("–", "-").replace("—", "-")
+    if not text:
+        return list(range(len(pages)))
+    n, chosen = len(pages), set()
+    for token in [t.strip() for t in re.split(r"[,;]", text) if t.strip()]:
+        if token in ("cover", "the cover"):
+            found = [i for i, p in enumerate(pages) if p.kind in ("cover", "pcover")]
+            if not found:
+                raise ValueError("This book has no cover page.")
+            chosen.update(found)
+        elif token in ("answers", "answer", "answer pages"):
+            found = [i for i, p in enumerate(pages) if p.kind == "answers"]
+            if not found:
+                raise ValueError("This book has no answer pages.")
+            chosen.update(found)
+        elif m := re.fullmatch(r"(\d+)\s*(?:-\s*(\d+))?", token):
+            a, b = int(m.group(1)), int(m.group(2) or m.group(1))
+            if a > b:
+                a, b = b, a
+            if a < 1 or b > n:
+                raise ValueError(f"There's no page {b if b > n else a}: this book has {n} page{'s' if n != 1 else ''}.")
+            chosen.update(range(a - 1, b))
+        else:
+            raise ValueError(f"“{token}” isn't a page. Use page numbers, ranges like 3-5, “cover” or “answers”.")
+    if not chosen:
+        raise ValueError("No pages there. Use page numbers, ranges like 3-5, “cover” or “answers”.")
+    return sorted(chosen)
+
+
+def describe_pages(indices, total):
+    """ "pages 3–5 and 8": a short name for a choice of pages (1-based, ranges joined)."""
+    runs, start = [], None
+    for k, i in enumerate(indices):
+        if start is None:
+            start = i
+        if k + 1 == len(indices) or indices[k + 1] != i + 1:
+            runs.append(f"{start + 1}" if start == i else f"{start + 1}–{i + 1}")
+            start = None
+    names = ", ".join(runs[:-1]) + (" and " if len(runs) > 1 else "") + runs[-1] if runs else ""
+    return f"page{'s' if len(indices) > 1 else ''} {names}"
+
+
+def fold_sheets(indices, n):
+    """The sheets (0-based) of an n-page fold-and-staple book that carry any of these pages."""
+    sides = book.fold_order(n)
+    return sorted({k // 2 for k, side in enumerate(sides) if set(side) & set(indices)})
+
+
+def job(state, only=""):
+    """What Print and Save PDF produce. only: a choice of pages as parse_pages() reads it (booklets and photo
+    books; empty for all). Raises ValueError when that choice doesn't make sense."""
     s, v = state.settings, view(state)
     if v.kind == "testpage":
         st = replace(s, orient="portrait")
@@ -60,12 +121,19 @@ def job(state):
         pages = book.photo_book_pages(s, state.photos) if photo_book else book.book_pages(s)
         name = f"inkline-photobook-{len(pages)}p" if photo_book else f"inkline-booklet-{s.seed}"
         label = "photo book" if photo_book else "booklet"
+        picked = parse_pages(only, pages)
+        part = bool((only or "").strip()) and len(picked) < len(pages)
+        if part:   # inkline-booklet-123-p1_3-5_8
+            name += "-p" + describe_pages(picked, len(pages)).split(" ", 1)[1].replace("–", "-") \
+                .replace(", ", "_").replace(" and ", "_")
         if s.fold:
             pages = book.fold_pages(pages)
-            return Job(f"{name}-fold", label, len(pages) // 2, "landscape", book.sheet_geometry(s),
-                       lambda ctx, i: book.draw_fold_side(ctx, s, pages, i), duplex=True)
+            sides = [k for sheet in (fold_sheets(picked, len(pages)) if part else range(len(pages) // 4))
+                     for k in (2 * sheet, 2 * sheet + 1)]
+            return Job(f"{name}-fold", label, len(sides), "landscape", book.sheet_geometry(s),
+                       lambda ctx, i: book.draw_fold_side(ctx, s, pages, sides[i]), duplex=True)
         g = geometry(s)
-        return Job(name, label, len(pages), s.orient, g, lambda ctx, i: draw_page(ctx, g, pages[i], s))
+        return Job(name, label, len(picked), s.orient, g, lambda ctx, i: draw_page(ctx, g, pages[picked[i]], s))
     g, spec = geometry(s), single_page(s, state.photo)
     return Job(base_name(state), "page", 1, s.orient, g, lambda ctx, i: draw_page(ctx, g, spec, s))
 
