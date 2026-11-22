@@ -1078,7 +1078,9 @@ class Window(QMainWindow):
             return
         snap = State(replace(s), [replace(p) for p in st.photos], st.sel, st.page)
         if kind == "pdf":
-            j = jobs.job(snap)
+            j = self._job(snap)
+            if j is None:
+                return
             what = f"Save {j.label} PDF" if j.count > 1 else "Save PDF"
             path = self._ask_path(what, j.name, "pdf", "PDF document (*.pdf)")
             if not path:
@@ -1104,12 +1106,25 @@ class Window(QMainWindow):
         self._busy(True, "Rendering page 1 of 1…")
         self.worker.submit(work)
 
+    def _job(self, snap):
+        """What Print and Save PDF produce, with the Paper section's choice of pages; None (and why, in the status
+        line) when that choice doesn't make sense."""
+        only = self.sidebar.only_pages.text() if self.sidebar.only_row.isVisibleTo(self.sidebar) else ""
+        try:
+            return jobs.job(snap, only)
+        except ValueError as why:
+            self._msg(f"{why} Fix the pages under Paper → Print or save only, or clear it to use every page.")
+            self.sidebar.only_pages.setFocus()
+            return None
+
     def print_(self):
         if self._busy_saving:
             return
         st = self.state
         snap = State(replace(st.settings), [replace(p) for p in st.photos], st.sel, st.page)
-        j = jobs.job(snap)
+        j = self._job(snap)
+        if j is None:
+            return
         printer = QPrinter(QPrinter.PrinterMode.HighResolution)
         printer.setPageLayout(jobs.page_layout(snap.settings, j.orient))
         printer.setFullPage(True)
