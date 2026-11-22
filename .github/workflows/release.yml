@@ -155,10 +155,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # only the packages: the self-test's sample outputs are artifacts of this run too, and aren't for the release
       - uses: actions/download-artifact@v4
         with:
+          name: run-and-arch
           path: dist
-          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: flatpak
+          path: dist
 
       - name: Publish the release
         env:
@@ -167,6 +172,7 @@ jobs:
         run: |
           python3 packaging/release_notes.py "$V" > notes.md
           ls -l dist
+          test "$(ls dist | wc -l)" = 3 || { echo "::error::Expected the 3 packages in dist, found: $(ls dist)"; exit 1; }
           gh release create "$V" dist/* \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
