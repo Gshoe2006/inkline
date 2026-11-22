@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QListWidget, QListWi
 from inkengine import book, cbn, photo
 from inkengine.patterns import NAMES, maze, name, spot, words
 
-from . import theme
+from . import theme, thumbs
 from .state import BUILTIN_PRESETS
 from .widgets import (Hint, OptionRow, Pager, Pair, Section, SubOptions, button, check, combo, label, line_edit,
                       slider_row)
@@ -62,6 +62,8 @@ class Sidebar(QFrame):
         self.setObjectName("sidebar")
         self.setFixedWidth(theme.SIDEBAR_WIDTH)
         self._loading = False
+        self.thumbs = thumbs.Thumbnails()   # the booklet page list's pictures
+        self.thumbs.ready.connect(self._thumb_ready)
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(0)
@@ -503,6 +505,7 @@ class Sidebar(QFrame):
         pl = st.settings.page_list or []
         cx = st.settings.complexity
         lst.clear()
+        self._thumb_rows = []
         row_h = 60   # two lines: the name doesn't fit beside four buttons in the sidebar's width
         for i, p in enumerate(pl):
             gen = p.get("gen") if p.get("gen") in NAMES else st.settings.gen
@@ -516,10 +519,15 @@ class Sidebar(QFrame):
             rl = QHBoxLayout(row)
             rl.setContentsMargins(4, 4, 4, 4)
             rl.setSpacing(6)
-            icon = QLabel()
-            icon.setPixmap(_pattern_icon(gen))
-            icon.setFixedSize(36, 36)
-            rl.addWidget(icon)
+            slot = QWidget()   # a 36 px slot, as the photo list's, with the page centred in it
+            slot.setFixedSize(36, 36)
+            sl = QHBoxLayout(slot)
+            sl.setContentsMargins(0, 0, 0, 0)
+            thumb = QLabel()
+            thumb.setObjectName("pageThumb")
+            sl.addWidget(thumb, 0, Qt.AlignmentFlag.AlignCenter)
+            self._thumb_rows.append(thumb)
+            rl.addWidget(slot)
             right = QVBoxLayout()
             right.setContentsMargins(0, 0, 0, 0)
             right.setSpacing(theme.LABEL_GAP)
@@ -545,12 +553,38 @@ class Sidebar(QFrame):
             lst.setItemWidget(item, row)
         lst.setFixedHeight(min(260, max(1, len(pl)) * (row_h + 4) + 4))
         lst.setCurrentRow(st.book_sel if pl else -1)
+        self.refresh_thumbs()
         n = len(pl)
         self.page_count.setText(f"{n} design page{'' if n == 1 else 's'}")
         self.page_add.setEnabled(0 < n < MAX_BOOK_PAGES)
         self.page_add.setToolTip(f"A booklet has at most {MAX_BOOK_PAGES} design pages" if n >= MAX_BOOK_PAGES else
                                  "Add a page like the last one, with a new design")
         self._loading = False
+
+    def refresh_thumbs(self):
+        """Each row's picture of its page: from the cache, or a blank page until it's drawn in the background."""
+        st = self.state
+        rows = getattr(self, "_thumb_rows", [])
+        self._thumb_keys = {}
+        if not st.listing or not rows:
+            return
+        s = st.settings
+        designs = [p for p in book.book_pages(s) if p.kind == "design"]
+        w, h = thumbs.thumb_size(s)
+        for i, (label, spec) in enumerate(zip(rows, designs)):
+            k = thumbs.key(s, spec)
+            self._thumb_keys.setdefault(k, []).append(i)
+            label.setFixedSize(w + 2, h + 2)   # the page and its 1 px edge: at most the 36 px slot
+            img = self.thumbs.get(k)
+            label.setPixmap(QPixmap.fromImage(img) if img is not None else QPixmap())
+        self.thumbs.request(s, designs[:len(rows)])
+
+    def _thumb_ready(self, k):
+        rows = getattr(self, "_thumb_rows", [])
+        img = self.thumbs.get(k)
+        for i in getattr(self, "_thumb_keys", {}).get(k, []):
+            if img is not None and i < len(rows):
+                rows[i].setPixmap(QPixmap.fromImage(img))
 
     def sync(self, view=None):
         """Show what applies and fill in the live values (2.x's syncOutputs)."""
@@ -639,29 +673,6 @@ class Sidebar(QFrame):
 
     def set_status(self, text):
         self.status.setText(text)
-
-
-_ICONS = {}   # a small picture of each pattern, for the booklet's page list (drawn once, the first time it's needed)
-
-
-def _pattern_icon(gen, size=36):
-    if gen not in _ICONS:
-        from PySide6.QtGui import QColor, QImage, QPainter
-        from inkengine.canvas import QtCanvas
-        from inkengine.page import Settings, draw_page, geometry, single_page
-        s = Settings(gen=gen, seed=7, complexity=3, weight=6, frame=False, title="", name_line=False, margin=0.3, dpi=40)
-        g = geometry(s)
-        img = QImage(g.W, g.H, QImage.Format.Format_RGB32)
-        img.fill(QColor("white"))
-        p = QPainter(img)
-        p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-        draw_page(QtCanvas(p, g.W, g.H), g, single_page(s, None), s)
-        p.end()
-        side = min(g.W, g.H) - 24
-        crop = img.copy((g.W - side) // 2, (g.H - side) // 2, side, side)
-        _ICONS[gen] = QPixmap.fromImage(crop.scaled(size, size, Qt.AspectRatioMode.KeepAspectRatio,
-                                                    Qt.TransformationMode.SmoothTransformation))
-    return _ICONS[gen]
 
 
 class _Elided(QLabel):

@@ -45,6 +45,7 @@ PAIR_GAP = 8          # two controls side by side
 STAGE_PAD = 24        # round the page in the preview
 SHADOW_BLUR = 30      # the page's shadow
 SHADOW_COLOUR = (0, 0, 0, 46)   # its colour: black at 18%, as 2.x's (rgb(0 0 0 / .18))
+PAPER_COLOUR = "#ffffff"   # pages are white paper in both themes (the preview's page, the page list's pictures)
 
 
 def _families(fams):
@@ -168,6 +169,7 @@ QFrame#drop {{ border: 2px dashed {t.line}; border-radius: 8px; }}
 QLabel#dropText {{ color: {t.muted}; font-size: 13px; }}
 QLabel#dropText[named="true"] {{ color: {t.ink}; font-weight: 600; }}
 QLabel#photoName, QLabel#pageName {{ font-size: 12px; }}
+QLabel#pageThumb {{ background: {PAPER_COLOUR}; border: 1px solid {t.line}; }}
 
 QFrame#infoBar {{ background: {t.bg}; border-bottom: 1px solid {t.line}; }}
 QLabel[role="info"] {{ color: {t.muted}; font-family: {mono}; font-size: 12px; }}
