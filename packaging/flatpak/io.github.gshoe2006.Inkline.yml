@@ -40,7 +40,7 @@ modules:
     build-commands:
       - install -d /app/lib/inkline
       - cp -r inkengine inkapp /app/lib/inkline/
-      - install -m644 inkline.py inkline.svg VERSION /app/lib/inkline/
+      - install -m644 inkline.py inkline.svg VERSION CHANGELOG.md /app/lib/inkline/
       - find /app/lib/inkline -name __pycache__ -prune -exec rm -rf {} +
       - install -Dm755 packaging/flatpak/inkline.sh /app/bin/inkline
       - install -Dm644 inkline.desktop /app/share/applications/${FLATPAK_ID}.desktop

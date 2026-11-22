@@ -51,6 +51,8 @@ def main():
     win.show()
     recovered = win.offer_recovery()   # work from a session that closed without saving, if there is any
     path = startup_project(sys.argv[1:])
+    if not recovered and not path:
+        win.offer_whats_new()          # the first start after an update (not when opening a project): what's changed
     if path and not recovered:   # recovered work isn't put aside for the project named: it can be opened next
         win.open_project(path)
     sys.exit(app.exec())

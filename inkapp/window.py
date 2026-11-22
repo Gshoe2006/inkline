@@ -5,12 +5,14 @@ in ~/.config/inkline/last-settings.json, as 2.x did. Print and Save run their pa
 with progress in the footer. Messages are 2.x's.
 """
 
+import json
 import math
+import uuid
 import os
 import time
 from dataclasses import replace
 
-from PySide6.QtCore import QEvent, QTimer, Qt, Signal
+from PySide6.QtCore import QEvent, QMimeData, QTimer, Qt, Signal
 from PySide6.QtGui import QAction, QGuiApplication, QImage, QKeySequence, QUndoCommand, QUndoStack
 from PySide6.QtPrintSupport import QAbstractPrintDialog, QPrintDialog, QPrinter
 from PySide6.QtWidgets import (QAbstractItemView, QAbstractSlider, QAbstractSpinBox, QApplication, QComboBox, QDialog,
@@ -19,9 +21,10 @@ from PySide6.QtWidgets import (QAbstractItemView, QAbstractSlider, QAbstractSpin
 from PySide6.QtGui import QPdfWriter
 
 from inkengine import book, photo
-from inkengine.page import PAGE_KEYS, Settings, design_box, geometry, single_page
+from inkengine.page import PAGE_KEYS, Settings, clean_page, design_box, geometry, single_page
+from inkengine.patterns import NAMES
 
-from . import config, jobs, project, recovery, theme
+from . import config, jobs, project, recovery, theme, whatsnew
 from .preview import Preview
 from .render import PREVIEW_DPI, Renderer, render_view, view
 from .sample import sample_photo
@@ -44,6 +47,7 @@ STEP_NAMES = {"gen": "Pattern", "complexity": "Complexity", "weight": "Line weig
               "overlap": "Overlap", "testpage": "Printer test page", "fold": "Fold-and-staple", "paper": "Paper size",
               "orient": "Orientation", "margin": "Margin", "dpi": "Resolution", "page_list": "Pages"}
 KEEP_SECONDS = 60     # unsaved work is copied for recovery at most this often
+PAGES_MIME = "application/x-inkline-pages"   # booklet pages on the clipboard: {"app": "Inkline", "pages": [...]}
 MERGE_SECONDS = 1.5   # changes to the same thing this close together (a slider drag, typing) are one step
 BOOKLET_LOOK = ("weight", "frame", "title", "name_line", "paper", "orient", "margin", "fold")   # drawn on every page
 
@@ -153,6 +157,7 @@ class Window(QMainWindow):
         self.recent = [p for p in recent.get("photos", []) if isinstance(p, str)][:MAX_RECENT]
         self.recent_projects = [p for p in recent.get("projects", []) if isinstance(p, str)][:MAX_RECENT]
         self.project_path = None   # the .inkline file open, if any
+        self._clip_id = uuid.uuid4().hex   # marks the booklet pages this window puts on the clipboard
         restored = self._restore()
         self.state.mirror()
         self.last_dir = os.path.expanduser("~/Pictures") if os.path.isdir(os.path.expanduser("~/Pictures")) else os.path.expanduser("~")
@@ -232,6 +237,7 @@ class Window(QMainWindow):
         sb.book_page_copied.connect(self._copy_book_page)
         sb.book_page_removed.connect(self._remove_book_page)
         sb.page_answer.connect(self._set_page_answer)
+        sb.pages_copy.connect(lambda: self.copy_pages(False))
         sb.crop.connect(self._crop)
         sb.print_.connect(self.print_)
         sb.save.connect(self.save)
@@ -285,6 +291,11 @@ class Window(QMainWindow):
         e.addAction(undo)
         e.addAction(redo)
         e.addSeparator()
+        # a booklet's pages through the clipboard (Ctrl+C in the page list; Ctrl+V pastes pages or a picture)
+        act(e, "&Copy page\tCtrl+C", lambda: self.copy_pages(False))
+        act(e, "Copy &all pages", lambda: self.copy_pages(True))
+        act(e, "&Paste\tCtrl+V", self.paste)
+        e.addSeparator()
         act(e, "&History…", self.show_history, "Ctrl+H")
         v = mb.addMenu("&View")
         act(v, "&New design", self.new_design, "Ctrl+N")
@@ -295,6 +306,7 @@ class Window(QMainWindow):
         self.act_test = act(v, "Printer &test page", self._toggle_test_page)
         self.act_test.setCheckable(True)
         h = mb.addMenu("&Help")
+        act(h, "&What's new", lambda: self.show_whats_new())
         act(h, "&About Inkline", self._about)
 
     # --- state changes -------------------------------------------------------------------------------
@@ -507,6 +519,65 @@ class Window(QMainWindow):
         self.state.update(page_list=[*pl[:i + 1], {**pl[i], "seed": new_seed()}, *pl[i + 1:]])   # same settings, a new design
         self.state.book_sel = i + 1
         self._list_changed()
+
+    def copy_pages(self, everything=False):
+        """The selected page (or every page) onto the clipboard, to paste into this or another booklet."""
+        if not self._listing():
+            self._msg("Copying pages works in a booklet built page by page: turn on Edit pages one by one.")
+            return
+        pl = self.state.settings.page_list
+        pages = list(pl) if everything else [pl[self.state.book_sel]]
+        md = QMimeData()
+        # "from": this window, so closing it only touches pages it put there itself, not another Inkline's
+        md.setData(PAGES_MIME, json.dumps({"app": "Inkline", "from": self._clip_id, "pages": pages}).encode("utf-8"))
+        names = [NAMES.get(p.get("gen"), "page") for p in pages]
+        md.setText("Inkline booklet pages: " + ", ".join(names))
+        QGuiApplication.clipboard().setMimeData(md)
+        self._msg(f"Copied {len(pages)} pages. Paste them into a booklet with Ctrl+V." if len(pages) > 1 else
+                  f"Copied page {self.state.book_sel + 1} ({names[0]}). Paste it into a booklet with Ctrl+V.")
+
+    def _release_clipboard(self):
+        """Closing: pages this window put on the clipboard stay there as their description (plain text). Data
+        made in Python and still on the clipboard when Qt shuts down crashes PySide 6.12 as the app quits."""
+        cb = QGuiApplication.clipboard()
+        md = cb.mimeData()
+        if md is None or not md.hasFormat(PAGES_MIME):
+            return
+        try:
+            mine = json.loads(bytes(md.data(PAGES_MIME)).decode("utf-8")).get("from") == self._clip_id
+        except (ValueError, AttributeError, UnicodeDecodeError):
+            mine = False
+        if mine:
+            cb.setText(md.text())
+
+    def paste_pages(self, raw):
+        """Pages copied from Inkline, after the selected page: exactly as copied (same designs), one undo step."""
+        try:
+            data = json.loads(raw.decode("utf-8"))
+            pages = [clean_page(p) for p in data.get("pages", []) if isinstance(p, dict)]
+        except (ValueError, AttributeError, UnicodeDecodeError):
+            pages = []
+        pages = [p for p in pages if p.get("gen") in NAMES]
+        if not pages:
+            self._msg("There are no pages to paste.")
+            return
+        if not self._listing():
+            self._msg("To paste pages, turn on Make a multi-page booklet, then Edit pages one by one.")
+            return
+        pl = self.state.settings.page_list
+        room = MAX_BOOK_PAGES - len(pl)
+        if room <= 0:
+            self._msg(f"A booklet holds up to {MAX_BOOK_PAGES} design pages, so there's no room to paste.")
+            return
+        kept = pages[:room]
+        at = self.state.book_sel + 1
+        self._step_name = "Paste pages" if len(kept) > 1 else "Paste page"
+        self.state.update(page_list=[*pl[:at], *kept, *pl[at:]])
+        self.state.book_sel = at
+        self._list_changed()
+        left = len(pages) - len(kept)
+        self._msg(f"Pasted {len(kept)} of {len(pages)} pages: a booklet holds up to {MAX_BOOK_PAGES}." if left else
+                  f"Pasted {len(kept)} page{'s' if len(kept) > 1 else ''} after page {at}.")
 
     def _move_book_page(self, i, d):
         """Move page i by d places (↑ ↓ are ±1; a drag can be any distance)."""
@@ -936,6 +1007,11 @@ class Window(QMainWindow):
                                 self.state.settings.photobook)
 
     def paste(self):
+        """Ctrl+V: booklet pages copied from Inkline go into the booklet; a picture becomes the photo."""
+        md = QGuiApplication.clipboard().mimeData()
+        if md is not None and md.hasFormat(PAGES_MIME):
+            self.paste_pages(bytes(md.data(PAGES_MIME)))
+            return
         img = QGuiApplication.clipboard().image()
         if not img.isNull():
             self.add_photos([photo.Photo(img.convertToFormat(QImage.Format.Format_ARGB32), name="pasted image")],
@@ -1283,6 +1359,22 @@ class Window(QMainWindow):
         self._history_view.raise_()
         self._history_view.activateWindow()
 
+    def offer_whats_new(self):
+        """At start: the first time after an update, what's changed since the version used last."""
+        seen = whatsnew.due(self.version, self.remember)
+        if seen is None:
+            return False
+        return self.show_whats_new(seen or None)
+
+    def show_whats_new(self, seen=None):
+        text = whatsnew.notes(self.version, seen)
+        if not text:
+            if seen is None:   # from the Help menu: say so rather than show nothing
+                self._msg("There are no release notes for this version of Inkline.")
+            return False
+        whatsnew.WhatsNew(self, self.version, text).exec()
+        return True
+
     def _about(self):
         QMessageBox.about(self, "About Inkline", f"<b>Inkline {self.version}</b><br>Black &amp; white images for printing: "
                                                  "colouring pages, puzzles, booklets, posters and photo conversions.")
@@ -1299,6 +1391,7 @@ class Window(QMainWindow):
             return
         if self.remember and self._remember_timer.isActive():
             self._save_settings()
+        self._release_clipboard()
         if self.keeper is not None:   # closed properly: nothing to recover
             self._keep_timer.stop()
             self.keeper.finish()
