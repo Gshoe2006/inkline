@@ -1,13 +1,18 @@
-"""Presets and remembered settings, kept as JSON in ~/.config/inkline (as 2.x kept them)."""
+"""Presets and remembered settings, kept as JSON in ~/.config/inkline (as 2.x kept them), or on Windows in
+%APPDATA%\\Inkline."""
 
 import json
 import os
 
 
 def config_dir():
-    """$INKLINE_CONFIG_DIR (tests), else $XDG_CONFIG_HOME/inkline, else ~/.config/inkline."""
-    return os.environ.get("INKLINE_CONFIG_DIR") or os.path.join(
-        os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "inkline")
+    """$INKLINE_CONFIG_DIR (tests), else on Windows %APPDATA%\\Inkline, else $XDG_CONFIG_HOME/inkline, else
+    ~/.config/inkline."""
+    if os.environ.get("INKLINE_CONFIG_DIR"):
+        return os.environ["INKLINE_CONFIG_DIR"]
+    if os.name == "nt":
+        return os.path.join(os.environ.get("APPDATA") or os.path.expanduser("~"), "Inkline")
+    return os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "inkline")
 
 
 def read(name):

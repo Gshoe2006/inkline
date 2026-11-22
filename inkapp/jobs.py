@@ -49,7 +49,7 @@ def base_name(state):
     if s.mode == "make":
         return f"inkline-{s.gen}-{s.seed}"
     nm = state.photo.name if state.photo else "photo"
-    nm = re.sub(r"\.[^.]+$", "", nm.rsplit("/", 1)[-1])
+    nm = re.sub(r"\.[^.]+$", "", re.split(r"[\\/]", nm)[-1])   # a path from Linux or Windows
     return "inkline-" + re.sub(r"[^\w-]+", "-", nm).lower()
 
 

@@ -9,8 +9,10 @@ import os
 from PySide6.QtCore import QHashSeed
 from PySide6.QtGui import QFont, QGuiApplication
 
-# The same fonts index.html asks for, in the same order.
-FONT_FAMILIES = ["Cantarell", "Noto Sans", "Inter", "DejaVu Sans", "sans-serif"]
+# The same fonts index.html asks for, in the same order. Windows has none of them, so it gets its own UI
+# font and Arial before the generic fallback (Linux's list, and so its output, stays as it was).
+FONT_FAMILIES = ["Cantarell", "Noto Sans", "Inter", "DejaVu Sans"] + \
+    (["Segoe UI", "Arial"] if os.name == "nt" else []) + ["sans-serif"]
 
 # Same drawing, same PDF bytes. Qt's PDF engine keeps the fonts a document uses in a QHash and writes
 # them out in hash order, which decides each font's object number and subset tag (QTAAAA+Inter-Bold...).

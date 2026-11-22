@@ -11,7 +11,6 @@ belongs to another Inkline open now, and is left alone. (Process numbers can't t
 runs in its own sandbox, where they repeat.)
 """
 
-import fcntl
 import glob
 import os
 import threading
@@ -26,6 +25,31 @@ from . import config, project
 PREFIX = "recovery-"
 SESSION = uuid.uuid4().hex[:12]
 _held = {}               # lock file path -> the open lock file this process holds on it
+
+
+# A lock held for as long as the session runs, released by the system however the process ends: flock on
+# Linux, a locked byte (msvcrt) on Windows. Both raise BlockingIOError when another process holds it.
+if os.name == "nt":
+    import msvcrt
+
+    def _lock(f):
+        f.seek(0)
+        try:
+            msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
+        except OSError as e:
+            raise BlockingIOError(str(e)) from None
+
+    def _unlock(f):
+        f.seek(0)
+        msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
+else:
+    import fcntl
+
+    def _lock(f):
+        fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+    def _unlock(f):
+        fcntl.flock(f, fcntl.LOCK_UN)
 
 
 def path_for(session=None):
@@ -43,7 +67,7 @@ def hold():
         return
     os.makedirs(config.config_dir(), exist_ok=True)
     f = open(lock, "w")
-    fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    _lock(f)
     _held[lock] = f
 
 
@@ -51,11 +75,11 @@ def release():
     """Closing properly: let go of this session's lock and remove its file."""
     while _held:
         lock, f = _held.popitem()
+        f.close()            # closed first: Windows won't remove a file that's still open
         try:
             os.remove(lock)
         except OSError:
             pass
-        f.close()
 
 
 def _ended(path):
@@ -64,8 +88,8 @@ def _ended(path):
         return False
     try:
         with open(_lock_path(path), "a") as f:
-            fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            fcntl.flock(f, fcntl.LOCK_UN)
+            _lock(f)
+            _unlock(f)
         return True
     except BlockingIOError:
         return False

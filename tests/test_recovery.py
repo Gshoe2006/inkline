@@ -138,11 +138,10 @@ def test_discarding_it_leaves_the_work_alone(make, monkeypatch):
 
 
 def test_another_running_inkline_isnt_mistaken_for_a_crash(make, monkeypatch):
-    import fcntl
     w = make()
     alive = _leftover(session="othersession")
     lock = open(recovery._lock_path(alive), "w")    # another Inkline, running: it holds its lock
-    fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    recovery._lock(lock)
     asked = []
     monkeypatch.setattr(QMessageBox, "exec", lambda box: asked.append(1) or 0)
     try:
