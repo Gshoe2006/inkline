@@ -446,3 +446,50 @@ def test_delete_never_removes_the_last_page(win):
     QTest.keyClick(lst, Qt.Key.Key_Delete)
     QTest.keyClick(lst, Qt.Key.Key_Delete)
     assert len(win.state.settings.page_list) == 1
+
+
+def test_after_a_row_button_the_keys_still_work(win):
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    from PySide6.QtWidgets import QPushButton
+    _booklet(win)
+    win.activateWindow()
+    lst = win.sidebar.page_list
+    win.sidebar.book_page_selected.emit(1)
+    down = lst.itemWidget(lst.item(1)).findChildren(QPushButton)[1]       # "Move down"
+    down.setFocus()
+    down.click()
+    assert win.state.book_sel == 2 and QApplication.focusWidget() is lst
+    QTest.keyClick(lst, Qt.Key.Key_Down, Qt.KeyboardModifier.AltModifier)
+    assert win.state.book_sel == 3
+
+
+def test_keys_do_nothing_where_their_buttons_are_off(win):
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    _booklet(win)
+    lst, h = win.sidebar.page_list, win.history
+    lst.setFocus()
+    win.sidebar.book_page_selected.emit(5)
+    steps = h.count()
+    QTest.keyClick(lst, Qt.Key.Key_Down, Qt.KeyboardModifier.AltModifier)    # the last can't go down
+    assert h.count() == steps
+    for _ in range(34):
+        win.sidebar.book_page_added.emit()
+    assert len(win.state.settings.page_list) == 40
+    lst.setFocus()
+    steps = h.count()
+    QTest.keyClick(lst, Qt.Key.Key_D, Qt.KeyboardModifier.ControlModifier)   # no 41st page
+    assert len(win.state.settings.page_list) == 40 and h.count() == steps
+
+
+def test_keys_stay_in_the_page_list(win):
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    _booklet(win)
+    field = win.sidebar.preset_name
+    field.setFocus()
+    field.setText("abc")
+    field.setCursorPosition(0)
+    QTest.keyClick(field, Qt.Key.Key_Delete)
+    assert field.text() == "bc" and len(win.state.settings.page_list) == 6

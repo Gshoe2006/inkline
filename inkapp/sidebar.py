@@ -596,6 +596,9 @@ class Sidebar(QFrame):
                 b.setAccessibleName(tip)
                 b.setEnabled(not off)
                 b.clicked.connect(fn)
+                # the list is filled again (this button goes): the focus goes back to the list, so the keys named
+                # in the tooltip work straight after a click
+                b.clicked.connect(lambda _c=False: self.page_list.setFocus())
                 btns.addWidget(b)
             btns.addStretch(1)
             lst.setItemWidget(item, row)
