@@ -6,6 +6,48 @@ To release a new version, add a section headed `## <version>` (the same text as 
 pull request that bumps `VERSION`. When it merges, `.github/workflows/release.yml` builds the packages
 and publishes a GitHub Release with that section as its notes.
 
+## 4.2.0 - 2026-11-22
+
+Inkline 4.2 gets your work back if it closes unexpectedly, and makes word search pages in a booklet easier to work with.
+
+### What's new
+
+- **Get unsaved work back after a crash.** While you have unsaved work that isn't remembered anywhere else (photos, a booklet's own pages, or changes to an open project), Inkline quietly keeps a copy, at most once a minute.
+  - If Inkline closes unexpectedly, the next start asks whether to recover it, showing when it was saved and what it holds, such as "16:09 · Maya's book · 12 pages · 3 photos". Choose **Recover** or **Discard**.
+  - Recovered work counts as unsaved, so Inkline asks before closing, and **Save project** goes back to the project it came from.
+  - Saving, or closing Inkline normally, removes the copy. With two Inklines open at once, neither mistakes the other for a crash.
+- **Words that didn't fit, in booklets too.** The "Left out: …" note, which names words too long for the grid, now appears for a word search page in a booklet, not only for a single page.
+- **Pages you can tell apart.** In a booklet built page by page, each row says what makes its page different: a word search's words ("Ocean", "Your words"), a word maze's word, or a name page's name. Hover over "Your words" to see them.
+
+### Good to know
+
+- **Where the copy lives:** in the settings folder (`~/.config/inkline`, or `~/.var/app/io.github.gshoe2006.Inkline/config/inkline` for the Flatpak), as an ordinary `.inkline` project file. It's removed as soon as it isn't needed.
+- **Settings on their own aren't copied:** they're already remembered between runs, as before.
+
+### Upgrading
+
+Nothing changes in what Inkline needs: Python 3 with PySide6 and numpy. Your presets, settings, projects, recent files and printer carry over.
+
+**Arch / CachyOS / Manjaro**
+```sh
+sudo pacman -U inkline-4.2.0-1-any.pkg.tar.zst
+```
+
+**Any other distro**
+```sh
+sh inkline-4.2.0.run            # or --system for every user
+```
+
+**Flatpak**
+```sh
+flatpak install --user inkline-4.2.0.flatpak     # if a .flatpak file is attached to this release
+sh packaging/flatpak/build.sh                    # or build it from a copy of the source
+```
+
+### Found a problem?
+
+Please open an issue saying what you did, what you expected, and what happened. Include your distro, and the printer if it's about printing.
+
 ## 4.1.0 - 2026-11-22
 
 Inkline 4.1 makes a booklet's page list easier to find your way around, and lets your file manager open projects.
