@@ -15,7 +15,7 @@ Inkline 4.4 lets you choose a design from several, instead of trying New design 
 - **More designs…** Under **New design** in the Design section (or **View → More designs…**, Ctrl+Shift+N), it shows six designs side by side. Click the one you like, or press **Show six more** for another six. Choosing is one Undo step.
   - It offers whatever New design would change: a single page; a quick booklet, each option shown on the page you're looking at; or, in a booklet built page by page, just the page you're editing. A poster's design is shown on one page.
   - The designs are drawn in the background and appear as they're ready; colour-by-number pages take a moment and say "Drawing…" until then.
-  - Use the arrow keys or Tab to move between designs, and Enter or Space to choose one.
+  - Use Tab to move between designs, and Enter or Space to choose one.
 
 ### Fixed
 
