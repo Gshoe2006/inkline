@@ -6,6 +6,48 @@ To release a new version, add a section headed `## <version>` (the same text as 
 pull request that bumps `VERSION`. When it merges, `.github/workflows/release.yml` builds the packages
 and publishes a GitHub Release with that section as its notes.
 
+## 4.3.0 - 2026-11-22
+
+Inkline 4.3 gives you more say over what a booklet prints: which answers go in the back, and which pages come out of the printer.
+
+### What's new
+
+- **Leave a page's answer out.** In a booklet built page by page, choose a puzzle or colour-by-number page and untick **Include its answer in the answer pages** in the Design section. That page's solution stays out of the answer pages, which is handy for a hard puzzle without its solution, or a teacher's copy. The page's row in the list ends "· no answer", and the switch is saved in projects.
+- **Print or save only some pages.** For booklets and photo books, **Paper → Print or save only** takes pages as the pager counts them, such as `3-5, 8`, `cover` or `answers`. Leave it empty for every page.
+  - A line under it says what will print, such as "Prints and saves pages 3–5 and 8 of 14", or what's wrong with what you typed.
+  - Fold-and-staple books print the whole sheets that hold those pages, both sides.
+  - A PDF of some pages is named for them (…`-p3-5_8.pdf`).
+  - The choice isn't remembered: it's cleared when you switch to another book, so a reprint can't quietly shorten a later print.
+
+### Changed
+
+- **The print dialog's own page range is switched off.** Choose pages under **Paper → Print or save only** instead.
+- **Fold-and-staple messages count sheets,** for example "Saved 2 sheets (both sides)".
+
+### Upgrading
+
+Nothing changes in what Inkline needs: Python 3 with PySide6 and numpy. Your presets, settings, projects, recent files and printer carry over.
+
+**Arch / CachyOS / Manjaro**
+```sh
+sudo pacman -U inkline-4.3.0-1-any.pkg.tar.zst
+```
+
+**Any other distro**
+```sh
+sh inkline-4.3.0.run            # or --system for every user
+```
+
+**Flatpak**
+```sh
+flatpak install --user inkline-4.3.0.flatpak     # if a .flatpak file is attached to this release
+sh packaging/flatpak/build.sh                    # or build it from a copy of the source
+```
+
+### Found a problem?
+
+Please open an issue saying what you did, what you expected, and what happened. Include your distro, and the printer if it's about printing.
+
 ## 4.2.0 - 2026-11-22
 
 Inkline 4.2 gets your work back if it closes unexpectedly, and makes word search pages in a booklet easier to work with.
