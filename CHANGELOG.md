@@ -6,6 +6,65 @@ To release a new version, add a section headed `## <version>` (the same text as 
 pull request that bumps `VERSION`. When it merges, `.github/workflows/release.yml` builds the packages
 and publishes a GitHub Release with that section as its notes.
 
+## 5.3.0 - 2026-11-23
+
+Inkline 5.3 writes joined-up handwriting the way your country's schools teach it, and makes its SVGs look right everywhere.
+
+### What's new
+
+- **Your country's handwriting style.** With **Handwriting → Letters → Joined-up**, a new **Style** choice picks the school style:
+  - your language's (as before);
+  - England;
+  - the United States (traditional or modern cursive);
+  - Australia (New South Wales);
+  - New Zealand;
+  - Ireland;
+  - Canada;
+  - Spain;
+  - Mexico;
+  - France.
+
+### Fixed
+
+- **Joined-up letters in SVGs.** An SVG of a joined-up handwriting sheet now carries the letters' shapes, so it looks the same on any computer and in cutting machines' software, which don't have the handwriting fonts. Before, it came out in print letters there.
+
+### Upgrading
+
+Nothing changes in what Inkline needs (the joined-up handwriting fonts come with it). Your presets, settings, projects, recent files and printer carry over.
+
+**Windows**
+Run `inkline-5.3.0-windows-setup.exe`.
+
+**Debian / Ubuntu / Linux Mint / Pop!_OS**
+```sh
+sudo apt install ./inkline_5.3.0-1_amd64.deb
+```
+
+**Arch / CachyOS / Manjaro**
+```sh
+sudo pacman -U inkline-5.3.0-1-any.pkg.tar.zst
+```
+
+**Any distro, nothing installed**
+```sh
+chmod +x inkline-5.3.0-x86_64.AppImage && ./inkline-5.3.0-x86_64.AppImage
+```
+
+**Any other distro**
+```sh
+sh inkline-5.3.0.run            # or --system for every user
+```
+
+**Flatpak**
+```sh
+flatpak install --user inkline-5.3.0.flatpak     # if a .flatpak file is attached to this release
+sh packaging/flatpak/build.sh                    # or build it from a copy of the source
+```
+
+### Found a problem?
+
+Please open an issue saying what you did, what you expected, and what happened. Include your system (distro, or Windows version), and the printer if it's about printing.
+
 ## 5.2.0 - 2026-11-23
 
 Inkline 5.2 turns this week's spelling words into a week of worksheets, and adds telling the time, money sums, division and joined-up handwriting.
