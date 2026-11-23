@@ -6,6 +6,57 @@ To release a new version, add a section headed `## <version>` (the same text as 
 pull request that bumps `VERSION`. When it merges, `.github/workflows/release.yml` builds the packages
 and publishes a GitHub Release with that section as its notes.
 
+## 4.7.0 - 2026-11-23
+
+Inkline 4.7 runs on Windows, and on Linux it can look like the rest of your desktop.
+
+### What's new
+
+- **Inkline for Windows.** `inkline-4.7.0-windows-setup.exe` installs Inkline on Windows 10 or 11 (64-bit), for you alone without needing an administrator, or for everyone on the computer. It adds Inkline to the Start menu, opens `.inkline` projects with a double-click, and uninstalls from Settings → Apps. Settings are kept in `%APPDATA%\Inkline`, and pages print with Windows' own fonts.
+- **Use my desktop's style.** **View → Use my desktop's style** makes Inkline look like your other apps (Breeze, for example) instead of its own style; it's remembered. It works where Inkline uses your system's Qt: the Arch package and the `.run` installer. The Flatpak, the AppImage and the `.deb` bring their own Qt, which can't load your desktop's style, so the item is greyed out there and says why.
+
+### Good to know
+
+- **The Windows installer isn't signed yet,** so Windows SmartScreen may say it's from an unknown publisher. Choose **More info → Run anyway**.
+- **Every release now has six packages,** each checked by running Inkline's self-test with it before anything is published.
+
+### Upgrading
+
+Nothing changes in what Inkline needs. Your presets, settings, projects, recent files and printer carry over.
+
+**Windows**
+Run `inkline-4.7.0-windows-setup.exe`.
+
+**Debian / Ubuntu / Linux Mint / Pop!_OS**
+```sh
+sudo apt install ./inkline_4.7.0-1_amd64.deb
+```
+
+**Arch / CachyOS / Manjaro**
+```sh
+sudo pacman -U inkline-4.7.0-1-any.pkg.tar.zst
+```
+
+**Any distro, nothing installed**
+```sh
+chmod +x inkline-4.7.0-x86_64.AppImage && ./inkline-4.7.0-x86_64.AppImage
+```
+
+**Any other distro**
+```sh
+sh inkline-4.7.0.run            # or --system for every user
+```
+
+**Flatpak**
+```sh
+flatpak install --user inkline-4.7.0.flatpak     # if a .flatpak file is attached to this release
+sh packaging/flatpak/build.sh                    # or build it from a copy of the source
+```
+
+### Found a problem?
+
+Please open an issue saying what you did, what you expected, and what happened. Include your system (distro, or Windows version), and the printer if it's about printing.
+
 ## 4.6.1 - 2026-11-22
 
 Inkline 4.6.1 lets you edit a booklet's page list from the keyboard.
