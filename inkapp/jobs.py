@@ -182,8 +182,9 @@ def job(state, only="", copies=1, vary=False, answers=False):
             si = replace(s, seed=copy_seed(s.seed, i))
             return draw_page(ctx, g, single_page(si, state.photo), si)
         return Job(name, "copies", copies, s.orient, g, draw)
-    # each copy carries its number at the foot, and its answer is "Copy 7"; alike copies share one answer
-    designs = [replace(spec, seed=copy_seed(s.seed, i) if vary else s.seed, page_no=i + 1,
+    # each copy carries "Copy 7" under it, and so does its answer; alike copies share one answer
+    # (in the margin: a page number's band would shrink the design, and copy 1 would no longer be the one shown)
+    designs = [replace(spec, seed=copy_seed(s.seed, i) if vary else s.seed, stamp=f"Copy {i + 1}",
                        key_label=f"Copy {i + 1}" if vary else "Every copy") for i in range(copies)]
     solved = designs if vary else designs[:1]
     keys = [PageSpec(kind="answers", header=True, title="Answers", items=solved[k:k + 4])

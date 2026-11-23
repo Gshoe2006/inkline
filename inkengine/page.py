@@ -231,6 +231,7 @@ class PageSpec:
     count: int = 0               # pcover: how many photo pages follow
     opts: dict = field(default_factory=dict)      # design: this page's own settings (a booklet built page by page)
     key_label: str = ""          # design: what its answer is called on the answer pages, instead of label · page
+    stamp: str = ""              # design: a small note in the bottom margin ("Copy 7"), leaving the design as it is
 
     def __post_init__(self):
         if self.header is None:
@@ -288,6 +289,10 @@ def draw_bands(ctx, g, spec):
         ctx.set_font(fs * 0.6, 400)
         ctx.fill_style, ctx.text_align = "#333", "center"
         ctx.fill_text(str(spec.page_no), b.x + b.w / 2, b.y + b.h - fs * 0.1)
+    if spec.stamp:   # under the design, in the margin (a quarter inch at least), so the design keeps its size
+        ctx.set_font(g.dpi * 0.09, 400)
+        ctx.fill_style, ctx.text_align = "#333", "right"
+        ctx.fill_text(spec.stamp, b.x + b.w, b.y + b.h + g.dpi * 0.12)
     ctx.restore()
 
 

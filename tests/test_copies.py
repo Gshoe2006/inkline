@@ -161,7 +161,8 @@ def test_answer_pages_after_the_copies_each_copy_numbered_to_match():
     finally:
         jobs.draw_page = real
     copies, keys = seen[:9], seen[9:]
-    assert [c.page_no for c in copies] == list(range(1, 10))               # the number at the foot of each copy
+    assert [c.stamp for c in copies] == [f"Copy {n}" for n in range(1, 10)]   # under each copy, in the margin
+    assert all(c.page_no == 0 for c in copies)
     assert [c.seed for c in copies] == [s for s, _ in _drawn(jobs.job(st, copies=9, vary=True))]   # same designs
     assert all(k.kind == "answers" and k.title == "Answers" for k in keys)
     assert [d.key_label for k in keys for d in k.items] == [f"Copy {n}" for n in range(1, 10)]
@@ -212,3 +213,19 @@ def test_answer_pages_draw_for_every_kind_of_puzzle():
             p = QPainter(img)
             j.draw(QtCanvas(p, g.W, g.H), i)
             p.end()
+
+
+def test_answer_pages_leave_every_copy_exactly_as_without_them():
+    """Each copy draws just what it draws without answers (the first being the design shown), only with "Copy N"
+    under it: a maze's grid, spot the difference's picture and colour by number fill the same space."""
+    from inkengine.canvas import RecordingCanvas
+    for kw in ({"gen": "maze"}, {"gen": "spot"}, {"gen": "contour", "cbn": True}, {"gen": "truchet", "cbn": True},
+               {"gen": "maze", "title": "Friday", "name_line": True, "orient": "landscape"}):
+        st = State(Settings(seed=7, dpi=36, **kw))
+        plain, keyed = jobs.job(st, copies=3, vary=True), jobs.job(st, copies=3, vary=True, answers=True)
+        for i in range(3):
+            a, b = RecordingCanvas(), RecordingCanvas()
+            plain.draw(a, i)
+            keyed.draw(b, i)
+            stamp = [op for op in b.ops if op[0] == "text" and op[1] == f"Copy {i + 1}"]
+            assert len(stamp) == 1 and [op for op in b.ops if op not in stamp] == a.ops, kw
