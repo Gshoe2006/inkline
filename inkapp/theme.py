@@ -35,6 +35,7 @@ FONT_MONO = ["JetBrains Mono", "IBM Plex Mono", "DejaVu Sans Mono", "monospace"]
 
 # Sizes, in pixels, as 2.x set them.
 SIDEBAR_WIDTH = 330
+MAX_SIDEBAR_WIDTH = 480   # px: a desktop style with wide controls widens the sidebar this far at most
 PAD_X = 20            # sidebar's side padding
 SECTION_GAP = 18      # between sections
 ROW_GAP = 10          # between rows in a section
