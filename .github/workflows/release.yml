@@ -3,8 +3,8 @@
 #   1. check    VERSION is a new version, and CHANGELOG.md has notes for it
 #   2. selftest the same self-test every pull request runs (selftest.yml)
 #   3. build    the .run installer and the Arch package (in Arch Linux), the .flatpak, the Debian/Ubuntu
-#               .deb and the AppImage
-#   4. release  tags the commit, publishes "Inkline <version>" with those notes and the five files,
+#               .deb, the AppImage and the Windows installer
+#   4. release  tags the commit, publishes "Inkline <version>" with those notes and the six files,
 #               then tells the app portal (Gshoe2006/Apps) to show it straight away
 #
 # Nothing is published unless every step passes. To release: in one pull request, bump VERSION and
@@ -12,7 +12,7 @@
 # releases the current VERSION if that hasn't happened yet (for example after fixing a failed build).
 #
 # Tick "Test build only" under Run workflow to do everything but publish: the notes check, the
-# self-test and all five builds, with the packages kept for 7 days under the run's Artifacts.
+# self-test and all six builds, with the packages kept for 7 days under the run's Artifacts.
 # Releases are only ever published from main.
 name: Release
 
@@ -204,8 +204,69 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  windows:
+    needs: check
+    if: needs.check.outputs.build == 'true'
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install PySide6, numpy, PyInstaller and Inno Setup
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install PySide6-Essentials==6.12.0 shiboken6==6.12.0 numpy==2.3.5 pyinstaller
+          choco install innosetup -y --no-progress
+
+      - name: Build the app and its installer
+        run: |
+          python packaging/windows/build.py
+          if (-not (Test-Path "dist/inkline-${{ needs.check.outputs.version }}-windows-setup.exe")) { exit 1 }
+          if ((Get-Content dist/Inkline/_internal/VERSION).Trim() -ne "${{ needs.check.outputs.version }}") { exit 1 }
+
+      - name: Run the self-test with the built Inkline.exe
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          python -c "import subprocess, sys; sys.exit(subprocess.run([r'dist\Inkline\Inkline.exe', '--selftest', 'windows-selftest']).returncode)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: dist/inkline-*-windows-setup.exe
+          if-no-files-found: error
+          retention-days: 7
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-selftest
+          path: windows-selftest/
+          if-no-files-found: error
+          retention-days: 7
+
+  # check_selftest reads the PDFs with poppler's pdfinfo, which comes with Linux, not Windows
+  windows-check:
+    needs: [check, windows]
+    if: needs.check.outputs.build == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-selftest
+          path: windows-selftest
+      - name: Check the files Inkline.exe wrote
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends poppler-utils
+          python3 packaging/check_selftest.py windows-selftest
+
   release:
-    needs: [check, selftest, run-and-arch, flatpak, deb, appimage]
+    needs: [check, selftest, run-and-arch, flatpak, deb, appimage, windows, windows-check]
     if: needs.check.outputs.publish == 'true'
     runs-on: ubuntu-24.04
     permissions:
@@ -230,6 +291,10 @@ jobs:
         with:
           name: appimage
           path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows
+          path: dist
 
       - name: Publish the release
         env:
@@ -238,7 +303,7 @@ jobs:
         run: |
           python3 packaging/release_notes.py "$V" > notes.md
           ls -l dist
-          test "$(ls dist | wc -l)" = 5 || { echo "::error::Expected the 5 packages in dist, found: $(ls dist)"; exit 1; }
+          test "$(ls dist | wc -l)" = 6 || { echo "::error::Expected the 6 packages in dist, found: $(ls dist)"; exit 1; }
           gh release create "$V" dist/* \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
@@ -254,7 +319,7 @@ jobs:
         run: sh packaging/notify_portal.sh --warn
 
   test-build-done:
-    needs: [check, selftest, run-and-arch, flatpak, deb, appimage]
+    needs: [check, selftest, run-and-arch, flatpak, deb, appimage, windows, windows-check]
     if: needs.check.outputs.build == 'true' && needs.check.outputs.publish != 'true'
     runs-on: ubuntu-24.04
     steps:
@@ -264,5 +329,6 @@ jobs:
             echo "### Test build of Inkline ${{ needs.check.outputs.version }} passed"
             echo
             echo "Nothing was published. The self-test passed, and the .run installer, the Arch package, the"
-            echo ".flatpak, the .deb and the AppImage built. Download them under **Artifacts** below (kept for 7 days)."
+            echo ".flatpak, the .deb, the AppImage and the Windows installer built. Download them under **Artifacts**"
+            echo "below (kept for 7 days)."
           } >> "$GITHUB_STEP_SUMMARY"

@@ -26,6 +26,9 @@ Each [release](https://github.com/Gshoe2006/inkline/releases) has a package for 
 | Any distro, nothing installed | `inkline-<version>-x86_64.AppImage` | `chmod +x inkline-*.AppImage`, then run it |
 | Any distro, sandboxed | `inkline-<version>.flatpak` | `flatpak install --user inkline-<version>.flatpak` |
 | Any distro, your own Python | `inkline-<version>.run` | `sh inkline-<version>.run` |
+| Windows 10 or 11 (64-bit) | `inkline-<version>-windows-setup.exe` | Run it; no administrator needed |
+
+The Windows installer isn't signed yet, so Windows SmartScreen may warn that it's from an unknown publisher: choose **More info → Run anyway**. It adds Inkline to the Start menu, opens `.inkline` projects with a double-click, and uninstalls from Settings → Apps. Settings are kept in `%APPDATA%\Inkline`.
 
 The `.deb` brings its own PySide6 (Debian and Ubuntu don't package a new enough one) and uses the system's Python and numpy. The AppImage brings everything, Python included; for it to appear in your app menu and open `.inkline` projects with a double-click, use an AppImage manager such as Gear Lever or AppImageLauncher.
 
@@ -102,6 +105,12 @@ sh packaging/debian/build-deb.sh          # dist/inkline_<version>-1_amd64.deb (
 sh packaging/appimage/build-appimage.sh   # dist/inkline-<version>-x86_64.AppImage (needs uv: pip install uv)
 ```
 
+The Windows installer is built on Windows, with Python, `pip install PySide6-Essentials numpy pyinstaller` and [Inno Setup 6](https://jrsoftware.org/isinfo.php):
+
+```sh
+python packaging/windows/build.py         # dist/Inkline/ and dist/inkline-<version>-windows-setup.exe
+```
+
 `packaging/build.sh` outputs to `dist/`:
 
 - `inkline-<version>-<rel>-any.pkg.tar.zst` — Arch / CachyOS / Manjaro package: `sudo pacman -U dist/inkline-*.pkg.tar.zst`
@@ -130,7 +139,7 @@ In one pull request:
 2. Add a section to the top of `CHANGELOG.md` headed `## <version>` (for example `## 3.4.3 - 2026-11-21`) saying what changed. It becomes the release notes word for word, with its `###` headings shown as `##`.
 3. Add `<release version="<version>" date="<date>"/>` to `packaging/flatpak/io.github.gshoe2006.Inkline.metainfo.xml`.
 
-When it merges, `.github/workflows/release.yml` checks there are notes for the version, runs the self-test, builds the `.run` installer, the Arch package, the `.flatpak`, the `.deb` and the AppImage (installing the `.deb` and running the AppImage to self-test each), and publishes the GitHub Release "Inkline <version>" with all five attached. It then tells the app portal, so the release shows there within a minute or two (this needs the `PORTAL_TOKEN` secret, otherwise the portal shows it on its next 3-hourly run). If any step fails nothing is published: fix it and press *Run workflow* on the Release workflow. `python3 packaging/release_notes.py` prints the notes the release will get.
+When it merges, `.github/workflows/release.yml` checks there are notes for the version, runs the self-test, builds the `.run` installer, the Arch package, the `.flatpak`, the `.deb`, the AppImage and the Windows installer (self-testing the `.deb`, the AppImage and `Inkline.exe` with each), and publishes the GitHub Release "Inkline <version>" with all six attached. It then tells the app portal, so the release shows there within a minute or two (this needs the `PORTAL_TOKEN` secret, otherwise the portal shows it on its next 3-hourly run). If any step fails nothing is published: fix it and press *Run workflow* on the Release workflow. `python3 packaging/release_notes.py` prints the notes the release will get.
 
 To check the release builds without publishing anything, open the Release workflow on the Actions tab, press *Run workflow*, tick *Test build only* and run it: the packages it builds are kept for 7 days under the run's *Artifacts*.
 
