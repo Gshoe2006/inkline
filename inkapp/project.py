@@ -116,7 +116,9 @@ def _from_json(data):
     except (TypeError, ValueError):
         fmt = 0
     if fmt > FORMAT:
-        raise ProjectError(f"was saved by a newer Inkline ({data.get('version', 'unknown version')}). Update Inkline to open it")
+        from inkengine.i18n import tr
+        raise ProjectError(tr("was saved by a newer Inkline ({version}). Update Inkline to open it").format(
+            version=data.get("version", tr("unknown version"))))
     s = Settings.from_dict({**Settings().to_dict(), **Settings.from_dict(data["settings"]).to_dict()})
     photos, skipped = [], 0
     listed = data.get("photos") or []

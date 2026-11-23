@@ -21,6 +21,7 @@ import uuid
 from datetime import datetime
 
 from . import config, project
+from inkengine.i18n import tr
 
 PREFIX = "recovery-"
 SESSION = uuid.uuid4().hex[:12]
@@ -124,14 +125,14 @@ def describe(path, data):
     today = datetime.now().date()
     parts = [when.strftime("%H:%M") if when.date() == today else when.strftime("%d %b, %H:%M")]
     src = (data.get("recovery") or {}).get("project")
-    parts.append(project.title(src) if isinstance(src, str) and src else "untitled work")
+    parts.append(project.title(src) if isinstance(src, str) and src else tr("untitled work"))
     settings = data.get("settings") or {}
     pages = settings.get("page_list") or settings.get("pageList") or []
     if isinstance(pages, list) and pages:
-        parts.append(f"{len(pages)} page{'s' if len(pages) != 1 else ''}")
+        parts.append((tr("1 page") if len(pages) == 1 else tr("{n} pages")).format(n=len(pages)))
     photos = data.get("photos") or []
     if isinstance(photos, list) and photos:
-        parts.append(f"{len(photos)} photo{'s' if len(photos) != 1 else ''}")
+        parts.append((tr("1 photo") if len(photos) == 1 else tr("{n} photos")).format(n=len(photos)))
     return " · ".join(parts)
 
 

@@ -13,6 +13,7 @@ import numpy as np
 from ..box import Box
 from ..rng import mulberry32, pick
 from ..shapes import dense_outline, flower, heart, star
+from ..i18n import tr
 
 # Flow lines are left out: their lines are open and far apart, so a missing piece barely shows.
 BASES = {"mandala": "Mandala", "truchet": "Woven tiles", "contour": "Contours"}
@@ -253,6 +254,6 @@ def draw(ctx, box, rnd, c, settings=None, lw=1.0, seed=0, dpi=300, solve=False, 
         ctx.save()
         ctx.set_font(fs, 600)
         ctx.fill_style, ctx.text_align = "#000", "center"
-        ctx.fill_text(f"Find the {len(found)} differences", tx, ty)
+        ctx.fill_text(tr("Find the {n} differences").format(n=len(found)), tx, ty)
         ctx.restore()
     return found

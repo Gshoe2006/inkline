@@ -114,7 +114,9 @@ def size_note(s):
     """e.g. "Finished poster: 14.75 × 19.75 in, from 4 Letter sheets." """
     P = poster_geometry(s, 1)
     paper = "A4" if s.paper == "a4" else "Letter"
-    return f"Finished poster: {_num(P.w)} × {_num(P.h)} in, from {P.sheets} {paper} sheets."
+    from .i18n import tr
+    return tr("Finished poster: {w} × {h} in, from {n} {paper} sheets.").format(w=_num(P.w), h=_num(P.h), n=P.sheets,
+                                                                                paper=paper)
 
 
 def _num(x):

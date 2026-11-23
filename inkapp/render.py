@@ -21,6 +21,8 @@ from inkengine.page import PAPER, Geometry, draw_page, geometry, single_page
 from inkengine.box import Box
 from inkengine.qt import ensure_app
 
+from inkengine.i18n import tr
+
 from .classset import copies_vary, copy_settings, named_pages
 
 PREVIEW_DPI = 150          # colour by number's grid is 150 dpi, so the preview shows the same regions as print
@@ -165,19 +167,20 @@ def render_view(state):
             note = (words if spec.gen == "words" else crossword).note(drawn) \
                 if isinstance(drawn, dict) and "panels" not in drawn else ""
     paper = _paper_name(s)
+    inch = tr("in")
     if v.kind == "testpage":
-        info = [[("Printer test page", True), (f" {_num(g.w)} × {_num(g.h)} in", False)],
-                [(str(s.dpi), True), (" dpi · print at 100%", False)]]
+        info = [[(tr("Printer test page"), True), (f" {_num(g.w)} × {_num(g.h)} {inch}", False)],
+                [(str(s.dpi), True), (" " + tr("dpi · print at 100%"), False)]]
     else:
         cov = ink_coverage(img)
         if v.kind == "poster":
-            info = [[("Poster", True), (f" {_num(P.w)} × {_num(P.h)} in", False)],
-                    [(f"{P.cols} × {P.rows}", True), (f" {paper} sheets · {s.dpi} dpi", False)]]
+            info = [[(tr("Poster"), True), (f" {_num(P.w)} × {_num(P.h)} {inch}", False)],
+                    [(f"{P.cols} × {P.rows}", True), (" " + tr("{paper} sheets · {dpi} dpi").format(paper=tr(paper), dpi=s.dpi), False)]]
         else:
             pg = geometry(s)
-            info = [[(paper, True), (f" {_num(g.w)} × {_num(g.h)} in", False)],
-                    [(str(s.dpi), True), (f" dpi · {pg.W} × {pg.H} px", False)]]
-        info.append([("ink coverage ", False), (f"{cov:.1f}%", True)])
+            info = [[(tr(paper), True), (f" {_num(g.w)} × {_num(g.h)} {inch}", False)],
+                    [(str(s.dpi), True), (" " + tr("dpi · {w} × {h} px").format(w=pg.W, h=pg.H), False)]]
+        info.append([(tr("ink coverage") + " ", False), (f"{cov:.1f}%", True)])
     return Rendered(img, v, info, poster=P, scale=PREVIEW_DPI / s.dpi, note=note)
 
 

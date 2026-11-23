@@ -15,6 +15,7 @@ rescanning, which is several times faster in Python.
 """
 
 from ..rng import pick
+from ..i18n import tr
 
 _ROW = [i // 9 for i in range(81)]
 _COL = [i % 9 for i in range(81)]
@@ -183,6 +184,7 @@ def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, solve=False, **_opts)
     if not solve:
         ctx.set_font(min(dpi * 0.13, cap * 0.5), 400)
         ctx.fill_style = "#555"
-        ctx.fill_text(f"{level(clues)} · {clues} clues", box.x + box.w / 2, y0 + side + cap * 0.7)
+        ctx.fill_text(tr("{level} · {n} clues").format(level=tr(level(clues)), n=clues), box.x + box.w / 2,
+                      y0 + side + cap * 0.7)
     ctx.restore()
     return {"clues": clues, "level": level(clues), "puzzle": puzzle, "solution": solution}

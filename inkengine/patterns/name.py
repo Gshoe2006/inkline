@@ -13,6 +13,7 @@ where 2.x's fonts are installed; the line breaks follow the font's widths too.
 """
 
 from ..rng import mulberry32
+from ..i18n import tr
 
 BACKGROUNDS = {"none": "Plain", "flow": "Flow lines", "contour": "Contours", "truchet": "Woven tiles"}
 PUFF = 0.035   # bubble size in ems: bubbly and joined, while the openings in a, e and g stay open
@@ -45,7 +46,7 @@ def balance_lines(words, n, width):
 
 
 def clean_text(text):
-    return " ".join((text or "").split()) or "Your name"
+    return " ".join((text or "").split()) or tr("Your name")
 
 
 def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, seed=0, **_opts):

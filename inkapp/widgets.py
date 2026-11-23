@@ -12,6 +12,8 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit,
                                QPushButton, QSlider, QVBoxLayout, QWidget)
 
+from inkengine.i18n import tr
+
 from . import theme
 
 
@@ -21,15 +23,15 @@ def _role(widget, role):
 
 
 def label(text, role="label"):
-    return _role(QLabel(text), role)
+    return _role(QLabel(tr(text)), role)
 
 
 def button(text, role=None, tip=None):
-    b = QPushButton(text)
+    b = QPushButton(tr(text))
     if role:
         _role(b, role)
     if tip:
-        b.setToolTip(tip)
+        b.setToolTip(tr(tip))
     b.setCursor(Qt.CursorShape.PointingHandCursor)
     return b
 
@@ -47,7 +49,7 @@ class Check(QWidget):
         lay.setSpacing(theme.PAIR_GAP)
         self.box = QCheckBox()
         self.box.setChecked(checked)
-        self.box.setAccessibleName(text)
+        self.box.setAccessibleName(tr(text))
         self.box.setCursor(Qt.CursorShape.PointingHandCursor)
         self.text = label(text)
         self.text.setWordWrap(True)
@@ -65,7 +67,7 @@ class Check(QWidget):
 
 
 def check(text, checked=False):
-    return Check(text, checked)
+    return Check(text, checked)   # Check's label translates it
 
 
 def combo(options, current=None):
@@ -74,7 +76,7 @@ def combo(options, current=None):
     c.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
     c.setMinimumContentsLength(6)   # don't widen to the longest entry: the sidebar has a fixed width
     for value, text in options:
-        c.addItem(text, value)
+        c.addItem(tr(text), value)
     if current is not None:
         c.setCurrentIndex(max(0, c.findData(current)))
     c.value = lambda: c.currentData()
@@ -85,7 +87,7 @@ def combo(options, current=None):
 def line_edit(text="", placeholder="", max_length=None):
     e = QLineEdit(text)
     e.setMinimumWidth(60)
-    e.setPlaceholderText(placeholder)
+    e.setPlaceholderText(tr(placeholder))
     if max_length:
         e.setMaxLength(max_length)
     return e
@@ -97,7 +99,8 @@ class Section(QWidget):
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(theme.HEADING_GAP)
-        heading = label(title.upper(), "legend")   # stylesheets can't uppercase, so the text is
+        title = tr(title)
+        heading = _role(QLabel(title.upper()), "legend")   # stylesheets can't uppercase, so the text is
         heading.setAccessibleName(title)
         outer.addWidget(heading)
         lay = QVBoxLayout()
@@ -185,7 +188,7 @@ class Pair(QWidget):
 
 class Hint(QLabel):
     def __init__(self, text=""):
-        super().__init__(text)
+        super().__init__(tr(text))
         _role(self, "hint")
         self.setWordWrap(True)
         self.setTextFormat(Qt.TextFormat.PlainText)
@@ -201,9 +204,9 @@ class Pager(QWidget):
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(theme.PAIR_GAP)
         self.back = button("‹")
-        self.back.setAccessibleName("Previous page")
+        self.back.setAccessibleName(tr("Previous page"))
         self.forward = button("›")
-        self.forward.setAccessibleName("Next page")
+        self.forward.setAccessibleName(tr("Next page"))
         self.text = label("", "pager")
         self.text.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lay.addWidget(self.back)

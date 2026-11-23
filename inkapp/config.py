@@ -35,4 +35,6 @@ def write(name, data, what):
         os.replace(path + ".tmp", path)
         return None
     except (OSError, ValueError):
-        return f"Couldn't save {what.lower()} to {config_dir()}. Check the folder permissions."
+        from inkengine.i18n import tr
+        return tr("Couldn't save {what} to {folder}. Check the folder permissions.").format(what=tr(what).lower(),
+                                                                                            folder=config_dir())

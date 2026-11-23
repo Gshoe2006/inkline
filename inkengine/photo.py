@@ -34,6 +34,7 @@ from PySide6.QtGui import QImage, QPainter
 from .box import Box
 from .patterns import nonogram
 from .qt import ensure_app
+from .i18n import tr
 
 STYLES = ["fs", "atkinson", "bayer", "halftone", "engrave", "stipple", "cbn", "nono", "threshold", "line"]
 STYLE_NAMES = {"fs": "Dither: smooth (Floyd–Steinberg)", "atkinson": "Dither: crisp (Atkinson)",
@@ -476,7 +477,7 @@ def convert(ctx, box, dpi, s, photo, style=None, dot=None, view=None):
     if photo is None:
         ctx.fill_style, ctx.text_align = "#888", "center"
         ctx.set_font(box.w / 28, 400)
-        ctx.fill_text("Open or drop an image to convert it", box.x + box.w / 2, box.y + box.h / 2)
+        ctx.fill_text(tr("Open or drop an image to convert it"), box.x + box.w / 2, box.y + box.h / 2)
         return None
     style = style or s.style
     dot = (s.dot if dot is None else dot) * (dpi / s.dpi)   # dot size stays physical at preview resolution

@@ -14,6 +14,7 @@ from dataclasses import replace
 from .box import Box
 from .page import PAGE_ONLY, PAPER, Geometry, PageSpec, draw_page, has_answer, js_round, page_settings
 from .patterns import NAMES
+from .i18n import tr
 
 # The order a mixed booklet cycles through. Name pages stay out: a booklet shouldn't repeat one word.
 GENS = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "words", "nonogram"]
@@ -37,17 +38,18 @@ def book_pages(s):
         opts = {k: v for k, v in p.items() if k not in ("gen", "seed", "complexity") + PAGE_ONLY}
         designs.append(PageSpec(kind="design", idx=i, gen=gen, seed=int(p.get("seed", s.seed)) & 0xFFFFFFFF,
                                 c=max(1, min(10, int(p.get("complexity", c)))), title=title, name=s.name_line,
-                                label=f"{NAMES[gen]} {i + 1}", opts=opts))
+                                label=f"{tr(NAMES[gen])} {i + 1}", opts=opts))
     for i in range(0 if s.page_list else n):
         gen = GENS[i % len(GENS)] if mix else s.gen
         cx = js_round(1 + (max(c, 2) - 1) * i / (n - 1)) if ramp and n > 1 else c
         # each page's seed comes from the booklet seed, unless that one page was swapped
         seed = _page_seed(s, i, (s.seed + i * 7919) & 0xFFFFFFFF)
         designs.append(PageSpec(kind="design", idx=i, gen=gen, seed=seed, c=cx, title=title, name=s.name_line,
-                                label=f"{NAMES[gen]} {i + 1}"))
+                                label=f"{tr(NAMES[gen])} {i + 1}"))
     if s.cover:
         kinds = {d.gen for d in designs}
-        cover_title = title or ("Colouring & puzzle book" if mix or len(kinds) > 1 else NAMES[designs[0].gen] + " book")
+        cover_title = title or (tr("Colouring & puzzle book") if mix or len(kinds) > 1 else
+                                tr("{pattern} book").format(pattern=tr(NAMES[designs[0].gen])))
         pages.append(PageSpec(kind="cover", title=cover_title, designs=designs,
                               art_seed=_page_seed(s, "cover", (s.seed ^ 0x5BD1E995) & 0xFFFFFFFF)))
     pages.extend(designs)
@@ -57,7 +59,7 @@ def book_pages(s):
         puzzles = [d for d in puzzles if s.page_list[d.idx].get("answer", True) is not False]
     if s.key:
         for i in range(0, len(puzzles), 4):
-            pages.append(PageSpec(kind="answers", header=True, title="Answers", items=puzzles[i:i + 4]))
+            pages.append(PageSpec(kind="answers", header=True, title=tr("Answers"), items=puzzles[i:i + 4]))
     no = 1
     for p in pages:
         if p.kind != "cover" and s.page_nums:
@@ -71,7 +73,7 @@ def photo_book_pages(s, photos):
     title = s.title.strip()
     pages = [PageSpec(kind="photo", photo=ph, title=title, name=s.name_line) for ph in photos]
     if s.pcover and photos:
-        pages.insert(0, PageSpec(kind="pcover", title=title or "My colouring book", photo=photos[0], count=len(photos)))
+        pages.insert(0, PageSpec(kind="pcover", title=title or tr("My colouring book"), photo=photos[0], count=len(photos)))
     no = 1
     for pg in pages:
         if pg.kind != "pcover" and s.ppage_nums:
@@ -83,7 +85,8 @@ def photo_book_pages(s, photos):
 def page_label(pages, i):
     """What the preview's pager shows, e.g. "Page 3 of 14" or "Page 1 of 14 · cover"."""
     kind = pages[i].kind
-    return f"Page {i + 1} of {len(pages)}" + (" · cover" if kind in ("cover", "pcover") else " · answers" if kind == "answers" else "")
+    return tr("Page {i} of {n}").format(i=i + 1, n=len(pages)) + (
+        " · " + tr("cover") if kind in ("cover", "pcover") else " · " + tr("answers") if kind == "answers" else "")
 
 
 # --- fold-and-staple ---------------------------------------------------------------------------------
@@ -153,8 +156,9 @@ def draw_fold_side(ctx, s, pages, side):
 
 def fold_side_label(pages, side):
     left, right = fold_order(len(pages))[side]
-    name = lambda i: "blank" if pages[i].kind == "blank" else str(i + 1)
-    return f"Sheet {side // 2 + 1} of {len(pages) // 4} · {'back' if side % 2 else 'front'} (pages {name(left)} & {name(right)})"
+    name = lambda i: tr("blank") if pages[i].kind == "blank" else str(i + 1)
+    return (tr("Sheet {i} of {n} · back (pages {a} & {b})") if side % 2 else
+            tr("Sheet {i} of {n} · front (pages {a} & {b})")).format(i=side // 2 + 1, n=len(pages) // 4, a=name(left), b=name(right))
 
 
 def swap_page(s, index, seed):

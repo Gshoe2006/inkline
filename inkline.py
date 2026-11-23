@@ -57,6 +57,11 @@ def main():
         from inkapp import selftest
         sys.exit(selftest.main(sys.argv[2]))
     from inkapp import config, theme
+    from inkengine import i18n
+    from PySide6.QtCore import QLocale
+    # the language: View → Language's choice, else the system's (Spanish if it's Spanish), before any window is built
+    chosen = config.read("preferences.json").get("language")
+    i18n.set_language(chosen if chosen in i18n.LANGUAGES else i18n.system_language(QLocale.system().name()))
     from inkapp.window import Window
     theme.remember_desktop(app)   # the desktop's own look, for View → Use my desktop's style
     theme.DESKTOP["on"] = bool(theme.desktop_style_name()) and config.read("preferences.json").get("desktop_style") is True

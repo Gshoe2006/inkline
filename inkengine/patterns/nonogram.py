@@ -11,6 +11,7 @@ exactly one solution: no guessing is ever needed. Complexity sets the size, 5x5 
 """
 
 import math
+from ..i18n import tr
 
 SLOT = 0.7   # a clue number takes 0.7 of a square
 
@@ -202,6 +203,6 @@ def draw_nonogram(ctx, box, dpi, lw, nono, solve=False):
         n_given = sum(givens) if givens else 0
         extra = f" · {n_given} square{'s' if n_given > 1 else ''} shaded to start you off" if n_given else ""
         ctx.fill_text(f"{w} × {h} · shade squares to find the picture{extra}", mid, y0 + side + cap * 0.42, box.w)
-        ctx.fill_text("Each number is a run of shaded squares, in order, with at least one gap between runs.",
+        ctx.fill_text(tr("Each number is a run of shaded squares, in order, with at least one gap between runs."),
                       mid, y0 + side + cap * 0.42 + fc * 1.5, box.w)
     ctx.restore()

@@ -12,6 +12,8 @@ Each row has the four lines handwriting is taught on: the top line, a dashed mid
 import re
 
 from ..rng import pick
+from .. import i18n
+from ..i18n import tr
 
 SOURCES = {"upper": "Capital letters", "lower": "Small letters", "numbers": "Numbers", "words": "Your own words",
            "name": "A name"}
@@ -34,13 +36,14 @@ def lines_to_trace(rnd, c, settings, name=""):
     n = rows_for(c)
     source = getattr(settings, "trace_source", "upper")
     if source == "name":
-        who = name or (getattr(settings, "name_text", "") or "").strip() or "Your name"
+        who = name or (getattr(settings, "name_text", "") or "").strip() or tr("Your name")
         return [who] * n
     if source == "words":
         words = words_from(getattr(settings, "trace_text", "")) or ["cat", "dog", "sun", "tree"]
         start = pick(rnd, len(words))
         return [words[(start + k) % len(words)] for k in range(n)]
-    chars = DIGITS if source == "numbers" else LOWER if source == "lower" else UPPER
+    upper = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ" if i18n.LANG == "es" else UPPER   # the Spanish alphabet has Ñ
+    chars = DIGITS if source == "numbers" else upper.lower() if source == "lower" else upper
     start = pick(rnd, len(chars))
     return [chars[(start + k) % len(chars)] for k in range(n)]
 

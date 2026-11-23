@@ -24,6 +24,7 @@ import numpy as np
 from PySide6.QtGui import QColor, QImage, QPainter
 
 from .box import Box
+from .i18n import tr
 
 CBN_DPI, CBN_PAT_DPI = 150, 100
 CRAYONS = [("White", 255, 255, 255), ("Light grey", 200, 200, 200), ("Grey", 128, 128, 128), ("Black", 30, 30, 30),
@@ -480,7 +481,7 @@ def sum_for(n, seed, region, small=False):
     return f"{n + b}−{b}"
 
 
-def draw_key(ctx, kb, names, dpi, title="Colour key"):
+def draw_key(ctx, kb, names, dpi, title=None):
     """The key: a ring with each number, and the crayon it means, to try the colour in before starting."""
     cols = key_cols(kb.w, dpi)
     rows = math.ceil(len(names) / cols)
@@ -490,7 +491,7 @@ def draw_key(ctx, kb, names, dpi, title="Colour key"):
     ctx.fill_style = ctx.stroke_style = "#000"
     ctx.text_baseline, ctx.text_align = "alphabetic", "left"
     ctx.set_font(fs, 700)
-    ctx.fill_text(title, kb.x, top)
+    ctx.fill_text(title or tr("Colour key"), kb.x, top)
     ctx.line_width = max(1, dpi / 150)
     for i, name in enumerate(names):
         cx = kb.x + (i % cols) * col_w + r + ctx.line_width
@@ -503,7 +504,7 @@ def draw_key(ctx, kb, names, dpi, title="Colour key"):
         ctx.fill_text(str(i + 1), cx, cy + fs * 0.3)
         ctx.text_align = "left"
         ctx.set_font(fs, 400)
-        ctx.fill_text(name, cx + r + fs * 0.5, cy + fs * 0.35, col_w - 2 * r - fs * 1.2)
+        ctx.fill_text(tr(name), cx + r + fs * 0.5, cy + fs * 0.35, col_w - 2 * r - fs * 1.2)
     ctx.restore()
 
 
@@ -632,7 +633,7 @@ def draw_design_page(ctx, g, box, spec, s, lw, raster=None):
     r = pattern(g, art, spec, lw, s, raster)
     sums = [sum_for(q[0], spec.seed, q[4], small=q[3] < g.dpi * 0.12) for q in r["spots"]] if s.cbn_maths else None
     draw_numbers(ctx, [q[:4] for q in r["spots"]], g.dpi, sums)
-    draw_key(ctx, kb, r["names"], g.dpi, "Work out each sum, then colour:" if sums else "Colour key")
+    draw_key(ctx, kb, r["names"], g.dpi, tr("Work out each sum, then colour:") if sums else None)
     return r
 
 
@@ -665,5 +666,6 @@ def draw_answer(ctx, g, slot, d, s, lw, raster=None):
     ctx.save()
     ctx.set_font(fs, 400)
     ctx.fill_style, ctx.text_align = "#555", "center"
-    ctx.fill_text(f"Shaded by number: 1 lightest to {top} darkest", slot.x + slot.w / 2, slot.y + slot.h - fs * 0.3, slot.w)
+    ctx.fill_text(tr("Shaded by number: 1 lightest to {n} darkest").format(n=top), slot.x + slot.w / 2,
+                  slot.y + slot.h - fs * 0.3, slot.w)
     ctx.restore()

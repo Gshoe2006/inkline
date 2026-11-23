@@ -15,6 +15,8 @@ import re
 import unicodedata
 
 from ..rng import pick
+from .. import i18n
+from ..i18n import tr
 
 THEMES = {
     "animals": "cat: Says miaow; dog: Barks and wags its tail; cow: Gives us milk; horse: You can ride it; "
@@ -34,13 +36,36 @@ THEMES = {
              "orbit: The path round a planet; saturn: The planet with rings; planet: Earth is one; "
              "astronaut: A space traveller; telescope: For looking at stars; galaxy: Billions of stars",
 }
+THEMES_ES = {
+    "animals": "gato: Dice miau; perro: Ladra y mueve la cola; vaca: Nos da leche; caballo: Puedes montar en él; "
+               "oveja: Su lana sirve para jerséis; pato: Dice cua cua; rana: Verde, y salta; buho: Ulula de noche; "
+               "leon: El rey de la selva; tigre: Un gran felino con rayas; cebra: Un caballo con rayas; "
+               "mono: Se columpia en los árboles; conejo: Tiene orejas largas y salta; raton: Pequeño, y le gusta el queso; "
+               "elefante: Tiene trompa; jirafa: Tiene el cuello muy largo; serpiente: Larga y sin patas; "
+               "oso: Grande, peludo y le gusta la miel; pez: Nada y tiene aletas; abeja: Hace miel",
+    "food": "manzana: Una fruta roja o verde; platano: Una fruta larga y amarilla; pan: Con él se hacen tostadas; "
+            "queso: A los ratones les encanta; huevo: Lo ponen las gallinas; leche: Una bebida blanca de la vaca; "
+            "pizza: Redonda y con ingredientes encima; zanahoria: Una verdura naranja; sopa: Se toma caliente en un plato hondo; "
+            "tarta: Lleva velas en un cumpleaños; miel: La hacen las abejas; arroz: Granos pequeños y blancos; "
+            "pera: Una fruta con forma de campana; limon: Una fruta amarilla y ácida; uva: Pequeña, crece en racimos; "
+            "guisantes: Bolitas verdes; mermelada: Se unta en las tostadas; pasta: Los espaguetis lo son",
+    "space": "sol: Nuestra estrella más cercana; luna: Brilla de noche; estrella: Centellea en el cielo; "
+             "tierra: El planeta donde vivimos; marte: El planeta rojo; cohete: Vuela al espacio; "
+             "cometa: Tiene una larga cola; orbita: El camino alrededor de un planeta; saturno: El planeta con anillos; "
+             "planeta: La Tierra es uno; astronauta: Viaja al espacio; telescopio: Para mirar las estrellas; "
+             "galaxia: Miles de millones de estrellas; nave: Lleva astronautas",
+}
 THEME_NAMES = {"animals": "Animals", "food": "Food", "space": "Space", "custom": "Your own words and clues"}
 MAX_WORD = 15
 MAX_OWN = 30    # your own words used, at most
 
 
 def letters(word):
-    """A word as crossword letters: capitals A-Z, accents taken off (café → CAFE), anything else left out."""
+    """A word as crossword letters: capitals A-Z, accents taken off (café → CAFE), anything else left out. In
+    Spanish, Ñ stays (NIÑO)."""
+    if i18n.LANG == "es":
+        w = "".join(ch for ch in unicodedata.normalize("NFD", word.upper()) if unicodedata.category(ch) != "Mn" or ch == "\u0303")
+        return re.sub(r"[^A-ZÑ]", "", unicodedata.normalize("NFC", w))
     plain = unicodedata.normalize("NFKD", word).encode("ascii", "ignore").decode("ascii")
     return re.sub(r"[^A-Z]", "", plain.upper())
 
@@ -72,7 +97,8 @@ def entries_for(rnd, settings):
         if mine:
             return mine[:MAX_OWN], True
         theme = "animals"   # none of them usable: the note says so
-    pool = parse_entries(THEMES.get(theme, THEMES["animals"]))
+    themes = THEMES_ES if i18n.LANG == "es" else THEMES
+    pool = parse_entries(themes.get(theme, themes["animals"]))
     for i in range(len(pool) - 1, 0, -1):
         j = pick(rnd, i + 1)
         pool[i], pool[j] = pool[j], pool[i]
@@ -217,9 +243,9 @@ def own_note(settings):
         return ""
     mine = parse_entries(getattr(settings, "cross_words", ""))
     if not mine:
-        return "None of your words can be used (they need letters A-Z), so animal words are shown."
+        return tr("None of your words can be used (they need letters A-Z), so animal words are shown.")
     if len(mine) > MAX_OWN:
-        return f"Only the first {MAX_OWN} of your words are used."
+        return tr("Only the first {n} of your words are used.").format(n=MAX_OWN)
     return ""
 
 
@@ -228,7 +254,8 @@ def note(cw):
     if not isinstance(cw, dict):
         return ""
     left = cw.get("left")
-    parts = [cw.get("own", "")] + ([f"Left out (no place to cross): {', '.join(w.lower() for w in left)}."] if left else [])
+    parts = [cw.get("own", "")] + ([tr("Left out (no place to cross): {words}.").format(
+        words=", ".join(w.lower() for w in left))] if left else [])
     return " ".join(p for p in parts if p)
 
 
@@ -286,7 +313,7 @@ def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, solve=False, **_opts)
             if need <= room or fs <= dpi * 0.09:
                 break
             fs *= 0.92
-        for k, (title, across) in enumerate((("Across", True), ("Down", False))):
+        for k, (title, across) in enumerate(((tr("Across"), True), (tr("Down"), False))):
             x, y = box.x + k * box.w / 2, top + fs
             ctx.set_font(fs * 1.1, 700)
             ctx.fill_text(title, x, y)

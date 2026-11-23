@@ -12,6 +12,7 @@ from .box import Box
 from .patterns import GENERATORS, HAS_ANSWER, NAMES
 from .patterns import maze
 from .rng import mulberry32
+from .i18n import tr
 
 PAPER = {"letter": (8.5, 11.0), "a4": (8.27, 11.69)}
 
@@ -303,8 +304,8 @@ def panel_specs(g, spec, s):
     out = []
     for k, (gen, b) in enumerate(zip(sheet_gens(s), sheet_boxes(box, s.sheet, g.dpi * 0.3))):
         out.append(replace(spec, gen=gen, seed=(spec.seed + k * 7919) & 0xFFFFFFFF, header=False, page_no=0,
-                           title="", name=False, stamp="", panel_box=b, label=NAMES[gen],
-                           key_label=f"{spec.key_label} · {NAMES[gen]}" if spec.key_label else ""))
+                           title="", name=False, stamp="", panel_box=b, label=tr(NAMES[gen]),
+                           key_label=f"{spec.key_label} · {tr(NAMES[gen])}" if spec.key_label else ""))
     return out
 
 
@@ -342,7 +343,7 @@ def draw_bands(ctx, g, spec):
             ctx.fill_text(spec.title, b.x, y, b.w * (0.55 if spec.name else 1))
         if spec.name:
             ctx.set_font(fs * 0.75, 400)
-            lx, label = b.x + b.w * 0.6, "Name"
+            lx, label = b.x + b.w * 0.6, tr("Name")
             ctx.fill_text(label, lx, y)
             ctx.line_width = g.dpi / 150
             ctx.begin_path()
@@ -398,7 +399,8 @@ def draw_page(ctx, g, spec, s, keep=False):
         ctx.fill_text(spec.title, b.x + b.w / 2, b.y + b.h * 0.12, b.w)
         ctx.set_font(fs * 0.4, 400)
         ctx.fill_style = "#444"
-        ctx.fill_text(f"{spec.count} {'page' if spec.count == 1 else 'pages'} to colour", b.x + b.w / 2, b.y + b.h * 0.12 + fs * 0.8, b.w)
+        ctx.fill_text((tr("1 page to colour") if spec.count == 1 else tr("{n} pages to colour")).format(n=spec.count),
+                      b.x + b.w / 2, b.y + b.h * 0.12 + fs * 0.8, b.w)
         ctx.restore()
         return convert(ctx, Box(b.x + b.w * 0.08, b.y + b.h * 0.24, b.w * 0.84, b.h * 0.7), g.dpi, s, spec.photo)
     if spec.kind == "photo":   # photos skip the pattern frame, but take the title, name line and page number
@@ -458,7 +460,7 @@ def draw_page(ctx, g, spec, s, keep=False):
             ctx.save()
             ctx.set_font(fs, 600)
             ctx.fill_style, ctx.text_align = "#000", "left"
-            name = d.key_label or (f"{d.label} · page {d.page_no}" if d.page_no else d.label)
+            name = d.key_label or (f"{d.label} · {tr('page')} {d.page_no}" if d.page_no else d.label)
             ctx.fill_text(name, cell.x, cell.y + fs)
             ctx.restore()
             ctx.line_width = max(1, lw * 0.45)
@@ -490,8 +492,11 @@ def draw_page(ctx, g, spec, s, keep=False):
         ctx.fill_text(spec.title, b.x + b.w / 2, b.y + b.h * 0.14, b.w)
         kinds = list(dict.fromkeys(d.gen for d in spec.designs))
         n = len(spec.designs)
-        what = (NAMES[kinds[0]].lower() + (" pages" if n > 1 else " page")) if len(kinds) == 1 else "pages"
-        sub = f"{n} {what}" + (" · easy to hard" if s.ramp and n > 1 else "")
+        if len(kinds) == 1:
+            sub = (tr("{n} {pattern} pages") if n > 1 else tr("1 {pattern} page")).format(n=n, pattern=tr(NAMES[kinds[0]]).lower())
+        else:
+            sub = (tr("{n} pages") if n > 1 else tr("1 page")).format(n=n)
+        sub += " · " + tr("easy to hard") if s.ramp and n > 1 else ""
         ctx.set_font(fs * 0.4, 400)
         ctx.fill_style = "#444"
         ctx.fill_text(sub, b.x + b.w / 2, b.y + b.h * 0.14 + fs * 0.8, b.w)
@@ -511,9 +516,9 @@ def draw_page(ctx, g, spec, s, keep=False):
     raise ValueError(f"unknown page kind {spec.kind!r}")
 
 
-def answer_page(specs, title="Answers"):
+def answer_page(specs, title=None):
     """An answer page for up to four puzzle pages."""
     items = [d for d in specs if d.gen in HAS_ANSWER][:4]
     for d in items:
-        d.label = d.label or NAMES.get(d.gen, d.gen)
-    return PageSpec(kind="answers", title=title, items=items)
+        d.label = d.label or tr(NAMES.get(d.gen, d.gen))
+    return PageSpec(kind="answers", title=title or tr("Answers"), items=items)
