@@ -433,6 +433,10 @@ class Sidebar(QFrame):
         self.copies_vary.setChecked(True)
         self.copies_vary.toggled.connect(lambda _on: self.sync())
         sec.add(self.copies_vary)
+        self.copies_answers = check("Answer pages at the end")
+        self.copies_answers.setChecked(True)
+        self.copies_answers.toggled.connect(lambda _on: self.sync())
+        sec.add(self.copies_answers)
         self.copies_hint = sec.add(Hint())
         self.testpage_hint = sec.add(Hint("Print it at 100% (“Actual size”), then check the squares with a ruler. Always portrait."))
         sec.add(Pair(OptionRow("Size", self._combo("paper", [("letter", "Letter"), ("a4", "A4")])),
@@ -789,6 +793,8 @@ class Sidebar(QFrame):
         typed = self.copies_typed()
         off = typed is not None and typed != n   # 0 or over the most: say what will print instead
         self.copies_vary.setVisible(single and can_vary and n > 1)
+        keyed = single and n > 1 and jobs.copies_have_answers(s)
+        self.copies_answers.setVisible(keyed)
         self.copies_hint.setVisible(single and (n > 1 or off))
         if single and (n > 1 or off):
             vary = can_vary and self.copies_vary.isChecked()
@@ -800,6 +806,9 @@ class Sidebar(QFrame):
                          + ("each with its own design (the first is the one shown)." if vary else "all alike."))
             if vary_note and (vary or not can_vary):
                 text += " " + vary_note
+            if keyed and self.copies_answers.isChecked():
+                text += (" Answer pages follow, and each copy is numbered to match them." if vary
+                         else " One answer page follows.")
             self.copies_hint.setText(text)
         self.only_row.setVisible(multi)
         self.only_hint.setVisible(multi and bool(self.only_pages.text().strip()))

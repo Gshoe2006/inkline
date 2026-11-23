@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The artifact configuration for Inkline's SignPath project (docs/code-signing.md): paste it into the project's
+     artifact configuration in SignPath. The release workflow uploads the installer as a GitHub artifact, which
+     is a zip file, and passes the version as a parameter. Only an installer named for that version, whose file
+     details say Inkline and that version, is signed. -->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <parameters>
+    <parameter name="version" required="true" />
+  </parameters>
+  <zip-file>
+    <pe-file path="inkline-${version}-windows-setup.exe" product-name="Inkline" product-version="${version}">
+      <authenticode-sign />
+    </pe-file>
+  </zip-file>
+</artifact-configuration>

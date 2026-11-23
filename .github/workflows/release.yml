@@ -208,7 +208,7 @@ jobs:
     needs: check
     if: needs.check.outputs.build == 'true'
     runs-on: windows-2022
-    timeout-minutes: 30
+    timeout-minutes: 90   # signing waits for someone to approve the release in SignPath (see docs/code-signing.md)
     steps:
       - uses: actions/checkout@v4
 
@@ -233,6 +233,52 @@ jobs:
           QT_QPA_PLATFORM: offscreen
         run: |
           python -c "import subprocess, sys; sys.exit(subprocess.run([r'dist\Inkline\Inkline.exe', '--selftest', 'windows-selftest']).returncode)"
+
+      - name: Check the installer's file details
+        run: |
+          $exe = Get-Item "dist/inkline-${{ needs.check.outputs.version }}-windows-setup.exe"
+          $info = $exe.VersionInfo
+          # Inno Setup pads these with spaces (it leaves room to write them in): what counts is the text
+          $name, $ver = $info.ProductName.Trim(), $info.ProductVersion.Trim()
+          "Product: '$name' '$ver'"
+          if ($name -ne "Inkline" -or $ver -ne "${{ needs.check.outputs.version }}") { exit 1 }
+
+      # Signing (docs/code-signing.md): only for a release, and only once SignPath is set up for the repository
+      # (the SIGNPATH_ORGANIZATION_ID variable and the SIGNPATH_API_TOKEN secret). Without them the installer
+      # is published unsigned, as before.
+      - name: Keep the unsigned installer for signing
+        id: unsigned
+        if: needs.check.outputs.publish == 'true' && vars.SIGNPATH_ORGANIZATION_ID != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-unsigned
+          path: dist/inkline-*-windows-setup.exe
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Sign the installer (waits for the release to be approved in SignPath)
+        if: steps.unsigned.outcome == 'success'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG || 'inkline' }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG || 'release-signing' }}
+          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+          parameters: |
+            version: ${{ toJSON(needs.check.outputs.version) }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 4500
+          output-artifact-directory: signed
+
+      - name: Use the signed installer
+        if: steps.unsigned.outcome == 'success'
+        run: |
+          $name = "inkline-${{ needs.check.outputs.version }}-windows-setup.exe"
+          $sig = Get-AuthenticodeSignature "signed/$name"
+          "Signature: $($sig.Status) by $($sig.SignerCertificate.Subject)"
+          if ($sig.Status -ne "Valid") { exit 1 }
+          Copy-Item "signed/$name" "dist/$name" -Force
 
       - uses: actions/upload-artifact@v4
         with:
@@ -302,6 +348,8 @@ jobs:
           V: ${{ needs.check.outputs.version }}
         run: |
           python3 packaging/release_notes.py "$V" > notes.md
+          printf '\n## Code signing policy\n\nSee [Code signing policy](%s/%s/blob/main/README.md#code-signing-policy).\n' \
+            "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" >> notes.md
           ls -l dist
           test "$(ls dist | wc -l)" = 6 || { echo "::error::Expected the 6 packages in dist, found: $(ls dist)"; exit 1; }
           gh release create "$V" dist/* \
