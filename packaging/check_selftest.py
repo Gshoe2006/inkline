@@ -71,8 +71,11 @@ def main(d):
             # paths, and a sudoku is 20 straight lines plus its numbers (text).
             commands = sum(len(re.findall(r"[MLHVCQA]", el.get("d", ""))) for el in root.iter("{http://www.w3.org/2000/svg}path"))
             texts = sum(1 for _ in root.iter("{http://www.w3.org/2000/svg}text"))
-            if commands + texts < 60:
-                problems.append(f"{n}.svg draws only {commands} path segments and {texts} labels; expected a full design")
+            shapes = sum(1 for tag in ("rect", "circle", "line") for _ in root.iter("{http://www.w3.org/2000/svg}" + tag))
+            need = 40 if n == "crossword" else 60   # a crossword is a few dozen squares and its clues
+            if commands + texts + shapes < need:
+                problems.append(f"{n}.svg draws only {commands} path segments, {shapes} shapes and {texts} labels; "
+                                "expected a full design")
         except (OSError, ET.ParseError) as e:
             problems.append(f"{n}.svg: {e}")
     return problems
