@@ -1,6 +1,7 @@
 """Print and Save PDF of several copies of a single page, each with its own design or alike."""
 
 import pytest
+from dataclasses import replace
 from PySide6.QtWidgets import QApplication
 
 from inkapp import jobs
@@ -316,7 +317,7 @@ def test_cancel_stops_a_pdf_and_deletes_it(win, tmp_path, monkeypatch):
     real_run = jobs.run
     reached = threading.Event()
 
-    def slow_run(j, device, progress=None, cancelled=lambda: False):   # holds page 2 until Cancel is pressed
+    def slow_run(j, device, progress=None, cancelled=lambda: False, outcome=None):   # holds page 2 until Cancel
         def prog(i):
             if i == 1:
                 reached.set()
@@ -324,7 +325,7 @@ def test_cancel_stops_a_pdf_and_deletes_it(win, tmp_path, monkeypatch):
                 while not cancelled() and time.time() < deadline:
                     time.sleep(0.01)
             progress(i)
-        return real_run(j, device, prog, cancelled)
+        return real_run(j, device, prog, cancelled, outcome)
     monkeypatch.setattr(jobs, "run", slow_run)
     win.save("pdf")
     assert sb.progress_row.isVisibleTo(sb) and sb.cancel_btn.isEnabled()
@@ -340,3 +341,102 @@ def test_cancel_stops_a_pdf_and_deletes_it(win, tmp_path, monkeypatch):
     assert not (tmp_path / "set.pdf").exists() and not sb.progress_row.isVisibleTo(sb)
     win.cancel_job()                                                        # nothing running: nothing happens
     assert sb.status.text() == "Save cancelled: the PDF wasn't kept."
+
+
+
+def test_a_printer_that_cant_call_off_a_job_is_reported_honestly():
+    """Qt can't call off a print job on Linux (abort() says no): the pages drawn still print, and run says how many."""
+    from PySide6.QtGui import QImage
+    QApplication.instance() or QApplication([])
+
+    class Device(QImage):
+        def __init__(self):
+            super().__init__(10, 10, QImage.Format.Format_RGB32)
+        def newPage(self):
+            return True
+        def abort(self):
+            return False
+    drawn, out = [], {}
+    j = jobs.Job("x", "copies", 5, "portrait", type("G", (), {"W": 10, "H": 10})(), lambda ctx, i: drawn.append(i))
+    assert jobs.run(j, Device(), cancelled=lambda: len(drawn) >= 3, outcome=out) is False and out == {"sent": 3}
+
+
+def _print_and_cancel(win, monkeypatch, at, file=None):
+    """Print the sidebar's copies, pressing Cancel as page at+1 starts; returns the status line."""
+    import threading
+    import time
+    from PySide6.QtCore import QCoreApplication
+    from PySide6.QtPrintSupport import QPrintDialog, QPrinter
+    def accept(d):
+        if file:
+            d.printer().setOutputFormat(QPrinter.OutputFormat.PdfFormat)
+            d.printer().setOutputFileName(file)
+        return QPrintDialog.DialogCode.Accepted
+    monkeypatch.setattr(QPrintDialog, "exec", accept)
+    real_run, reached = jobs.run, threading.Event()
+
+    def slow_run(j, device, progress=None, cancelled=lambda: False, outcome=None):
+        def prog(i):
+            if i == at:
+                reached.set()
+                deadline = time.time() + 10
+                while not cancelled() and time.time() < deadline:
+                    time.sleep(0.01)
+            progress(i)
+        if not file:   # no printer here: a PDF stands in, as Linux's print system does (abort() can't stop it)
+            device.setOutputFormat(QPrinter.OutputFormat.PdfFormat)
+            device.setOutputFileName(str(win._tmp / "spool.pdf"))
+        return real_run(j, device, prog, cancelled, outcome)
+    monkeypatch.setattr(jobs, "run", slow_run)
+    if not file:   # so the printer isn't treated as "Print to file" afterwards
+        monkeypatch.setattr(QPrinter, "outputFileName", lambda p: "")
+    win.print_()
+    deadline = time.time() + 30
+    while win._busy_saving and time.time() < deadline:
+        QCoreApplication.processEvents()
+        if reached.is_set() and win.sidebar.cancel_btn.isEnabled():
+            win.sidebar.cancel_btn.click()
+        time.sleep(0.01)
+    return win.sidebar.status.text()
+
+
+def test_cancelled_printing_says_what_still_went_to_the_printer(win, tmp_path, monkeypatch):
+    win._tmp = tmp_path
+    win.sidebar.copies.setText("6")
+    assert _print_and_cancel(win, monkeypatch, 2) == ("Printing stopped. The 3 pages already drawn still went to "
+                                                     "the printer: cancel it in your system's print queue if you "
+                                                     "don't want it.")
+
+
+def test_cancelled_print_to_file_isnt_kept(win, tmp_path, monkeypatch):
+    win._tmp = tmp_path
+    win.sidebar.copies.setText("6")
+    out = tmp_path / "printed.pdf"
+    assert _print_and_cancel(win, monkeypatch, 2, file=str(out)) == "Printing cancelled: the file wasn't kept."
+    assert not out.exists()
+
+
+def test_a_single_name_has_no_hidden_answer_page_and_esc_leaves_one_page_alone(win, tmp_path, monkeypatch):
+    sb = win.sidebar
+    _set(win, gen="maze", name_line=True)
+    sb.copies_names.setText("Ana")
+    assert not sb.copies_answers.isVisibleTo(sb) and sb.copies_answers.isChecked()
+    j = win._job(State(replace(win.state.settings)))
+    assert j.count == 1 and j.answers == 0                                  # one copy: no answers, as the hint says
+    sb.copies_names.setText("")
+    win._busy_saving = True                                                 # a one-page job: no Cancel button
+    sb.progress_row.hide()
+    win.cancel_job()
+    assert not win._cancel.is_set()
+    win._busy_saving = False
+
+
+def test_a_long_name_is_written_smaller_to_fit():
+    from inkengine.canvas import RecordingCanvas
+    st = State(Settings(gen="maze", seed=3, name_line=True, dpi=36))
+    short, long_ = RecordingCanvas(), RecordingCanvas()
+    jobs.job(st, copies=2, names=["Al", "Bo"]).draw(short, 0)
+    jobs.job(st, copies=2, names=["Bartholomew Alexander Featherstonehaugh-Montgomery the Third", "Bo"]).draw(long_, 0)
+    def size(c, n):   # a text op is ("text", text, x, y, colour, weight, size)
+        return [op for op in c.ops if op[0] == "text" and op[1].startswith(n)][0][6]
+    assert size(long_, "Bartholomew") < size(short, "Al")

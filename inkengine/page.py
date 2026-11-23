@@ -282,10 +282,15 @@ def draw_bands(ctx, g, spec):
             ctx.move_to(lx + ctx.measure_text(label) + fs * 0.3, y + 2)
             ctx.line_to(b.x + b.w, y + 2)
             ctx.stroke()
-            if spec.filled_name:   # written on the line, as if by hand, shrunk to fit
+            if spec.filled_name:   # written on the line, as if by hand: a smaller size to fit, then narrower
                 nx = lx + ctx.measure_text(label) + fs * 0.6
-                ctx.set_font(fs * 0.85, 600)
-                ctx.fill_text(spec.filled_name, nx, y - fs * 0.05, max(1, b.x + b.w - nx))
+                room = max(1, b.x + b.w - nx)
+                size = fs * 0.85
+                ctx.set_font(size, 600)
+                wide = ctx.measure_text(spec.filled_name)
+                if wide > room:
+                    ctx.set_font(max(fs * 0.45, size * room / wide), 600)
+                ctx.fill_text(spec.filled_name, nx, y - fs * 0.05, room)
         if spec.label:
             ctx.set_font(fs * 0.6, 400)
             ctx.fill_style = "#555"

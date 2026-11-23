@@ -193,6 +193,9 @@ class Window(QMainWindow):
         self._cancel = threading.Event()   # set by Cancel (or Esc) while a print or save is drawing
         self._job_path = None              # the PDF being written, deleted if it's cancelled
         self._job_stopped = ""             # what the status line says when it's cancelled
+        self._job_outcome = {}             # jobs.run's note of pages that went to the printer anyway
+        self._pending_save = None          # a PNG or SVG being drawn, before its file is chosen
+        self._job_unit = "page"
         self._pan_start = None
         self.history = QUndoStack(self)
         self._history_view = None   # Edit → History…, made the first time it's opened
@@ -1280,7 +1283,9 @@ class Window(QMainWindow):
         copies = sb.copies_count() if sb.copies_row.isVisibleTo(sb) else 1
         try:
             names = sb.copies_names_list() if sb.copies_row.isVisibleTo(sb) else []
-            return jobs.job(snap, only, copies, sb.copies_vary.isChecked(), sb.copies_answers.isChecked(), names)
+            # a switch that isn't shown doesn't count (one copy has no answer pages)
+            answers = sb.copies_answers.isVisibleTo(sb) and sb.copies_answers.isChecked()
+            return jobs.job(snap, only, copies, sb.copies_vary.isChecked(), answers, names)
         except ValueError as why:
             self._msg(f"{why} Fix the pages under Paper → Print or save only, or clear it to use every page.")
             self.sidebar.only_pages.setFocus()
@@ -1342,16 +1347,20 @@ class Window(QMainWindow):
         self._busy(True, f"Rendering {j.unit} 1 of {j.count}…")
         self._pending_save = None
         cancel = self._cancel
+        self._job_outcome = outcome = {}
+        self._job_unit = j.unit
 
         def progress(i):
             if not cancel.is_set():
                 self.status.emit(f"Rendering {j.unit} {i + 1} of {j.count}…")
             QTimer.singleShot(0, lambda: bar.setValue(i + 1))
-        self.worker.submit(lambda: ("job", jobs.run(j, device, progress, cancel.is_set), done, failed))
+        self.worker.submit(lambda: ("job", jobs.run(j, device, progress, cancel.is_set, outcome), done, failed))
 
     def cancel_job(self):
         """Cancel (or Esc): stop the print or save after the page being drawn."""
-        if not self._busy_saving or self._cancel.is_set() or self._pending_save is not None:
+        # only a job with a Cancel button: a single page is done in a moment (and a PNG or SVG save can't stop)
+        if not self._busy_saving or self._cancel.is_set() or self._pending_save is not None \
+                or not self.sidebar.progress_row.isVisible():
             return
         self._cancel.set()
         self.sidebar.cancel_btn.setEnabled(False)
@@ -1361,15 +1370,25 @@ class Window(QMainWindow):
         kind = r[0]
         if kind == "job":
             _k, ok, done, failed = r
-            self._device = None
+            device, self._device = self._device, None
             stopped = not ok and self._cancel.is_set()
-            if stopped and self._job_path:   # a half-written PDF isn't kept
+            message = self._job_stopped if stopped else done if ok else failed
+            path = self._job_path
+            if stopped and not path and isinstance(device, QPrinter) and device.outputFileName():
+                path = device.outputFileName()   # the print dialog's "Print to file": cancelled, so not kept
+                message = "Printing cancelled: the file wasn't kept."
+            elif stopped and "sent" in self._job_outcome:   # this printer system can't call a job off
+                n, unit = self._job_outcome["sent"], self._job_unit
+                message = ("Printing stopped. " + (f"The {n} {unit}{'s' if n != 1 else ''} already drawn still went"
+                           if n else "An empty job still went") + " to the printer: cancel it in your system's "
+                           "print queue if you don't want it.")
+            if stopped and path:   # a half-written PDF isn't kept
                 try:
-                    os.remove(self._job_path)
+                    os.remove(path)
                 except OSError:
                     pass
             self._job_path = None
-            self._busy(False, self._job_stopped if stopped else done if ok else failed)
+            self._busy(False, message)
             return
         _k, data, name = r
         k, ext, filt = self._pending_save
@@ -1390,6 +1409,8 @@ class Window(QMainWindow):
             self._msg(f"Couldn't write {path}. Check the folder permissions.")
 
     def _job_failed(self, _why):
+        self._job_path = None
+        self._cancel.clear()
         self._busy(False, "That couldn't be finished. Check the folder permissions or the printer, then try again.")
         self._device = None
 

@@ -248,10 +248,12 @@ def page_layout(s, orient):
     return QPageLayout(QPageSize(PAPER_IDS[s.paper]), o, QMarginsF(0, 0, 0, 0))
 
 
-def run(j, device, progress=None, cancelled=lambda: False):
+def run(j, device, progress=None, cancelled=lambda: False, outcome=None):
     """Draw every page of the job onto a QPdfWriter or QPrinter (already set up). True when finished.
-    cancelled() is asked before each page: when it says so, a printer's job is called off (nothing reaches the
-    printer) and False is returned; a PDF is left half-written, for the caller to delete."""
+    cancelled() is asked before each page: when it says so, a printer's job is called off and False is
+    returned; a PDF is left half-written, for the caller to delete. Not every printer system can call a job
+    off (Qt can't on Linux): then the pages drawn so far still go to the printer, and outcome (a dict, if
+    given) gets "sent": how many."""
     p = QPainter()
     if not p.begin(device):
         return False
@@ -259,8 +261,9 @@ def run(j, device, progress=None, cancelled=lambda: False):
         g = j.geometry
         for i in range(j.count):
             if cancelled():
-                if hasattr(device, "abort"):   # QPrinter: drop the job rather than print what's drawn so far
-                    device.abort()
+                # QPrinter: drop the job rather than print what's drawn so far, where the printer system can
+                if hasattr(device, "abort") and not device.abort() and outcome is not None:
+                    outcome["sent"] = i
                 return False
             if i and not device.newPage():
                 return False
