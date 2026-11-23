@@ -6,6 +6,63 @@ To release a new version, add a section headed `## <version>` (the same text as 
 pull request that bumps `VERSION`. When it merges, `.github/workflows/release.yml` builds the packages
 and publishes a GitHub Release with that section as its notes.
 
+## 5.2.0 - 2026-11-23
+
+Inkline 5.2 turns this week's spelling words into a week of worksheets, and adds telling the time, money sums, division and joined-up handwriting.
+
+### What's new
+
+- **Worksheet packs in the Booklet section.** Choose a theme under **Booklet → Worksheet pack** (animals, food, space, ocean, weather or sports) and press **Make a week of worksheets**: five worksheets for the age chosen under **Age**, with a cover, a name line and the answers at the end. Crosswords now have ocean, weather and sports themes too. The preset still works.
+- **This week's spelling words.** Choose **Spelling words (your own list)** as the pack's theme and type the words: Monday traces them, Tuesday is a crossword whose clues are each word's letters mixed up, Wednesday a word search, Thursday an unscramble sheet, and Friday a spelling test.
+- **Unscramble** and **Spelling test** are new patterns of their own. Unscramble shows each word's letters mixed up in boxes, with a line to write the word on. Spelling test is a numbered line for each word you read aloud, in a new order each time, with the words on the answer page.
+- **Telling the time.** **Pattern → Telling the time** draws clock faces to read (write the time under each) or to draw the hands on, or both. Complexity goes from o'clock and half past to quarters, five minutes and any minute.
+- **Money, sharing and missing numbers.** The maths drill has three new kinds of sum:
+  - **Money:** coins to count at first, then adding, taking away and change from a note, in pounds, euros or dollars, written the way each is written where it's used;
+  - **Sharing (division):** every answer a whole number;
+  - **Missing numbers:** "_ × 4 = 20".
+- **Joined-up handwriting.** **Handwriting → Letters → Joined-up (cursive)** writes the sheet in the school handwriting style of Inkline's language (England's, Spain's or France's), with the guide lines set to the letters' loops.
+
+### Fixed
+
+- The booklet page list no longer tries to translate the names and words you type.
+
+### Upgrading
+
+Nothing changes in what Inkline needs (the joined-up handwriting fonts come with it). Your presets, settings, projects, recent files and printer carry over.
+
+**Windows**
+Run `inkline-5.2.0-windows-setup.exe`.
+
+**Debian / Ubuntu / Linux Mint / Pop!_OS**
+```sh
+sudo apt install ./inkline_5.2.0-1_amd64.deb
+```
+
+**Arch / CachyOS / Manjaro**
+```sh
+sudo pacman -U inkline-5.2.0-1-any.pkg.tar.zst
+```
+
+**Any distro, nothing installed**
+```sh
+chmod +x inkline-5.2.0-x86_64.AppImage && ./inkline-5.2.0-x86_64.AppImage
+```
+
+**Any other distro**
+```sh
+sh inkline-5.2.0.run            # or --system for every user
+```
+
+**Flatpak**
+```sh
+flatpak install --user inkline-5.2.0.flatpak     # if a .flatpak file is attached to this release
+sh packaging/flatpak/build.sh                    # or build it from a copy of the source
+```
+
+### Found a problem?
+
+Please open an issue saying what you did, what you expected, and what happened. Include your system (distro, or Windows version), and the printer if it's about printing.
+
 ## 5.1.0 - 2026-11-23
 
 Inkline 5.1 adds a week of worksheets in one click, and Inkline in French.
