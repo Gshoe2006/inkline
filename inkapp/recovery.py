@@ -154,6 +154,7 @@ class Keeper:
 
     def __init__(self, version):
         self.version = version
+        self.path = path_for()   # fixed for the session: a copy always goes where this session's lock is
         try:
             hold()
             self.enabled = True
@@ -183,7 +184,7 @@ class Keeper:
         with self._lock:
             self._next = None
             self._gen += 1
-        discard()
+        discard(self.path)
 
     def finish(self, wait=3.0):
         """Closing: let a copy being written finish (so no half-written file is left), then remove it."""
@@ -193,7 +194,7 @@ class Keeper:
             thread = self._thread
         if thread is not None:
             thread.join(wait)
-        discard()
+        discard(self.path)
 
     @property
     def idle(self):
@@ -209,8 +210,8 @@ class Keeper:
                     return
             snapshot, source, gen, extra = job
             try:
-                os.makedirs(config.config_dir(), exist_ok=True)
-                project.save(path_for(), snapshot, self.version,
+                os.makedirs(os.path.dirname(self.path), exist_ok=True)
+                project.save(self.path, snapshot, self.version,
                              {**extra, "recovery": {"project": source, "saved": time.time()}})
             except Exception:     # noqa: BLE001 — no copy this time (the work itself is untouched); the next
                 if not isinstance(sys.exc_info()[1], OSError):   # change tries again, so this thread goes on
@@ -219,4 +220,4 @@ class Keeper:
             with self._lock:
                 stale = gen != self._gen
             if stale:             # saved or closed while this was being written
-                discard()
+                discard(self.path)
