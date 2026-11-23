@@ -22,7 +22,8 @@ concurrency:
 jobs:
   selftest:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    # the job takes about 17 minutes (15 of them the tests); installing can take 5 on a slow runner
+    timeout-minutes: 30
     env:
       QT_QPA_PLATFORM: offscreen
     steps:
@@ -44,7 +45,7 @@ jobs:
       - name: Test the 3.0 engine (inkengine/)
         run: |
           python -m pip install --disable-pip-version-check pytest
-          python -m pytest -q tests
+          python -m pytest -q tests --durations=15   # the slowest tests, for when the job gets slow
 
       - name: Run the self-test
         # runner.temp is only available inside steps, not in job-level env
