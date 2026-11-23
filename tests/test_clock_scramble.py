@@ -200,3 +200,44 @@ def test_joined_up_writing_stays_inside_its_rows():
         assert all(size * (asc + desc) <= rh for size in sizes)
     finally:
         i18n.set_language("en")
+
+
+@pytest.mark.parametrize("hand", ["gb", "us-trad", "us-modern", "au", "nz", "ie", "ca", "es", "mx", "fr"])
+def test_every_handwriting_style_loads_and_draws(hand):
+    from inkengine.patterns import trace
+    from inkengine.qt import HAND_FONTS
+    s = Settings(gen="trace", trace_style="joined", trace_hand=hand, trace_source="words", trace_text="because, niño")
+    family, weight = trace.font_for(s)
+    assert family.startswith("Playwrite") and weight == 400 and set(trace.HANDS) == {"auto", *HAND_FONTS}
+    asc, xh, desc = trace.guide_lines(family, weight)
+    assert asc > xh > 0 and desc > 0
+    ctx = RecordingCanvas()
+    trace.draw(ctx, Box(0, 0, 900, 1200), mulberry32(1), 4, s, dpi=100)
+    assert any(op[0] == "text" for op in ctx.ops)
+
+
+def test_a_chosen_style_wins_over_the_language():
+    from inkengine import i18n
+    from inkengine.patterns import trace
+    i18n.set_language("fr")
+    try:
+        assert trace.font_for(Settings(trace_style="joined"))[0] == "Playwrite FR Trad"
+        assert trace.font_for(Settings(trace_style="joined", trace_hand="us-trad"))[0] == "Playwrite US Trad"
+    finally:
+        i18n.set_language("en")
+
+
+def test_joined_up_letters_are_outlines_in_an_svg():
+    """An SVG would name the font, and most computers (and cutting machines' software) don't have it."""
+    from inkengine.canvas import SvgCanvas
+    joined = Settings(gen="trace", trace_style="joined", trace_source="words", trace_text="because", dpi=72)
+    g = geometry(joined)
+    c = SvgCanvas(g.W, g.H, g.w, g.h)
+    draw_page(c, g, single_page(joined), joined)
+    svg = str(c)
+    assert "<text" not in svg and "Playwrite" not in svg and svg.count("<path") > 10
+    assert ' C' not in svg and "C" in svg   # the letters' curves
+    plain = Settings(gen="trace", dpi=72)
+    c2 = SvgCanvas(g.W, g.H, g.w, g.h)
+    draw_page(c2, g, single_page(plain), plain)
+    assert "<text" in str(c2)   # print letters stay text, as before

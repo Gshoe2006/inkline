@@ -34,18 +34,22 @@ def ensure_app():
 
 
 # Joined-up handwriting fonts shipped with Inkline (inkengine/fonts, SIL Open Font License): Playwrite, made for
-# teaching children to write, in each language's school style. Registered with Qt the first time one is asked for.
+# teaching children to write, in ten countries' school styles. Registered with Qt the first time one is asked for.
 FONTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts")
-JOINED = {"en": "PlaywriteGBJ-Regular.ttf", "es": "PlaywriteES-Regular.ttf", "fr": "PlaywriteFRTrad-Regular.ttf"}
+HAND_FONTS = {"gb": "PlaywriteGBJ-Regular.ttf", "us-trad": "PlaywriteUSTrad-Regular.ttf",
+              "us-modern": "PlaywriteUSModern-Regular.ttf", "au": "PlaywriteAUNSW-Regular.ttf", "nz": "PlaywriteNZ-Regular.ttf",
+              "ie": "PlaywriteIE-Regular.ttf", "ca": "PlaywriteCA-Regular.ttf", "es": "PlaywriteES-Regular.ttf",
+              "mx": "PlaywriteMX-Regular.ttf", "fr": "PlaywriteFRTrad-Regular.ttf"}
+LANGUAGE_HANDS = {"en": "gb", "es": "es", "fr": "fr"}   # "auto": the school style of Inkline's language
 _registered = {}
 
 
-def joined_family(lang):
-    """The family name of the joined-up handwriting font for a language (England's for any other), registered
-    with Qt; "" if it couldn't be loaded (the sheet is then in print letters)."""
+def joined_family(lang, hand="auto"):
+    """The family name of a joined-up handwriting font, registered with Qt: the style chosen, or for "auto" the
+    language's (England's for a language without one); "" if it couldn't be loaded (the sheet is then in print)."""
     from PySide6.QtGui import QFontDatabase
     ensure_app()
-    file = JOINED.get(lang, JOINED["en"])
+    file = HAND_FONTS.get(hand) or HAND_FONTS[LANGUAGE_HANDS.get(lang, "gb")]
     if file not in _registered:
         fid = QFontDatabase.addApplicationFont(os.path.join(FONTS_DIR, file))
         families = QFontDatabase.applicationFontFamilies(fid) if fid >= 0 else []

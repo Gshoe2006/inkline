@@ -52,7 +52,7 @@ def _choices():
         STYLES = None
     return {"gen": set(NAMES), "paper": set(PAPER), "orient": {"portrait", "landscape"}, "maze_shape": set(maze.SHAPE_NAMES),
             "spot_base": set(spot.BASES), "ws_theme": set(words.THEME_NAMES) | {"custom"}, "name_bg": set(name.BACKGROUNDS),
-            "age": {"any", "4-6", "7-9", "10+"}, "sheet": set(SHEETS), "maths_kind": set(maths.KINDS), "clock_task": set(clock.TASKS), "money": set(money.CURRENCIES), "pack_theme": set(crossword.THEME_NAMES) - {"custom"} | {"spelling"}, "trace_source": set(trace.SOURCES), "trace_style": set(trace.LETTERS), "cross_theme": set(crossword.THEME_NAMES),
+            "age": {"any", "4-6", "7-9", "10+"}, "sheet": set(SHEETS), "maths_kind": set(maths.KINDS), "clock_task": set(clock.TASKS), "money": set(money.CURRENCIES), "pack_theme": set(crossword.THEME_NAMES) - {"custom"} | {"spelling"}, "trace_source": set(trace.SOURCES), "trace_style": set(trace.LETTERS), "trace_hand": set(trace.HANDS), "cross_theme": set(crossword.THEME_NAMES),
             "grid": set(poster.GRIDS), "mode": {"make", "convert"}, "fit": {"contain", "cover"},
             **({"style": set(STYLES)} if STYLES else {})}
 
@@ -98,6 +98,7 @@ class Settings:
     money: str = "auto"          # maths drill money sums: patterns.money.CURRENCIES (auto, GBP, EUR, USD)
     clock_task: str = "read"     # telling the time: patterns.clock.TASKS (read, draw, mixed)
     trace_style: str = "print"   # handwriting: patterns.trace.LETTERS (print, or joined-up in the language's school style)
+    trace_hand: str = "auto"     # joined-up handwriting: patterns.trace.HANDS (auto: the language's school style)
     trace_source: str = "upper"  # handwriting: patterns.trace.SOURCES (upper, lower, numbers, words, name)
     trace_text: str = ""         # handwriting: your own words, for trace_source "words"
     cross_theme: str = "animals" # crossword: a theme from patterns.crossword.THEMES, or "custom"
@@ -166,7 +167,7 @@ class Settings:
 
 # What each page of a booklet built page by page keeps for itself; the rest is the booklet's.
 PAGE_KEYS = ("gen", "seed", "complexity", "cbn", "cbn_colours", "cbn_maths", "maze_shape", "maze_word", "ws_theme", "ws_words",
-             "name_text", "name_bg", "spot_base", "maths_kind", "money", "clock_task", "trace_source", "trace_style", "trace_text",
+             "name_text", "name_bg", "spot_base", "maths_kind", "money", "clock_task", "trace_source", "trace_style", "trace_hand", "trace_text",
              "cross_theme", "cross_words")
 
 

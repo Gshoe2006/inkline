@@ -1,7 +1,7 @@
 Copyright 2023 The Playwrite Project Authors (https://github.com/TypeTogether/Playwrite)
 
-PlaywriteGBJ-Regular.ttf, PlaywriteES-Regular.ttf and PlaywriteFRTrad-Regular.ttf: the Latin, regular-weight
-fonts, converted from WOFF to TTF unchanged.
+The Playwrite*-Regular.ttf fonts here (GB J, US Trad, US Modern, AU NSW, NZ, IE, CA, ES, MX, FR Trad): the Latin,
+regular-weight fonts, converted from WOFF to TTF unchanged.
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:

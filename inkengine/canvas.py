@@ -467,11 +467,40 @@ class SvgCanvas(Canvas):
                         f'{"" if smooth else 'style="image-rendering:pixelated" '}href="data:image/png;base64,{src}"/>')
 
     def fill_text(self, text, x, y, max_width=None):
-        self._text(text, x, y, max_width, f'fill="{self.st.fill_style}"')
+        if self.st.font_family:
+            self._outline(text, x, y, max_width, f'fill="{self.st.fill_style}"')
+        else:
+            self._text(text, x, y, max_width, f'fill="{self.st.fill_style}"')
 
     def stroke_text(self, text, x, y, max_width=None):
         # White outlines are kept: on name pages they hollow out the bubble letters.
-        self._text(text, x, y, max_width, self._stroke_attrs())
+        if self.st.font_family:
+            self._outline(text, x, y, max_width, self._stroke_attrs())
+        else:
+            self._text(text, x, y, max_width, self._stroke_attrs())
+
+    def _outline(self, text, x, y, max_width, paint):
+        """Text in a font Inkline ships (joined-up handwriting) as the letters' outlines: an SVG names its fonts, and
+        where that one isn't installed (most computers, cutting machines' software) it would come out in print."""
+        x, y, scale = self._text_origin(text, x, y, max_width)
+        path = QPainterPath()
+        path.addText(QPointF(0, 0), make_font(self.st.font_size, self.st.font_weight, self.st.font_family), text)
+        parts, k, n = [], 0, path.elementCount()
+        while k < n:
+            e = path.elementAt(k)
+            px, py = x + e.x * scale, y + e.y
+            if e.type == QPainterPath.ElementType.MoveToElement:
+                parts.append(f"M{fx(px)} {fx(py)}")
+            elif e.type == QPainterPath.ElementType.LineToElement:
+                parts.append(f"L{fx(px)} {fx(py)}")
+            elif e.type == QPainterPath.ElementType.CurveToElement:   # then its two CurveToData points
+                c2, end = path.elementAt(k + 1), path.elementAt(k + 2)
+                parts.append(f"C{fx(px)} {fx(py)} {fx(x + c2.x * scale)} {fx(y + c2.y)} "
+                             f"{fx(x + end.x * scale)} {fx(y + end.y)}")
+                k += 2
+            k += 1
+        if parts:
+            self.out.append(f'<path d="{"".join(parts)}" {paint}/>')
 
     def _text(self, text, x, y, max_width, paint):
         s = self.st

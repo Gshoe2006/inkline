@@ -198,4 +198,4 @@ requested by the user or the person installing or operating it.
 
 Inkline is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version (GPL-3.0-or-later). See [LICENSE](LICENSE).
 
-The joined-up handwriting fonts in `inkengine/fonts` are Playwrite GB J, Playwrite ES and Playwrite FR Trad (copyright 2023 The Playwrite Project Authors), under the SIL Open Font License 1.1; see [inkengine/fonts/OFL.txt](inkengine/fonts/OFL.txt).
+The joined-up handwriting fonts in `inkengine/fonts` are Playwrite GB J, US Trad, US Modern, AU NSW, NZ, IE, CA, ES, MX and FR Trad (copyright 2023 The Playwrite Project Authors), under the SIL Open Font License 1.1; see [inkengine/fonts/OFL.txt](inkengine/fonts/OFL.txt).

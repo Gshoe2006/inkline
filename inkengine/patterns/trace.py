@@ -18,6 +18,10 @@ from ..i18n import tr
 SOURCES = {"upper": "Capital letters", "lower": "Small letters", "numbers": "Numbers", "words": "Your own words",
            "name": "A name"}
 LETTERS = {"print": "Print letters", "joined": "Joined-up (cursive)"}
+# joined-up styles (inkengine/fonts, Playwrite): "auto" is the school style of Inkline's language
+HANDS = {"auto": "Your language's school style", "gb": "England", "us-trad": "United States (traditional cursive)",
+         "us-modern": "United States (modern cursive)", "au": "Australia (New South Wales)", "nz": "New Zealand",
+         "ie": "Ireland", "ca": "Canada", "es": "Spain", "mx": "Mexico", "fr": "France"}
 UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 LOWER = UPPER.lower()
 DIGITS = "0123456789"
@@ -56,7 +60,7 @@ def font_for(settings):
     handwriting font (Playwrite), which has one weight."""
     if getattr(settings, "trace_style", "print") == "joined":
         from ..qt import joined_family
-        family = joined_family(i18n.LANG)
+        family = joined_family(i18n.LANG, getattr(settings, "trace_hand", "auto"))
         if family:
             return family, 400
     return "", 500
