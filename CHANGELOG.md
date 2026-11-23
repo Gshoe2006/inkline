@@ -6,6 +6,58 @@ To release a new version, add a section headed `## <version>` (the same text as 
 pull request that bumps `VERSION`. When it merges, `.github/workflows/release.yml` builds the packages
 and publishes a GitHub Release with that section as its notes.
 
+## 4.10.0 - 2026-11-23
+
+Inkline 4.10 makes class sets something to keep: booklets for every child, saved class lists, and a class set that's saved with the project.
+
+### What's new
+
+- **A booklet for every child.** **Paper → Copies** and **Names** now work for booklets too. Each booklet has its own designs, and with names each child's name goes on their booklet's cover, on every "Name ____" line and over their answer pages. Fold-and-staple folds each booklet on its own, and **Print or save only** picks the same pages from every booklet.
+- **Look through the copies.** A pager under Copies ("Copy 2 of 25 · Ana") shows any copy in the preview, with its own designs and name. **Save PNG** and **Save SVG** save the copy you're looking at.
+- **Saved class lists.** Under **Names**, save a list ("Class 3B") with **Save names as a list…** and choose it again from the drop-down next time. Lists are kept in Inkline's settings folder, never in projects.
+- **A project keeps its class set.** Copies, the names and their switches are saved with the project, so opening it prints the same class set again: the same designs, names and answers. The project file holds the names, so anyone you share it with sees them.
+
+### Fixed
+
+- **Cancelling a print sends nothing, on Linux too.** Print now draws every page first and only then sends the job to the printer, so **Cancel** while it's drawing leaves nothing printed. The printer starts once every page is drawn, and the status line says "Sending to the printer…" while the pages go.
+
+### Upgrading
+
+Nothing changes in what Inkline needs. Your presets, settings, projects, recent files and printer carry over.
+
+**Windows**
+Run `inkline-4.10.0-windows-setup.exe`.
+
+**Debian / Ubuntu / Linux Mint / Pop!_OS**
+```sh
+sudo apt install ./inkline_4.10.0-1_amd64.deb
+```
+
+**Arch / CachyOS / Manjaro**
+```sh
+sudo pacman -U inkline-4.10.0-1-any.pkg.tar.zst
+```
+
+**Any distro, nothing installed**
+```sh
+chmod +x inkline-4.10.0-x86_64.AppImage && ./inkline-4.10.0-x86_64.AppImage
+```
+
+**Any other distro**
+```sh
+sh inkline-4.10.0.run            # or --system for every user
+```
+
+**Flatpak**
+```sh
+flatpak install --user inkline-4.10.0.flatpak     # if a .flatpak file is attached to this release
+sh packaging/flatpak/build.sh                    # or build it from a copy of the source
+```
+
+### Found a problem?
+
+Please open an issue saying what you did, what you expected, and what happened. Include your system (distro, or Windows version), and the printer if it's about printing.
+
 ## 4.9.0 - 2026-11-23
 
 Inkline 4.9 puts a name on each copy of a class set, and lets you stop a long print or save.
