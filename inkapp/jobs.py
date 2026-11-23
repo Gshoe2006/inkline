@@ -40,6 +40,8 @@ class Job:
         if self.duplex:   # a fold-and-staple book: two printed sides per sheet
             n = self.count // 2
             return f"{n} sheet{'s' if n != 1 else ''} (both sides)"
+        if self.label == "copies":
+            return f"{self.count} copies"
         return f"{self.count}-{self.unit} {self.label}"
 
 
@@ -105,9 +107,32 @@ def fold_sheets(indices, n):
     return sorted({k // 2 for k, side in enumerate(sides) if set(side) & set(indices)})
 
 
-def job(state, only=""):
+MAX_COPIES = 100
+
+
+def copy_seed(seed, i):
+    """The design of copy i (0 is the design shown): a fixed step from it, so the same set prints again alike."""
+    return seed if i == 0 else (seed + i * 104729) & 0xFFFFFFFF
+
+
+def copies_vary(s):
+    """(whether copies of this single page can each have their own design, a note when some of them repeat or
+    none can differ, or "")."""
+    if s.mode != "make":
+        return False, ""
+    if s.gen == "name" and s.name_bg == "none":
+        return False, "A name page with nothing underneath has no design to change, so its copies are alike."
+    if s.gen == "dots":
+        return True, "Dot-to-dot has only a handful of pictures, so some copies repeat."
+    if s.gen == "nonogram" and s.complexity <= 1:
+        return True, "The smallest nonograms sometimes repeat: raise Complexity for more variety."
+    return True, ""
+
+
+def job(state, only="", copies=1, vary=False):
     """What Print and Save PDF produce. only: a choice of pages as parse_pages() reads it (booklets and photo
-    books; empty for all). Raises ValueError when that choice doesn't make sense."""
+    books; empty for all). copies: how many of a single page, each with its own design when vary (Make one up).
+    Raises ValueError when the choice of pages doesn't make sense."""
     s, v = state.settings, view(state)
     if v.kind == "testpage":
         st = replace(s, orient="portrait")
@@ -135,7 +160,18 @@ def job(state, only=""):
         g = geometry(s)
         return Job(name, label, len(picked), s.orient, g, lambda ctx, i: draw_page(ctx, g, pages[picked[i]], s))
     g, spec = geometry(s), single_page(s, state.photo)
-    return Job(base_name(state), "page", 1, s.orient, g, lambda ctx, i: draw_page(ctx, g, spec, s))
+    copies = max(1, min(MAX_COPIES, int(copies or 1)))
+    if copies == 1:
+        return Job(base_name(state), "page", 1, s.orient, g, lambda ctx, i: draw_page(ctx, g, spec, s))
+    vary = vary and copies_vary(s)[0]   # a photo has one look, a plain name page one design: their copies are alike
+    name = f"{base_name(state)}-{copies}{'-designs' if vary else '-copies'}"
+
+    def draw(ctx, i):
+        if not vary:
+            return draw_page(ctx, g, spec, s)
+        si = replace(s, seed=copy_seed(s.seed, i))
+        return draw_page(ctx, g, single_page(si, state.photo), si)
+    return Job(name, "copies", copies, s.orient, g, draw)
 
 
 def printed_orient(s, kind):
