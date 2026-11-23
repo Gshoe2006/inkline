@@ -1,4 +1,4 @@
-"""Languages: the Spanish translation is complete, well formed and used; English is unchanged."""
+"""Languages: each translation (Spanish, French) is complete, well formed and used; English is unchanged."""
 
 import json
 import os
@@ -14,6 +14,11 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "packaging"))
 
 
+TRANSLATED = [code for code in i18n.LANGUAGES if code != "en"]
+# a few words each window shows in its language: the File menu, and Copies
+SAMPLES = {"es": ("&Archivo", "Copias"), "fr": ("&Fichier", "Exemplaires")}
+
+
 @pytest.fixture
 def spanish():
     i18n.set_language("es")
@@ -21,9 +26,23 @@ def spanish():
     i18n.set_language("en")
 
 
-def test_the_spanish_file_covers_every_string_with_the_same_placeholders():
+@pytest.fixture(params=TRANSLATED)
+def language(request):
+    i18n.set_language(request.param)
+    yield request.param
+    i18n.set_language("en")
+
+
+def test_every_language_has_a_file_and_samples():
+    assert TRANSLATED == ["es", "fr"]
+    for code in TRANSLATED:
+        assert os.path.isfile(os.path.join(ROOT, "inkengine", "locale", f"{code}.json")) and code in SAMPLES
+
+
+@pytest.mark.parametrize("code", TRANSLATED)
+def test_each_file_covers_every_string_with_the_same_placeholders(code):
     import i18n_strings
-    es = json.load(open(os.path.join(ROOT, "inkengine", "locale", "es.json"), encoding="utf-8"))
+    es = json.load(open(os.path.join(ROOT, "inkengine", "locale", f"{code}.json"), encoding="utf-8"))
     missing = [s for s in i18n_strings.scan() if s not in es]
     assert missing == []
     for en, tr in es.items():
@@ -34,7 +53,8 @@ def test_the_spanish_file_covers_every_string_with_the_same_placeholders():
 
 def test_choosing_a_language():
     assert i18n.system_language("es_ES") == i18n.system_language("es-MX") == "es"
-    assert i18n.system_language("fr_FR") == i18n.system_language("") == "en"
+    assert i18n.system_language("fr_FR") == i18n.system_language("fr-CA") == "fr"
+    assert i18n.system_language("de_DE") == i18n.system_language("") == "en"
     i18n.set_language("xx")
     assert i18n.LANG == "en" and i18n.tr("Name") == "Name"
     i18n.set_language("es")
@@ -61,13 +81,24 @@ def _walk_states(w):
         st = w.state
         sb.sync(render.view(State(st.settings, st.photos, st.sel, st.page, copy=st.copy, class_set=sb.class_set_view())))
     for gen in ("mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "name", "words", "nonogram",
-                "spot", "kakuro", "maths", "trace", "crossword"):
+                "spot", "kakuro", "maths", "trace", "crossword", "clock", "scramble", "spelltest"):
         go(gen=gen)
     go(gen="maze", maze_shape="word")
     go(gen="words", ws_theme="custom", ws_words="sol, luna")
     go(gen="trace", trace_source="words")
     go(trace_source="name")
     go(gen="crossword", cross_theme="custom", cross_words="zzz")
+    for task in ("read", "draw", "mixed"):
+        go(gen="clock", clock_task=task)
+    go(gen="trace", trace_style="joined")
+    go(gen="maths", maths_kind="money")
+    go(gen="maths", maths_kind="divide")
+    go(maths_kind="missing")
+    go(gen="scramble", ws_theme="custom", ws_words="sol, luna")
+    go(pack_theme="spelling", pack_words="sol, luna")
+    sb.pack_btn.click()
+    go(pack_theme="ocean")
+    w._make_pack("x")
     go(gen="mandala", cbn=True)
     go(gen="name", name_bg="none")
     go(gen="maze", age="7-9", sheet="banner")
@@ -88,7 +119,7 @@ def _walk_states(w):
     for _ in range(3):
         QApplication.processEvents()   # the layouts settle
     sb.fit_width()
-    assert sb.width() == theme.SIDEBAR_WIDTH   # longer Spanish words wrap rather than widen the sidebar
+    assert sb.width() == theme.SIDEBAR_WIDTH   # longer words wrap rather than widen the sidebar
     w.history.undo()
     w.history.redo()
     w.edit_pages() if hasattr(w, "edit_pages") else None
@@ -108,7 +139,7 @@ def _walk_states(w):
     w.offer_whats_new() if False else None
 
 
-def test_the_window_in_spanish_asks_for_nothing_untranslated(spanish, tmp_path, monkeypatch):
+def test_the_window_in_each_language_asks_for_nothing_untranslated(language, tmp_path, monkeypatch):
     monkeypatch.setenv("INKLINE_CONFIG_DIR", str(tmp_path))
     QApplication.instance() or QApplication([])
     from inkapp.window import Window
@@ -127,7 +158,9 @@ def test_the_window_in_spanish_asks_for_nothing_untranslated(spanish, tmp_path, 
                   Settings(gen="mandala", dpi=36, cbn=True, cbn_maths=True), Settings(dpi=36, testpage=True),
                   Settings(gen="maze", dpi=36, booklet=True, pages=4, fold=True),
                   Settings(gen="mandala", dpi=36, poster=True, grid="2x2", overlap=0.5),
-                  Settings(gen="maze", dpi=36, booklet=True, pages=3, key=True, cover=True)):
+                  Settings(gen="maze", dpi=36, booklet=True, pages=3, key=True, cover=True),
+                  Settings(gen="clock", dpi=36, clock_task="mixed"), Settings(gen="scramble", dpi=36),
+                  Settings(gen="spelltest", dpi=36)):
             j = jobs.job(State(s), copies=2, answers=True)
             for i in range(j.count):
                 j.draw(RecordingCanvas(), i)
@@ -141,12 +174,18 @@ def test_the_window_in_spanish_asks_for_nothing_untranslated(spanish, tmp_path, 
         ClassSet(count=3, names=[]).label(1)
         from inkapp.state import BUILTIN_PRESETS
         w._apply_preset("b", next(iter(BUILTIN_PRESETS)))
-        assert w.history.undoText() == "«" + i18n.tr(next(iter(BUILTIN_PRESETS))) + "»"
+        assert w.history.undoText() == i18n.tr("“{name}”").format(name=i18n.tr(next(iter(BUILTIN_PRESETS))))
         missing = sorted(m for m in i18n.MISSING if re.search(r"[A-Za-z]{2}", m))
         assert missing == []
-        # and the window really is in Spanish
-        assert w.menuBar().actions()[0].text() == "&Archivo"
-        assert w.sidebar.copies_row.label.text() == "Copias"
+        # and the window really is in that language
+        assert w.menuBar().actions()[0].text() == SAMPLES[language][0]
+        assert w.sidebar.copies_row.label.text() == SAMPLES[language][1]
+        # each menu's keyboard letters are different from each other (and the menus' own)
+        bar = [a.text() for a in w.menuBar().actions()]
+        menus = [bar] + [[a.text() for a in m.menu().actions() if a.text()] for m in w.menuBar().actions()]
+        for items in menus:
+            keys = [re.search(r"&(\w)", x).group(1).lower() for x in items if re.search(r"&(\w)", x)]
+            assert len(keys) == len(set(keys)), items
     finally:
         w.close()
         w.deleteLater()
@@ -170,6 +209,38 @@ def test_spanish_pages_print_spanish_words_and_keep_n_tilde(spanish):
     assert {w for _n, w, *_ in clues} <= {w for w, _c in crossword.parse_entries(crossword.THEMES_ES["animals"])}
 
 
+def test_french_pages_print_french_words_without_accents_in_the_grids():
+    from inkengine.canvas import RecordingCanvas
+    from inkengine.page import Settings, draw_page, geometry, single_page
+    from inkengine.patterns import crossword, trace, words
+    from inkengine.rng import mulberry32
+    i18n.set_language("fr")
+    try:
+        s = Settings(gen="words", seed=4, dpi=72, name_line=True)
+        c = RecordingCanvas()
+        draw_page(c, geometry(s), single_page(s), s)
+        texts = [op[1] for op in c.ops if op[0] == "text"]
+        assert i18n.tr("Find these words") in texts and i18n.tr("Find these words") != "Find these words"
+        letters = {ch for op in c.ops if op[0] == "text" and len(op[1]) == 1 for ch in op[1]}
+        assert letters <= set("ABCDEFGHIJKLMNOPQRSTUVWXYZ")          # French grids: plain letters, no Ñ
+        assert words.clean_word("Écureuil") == "ECUREUIL" and crossword.letters("œuf") == "OEUF"
+        pool = words.word_pool(mulberry32(1), 5, "animals")
+        assert set(pool) <= {words.clean_word(x) for x in words.THEMES_FR["animals"].split()}
+        _g, clues, _l = crossword.make_crossword(mulberry32(2), 6, Settings(cross_theme="food"))
+        assert {w for _n, w, *_ in clues} <= {w for w, _c in crossword.parse_entries(crossword.THEMES_FR["food"])}
+        assert trace.lines_to_trace(mulberry32(3), 4, Settings(trace_source="words"))[0] in ("chat", "chien", "soleil", "arbre")
+    finally:
+        i18n.set_language("en")
+
+
+def test_word_lists_exist_for_every_language():
+    from inkengine.patterns import crossword, trace, words
+    for code in TRANSLATED:
+        assert set(words.THEMES_BY_LANGUAGE[code]) == set(words.THEMES)
+        assert set(crossword.THEMES_BY_LANGUAGE[code]) == set(crossword.THEMES)
+        assert len(trace.DEFAULT_WORDS[code]) == 4
+
+
 def test_english_pages_are_as_before():
     """English is the default and draws exactly what it drew (the word search still matches 2.x's recordings
     in tests/test_words.py); a Spanish run doesn't leave anything behind."""
@@ -189,8 +260,8 @@ def test_view_language_remembers_the_choice(tmp_path, monkeypatch):
     w = Window("5.0.0", remember=False)
     w.show()
     try:
-        assert set(w.lang_actions) == {"en", "es"} and w.lang_actions["en"].isChecked()
-        assert w.lang_actions["es"].text() == "Español"
+        assert set(w.lang_actions) == {"en", "es", "fr"} and w.lang_actions["en"].isChecked()
+        assert w.lang_actions["es"].text() == "Español" and w.lang_actions["fr"].text() == "Français"
         w.lang_actions["es"].trigger()
         assert config.read("preferences.json")["language"] == "es"
         assert w.sidebar.status.text() == "Reinicia Inkline para usar Español."   # said in Spanish
@@ -198,3 +269,17 @@ def test_view_language_remembers_the_choice(tmp_path, monkeypatch):
     finally:
         w.close()
         w.deleteLater()
+
+
+@pytest.mark.parametrize("code", TRANSLATED)
+def test_the_review_sheet_lists_every_string_and_the_word_lists(code, tmp_path):
+    import csv
+    import translation_sheet
+    path = tmp_path / "sheet.csv"
+    translation_sheet.main(["translation_sheet.py", code, str(path)])
+    rows = list(csv.reader(open(path, encoding="utf-8-sig")))
+    assert rows[0] == ["Where", "English", i18n.LANGUAGES[code], "Better wording", "Comment"]
+    catalog = i18n.catalog(code)
+    assert {r[1] for r in rows[1:] if r[0] in ("window", "page", "page and window")} == set(catalog)
+    assert any(r[0].startswith("word search") for r in rows) and any(r[0].startswith("crossword") for r in rows)
+    assert all(r[3] == r[4] == "" for r in rows[1:])

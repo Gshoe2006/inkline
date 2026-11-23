@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QAbstractSlider, QAbstractSpin
                                QUndoView, QVBoxLayout, QWidget)
 from PySide6.QtGui import QPdfWriter
 
-from inkengine import ages, book, photo
+from inkengine import ages, book, pack, photo
 from inkengine import i18n
 from inkengine.i18n import tr
 from inkengine.page import PAGE_KEYS, Settings, clean_page, design_box, geometry, single_page
@@ -43,7 +43,7 @@ STEP_NAMES = {"gen": "Pattern", "complexity": "Complexity", "weight": "Line weig
               "pages": "Design pages", "ramp": "Get harder", "mix": "Mix every pattern", "cover": "Cover page",
               "page_nums": "Page numbers", "key": "Answer pages", "maze_shape": "Maze shape", "maze_word": "Word or name", "spot_base": "Picture",
               "ws_theme": "Words from", "ws_words": "Your words", "name_text": "Name or word", "name_bg": "Around the letters",
-              "maths_kind": "Sums", "trace_source": "Trace", "trace_text": "Words to trace",
+              "maths_kind": "Sums", "money": "Money", "clock_task": "Clocks", "pack_theme": "Worksheet pack", "pack_words": "Spelling words", "trace_source": "Trace", "trace_style": "Letters", "trace_text": "Words to trace",
               "cbn_maths": "Colour by maths", "age": "Age", "sheet": "On the sheet", "panel_gens": "Designs on the sheet", "cross_theme": "Crossword words", "cross_words": "Crossword words and clues",
               "mode": "Mode", "style": "Style", "brightness": "Brightness", "contrast": "Contrast", "threshold": "Threshold",
               "dot": "Dot size", "fit": "Placement", "invert": "Invert", "pnono_size": "Squares across",
@@ -185,7 +185,8 @@ class Window(QMainWindow):
 
         self.renderer = Renderer()
         self.renderer.finished.connect(self._rendered)
-        self.renderer.failed.connect(lambda _n, _why: self._msg(tr("The preview couldn't be drawn. Try another setting, or start fresh from Presets.")))
+        self.renderer.failed.connect(self._render_failed)
+        self.shown = 0   # the last preview request whose result reached the window (tests wait for it)
         self.renderer.busy.connect(lambda on: None if on or not self.renderer.idle else self.preview.set_busy(""))
         self.renderer.converting.connect(lambda: self.preview.set_busy(tr("converting photo…")))
         self.worker = Renderer()        # saving and printing
@@ -254,6 +255,7 @@ class Window(QMainWindow):
         sb.pages_edit.connect(self._edit_pages)
         sb.book_page_selected.connect(self._select_book_page)
         sb.book_page_added.connect(self._add_book_page)
+        sb.pack_make.connect(lambda: self._make_pack(tr("Make a week of worksheets")))
         sb.book_page_moved.connect(self._move_book_page)
         sb.book_page_copied.connect(self._copy_book_page)
         sb.book_page_removed.connect(self._remove_book_page)
@@ -1202,7 +1204,17 @@ class Window(QMainWindow):
                      copy=st.copy, class_set=self.sidebar.class_set_view())
         self.renderer.submit(lambda: render_view(snap))
 
+    def _render_failed(self, n, _why):
+        self.shown = max(self.shown, n)
+        self._msg(tr("The preview couldn't be drawn. Try another setting, or start fresh from Presets."))
+
+    @property
+    def preview_settled(self):
+        """Every preview asked for has been drawn and shown: nothing scheduled, drawing or on its way."""
+        return not self._render_timer.isActive() and self.renderer.idle and self.shown == self.renderer.latest
+
     def _rendered(self, n, r):
+        self.shown = max(self.shown, n)
         if n != self.renderer.latest:
             return
         self.state.page = r.view.index
@@ -1246,6 +1258,9 @@ class Window(QMainWindow):
         if p is None:
             return
         self._step_name = tr("“{name}”").format(name=tr(name) if group == "b" else name)   # Edit → Undo “Maze booklet with answers”
+        if p.get("pack"):   # a worksheet pack: its pages are made for the age and theme chosen now
+            self._make_pack(self._step_name)
+            return
         self.state.apply_preset(p)
         self.state.mirror()
         self.sidebar.only_pages.clear()
@@ -1255,6 +1270,21 @@ class Window(QMainWindow):
             self.state.photos = [sample_photo()]
             self.sidebar.fill_photos()
         self._msg(tr("Applied “{name}”.").format(name=tr(name)))
+        self.schedule()
+        self.remember_soon()
+
+    def _make_pack(self, step):
+        """Booklet → Make a week of worksheets (or its preset): five pages for the age and theme chosen, one undo step."""
+        self._step_name = step
+        self.state.update(**pack.week(self.state.settings, [new_seed() for _ in pack.DAYS]))
+        self.state.page = self.state.book_sel = 0
+        self.state.mirror()
+        self.sidebar.only_pages.clear()
+        self.sidebar.load()
+        self.sidebar.fill_pages()
+        s = self.state.settings
+        self._msg(tr("Made a week of worksheets for {age}: {theme}. Change any page in the page list.").format(
+            age=tr(ages.AGES[s.age]).lower(), theme=tr(pack.THEME_NAMES[s.pack_theme]).lower()))
         self.schedule()
         self.remember_soon()
 

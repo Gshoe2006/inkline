@@ -5,6 +5,7 @@ import time
 import pytest
 
 from PySide6.QtWidgets import QApplication
+from conftest import settle
 
 
 @pytest.fixture
@@ -14,7 +15,7 @@ def win(tmp_path, monkeypatch):
     from inkapp.window import Window
     w = Window("3.0.0", remember=False)
     w.show()
-    _wait(app, 300)
+    settle(w)
     yield w
     w.close()
     w.deleteLater()

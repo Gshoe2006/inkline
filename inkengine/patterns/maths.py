@@ -7,15 +7,22 @@ Complexity sets how big the numbers get and how many sums there are:
   never goes below zero.
 - times tables: the 2, 5 and 10 times tables at 1, up to the 12 times table at 10.
 - number bonds: "7 + _ = 10" or "_ + 3 = 10", making 10 at 1-3, 20 at 4-6, 100 at 7-10.
+- sharing (division): "20 ÷ 4 = ____", the times tables backwards, so every answer is a whole number.
+- missing numbers: adding, taking away and times tables with a number to find ("_ × 4 = 20", "15 − _ = 9").
+- money: coins to count, then adding, taking away and change, in pounds, euros or dollars (patterns.money).
 
 Sums are written across ("7 + 5 = ____"), in two or three columns depending on how many there are. The
 answer page writes each answer in its blank, in grey.
 """
 
+import math
+
 from ..rng import pick
+from . import money
 
 KINDS = {"add": "Adding", "sub": "Taking away", "addsub": "Adding and taking away", "times": "Times tables",
-         "bonds": "Number bonds", "mixed": "All of them, mixed"}
+         "bonds": "Number bonds", "mixed": "All of them, mixed", "divide": "Sharing (division)",
+         "missing": "Missing numbers", "money": "Money"}
 
 
 def level(c):
@@ -35,8 +42,15 @@ def _between(rnd, lo, hi):
 def make_sum(rnd, kind, lv):
     """One sum: (left, sign, right, answer, blank) where blank says what the child writes: the "result", or for a
     number bond the missing number on the "right" (7 + _ = 10) or the "left" (_ + 3 = 10)."""
-    if kind == "mixed":
+    if kind == "mixed":   # (as 5.0 mixed them: the newer kinds aren't in the mix, so its sheets stay the same)
         kind = ["add", "sub", "times", "bonds"][pick(rnd, 4)]
+    if kind == "missing":   # a sum with one of its numbers to find instead of the answer
+        a, sign, b, answer, _ = make_sum(rnd, ["add", "sub", "times"][pick(rnd, 3)], lv)
+        return a, sign, b, answer, "right" if pick(rnd, 2) else "left"
+    if kind == "divide":
+        t = lv["tables"][pick(rnd, len(lv["tables"]))]
+        n = _between(rnd, 2, 12)   # no "7 ÷ 7"
+        return n * t, "÷", t, n, "result"
     if kind == "addsub":
         kind = "add" if pick(rnd, 2) == 0 else "sub"
     top = lv["top"]
@@ -59,13 +73,15 @@ def make_sum(rnd, kind, lv):
     return a, "+", total - a, total, "right" if pick(rnd, 2) else "left"
 
 
-def make_sheet(rnd, c, kind):
-    """The sums for one sheet: no sum twice."""
+def make_sheet(rnd, c, kind, cur="GBP"):
+    """The sums for one sheet: no sum twice. cur: the currency of money sums."""
     lv, sums, seen = level(c), [], set()
+    # money takes room: coins to count, 8 in a column; amounts, at most 18 in two columns
+    count = (8 if c <= 4 else min(lv["count"], 18)) if kind == "money" else lv["count"]
     tries = 0
-    while len(sums) < lv["count"] and tries < 2000:
+    while len(sums) < count and tries < 2000:
         tries += 1
-        s = make_sum(rnd, kind, lv)
+        s = money.make_sum(rnd, c, cur) if kind == "money" else make_sum(rnd, kind, lv)
         key = (s[0], s[1], s[2], s[4])   # the numbers, and where the blank is
         if key not in seen:
             seen.add(key)
@@ -74,11 +90,14 @@ def make_sheet(rnd, c, kind):
 
 
 BLANK = 2.4   # the blank to write in, in font sizes
+COIN = 1.3    # a coin and the gap after it, in font sizes
 
 
 def _pieces(s):
     """Sum s as (text before the blank, text after it, what goes in the blank)."""
     a, sign, b, answer, missing = s
+    if sign == "coins":   # the coins are drawn, then "= ____"
+        return " = ", "", answer
     if missing == "left":
         return "", f" {sign} {b} = {answer}", a
     if missing == "right":
@@ -90,15 +109,16 @@ def _width(ctx, n, s, blank=BLANK):
     """How wide sum s is written, at the current font size (its number, the sum, the blank)."""
     before, after, _fill = _pieces(s)
     size = ctx.font_size
-    return size * 1.5 + ctx.measure_text(before) + size * blank + ctx.measure_text(after)
+    coins = len(s[0]) * size * COIN if s[1] == "coins" else 0
+    return size * 1.5 + coins + ctx.measure_text(before) + size * blank + ctx.measure_text(after)
 
 
 def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, solve=False, **_opts):
     """The sheet of sums (or, with solve=True, each answer written in its blank)."""
     kind = getattr(settings, "maths_kind", "add")
     kind = kind if kind in KINDS else "add"
-    sums = make_sheet(rnd, c, kind)
-    cols = 2 if len(sums) <= 18 else 3
+    sums = make_sheet(rnd, c, kind, money.currency(getattr(settings, "money", "auto")))
+    cols = 1 if sums and sums[0][1] == "coins" else 2 if len(sums) <= 18 else 3
     rows = -(-len(sums) // cols)
     cw, rh = box.w / cols, box.h / rows
     ctx.save()
@@ -120,6 +140,19 @@ def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, solve=False, **_opts)
         x += fs * 1.5
         ctx.set_font(fs, 500)
         ctx.fill_style = "#000"
+        if s[1] == "coins":   # each coin a circle with its value
+            r = fs * 0.55
+            for label in s[0]:
+                ctx.line_width = max(1.0, lw * 0.7)
+                ctx.begin_path()
+                ctx.arc(x + r, y - fs * 0.32, r, 0, 2 * math.pi)
+                ctx.stroke()
+                ctx.set_font(fs * (0.42 if len(label) <= 3 else 0.34), 600)
+                ctx.text_align = "center"
+                ctx.fill_text(label, x + r, y - fs * 0.32 + fs * 0.15)
+                ctx.text_align = "left"
+                x += fs * COIN
+            ctx.set_font(fs, 500)
         ctx.fill_text(before, x, y)
         x += ctx.measure_text(before)
         ctx.line_width = max(1.0, lw * 0.6)   # the blank to write in

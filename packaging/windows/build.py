@@ -52,6 +52,7 @@ def app_folder():
     sep = ";" if os.name == "nt" else ":"
     data = [f"{os.path.join(ROOT, name)}{sep}." for name in ("VERSION", "CHANGELOG.md", "inkline.svg", "LICENSE")]
     data.append(f"{os.path.join(ROOT, 'inkengine', 'locale')}{sep}inkengine/locale")   # the translations
+    data.append(f"{os.path.join(ROOT, 'inkengine', 'fonts')}{sep}inkengine/fonts")     # joined-up handwriting
     cmd = [sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", "--windowed", "--name", "Inkline",
            "--icon", ico, "--distpath", DIST, "--workpath", BUILD, "--specpath", BUILD,
            "--collect-submodules", "inkengine", "--collect-submodules", "inkapp",

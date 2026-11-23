@@ -48,7 +48,7 @@ def _settled(w, timeout=20):
     end = time.time() + timeout
     _wait(60)
     while time.time() < end:
-        if not w._render_timer.isActive() and w.renderer.idle and not w.preview.busy.isVisibleTo(w):
+        if w.preview_settled:   # drawn, and the result handled (it reaches the window after the worker is idle)
             return
         _wait(20)
     raise AssertionError("the preview didn't finish drawing")

@@ -11,10 +11,10 @@ from PySide6.QtGui import QIntValidator, QKeySequence, QPixmap, QShortcut
 from PySide6.QtWidgets import (QAbstractItemView, QFrame, QHBoxLayout, QLabel, QListWidget, QListWidgetItem,
                                QProgressBar, QScrollArea, QTabBar, QVBoxLayout, QWidget)
 
-from inkengine import ages, book, cbn, photo
+from inkengine import ages, book, cbn, pack, photo
 from inkengine.i18n import tr
 from inkengine.page import PAGE_KEYS, PANELS, SHEETS, has_answer, sheet_gens
-from inkengine.patterns import NAMES, crossword, maths, maze, name, spot, trace, words
+from inkengine.patterns import NAMES, clock, crossword, maths, maze, money, name, spot, trace, words
 
 from . import jobs, theme, thumbs
 from .jobs import MAX_COPIES
@@ -26,7 +26,10 @@ GEN_OPTIONS = [("mandala", "Mandala (colouring page)"), ("maze", "Maze"), ("truc
                ("contour", "Topographic contours"), ("flow", "Flow lines"), ("dots", "Dot-to-dot"), ("sudoku", "Sudoku"),
                ("name", "Name or word (bubble letters)"), ("words", "Word search"), ("nonogram", "Nonogram (picture logic)"),
                ("spot", "Spot the difference"), ("kakuro", "Kakuro (cross sums)"), ("maths", "Maths drill"),
-               ("trace", "Handwriting (letters and words to trace)"), ("crossword", "Crossword")]
+               ("trace", "Handwriting (letters and words to trace)"), ("crossword", "Crossword"),
+               ("clock", "Telling the time (clock faces)"),
+               ("scramble", "Unscramble (mixed-up words)"),
+               ("spelltest", "Spelling test (lines to write words read aloud)")]
 GRID_OPTIONS = [("2x2", "2 × 2"), ("3x3", "3 × 3"), ("4x4", "4 × 4"), ("2x1", "2 across × 1"), ("3x2", "3 across × 2"),
                 ("1x2", "1 across × 2"), ("2x3", "2 across × 3")]
 CBN_PATTERN_NOTE = "Repeated spaces share a number, and spaces side by side get different colours."
@@ -53,6 +56,7 @@ class Sidebar(QFrame):
     photo_selected = Signal(int)
     photo_moved = Signal(int, int)
     photo_removed = Signal(int)
+    pack_make = Signal()          # Booklet → Make a week of worksheets
     pages_edit = Signal(bool)     # Edit pages one by one (True) / Back to quick booklet (False)
     book_page_selected = Signal(int)
     book_page_added = Signal()
@@ -265,10 +269,18 @@ class Sidebar(QFrame):
         self.maths_opts = SubOptions()
         self.maths_kind = self._combo("maths_kind", list(maths.KINDS.items()))
         self.maths_opts.add(OptionRow("Sums", self.maths_kind))
+        self.money = self._combo("money", list(money.CURRENCIES.items()))
+        self.money_row = self.maths_opts.add(OptionRow("Money", self.money))
         self.maths_opts.add(Hint("Complexity sets how big the numbers get and how many sums there are."))
+        self.clock_opts = SubOptions()
+        self.clock_task = self._combo("clock_task", list(clock.TASKS.items()))
+        self.clock_opts.add(OptionRow("Clocks", self.clock_task))
+        self.clock_opts.add(Hint("Complexity goes from o'clock and half past to quarters, five minutes and any minute."))
         self.trace_opts = SubOptions()
         self.trace_source = self._combo("trace_source", list(trace.SOURCES.items()))
         self.trace_opts.add(OptionRow("Trace", self.trace_source))
+        self.trace_style = self._combo("trace_style", list(trace.LETTERS.items()))
+        self.trace_opts.add(OptionRow("Letters", self.trace_style))
         self.trace_text = self._text("trace_text", "e.g. cat, dog, sun, my name", 300)
         self.trace_text_row = self.trace_opts.add(OptionRow("Your words", self.trace_text))
         self.trace_hint = self.trace_opts.add(Hint())
@@ -279,8 +291,8 @@ class Sidebar(QFrame):
         self.cross_words_row = self.cross_opts.add(OptionRow("Your words and clues", self.cross_words))
         self.cross_words_hint = self.cross_opts.add(Hint("Each as word: clue, separated by ; (a word without a clue gets ?)."))
         self.cross_note = self.cross_opts.add(Hint())
-        sec.add(self.words_opts, self.maze_opts, self.name_opts, self.spot_opts, self.maths_opts, self.trace_opts,
-                self.cross_opts)
+        sec.add(self.words_opts, self.maze_opts, self.name_opts, self.spot_opts, self.maths_opts, self.clock_opts,
+                self.trace_opts, self.cross_opts)
         sec.add(self._slider("complexity", "Complexity", 1, 10, lambda v: f"{v} / 10"))
         sec.add(self._slider("weight", "Line weight", 1, 10, lambda v: f"{v / 150 * 25.4:.2f} mm"))
         sec.add(self._check("frame", "Draw a border around the design"))
@@ -308,6 +320,16 @@ class Sidebar(QFrame):
 
         # Make one up: Booklet
         sec = Section("Booklet")
+        # a week of worksheets in one go: the theme (or this week's spelling words), then Make
+        self.pack_theme = self._combo("pack_theme", list(pack.THEME_NAMES.items()))
+        sec.add(OptionRow("Worksheet pack", self.pack_theme))
+        self.pack_words = self._text("pack_words", "e.g. because, friend, said, which", 600)
+        self.pack_words_row = sec.add(OptionRow("Spelling words", self.pack_words))
+        self.pack_btn = button("Make a week of worksheets", "mini",
+                               "Five worksheets with answers, set for the age under Age (Undo brings back what you had)")
+        self.pack_btn.clicked.connect(self.pack_make)
+        sec.add(_tools(self.pack_btn))
+        self.pack_hint = sec.add(Hint())
         sec.add(self._check("booklet", "Make a multi-page booklet"))
         self.book_opts = SubOptions()
         self.pages_row = self.book_opts.add(self._slider("pages", "Design pages", 2, 40))
@@ -764,12 +786,12 @@ class Sidebar(QFrame):
         for i, p in enumerate(pl):
             gen = p.get("gen") if p.get("gen") in NAMES else st.settings.gen
             detail = _page_detail(gen, p)
-            text = f"{i + 1}. {tr(NAMES[gen])}{f' · {tr(detail)}' if detail else ''} · {p.get('complexity', cx)}/10"
+            text = f"{i + 1}. {tr(NAMES[gen])}{f' · {detail}' if detail else ''} · {p.get('complexity', cx)}/10"
             if p.get("answer", True) is False and st.settings.key and has_answer(gen, _own_settings(st.settings, p)):
                 text += " · " + tr("no answer")
             item = QListWidgetItem()
             item.setToolTip(text + ("\n" + tr("Words: {words}").format(words=p["ws_words"])
-                                    if gen == "words" and p.get("ws_theme") == "custom" and p.get("ws_words") else ""))
+                                    if gen in ("words", "scramble", "spelltest") and p.get("ws_theme") == "custom" and p.get("ws_words") else ""))
             item.setData(Qt.ItemDataRole.AccessibleTextRole, tr("Page {text}").format(text=text))
             item.setSizeHint(QSize(0, row_h))
             lst.addItem(item)
@@ -880,7 +902,7 @@ class Sidebar(QFrame):
         self.photo_panel.setVisible(not make)
         listing = s.booklet and bool(s.page_list)   # built page by page: Design edits the selected page
         mix_book = s.booklet and s.mix and not listing
-        self.words_opts.setVisible(s.gen == "words")
+        self.words_opts.setVisible(s.gen in ("words", "scramble", "spelltest"))   # unscramble takes its words from the same place
         self.age_hint.setVisible(s.age != "any")
         sheet_ok = make and not s.booklet and not s.poster and not s.testpage   # single designs only
         self.sheet_row.setVisible(sheet_ok)
@@ -893,6 +915,16 @@ class Sidebar(QFrame):
             c.set_value(gens[k + 1])
         self._loading = was
         self.maths_opts.setVisible(s.gen == "maths")
+        self.clock_opts.setVisible(s.gen == "clock")
+        self.money_row.setVisible(s.maths_kind == "money")
+        self.pack_words_row.setVisible(s.pack_theme == "spelling")
+        spelling = s.pack_theme == "spelling"
+        what = (tr("Handwriting, a crossword, a word search and an unscramble sheet of your words, then a spelling test, for {age}.")
+                if spelling else tr("Maths, handwriting, a crossword, a word search and a maze, for {age}."))
+        ready = not spelling or bool(pack.spelling_list(s.pack_words))
+        self.pack_hint.setText(what.format(age=tr(ages.AGES[s.age if s.age in ages.EXTRAS else pack.DEFAULT_AGE]).lower())
+                               if ready else tr("Type this week's spelling words to make the pack."))
+        self.pack_btn.setEnabled(ready)
         self.cross_opts.setVisible(s.gen == "crossword")
         self.cross_words_row.setVisible(s.cross_theme == "custom")
         self.cross_words_hint.setVisible(s.cross_theme == "custom")
@@ -1091,20 +1123,22 @@ def _own_settings(s, p):
 
 
 def _page_detail(gen, p):
-    """What tells a page apart from others of its pattern, for its row: a word search's words, a word maze's word,
-    a name page's name."""
-    if gen == "words":
-        return "Your words" if p.get("ws_theme") == "custom" else words.THEME_NAMES.get(p.get("ws_theme"), "")
+    """What tells a page apart from others of its pattern, for its row, in the person's language: a word search's
+    theme, a word maze's word or a name page's name (those as typed, never translated)."""
+    if gen in ("words", "scramble", "spelltest"):
+        return tr("Your words") if p.get("ws_theme") == "custom" else tr(words.THEME_NAMES.get(p.get("ws_theme"), ""))
     if gen == "maze" and p.get("maze_shape") == "word":
         return p.get("maze_word", "").strip()
     if gen == "name":
         return p.get("name_text", "").strip()
     if gen == "maths":
-        return maths.KINDS.get(p.get("maths_kind", "add"), "")
+        return tr(maths.KINDS.get(p.get("maths_kind", "add"), ""))
+    if gen == "clock":
+        return tr(clock.TASKS.get(p.get("clock_task", "read"), ""))
     if gen == "trace":
-        return trace.SOURCES.get(p.get("trace_source", "upper"), "")
+        return tr(trace.SOURCES.get(p.get("trace_source", "upper"), ""))
     if gen == "crossword":
-        return "Your words" if p.get("cross_theme") == "custom" else crossword.THEME_NAMES.get(p.get("cross_theme"), "")
+        return tr("Your words") if p.get("cross_theme") == "custom" else tr(crossword.THEME_NAMES.get(p.get("cross_theme"), ""))
     return ""
 
 

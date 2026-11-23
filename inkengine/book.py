@@ -28,6 +28,9 @@ def _page_seed(s, key, default):
     return default
 
 
+WORKSHEETS = {"maths", "trace", "clock", "scramble", "spelltest"}   # a booklet with these among other kinds is a set of worksheets
+
+
 def book_pages(s):
     """Every page of the booklet, in order."""
     n, c, title, mix, ramp = s.pages, s.complexity, s.title.strip(), s.mix, s.ramp
@@ -48,7 +51,8 @@ def book_pages(s):
                                 label=f"{tr(NAMES[gen])} {i + 1}"))
     if s.cover:
         kinds = {d.gen for d in designs}
-        cover_title = title or (tr("Colouring & puzzle book") if mix or len(kinds) > 1 else
+        cover_title = title or (tr("Worksheets") if len(kinds) > 1 and kinds & WORKSHEETS else
+                                tr("Colouring & puzzle book") if mix or len(kinds) > 1 else
                                 tr("{pattern} book").format(pattern=tr(NAMES[designs[0].gen])))
         pages.append(PageSpec(kind="cover", title=cover_title, designs=designs,
                               art_seed=_page_seed(s, "cover", (s.seed ^ 0x5BD1E995) & 0xFFFFFFFF)))
