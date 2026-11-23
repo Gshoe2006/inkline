@@ -12,7 +12,7 @@ def _drawn(job):
     """The seeds and specs each page of a job draws."""
     seen = []
     real = jobs.draw_page
-    jobs.draw_page = lambda ctx, g, spec, s: seen.append((s.seed, spec.gen))
+    jobs.draw_page = lambda ctx, g, spec, s: seen.append((spec.seed, spec.gen))
     try:
         for i in range(job.count):
             job.draw(None, i)
@@ -34,7 +34,7 @@ def test_copies_alike_and_photos_always_alike():
     st = State(Settings(gen="maze", seed=7))
     assert [s for s, _ in _drawn(jobs.job(st, copies=3, vary=False))] == [7, 7, 7]
     photo = State(Settings(mode="convert", seed=7))
-    assert {s for s, _ in _drawn(jobs.job(photo, copies=4, vary=True))} == {7}
+    assert len(set(_drawn(jobs.job(photo, copies=4, vary=True)))) == 1     # one look for every copy
     assert jobs.job(st, copies=1).count == 1 and jobs.job(st, copies=500).count == jobs.MAX_COPIES
 
 
@@ -131,7 +131,7 @@ def test_print_says_copies_and_the_print_dialogs_own_copies(win, monkeypatch):
     sb = win.sidebar
     sb.copies.setText("25")
     told = []
-    monkeypatch.setattr(win, "_start", lambda j, dev, done, failed: told.append(done))
+    monkeypatch.setattr(win, "_start", lambda j, dev, done, failed, **kw: told.append(done))
 
     def accept(d, times):
         d.printer().setCopyCount(times)
@@ -229,3 +229,114 @@ def test_answer_pages_leave_every_copy_exactly_as_without_them():
             keyed.draw(b, i)
             stamp = [op for op in b.ops if op[0] == "text" and op[1] == f"Copy {i + 1}"]
             assert len(stamp) == 1 and [op for op in b.ops if op not in stamp] == a.ops, kw
+
+
+def test_names_make_one_copy_each_with_the_name_on_its_line():
+    assert jobs.parse_names(" Ana, Ben ;\nCara,, ") == ["Ana", "Ben", "Cara"]
+    assert len(jobs.parse_names(",".join(f"P{i}" for i in range(150)))) == jobs.MAX_COPIES
+    assert jobs.copy_labels(["Sam", "Ana", "Sam"]) == ["Sam (copy 1)", "Ana", "Sam (copy 3)"]
+    st = State(Settings(gen="maze", seed=3, name_line=True))
+    j = jobs.job(st, copies=10, vary=True, names=["Ana", "Ben", "Cara"])  # the names say how many
+    assert j.count == 3 and j.name.endswith("-3-designs-named")
+    seen = []
+    real = jobs.draw_page
+    jobs.draw_page = lambda ctx, g, spec, s: seen.append(spec)
+    try:
+        for i in range(j.count):
+            j.draw(None, i)
+        k = jobs.job(st, copies=1, vary=True, answers=True, names=["Ana", "Ben", "Cara"])
+        for i in range(k.count):
+            k.draw(None, i)
+    finally:
+        jobs.draw_page = real
+    assert [p.filled_name for p in seen[:3]] == ["Ana", "Ben", "Cara"]
+    assert [p.seed for p in seen[:3]] == [s for s, _ in _drawn(jobs.job(st, copies=3, vary=True))]   # same designs
+    keyed, key = seen[3:6], seen[6]
+    assert [p.filled_name for p in keyed] == ["Ana", "Ben", "Cara"] and all(p.stamp == "" for p in keyed)
+    assert [d.key_label for d in key.items] == ["Ana", "Ben", "Cara"]
+    # without the Name line there's nowhere to write them: plain copies, as many as asked
+    assert jobs.job(State(Settings(gen="maze")), copies=2, names=["Ana", "Ben", "Cara"]).count == 2
+
+
+def test_a_name_is_written_on_the_line_and_the_design_is_unchanged():
+    from inkengine.canvas import RecordingCanvas
+    st = State(Settings(gen="maze", seed=3, name_line=True, dpi=36))
+    a, b = RecordingCanvas(), RecordingCanvas()
+    jobs.job(st, copies=2, vary=True).draw(a, 1)
+    jobs.job(st, copies=2, vary=True, names=["Ana", "Ben"]).draw(b, 1)
+    written = [op for op in b.ops if op[0] == "text" and op[1] == "Ben"]
+    assert len(written) == 1 and [op for op in b.ops if op not in written] == a.ops
+
+
+def test_the_names_field_says_what_it_does(win):
+    sb = win.sidebar
+    assert sb.copies_names_row.isVisibleTo(sb)
+    sb.copies_names.setText("Ana, Ben, Cara")                              # no Name line yet
+    assert sb.copies_hint.text().startswith('To write the names on the copies, turn on Page text → Add a "Name ______" line.')
+    assert sb.copies.isEnabled()
+    _set(win, name_line=True, gen="maze")
+    assert not sb.copies.isEnabled()                                        # the names say how many
+    assert sb.copies_hint.text().startswith("Print and Save PDF make 3 copies, one for each name, each with its own design")
+    assert sb.copies_hint.text().endswith("Answer pages follow, each labelled with its copy's name.")
+    sb.copies_names.setText(",".join(f"P{i}" for i in range(120)))
+    assert "one for each name (the first 100)" in sb.copies_hint.text()
+    sb.copies_names.setText("")
+    assert sb.copies.isEnabled()
+
+
+def test_run_stops_when_cancelled_and_calls_off_a_printer_job():
+    from PySide6.QtGui import QImage
+    QApplication.instance() or QApplication([])
+
+    class Device(QImage):   # a page to paint on, with a printer's newPage and abort
+        def __init__(self):
+            super().__init__(10, 10, QImage.Format.Format_RGB32)
+            self.aborted = False
+        def newPage(self):
+            return True
+        def abort(self):
+            self.aborted = True
+    drawn = []
+    j = jobs.Job("x", "copies", 5, "portrait", type("G", (), {"W": 10, "H": 10})(), lambda ctx, i: drawn.append(i))
+    d = Device()
+    assert jobs.run(j, d, cancelled=lambda: len(drawn) >= 2) is False and drawn == [0, 1] and d.aborted
+    drawn.clear()
+    d2 = Device()
+    assert jobs.run(j, d2) is True and drawn == [0, 1, 2, 3, 4] and not d2.aborted
+
+
+def test_cancel_stops_a_pdf_and_deletes_it(win, tmp_path, monkeypatch):
+    import threading
+    import time
+    from PySide6.QtCore import QCoreApplication
+    sb = win.sidebar
+    sb.copies.setText("40")
+    path = str(tmp_path / "set.pdf")
+    monkeypatch.setattr(win, "_ask_path", lambda *a: path)
+    real_run = jobs.run
+    reached = threading.Event()
+
+    def slow_run(j, device, progress=None, cancelled=lambda: False):   # holds page 2 until Cancel is pressed
+        def prog(i):
+            if i == 1:
+                reached.set()
+                deadline = time.time() + 10
+                while not cancelled() and time.time() < deadline:
+                    time.sleep(0.01)
+            progress(i)
+        return real_run(j, device, prog, cancelled)
+    monkeypatch.setattr(jobs, "run", slow_run)
+    win.save("pdf")
+    assert sb.progress_row.isVisibleTo(sb) and sb.cancel_btn.isEnabled()
+    deadline = time.time() + 30
+    while win._busy_saving and time.time() < deadline:
+        QCoreApplication.processEvents()
+        if reached.is_set() and sb.cancel_btn.isEnabled():
+            sb.cancel_btn.click()                                           # the button, as a person would
+            assert not sb.cancel_btn.isEnabled() and sb.status.text() == "Cancelling after this page…"
+        time.sleep(0.01)
+    assert not win._busy_saving
+    assert sb.status.text() == "Save cancelled: the PDF wasn't kept."
+    assert not (tmp_path / "set.pdf").exists() and not sb.progress_row.isVisibleTo(sb)
+    win.cancel_job()                                                        # nothing running: nothing happens
+    assert sb.status.text() == "Save cancelled: the PDF wasn't kept."

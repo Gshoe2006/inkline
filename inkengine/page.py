@@ -232,6 +232,7 @@ class PageSpec:
     opts: dict = field(default_factory=dict)      # design: this page's own settings (a booklet built page by page)
     key_label: str = ""          # design: what its answer is called on the answer pages, instead of label · page
     stamp: str = ""              # design: a small note in the bottom margin ("Copy 7"), leaving the design as it is
+    filled_name: str = ""        # written on the "Name ____" line (a class set with a name on each copy)
 
     def __post_init__(self):
         if self.header is None:
@@ -281,6 +282,10 @@ def draw_bands(ctx, g, spec):
             ctx.move_to(lx + ctx.measure_text(label) + fs * 0.3, y + 2)
             ctx.line_to(b.x + b.w, y + 2)
             ctx.stroke()
+            if spec.filled_name:   # written on the line, as if by hand, shrunk to fit
+                nx = lx + ctx.measure_text(label) + fs * 0.6
+                ctx.set_font(fs * 0.85, 600)
+                ctx.fill_text(spec.filled_name, nx, y - fs * 0.05, max(1, b.x + b.w - nx))
         if spec.label:
             ctx.set_font(fs * 0.6, 400)
             ctx.fill_style = "#555"

@@ -168,8 +168,16 @@ class Sidebar(QFrame):
         self.progress = QProgressBar()
         self.progress.setTextVisible(False)
         self.progress.setAccessibleName("Saving progress")
-        self.progress.hide()
-        lay.addWidget(self.progress)
+        # stops a long print or save after the page being drawn (the window wires it up: cancel_job)
+        self.cancel_btn = button("Cancel", "mini", "Stop printing or saving (Esc)")
+        self.progress_row = QWidget()
+        prow = QHBoxLayout(self.progress_row)
+        prow.setContentsMargins(0, 0, 0, 0)
+        prow.setSpacing(theme.PAIR_GAP)
+        prow.addWidget(self.progress, 1)
+        prow.addWidget(self.cancel_btn)
+        self.progress_row.hide()
+        lay.addWidget(self.progress_row)
         keys = label("Ctrl+P print · Ctrl+E PDF · Ctrl+S save project · Ctrl+N new design · ← → pages", "keys")
         keys.setWordWrap(True)
         lay.addWidget(keys)
@@ -429,6 +437,11 @@ class Sidebar(QFrame):
         self.copies.setAccessibleName("Copies to print or save")
         self.copies.textChanged.connect(lambda _t: self.sync())
         self.copies_row = sec.add(OptionRow("Copies", self.copies))
+        # a class set: one copy per name, each name written on its copy's "Name" line (never remembered either)
+        self.copies_names = line_edit(placeholder="Optional: Ana, Ben, Cara…", max_length=4000)
+        self.copies_names.setAccessibleName("Names: one copy for each, written on its Name line")
+        self.copies_names.textChanged.connect(lambda _t: self.sync())
+        self.copies_names_row = sec.add(OptionRow("Names", self.copies_names))
         self.copies_vary = check("A new design on each copy")
         self.copies_vary.setChecked(True)
         self.copies_vary.toggled.connect(lambda _on: self.sync())
@@ -453,6 +466,10 @@ class Sidebar(QFrame):
             return int(self.copies.text())
         except ValueError:
             return None
+
+    def copies_names_list(self):
+        """The names typed for a class set: they replace Copies, but only with the Name line on."""
+        return jobs.parse_names(self.copies_names.text()) if self.state.settings.name_line else []
 
     def copies_count(self):
         """The copies asked for: 1 when the field is empty or not a number, at most MAX_COPIES."""
@@ -787,19 +804,31 @@ class Sidebar(QFrame):
         self.testpage_hint.setVisible(s.testpage)
         multi = (is_book or is_pbook) and not s.testpage
         single = not multi and not s.poster and not s.testpage and (make or bool(self.state.photos))
-        n = self.copies_count() if single else 1
+        names = self.copies_names_list() if single else []
+        typed_names = jobs.parse_names(self.copies_names.text()) if single else []
+        n = len(names) if names else self.copies_count() if single else 1
         self.copies_row.setVisible(single)
+        self.copies_names_row.setVisible(single)
+        self.copies.setEnabled(not names)   # the names say how many
         can_vary, vary_note = jobs.copies_vary(s)
         typed = self.copies_typed()
-        off = typed is not None and typed != n   # 0 or over the most: say what will print instead
+        off = not names and typed is not None and typed != n   # 0 or over the most: say what will print instead
+        unnamed = bool(typed_names) and not names   # names typed, but no Name line to write them on
         self.copies_vary.setVisible(single and can_vary and n > 1)
         keyed = single and n > 1 and jobs.copies_have_answers(s)
         self.copies_answers.setVisible(keyed)
-        self.copies_hint.setVisible(single and (n > 1 or off))
-        if single and (n > 1 or off):
+        self.copies_hint.setVisible(single and (n > 1 or off or unnamed or bool(names)))
+        if single and (n > 1 or off or unnamed or names):
             vary = can_vary and self.copies_vary.isChecked()
             text = (f"Copies go from 1 to {MAX_COPIES}. " if off else "")
-            if n == 1:
+            if unnamed:
+                text += 'To write the names on the copies, turn on Page text → Add a "Name ______" line. '
+            if names:
+                many = len(jobs.parse_names(self.copies_names.text(), None)) > MAX_COPIES
+                text += (f"Print and Save PDF make {n} {'copy' if n == 1 else 'copies'}, one for each name"
+                         + (f" (the first {MAX_COPIES})" if many else "")
+                         + (", each with its own design (the first is the one shown)." if vary and n > 1 else "."))
+            elif n == 1:
                 text += "Print and Save PDF make 1 copy."
             else:
                 text += (f"Print and Save PDF make {n} copies, "
@@ -807,8 +836,9 @@ class Sidebar(QFrame):
             if vary_note and (vary or not can_vary):
                 text += " " + vary_note
             if keyed and self.copies_answers.isChecked():
-                text += (" Answer pages follow, and each copy is numbered to match them." if vary
-                         else " One answer page follows.")
+                text += (" One answer page follows." if not vary
+                         else " Answer pages follow, each labelled with its copy's name." if names
+                         else " Answer pages follow, and each copy is numbered to match them.")
             self.copies_hint.setText(text)
         self.only_row.setVisible(multi)
         self.only_hint.setVisible(multi and bool(self.only_pages.text().strip()))

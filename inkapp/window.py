@@ -7,13 +7,14 @@ with progress in the footer. Messages are 2.x's.
 
 import json
 import math
+import threading
 import uuid
 import os
 import time
 from dataclasses import replace
 
 from PySide6.QtCore import QEvent, QMimeData, QTimer, Qt, Signal
-from PySide6.QtGui import QAction, QGuiApplication, QImage, QKeySequence, QUndoCommand, QUndoStack
+from PySide6.QtGui import QAction, QGuiApplication, QImage, QKeySequence, QShortcut, QUndoCommand, QUndoStack
 from PySide6.QtPrintSupport import QAbstractPrintDialog, QPrintDialog, QPrinter
 from PySide6.QtWidgets import (QAbstractItemView, QAbstractSlider, QAbstractSpinBox, QApplication, QComboBox, QDialog,
                                QFileDialog, QHBoxLayout, QLineEdit, QMainWindow, QMenu, QMenuBar, QMessageBox, QUndoView,
@@ -189,6 +190,9 @@ class Window(QMainWindow):
         self.keeper = recovery.Keeper(version) if remember else None
         self._keep_timer = QTimer(self, singleShot=True, interval=KEEP_SECONDS * 1000, timeout=self._keep_copy)
         self._busy_saving = False
+        self._cancel = threading.Event()   # set by Cancel (or Esc) while a print or save is drawing
+        self._job_path = None              # the PDF being written, deleted if it's cancelled
+        self._job_stopped = ""             # what the status line says when it's cancelled
         self._pan_start = None
         self.history = QUndoStack(self)
         self._history_view = None   # Edit → History…, made the first time it's opened
@@ -217,6 +221,9 @@ class Window(QMainWindow):
     def _wire(self):
         sb, pv = self.sidebar, self.preview
         sb.changed.connect(self._changed)
+        sb.cancel_btn.clicked.connect(self.cancel_job)
+        esc = QShortcut(QKeySequence(Qt.Key.Key_Escape), self)
+        esc.activated.connect(self.cancel_job)
         sb.mode_changed.connect(self._set_mode)
         sb.reroll.connect(self.new_design)
         sb.more_designs.connect(self.more_designs)
@@ -1250,7 +1257,8 @@ class Window(QMainWindow):
             dev.setTitle(j.name)
             dev.setCreator("Inkline")
             done = f"Saved {j.amount()} as {os.path.basename(path)}" if j.count > 1 else f"Saved {os.path.basename(path)}"
-            self._start(j, dev, done, f"Couldn't write {path}. Check the folder permissions.")
+            self._start(j, dev, done, f"Couldn't write {path}. Check the folder permissions.",
+                        stopped="Save cancelled: the PDF wasn't kept.", path=path)
             return
         ext, filt = ("png", "PNG image (*.png)") if kind == "png" else ("svg", "SVG vector image (*.svg)")
 
@@ -1271,7 +1279,8 @@ class Window(QMainWindow):
         only = sb.only_pages.text() if sb.only_row.isVisibleTo(sb) else ""
         copies = sb.copies_count() if sb.copies_row.isVisibleTo(sb) else 1
         try:
-            return jobs.job(snap, only, copies, sb.copies_vary.isChecked(), sb.copies_answers.isChecked())
+            names = sb.copies_names_list() if sb.copies_row.isVisibleTo(sb) else []
+            return jobs.job(snap, only, copies, sb.copies_vary.isChecked(), sb.copies_answers.isChecked(), names)
         except ValueError as why:
             self._msg(f"{why} Fix the pages under Paper → Print or save only, or clear it to use every page.")
             self.sidebar.only_pages.setFocus()
@@ -1306,7 +1315,8 @@ class Window(QMainWindow):
         if times > 1:
             done = done[:-1] + (f", {times} times over" if j.count > 1 else f", {times} copies") \
                 + " (Copies in the print dialog)."
-        self._start(j, printer, done, "The printer didn't accept the job. Check that it's connected.")
+        self._start(j, printer, done, "The printer didn't accept the job. Check that it's connected.",
+                    stopped="Printing cancelled: nothing was sent to the printer.")
 
     def _remember_printer(self, name):
         jobs.forget_printer_margins()   # the printers, or the system's default, may have changed
@@ -1317,26 +1327,49 @@ class Window(QMainWindow):
                 self._msg(err)
         self._show_printer_edges()
 
-    def _start(self, j, device, done, failed):
+    def _start(self, j, device, done, failed, stopped="Cancelled.", path=None):
+        """Draw a print or PDF job on the worker. stopped: the status line if it's cancelled; path: the PDF being
+        written, deleted then."""
         self._device = device   # kept alive while the worker draws on it
-        bar = self.sidebar.progress
+        self._cancel.clear()
+        self._job_path, self._job_stopped = path, stopped
+        sb = self.sidebar
+        bar = sb.progress
         bar.setRange(0, j.count)
         bar.setValue(0)
-        bar.setVisible(j.count > 1)
+        sb.cancel_btn.setEnabled(True)
+        sb.progress_row.setVisible(j.count > 1)
         self._busy(True, f"Rendering {j.unit} 1 of {j.count}…")
         self._pending_save = None
+        cancel = self._cancel
 
         def progress(i):
-            self.status.emit(f"Rendering {j.unit} {i + 1} of {j.count}…")
+            if not cancel.is_set():
+                self.status.emit(f"Rendering {j.unit} {i + 1} of {j.count}…")
             QTimer.singleShot(0, lambda: bar.setValue(i + 1))
-        self.worker.submit(lambda: ("job", jobs.run(j, device, progress), done, failed))
+        self.worker.submit(lambda: ("job", jobs.run(j, device, progress, cancel.is_set), done, failed))
+
+    def cancel_job(self):
+        """Cancel (or Esc): stop the print or save after the page being drawn."""
+        if not self._busy_saving or self._cancel.is_set() or self._pending_save is not None:
+            return
+        self._cancel.set()
+        self.sidebar.cancel_btn.setEnabled(False)
+        self._msg("Cancelling after this page…")
 
     def _job_done(self, _n, r):
         kind = r[0]
         if kind == "job":
             _k, ok, done, failed = r
-            self._busy(False, done if ok else failed)
             self._device = None
+            stopped = not ok and self._cancel.is_set()
+            if stopped and self._job_path:   # a half-written PDF isn't kept
+                try:
+                    os.remove(self._job_path)
+                except OSError:
+                    pass
+            self._job_path = None
+            self._busy(False, self._job_stopped if stopped else done if ok else failed)
             return
         _k, data, name = r
         k, ext, filt = self._pending_save
@@ -1366,7 +1399,7 @@ class Window(QMainWindow):
         for b in (sb.print_btn, sb.png_btn, sb.pdf_btn, sb.svg_btn):
             b.setEnabled(not on)
         if not on:
-            sb.progress.hide()
+            sb.progress_row.hide()
             sb.sync()
         self._msg(text)
 
@@ -1411,7 +1444,7 @@ class Window(QMainWindow):
 
     def closeEvent(self, e):
         if self._busy_saving:   # a PDF or print job is still drawing from the work
-            self._msg("Wait for the save or print to finish, then close Inkline.")
+            self._msg("Cancel the save or print (or wait for it to finish), then close Inkline.")
             e.ignore()
             return
         # unsaved changes to a project, or to photos (they aren't remembered), ask first; untitled settings
