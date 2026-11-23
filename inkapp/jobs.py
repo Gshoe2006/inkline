@@ -9,7 +9,8 @@ import re
 from dataclasses import dataclass, replace
 
 from PySide6.QtCore import QMarginsF, QRectF
-from PySide6.QtGui import QPageLayout, QPageSize, QPainter
+from PySide6.QtGui import QPageLayout, QPageSize, QPainter, QPicture
+from PySide6.QtPrintSupport import QPrinter
 
 from inkengine import book, output, poster
 from inkengine.canvas import QtCanvas
@@ -252,12 +253,64 @@ def page_layout(s, orient):
     return QPageLayout(QPageSize(PAPER_IDS[s.paper]), o, QMarginsF(0, 0, 0, 0))
 
 
-def run(j, device, progress=None, cancelled=lambda: False, outcome=None):
+def run(j, device, progress=None, cancelled=lambda: False):
     """Draw every page of the job onto a QPdfWriter or QPrinter (already set up). True when finished.
-    cancelled() is asked before each page: when it says so, a printer's job is called off and False is
-    returned; a PDF is left half-written, for the caller to delete. Not every printer system can call a job
-    off (Qt can't on Linux): then the pages drawn so far still go to the printer, and outcome (a dict, if
-    given) gets "sent": how many."""
+    A printer gets the job only once every page is drawn (see _print), so cancelling never prints anything."""
+    if isinstance(device, QPrinter):
+        return _print(j, device, progress, cancelled)
+    return _draw(j, device, progress, cancelled)
+
+
+def _page_window(p, g):
+    """Page pixels at the settings' dpi onto the device's whole page."""
+    p.setWindow(0, 0, g.W, g.H)
+    vp = p.viewport()
+    sc = min(vp.width() / g.W, vp.height() / g.H)
+    w, h = round(g.W * sc), round(g.H * sc)
+    p.setViewport(vp.x() + (vp.width() - w) // 2, vp.y() + (vp.height() - h) // 2, w, h)
+
+
+def _print(j, printer, progress, cancelled):
+    """Print a job: every page is drawn first (recorded as a QPicture), and only then is the printer started
+    and the pages played onto it. Not every printer system can call a job off once it's started (Qt can't on
+    Linux), so a cancel while drawing leaves nothing sent; once sending starts it's quick and isn't stopped."""
+    g, pages = j.geometry, []
+    for i in range(j.count):
+        if cancelled():
+            return False
+        if progress:
+            progress(i)
+        pic = QPicture()
+        p = QPainter(pic)
+        try:
+            j.draw(QtCanvas(p, g.W, g.H), i)
+        finally:
+            p.end()
+        pages.append(pic)
+    if cancelled():
+        return False
+    p = QPainter()
+    if not p.begin(printer):
+        return False
+    try:
+        for i, pic in enumerate(pages):
+            if i and not printer.newPage():
+                return False
+            p.save()
+            _page_window(p, g)
+            # a picture plays back scaled from the resolution it was recorded at to the printer's: undo that,
+            # so it lands where the page's own coordinates say
+            p.scale(pic.logicalDpiX() / printer.logicalDpiX(), pic.logicalDpiY() / printer.logicalDpiY())
+            p.drawPicture(0, 0, pic)
+            p.restore()
+        return True
+    finally:
+        p.end()
+
+
+def _draw(j, device, progress=None, cancelled=lambda: False):
+    """Draw every page of the job straight onto a PDF (a QPdfWriter). cancelled() is asked before each page:
+    when it says so, False is returned and the half-written PDF is left for the caller to delete."""
     p = QPainter()
     if not p.begin(device):
         return False
@@ -265,21 +318,13 @@ def run(j, device, progress=None, cancelled=lambda: False, outcome=None):
         g = j.geometry
         for i in range(j.count):
             if cancelled():
-                # QPrinter: drop the job rather than print what's drawn so far, where the printer system can
-                if hasattr(device, "abort") and not device.abort() and outcome is not None:
-                    outcome["sent"] = i
                 return False
             if i and not device.newPage():
                 return False
             if progress:
                 progress(i)
-            # page pixels at the settings' dpi onto the device's whole page
             p.save()
-            p.setWindow(0, 0, g.W, g.H)
-            vp = p.viewport()
-            sc = min(vp.width() / g.W, vp.height() / g.H)
-            w, h = round(g.W * sc), round(g.H * sc)
-            p.setViewport(vp.x() + (vp.width() - w) // 2, vp.y() + (vp.height() - h) // 2, w, h)
+            _page_window(p, g)
             j.draw(QtCanvas(p, g.W, g.H), i)
             p.restore()
         return True

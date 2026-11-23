@@ -197,9 +197,7 @@ class Window(QMainWindow):
         self._cancel = threading.Event()   # set by Cancel (or Esc) while a print or save is drawing
         self._job_path = None              # the PDF being written, deleted if it's cancelled
         self._job_stopped = ""             # what the status line says when it's cancelled
-        self._job_outcome = {}             # jobs.run's note of pages that went to the printer anyway
         self._pending_save = None          # a PNG or SVG being drawn, before its file is chosen
-        self._job_unit = "page"
         self._pan_start = None
         self.history = QUndoStack(self)
         self._history_view = None   # Edit → History…, made the first time it's opened
@@ -1419,14 +1417,12 @@ class Window(QMainWindow):
         self._busy(True, f"Rendering {j.unit} 1 of {j.count}…")
         self._pending_save = None
         cancel = self._cancel
-        self._job_outcome = outcome = {}
-        self._job_unit = j.unit
 
         def progress(i):
             if not cancel.is_set():
                 self.status.emit(f"Rendering {j.unit} {i + 1} of {j.count}…")
             QTimer.singleShot(0, lambda: bar.setValue(i + 1))
-        self.worker.submit(lambda: ("job", jobs.run(j, device, progress, cancel.is_set, outcome), done, failed))
+        self.worker.submit(lambda: ("job", jobs.run(j, device, progress, cancel.is_set), done, failed))
 
     def cancel_job(self):
         """Cancel (or Esc): stop the print or save after the page being drawn."""
@@ -1447,14 +1443,9 @@ class Window(QMainWindow):
             message = self._job_stopped if stopped else done if ok else failed
             path = self._job_path
             if stopped and not path and isinstance(device, QPrinter) and device.outputFileName():
-                path = device.outputFileName()   # the print dialog's "Print to file": cancelled, so not kept
-                message = "Printing cancelled: the file wasn't kept."
-            elif stopped and "sent" in self._job_outcome:   # this printer system can't call a job off
-                n, unit = self._job_outcome["sent"], self._job_unit
-                message = ("Printing stopped. " + (f"The {n} {unit}{'s' if n != 1 else ''} already drawn still went"
-                           if n else "An empty job still went") + " to the printer: cancel it in your system's "
-                           "print queue if you don't want it.")
-            if stopped and path:   # a half-written PDF isn't kept
+                path = device.outputFileName()   # the print dialog's "Print to file": nothing written, or not kept
+                message = "Printing cancelled: no file was written."
+            if stopped and path and os.path.exists(path):   # a half-written PDF isn't kept
                 try:
                     os.remove(path)
                 except OSError:

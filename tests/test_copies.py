@@ -288,25 +288,20 @@ def test_the_names_field_says_what_it_does(win):
     assert sb.copies.isEnabled()
 
 
-def test_run_stops_when_cancelled_and_calls_off_a_printer_job():
+def test_run_stops_a_pdf_when_cancelled():
     from PySide6.QtGui import QImage
     QApplication.instance() or QApplication([])
 
-    class Device(QImage):   # a page to paint on, with a printer's newPage and abort
+    class Device(QImage):   # a page to paint on, with a PDF writer's newPage
         def __init__(self):
             super().__init__(10, 10, QImage.Format.Format_RGB32)
-            self.aborted = False
         def newPage(self):
             return True
-        def abort(self):
-            self.aborted = True
     drawn = []
     j = jobs.Job("x", "copies", 5, "portrait", type("G", (), {"W": 10, "H": 10})(), lambda ctx, i: drawn.append(i))
-    d = Device()
-    assert jobs.run(j, d, cancelled=lambda: len(drawn) >= 2) is False and drawn == [0, 1] and d.aborted
+    assert jobs.run(j, Device(), cancelled=lambda: len(drawn) >= 2) is False and drawn == [0, 1]
     drawn.clear()
-    d2 = Device()
-    assert jobs.run(j, d2) is True and drawn == [0, 1, 2, 3, 4] and not d2.aborted
+    assert jobs.run(j, Device()) is True and drawn == [0, 1, 2, 3, 4]
 
 
 def test_cancel_stops_a_pdf_and_deletes_it(win, tmp_path, monkeypatch):
@@ -320,7 +315,7 @@ def test_cancel_stops_a_pdf_and_deletes_it(win, tmp_path, monkeypatch):
     real_run = jobs.run
     reached = threading.Event()
 
-    def slow_run(j, device, progress=None, cancelled=lambda: False, outcome=None):   # holds page 2 until Cancel
+    def slow_run(j, device, progress=None, cancelled=lambda: False):   # holds page 2 until Cancel
         def prog(i):
             if i == 1:
                 reached.set()
@@ -328,7 +323,7 @@ def test_cancel_stops_a_pdf_and_deletes_it(win, tmp_path, monkeypatch):
                 while not cancelled() and time.time() < deadline:
                     time.sleep(0.01)
             progress(i)
-        return real_run(j, device, prog, cancelled, outcome)
+        return real_run(j, device, prog, cancelled)
     monkeypatch.setattr(jobs, "run", slow_run)
     win.save("pdf")
     assert sb.progress_row.isVisibleTo(sb) and sb.cancel_btn.isEnabled()
@@ -347,21 +342,59 @@ def test_cancel_stops_a_pdf_and_deletes_it(win, tmp_path, monkeypatch):
 
 
 
-def test_a_printer_that_cant_call_off_a_job_is_reported_honestly():
-    """Qt can't call off a print job on Linux (abort() says no): the pages drawn still print, and run says how many."""
-    from PySide6.QtGui import QImage
-    QApplication.instance() or QApplication([])
+def _printer_to(path, s=None, orient="portrait"):
+    """A printer writing a PDF, set up as Print sets one up (its page from the settings)."""
+    from PySide6.QtPrintSupport import QPrinter
+    pr = QPrinter(QPrinter.PrinterMode.HighResolution)
+    pr.setPageLayout(jobs.page_layout(s or Settings(), orient))
+    pr.setFullPage(True)
+    pr.setOutputFormat(QPrinter.OutputFormat.PdfFormat)
+    pr.setOutputFileName(str(path))
+    return pr
 
-    class Device(QImage):
-        def __init__(self):
-            super().__init__(10, 10, QImage.Format.Format_RGB32)
-        def newPage(self):
-            return True
-        def abort(self):
-            return False
-    drawn, out = [], {}
-    j = jobs.Job("x", "copies", 5, "portrait", type("G", (), {"W": 10, "H": 10})(), lambda ctx, i: drawn.append(i))
-    assert jobs.run(j, Device(), cancelled=lambda: len(drawn) >= 3, outcome=out) is False and out == {"sent": 3}
+
+def test_a_print_is_drawn_first_so_cancelling_sends_nothing(tmp_path):
+    """Pages are drawn before the printer starts: a cancel at any point while drawing leaves nothing printed
+    (here a printer writing a PDF stands in for one, as Linux's printing works)."""
+    QApplication.instance() or QApplication([])
+    st = State(Settings(gen="maze", seed=3, dpi=36))
+    j = jobs.job(st, copies=4, vary=True)
+    for stop in (0, 2, 3):                                                  # before page 1, 3 and the last
+        out = tmp_path / f"stop{stop}.pdf"
+        drawn = []
+        assert jobs.run(j, _printer_to(out), progress=drawn.append, cancelled=lambda: len(drawn) > stop) is False
+        assert not out.exists()                                             # the printer was never started
+    out = tmp_path / "all.pdf"
+    assert jobs.run(j, _printer_to(out)) is True and out.exists()
+
+
+def test_a_printed_page_matches_the_saved_pdf(tmp_path):
+    """Played back from its recording, a printed page looks like the PDF saved straight from the same job."""
+    import subprocess
+    import shutil
+    from PySide6.QtGui import QImage, QPdfWriter
+    if not shutil.which("pdftoppm"):
+        pytest.skip("needs pdftoppm")
+    QApplication.instance() or QApplication([])
+    for kw in ({"gen": "maze", "title": "Mazes", "name_line": True}, {"gen": "words"}, {"gen": "mandala", "cbn": True}):
+        s = Settings(seed=8, dpi=72, **kw)
+        j = jobs.job(State(s), copies=1, names=["Ana"] if kw.get("name_line") else ())
+        printed, saved = tmp_path / "printed.pdf", tmp_path / "saved.pdf"
+        assert jobs.run(j, _printer_to(printed, s, j.orient))
+        w = QPdfWriter(str(saved))
+        w.setPageLayout(jobs.page_layout(s, j.orient))
+        w.setResolution(s.dpi)
+        assert jobs.run(j, w)
+        pics = []
+        for f in (printed, saved):
+            subprocess.run(["pdftoppm", "-r", "40", "-gray", "-png", "-singlefile", str(f), str(f.with_suffix(""))],
+                           check=True)
+            pics.append(QImage(str(f.with_suffix(".png"))).convertToFormat(QImage.Format.Format_Grayscale8))
+        a, b = pics
+        assert a.size() == b.size()
+        diff = sum(abs(a.pixelColor(x, y).value() - b.pixelColor(x, y).value()) > 64
+                   for x in range(0, a.width(), 2) for y in range(0, a.height(), 2))
+        assert diff < 0.01 * (a.width() // 2) * (a.height() // 2), (kw, diff)
 
 
 def _print_and_cancel(win, monkeypatch, at, file=None):
@@ -378,7 +411,7 @@ def _print_and_cancel(win, monkeypatch, at, file=None):
     monkeypatch.setattr(QPrintDialog, "exec", accept)
     real_run, reached = jobs.run, threading.Event()
 
-    def slow_run(j, device, progress=None, cancelled=lambda: False, outcome=None):
+    def slow_run(j, device, progress=None, cancelled=lambda: False):
         def prog(i):
             if i == at:
                 reached.set()
@@ -386,10 +419,10 @@ def _print_and_cancel(win, monkeypatch, at, file=None):
                 while not cancelled() and time.time() < deadline:
                     time.sleep(0.01)
             progress(i)
-        if not file:   # no printer here: a PDF stands in, as Linux's print system does (abort() can't stop it)
+        if not file:   # no printer here: a PDF stands in, as Linux's print system does
             device.setOutputFormat(QPrinter.OutputFormat.PdfFormat)
             device.setOutputFileName(str(win._tmp / "spool.pdf"))
-        return real_run(j, device, prog, cancelled, outcome)
+        return real_run(j, device, prog, cancelled)
     monkeypatch.setattr(jobs, "run", slow_run)
     if not file:   # so the printer isn't treated as "Print to file" afterwards
         monkeypatch.setattr(QPrinter, "outputFileName", lambda p: "")
@@ -403,19 +436,18 @@ def _print_and_cancel(win, monkeypatch, at, file=None):
     return win.sidebar.status.text()
 
 
-def test_cancelled_printing_says_what_still_went_to_the_printer(win, tmp_path, monkeypatch):
+def test_cancelled_printing_sends_nothing(win, tmp_path, monkeypatch):
     win._tmp = tmp_path
     win.sidebar.copies.setText("6")
-    assert _print_and_cancel(win, monkeypatch, 2) == ("Printing stopped. The 3 pages already drawn still went to "
-                                                     "the printer: cancel it in your system's print queue if you "
-                                                     "don't want it.")
+    assert _print_and_cancel(win, monkeypatch, 2) == "Printing cancelled: nothing was sent to the printer."
+    assert not (tmp_path / "spool.pdf").exists()                           # nothing reached the "printer"
 
 
 def test_cancelled_print_to_file_isnt_kept(win, tmp_path, monkeypatch):
     win._tmp = tmp_path
     win.sidebar.copies.setText("6")
     out = tmp_path / "printed.pdf"
-    assert _print_and_cancel(win, monkeypatch, 2, file=str(out)) == "Printing cancelled: the file wasn't kept."
+    assert _print_and_cancel(win, monkeypatch, 2, file=str(out)) == "Printing cancelled: no file was written."
     assert not out.exists()
 
 
