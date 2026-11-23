@@ -132,16 +132,28 @@ def copies_vary(s):
     return True, ""
 
 
+def parse_names(text, limit=MAX_COPIES):
+    """The names typed for a class set (separated by commas, semicolons or new lines), at most limit."""
+    names = [n for n in (n.strip() for n in re.split(r"[,;\n]", text or "")) if n]
+    return names[:limit] if limit else names
+
+
+def copy_labels(names):
+    """What each named copy's answer is called: its name, or with the copy's number when a name repeats."""
+    return [n if names.count(n) == 1 else f"{n} (copy {i + 1})" for i, n in enumerate(names)]
+
+
 def copies_have_answers(s):
     """Whether copies of this single page can have answer pages: a puzzle (or colour by number) made up."""
     return s.mode == "make" and has_answer(s.gen, s)
 
 
-def job(state, only="", copies=1, vary=False, answers=False):
+def job(state, only="", copies=1, vary=False, answers=False, names=()):
     """What Print and Save PDF produce. only: a choice of pages as parse_pages() reads it (booklets and photo
     books; empty for all). copies: how many of a single page, each with its own design when vary (Make one up),
     then with answers their answer pages, each copy numbered to match. Raises ValueError when the choice of
-    pages doesn't make sense."""
+    pages doesn't make sense. names: a class set, one copy per name, each name on its copy's "Name" line (only
+    with the Name line on); they replace copies."""
     s, v = state.settings, view(state)
     if v.kind == "testpage":
         st = replace(s, orient="portrait")
@@ -169,23 +181,25 @@ def job(state, only="", copies=1, vary=False, answers=False):
         g = geometry(s)
         return Job(name, label, len(picked), s.orient, g, lambda ctx, i: draw_page(ctx, g, pages[picked[i]], s))
     g, spec = geometry(s), single_page(s, state.photo)
-    copies = max(1, min(MAX_COPIES, int(copies or 1)))
-    if copies == 1:
+    names = list(names)[:MAX_COPIES] if s.name_line else []
+    copies = len(names) if names else max(1, min(MAX_COPIES, int(copies or 1)))
+    if copies == 1 and not names:
         return Job(base_name(state), "page", 1, s.orient, g, lambda ctx, i: draw_page(ctx, g, spec, s))
     vary = vary and copies_vary(s)[0]   # a photo has one look, a plain name page one design: their copies are alike
-    name = f"{base_name(state)}-{copies}{'-designs' if vary else '-copies'}"
+    name = f"{base_name(state)}-{copies}{'-designs' if vary else '-copies'}{'-named' if names else ''}"
     answers = answers and copies_have_answers(s)
+    labels = copy_labels(names) if names else [f"Copy {i + 1}" for i in range(copies)]
+
+    def copy_spec(i):
+        si = replace(spec, seed=copy_seed(s.seed, i)) if vary else spec
+        return replace(si, filled_name=names[i]) if names else si
     if not answers:
-        def draw(ctx, i):
-            if not vary:
-                return draw_page(ctx, g, spec, s)
-            si = replace(s, seed=copy_seed(s.seed, i))
-            return draw_page(ctx, g, single_page(si, state.photo), si)
-        return Job(name, "copies", copies, s.orient, g, draw)
-    # each copy carries "Copy 7" under it, and so does its answer; alike copies share one answer
-    # (in the margin: a page number's band would shrink the design, and copy 1 would no longer be the one shown)
-    designs = [replace(spec, seed=copy_seed(s.seed, i) if vary else s.seed, stamp=f"Copy {i + 1}",
-                       key_label=f"Copy {i + 1}" if vary else "Every copy") for i in range(copies)]
+        return Job(name, "copies", copies, s.orient, g, lambda ctx, i: draw_page(ctx, g, copy_spec(i), s))
+    # each answer is called by its copy's name, or "Copy 7", which unnamed copies carry under them (in the
+    # margin: a page number's band would shrink the design, and copy 1 would no longer be the one shown); alike
+    # copies share one answer
+    designs = [replace(copy_spec(i), stamp="" if names else labels[i],
+                       key_label=labels[i] if vary else "Every copy") for i in range(copies)]
     solved = designs if vary else designs[:1]
     keys = [PageSpec(kind="answers", header=True, title="Answers", items=solved[k:k + 4])
             for k in range(0, len(solved), 4)]
@@ -234,8 +248,12 @@ def page_layout(s, orient):
     return QPageLayout(QPageSize(PAPER_IDS[s.paper]), o, QMarginsF(0, 0, 0, 0))
 
 
-def run(j, device, progress=None, cancelled=lambda: False):
-    """Draw every page of the job onto a QPdfWriter or QPrinter (already set up). True when finished."""
+def run(j, device, progress=None, cancelled=lambda: False, outcome=None):
+    """Draw every page of the job onto a QPdfWriter or QPrinter (already set up). True when finished.
+    cancelled() is asked before each page: when it says so, a printer's job is called off and False is
+    returned; a PDF is left half-written, for the caller to delete. Not every printer system can call a job
+    off (Qt can't on Linux): then the pages drawn so far still go to the printer, and outcome (a dict, if
+    given) gets "sent": how many."""
     p = QPainter()
     if not p.begin(device):
         return False
@@ -243,6 +261,9 @@ def run(j, device, progress=None, cancelled=lambda: False):
         g = j.geometry
         for i in range(j.count):
             if cancelled():
+                # QPrinter: drop the job rather than print what's drawn so far, where the printer system can
+                if hasattr(device, "abort") and not device.abort() and outcome is not None:
+                    outcome["sent"] = i
                 return False
             if i and not device.newPage():
                 return False
