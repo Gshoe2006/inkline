@@ -7,7 +7,7 @@ Photo ("Convert a photo"), then Page text, Poster and Paper.
 """
 
 from PySide6.QtCore import QPoint, QSize, Qt, Signal
-from PySide6.QtGui import QKeySequence, QPixmap, QShortcut
+from PySide6.QtGui import QIntValidator, QKeySequence, QPixmap, QShortcut
 from PySide6.QtWidgets import (QAbstractItemView, QFrame, QHBoxLayout, QLabel, QListWidget, QListWidgetItem,
                                QProgressBar, QScrollArea, QTabBar, QVBoxLayout, QWidget)
 
@@ -16,6 +16,7 @@ from inkengine.page import PAGE_KEYS, has_answer
 from inkengine.patterns import NAMES, maze, name, spot, words
 
 from . import theme, thumbs
+from .jobs import MAX_COPIES
 from .state import BUILTIN_PRESETS
 from .widgets import (Hint, OptionRow, Pager, Pair, Section, SubOptions, button, check, combo, label, line_edit,
                       slider_row)
@@ -388,6 +389,18 @@ class Sidebar(QFrame):
         self.only_pages.textChanged.connect(lambda _t: self.sync())
         self.only_row = sec.add(OptionRow("Print or save only", self.only_pages))
         self.only_hint = sec.add(Hint())
+        # Print and Save PDF of a single page: how many (a class set), each with a new design or alike; not a
+        # setting either, so it's never remembered
+        self.copies = line_edit(placeholder="1", max_length=3)
+        self.copies.setValidator(QIntValidator(1, MAX_COPIES, self.copies))
+        self.copies.setAccessibleName("Copies to print or save")
+        self.copies.textChanged.connect(lambda _t: self.sync())
+        self.copies_row = sec.add(OptionRow("Copies", self.copies))
+        self.copies_vary = check("A new design on each copy")
+        self.copies_vary.setChecked(True)
+        self.copies_vary.toggled.connect(lambda _on: self.sync())
+        sec.add(self.copies_vary)
+        self.copies_hint = sec.add(Hint())
         self.testpage_hint = sec.add(Hint("Print it at 100% (“Actual size”), then check the squares with a ruler. Always portrait."))
         sec.add(Pair(OptionRow("Size", self._combo("paper", [("letter", "Letter"), ("a4", "A4")])),
                      OptionRow("Orientation", self._combo("orient", [("portrait", "Portrait"), ("landscape", "Landscape")]))))
@@ -396,6 +409,13 @@ class Sidebar(QFrame):
         self.margin_hint = sec.add(Hint())   # the printer can't reach that far in: set_margin_warning()
         self.margin_hint.setVisible(False)
         self.col.addWidget(sec)
+
+    def copies_count(self):
+        """The copies asked for: 1 when the field is empty or not a number."""
+        try:
+            return max(1, min(MAX_COPIES, int(self.copies.text())))
+        except ValueError:
+            return 1
 
     def _only_note(self, s, photo_book):
         """What Print and Save PDF will do with the pages typed, or what's wrong with them."""
@@ -722,6 +742,15 @@ class Sidebar(QFrame):
                                    "staple along the fold.")
         self.testpage_hint.setVisible(s.testpage)
         multi = (is_book or is_pbook) and not s.testpage
+        single = not multi and not s.poster and not s.testpage and (make or bool(self.state.photos))
+        n = self.copies_count() if single else 1
+        self.copies_row.setVisible(single)
+        self.copies_vary.setVisible(single and make and n > 1)
+        self.copies_hint.setVisible(single and n > 1)
+        if single and n > 1:
+            vary = make and self.copies_vary.isChecked()
+            self.copies_hint.setText(f"Print and Save PDF make {n} copies, "
+                                     + ("each with its own design (the first is the one shown)." if vary else "all alike."))
         self.only_row.setVisible(multi)
         self.only_hint.setVisible(multi and bool(self.only_pages.text().strip()))
         if multi and self.only_pages.text().strip():
