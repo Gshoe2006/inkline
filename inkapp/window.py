@@ -245,6 +245,7 @@ class Window(QMainWindow):
         sb.class_list_delete.connect(self._delete_class_list)
         sb.fill_class_lists(self.class_lists)
         sb.class_set_changed.connect(self._class_set_changed)
+        sb.copy_step.connect(self.step_copy)
         sb.photo_selected.connect(self._select_photo)
         sb.photo_moved.connect(self._move_photo)
         sb.photo_removed.connect(self._remove_photo)
@@ -744,8 +745,18 @@ class Window(QMainWindow):
         return self.project_path is not None and \
             project.class_set(self.sidebar.class_set()) != project.class_set(self._saved_class_set)
 
+    def step_copy(self, d):
+        """The copy pager: show the class set's next or previous copy in the preview."""
+        cs = self.sidebar.class_set_view()
+        if cs is None:
+            return
+        self.state.copy = max(0, min(self.state.copy + d, cs.count - 1))
+        self.schedule()
+
     def _class_set_changed(self):
-        """Copies, Names or their switches changed: the title's unsaved mark, and a recovery copy as for any change."""
+        """Copies, Names or their switches changed: the preview (it shows one of the copies), the title's unsaved
+        mark, and a recovery copy as for any change."""
+        self.schedule()
         self._update_title()
         if self.keeper is not None and self.project_path is not None and not self._keep_timer.isActive():
             self._keep_timer.start()
@@ -1144,13 +1155,15 @@ class Window(QMainWindow):
 
     def _render(self):
         st = self.state
-        snap = State(replace(st.settings), [replace(p) for p in st.photos], st.sel, st.page)
+        snap = State(replace(st.settings), [replace(p) for p in st.photos], st.sel, st.page,
+                     copy=st.copy, class_set=self.sidebar.class_set_view())
         self.renderer.submit(lambda: render_view(snap))
 
     def _rendered(self, n, r):
         if n != self.renderer.latest:
             return
         self.state.page = r.view.index
+        self.state.copy = r.view.copy
         self.preview.page.set_image(r.image, r.poster)
         self.preview.page.set_pannable(self.state.settings.mode == "convert" and bool(self.state.photos)
                                        and r.view.kind not in ("fold", "testpage"))
@@ -1301,13 +1314,14 @@ class Window(QMainWindow):
             elif kind == "png" and s.poster:
                 self._msg("Posters save as PDF (one page per sheet) or print directly.")
             return
-        snap = State(replace(s), [replace(p) for p in st.photos], st.sel, st.page)
+        snap = State(replace(s), [replace(p) for p in st.photos], st.sel, st.page,
+                     copy=st.copy, class_set=self.sidebar.class_set_view())   # PNG and SVG: the copy shown
         if kind == "pdf":
             j = self._job(snap)
             if j is None:
                 return
-            what = ("Save PDF of " + j.amount() if j.label == "copies" else f"Save {j.label} PDF") if j.count > 1 \
-                else "Save PDF"
+            what = ("Save PDF of " + j.amount() if j.label in ("copies", "booklets") else f"Save {j.label} PDF") \
+                if j.count > 1 else "Save PDF"
             path = self._ask_path(what, j.name, "pdf", "PDF document (*.pdf)")
             if not path:
                 self._msg("Save cancelled.")
@@ -1372,7 +1386,7 @@ class Window(QMainWindow):
             self._msg("Print cancelled.")
             return
         self._remember_printer(printer.printerName())
-        sent = j.amount() if j.duplex or j.label == "copies" else f"{j.count} {j.unit}s"
+        sent = j.amount() if j.duplex or j.label in ("copies", "booklets") else f"{j.count} {j.unit}s"
         done = f"Sent {sent} to the printer." if j.count > 1 else "Sent to the printer."
         times = printer.copyCount()   # the dialog's own Copies prints the whole job that many times
         if times > 1:

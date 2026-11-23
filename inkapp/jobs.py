@@ -13,10 +13,12 @@ from PySide6.QtGui import QPageLayout, QPageSize, QPainter
 
 from inkengine import book, output, poster
 from inkengine.canvas import QtCanvas
-from inkengine.page import PageSpec, draw_page, geometry, has_answer, single_page
+from inkengine.page import PageSpec, draw_page, geometry, single_page
 from inkengine.testpage import draw_test_page
 
-from .render import view
+from .classset import (MAX_COPIES, ClassSet, copies_have_answers, copies_vary, copy_labels, copy_seed,  # noqa: F401
+                       copy_settings, named_pages, parse_names)
+from .render import shown_copy, view
 
 PAPER_IDS = {"letter": QPageSize.PageSizeId.Letter, "a4": QPageSize.PageSizeId.A4}
 
@@ -31,6 +33,7 @@ class Job:
     draw: object           # draw(ctx, i): page i onto a canvas of that geometry
     duplex: bool = False   # fold-and-staple: double-sided, flipping on the short edge
     answers: int = 0       # copies: answer pages after them (counted in count)
+    copies: int = 0        # booklets: how many booklets the pages make up
 
     @property
     def unit(self):
@@ -40,7 +43,11 @@ class Job:
         """ "14-page booklet", "2 sheets (both sides)": what the job prints, for the status line."""
         if self.duplex:   # a fold-and-staple book: two printed sides per sheet
             n = self.count // 2
-            return f"{n} sheet{'s' if n != 1 else ''} (both sides)"
+            sheets = f"{n} sheet{'s' if n != 1 else ''} (both sides)"
+            books = f"{self.copies} booklet{'s' if self.copies != 1 else ''}"
+            return f"{books}, {sheets}" if self.label == "booklets" else sheets
+        if self.label == "booklets":
+            return f"{self.copies} booklet{'s' if self.copies != 1 else ''} ({self.count} pages)"
         if self.label == "copies":
             n = self.count - self.answers
             keys = f" and {self.answers} answer page{'s' if self.answers != 1 else ''}" if self.answers else ""
@@ -110,42 +117,7 @@ def fold_sheets(indices, n):
     return sorted({k // 2 for k, side in enumerate(sides) if set(side) & set(indices)})
 
 
-MAX_COPIES = 100
 
-
-def copy_seed(seed, i):
-    """The design of copy i (0 is the design shown): a fixed step from it, so the same set prints again alike."""
-    return seed if i == 0 else (seed + i * 104729) & 0xFFFFFFFF
-
-
-def copies_vary(s):
-    """(whether copies of this single page can each have their own design, a note when some of them repeat or
-    none can differ, or "")."""
-    if s.mode != "make":
-        return False, ""
-    if s.gen == "name" and s.name_bg == "none":
-        return False, "A name page with nothing underneath has no design to change, so its copies are alike."
-    if s.gen == "dots":
-        return True, "Dot-to-dot has only a handful of pictures, so some copies repeat."
-    if s.gen == "nonogram" and s.complexity <= 1:
-        return True, "The smallest nonograms sometimes repeat: raise Complexity for more variety."
-    return True, ""
-
-
-def parse_names(text, limit=MAX_COPIES):
-    """The names typed for a class set (separated by commas, semicolons or new lines), at most limit."""
-    names = [n for n in (n.strip() for n in re.split(r"[,;\n]", text or "")) if n]
-    return names[:limit] if limit else names
-
-
-def copy_labels(names):
-    """What each named copy's answer is called: its name, or with the copy's number when a name repeats."""
-    return [n if names.count(n) == 1 else f"{n} (copy {i + 1})" for i, n in enumerate(names)]
-
-
-def copies_have_answers(s):
-    """Whether copies of this single page can have answer pages: a puzzle (or colour by number) made up."""
-    return s.mode == "make" and has_answer(s.gen, s)
 
 
 def job(state, only="", copies=1, vary=False, answers=False, names=()):
@@ -163,6 +135,9 @@ def job(state, only="", copies=1, vary=False, answers=False, names=()):
         return Job(f"{base_name(state)}-poster-{P.cols}x{P.rows}", "poster", P.sheets, s.orient, geometry(s),
                    lambda ctx, i: poster.draw_sheet(ctx, s, P, spec, i))
     photo_book = s.mode == "convert" and s.photobook and state.photos
+    named = list(names)[:MAX_COPIES] if s.name_line else []
+    if v.kind in ("booklet", "fold") and not photo_book and (named or int(copies or 1) > 1):
+        return _booklets(state, only, copies, vary, named)
     if v.kind in ("booklet", "photobook", "fold"):
         pages = book.photo_book_pages(s, state.photos) if photo_book else book.book_pages(s)
         name = f"inkline-photobook-{len(pages)}p" if photo_book else f"inkline-booklet-{s.seed}"
@@ -206,6 +181,35 @@ def job(state, only="", copies=1, vary=False, answers=False, names=()):
     pages = designs + keys
     return Job(name + "-with-answers", "copies", len(pages), s.orient, g,
                lambda ctx, i: draw_page(ctx, g, pages[i], s), answers=len(keys))
+
+
+def _booklets(state, only, copies, vary, names):
+    """A class set of booklets: each its own (with vary, its own designs; with names, the child's name on the
+    cover, on every Name line and over its answers), one after another, each with only the pages chosen."""
+    s = state.settings
+    copies = len(names) if names else max(1, min(MAX_COPIES, int(copies or 1)))
+    vary = vary and s.mode == "make"
+    books = [(si, named_pages(book.book_pages(si), names[i] if names else ""))
+             for i, si in enumerate(copy_settings(s, i, vary) for i in range(copies))]
+    first = books[0][1]
+    picked = parse_pages(only, first)   # every booklet has the same pages, so they're chosen once
+    part = bool((only or "").strip()) and len(picked) < len(first)
+    name = f"inkline-booklet-{s.seed}-{copies}-booklets{'-named' if names else ''}"
+    if part:
+        name += "-p" + describe_pages(picked, len(first)).split(" ", 1)[1].replace("–", "-") \
+            .replace(", ", "_").replace(" and ", "_")
+    if s.fold:   # each booklet folds and staples on its own: its sheets, one booklet after another
+        sides = []
+        for si, pages in books:
+            folded = book.fold_pages(pages)
+            sheets = fold_sheets(picked, len(folded)) if part else range(len(folded) // 4)
+            sides += [(si, folded, k) for sheet in sheets for k in (2 * sheet, 2 * sheet + 1)]
+        return Job(f"{name}-fold", "booklets", len(sides), "landscape", book.sheet_geometry(s),
+                   lambda ctx, i: book.draw_fold_side(ctx, *sides[i]), duplex=True, copies=copies)
+    g = geometry(s)
+    pages = [(si, ps[k]) for si, ps in books for k in picked]
+    return Job(name, "booklets", len(pages), s.orient, g, lambda ctx, i: draw_page(ctx, g, pages[i][1], pages[i][0]),
+               copies=copies)
 
 
 def printed_orient(s, kind):
@@ -283,26 +287,37 @@ def run(j, device, progress=None, cancelled=lambda: False, outcome=None):
         p.end()
 
 
+def _shown(state):
+    """The settings and page the preview shows, with a class set's copy (its designs and name) when it shows one;
+    and what to add to the file name for it ("-copy2")."""
+    s, v = state.settings, view(state)
+    c = shown_copy(state)
+    if c is not None:
+        s = c[0]
+    spec = v.pages[v.index] if v.pages and v.kind != "fold" else single_page(s, state.photo)
+    if c is not None and not v.pages and c[1]:
+        spec = replace(spec, filled_name=c[1])
+    return s, v, spec, (f"-copy{c[2] + 1}" if c is not None and c[2] else "")
+
+
 def svg(state):
     """The page shown as SVG (a poster: the whole poster), and the file name to suggest."""
-    s, v = state.settings, view(state)
+    s, v, spec, more = _shown(state)
     if v.kind in ("fold", "testpage"):
         raise ValueError("fold-and-staple sides and the test page don't save as SVG")
-    spec = v.pages[v.index] if v.pages else single_page(s, state.photo)
     suffix = "-poster" if v.kind == "poster" else f"-page{v.index + 1}" if v.pages else ""
-    return output.svg_text(s, spec), base_name(state) + suffix
+    return output.svg_text(s, spec), base_name(state) + more + suffix
 
 
 def png(state):
     """The page shown, at full resolution, and the file name to suggest."""
-    s, v = state.settings, view(state)
-    j = job(state)
+    s, v, spec, more = _shown(state)
     if v.kind == "testpage":
+        j = job(state)
         return output_image(j, 0), j.name
-    spec = v.pages[v.index] if v.pages and v.kind != "fold" else single_page(s, state.photo)
-    if v.kind == "fold":
-        return output_image(j, v.index), base_name(state)
-    return output.render_image(s, spec), base_name(state)   # 2.x's PNG name, whichever page is shown
+    if v.kind == "fold":   # the side shown, of the copy shown (its designs)
+        return output_image(job(replace(state, settings=s, class_set=None)), v.index), base_name(state) + more
+    return output.render_image(s, spec), base_name(state) + more   # 2.x's PNG name, whichever page is shown
 
 
 def output_image(j, i):

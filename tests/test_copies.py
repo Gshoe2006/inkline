@@ -70,8 +70,8 @@ def test_the_field_shows_for_single_pages_and_says_what_will_print(win):
     sb.copies.clear()
     QTest.keyClicks(sb.copies, "ab7c")                                     # the field takes digits only
     assert sb.copies.text() == "7" and sb.copies_count() == 7
-    _set(win, booklet=True)                                                # a booklet: Print or save only instead
-    assert not sb.copies_row.isVisibleTo(sb)
+    _set(win, booklet=True)                                                # a booklet: copies of the booklet
+    assert sb.copies_row.isVisibleTo(sb) and sb.only_row.isVisibleTo(sb)
     _set(win, booklet=False, poster=True)
     assert not sb.copies_row.isVisibleTo(sb)
 
@@ -92,7 +92,10 @@ def test_save_pdf_and_print_use_the_copies(win, monkeypatch):
     assert got[-1][2] == 12 and got[-1][3] is True
     _set(win, booklet=True)
     win.print_()
-    assert got[-1][2] == 1                                                 # copies are for single pages only
+    assert got[-1][2] == 12                                                # a class set of booklets
+    _set(win, booklet=False, poster=True)
+    win.print_()
+    assert got[-1][2] == 1                                                 # a poster has no copies
 
 
 def test_pages_that_cant_vary_print_alike_and_the_hint_says_when_some_repeat(win):
@@ -440,3 +443,130 @@ def test_a_long_name_is_written_smaller_to_fit():
     def size(c, n):   # a text op is ("text", text, x, y, colour, weight, size)
         return [op for op in c.ops if op[0] == "text" and op[1].startswith(n)][0][6]
     assert size(long_, "Bartholomew") < size(short, "Al")
+
+
+
+def test_a_class_set_of_booklets_each_with_its_own_designs_and_name():
+    s = Settings(gen="maze", seed=11, booklet=True, pages=3, cover=True, key=True, name_line=True)
+    one = jobs.job(State(s))
+    per = one.count
+    j = jobs.job(State(s), copies=4, vary=True)
+    assert j.label == "booklets" and j.copies == 4 and j.count == 4 * per and j.amount() == f"4 booklets ({4 * per} pages)"
+    seen = []
+    real = jobs.draw_page
+    jobs.draw_page = lambda ctx, g, spec, st: seen.append(spec)
+    try:
+        for i in range(j.count):
+            j.draw(None, i)
+        named = jobs.job(State(s), copies=1, vary=True, names=["Ana", "Ben"])
+        nseen = []
+        jobs.draw_page = lambda ctx, g, spec, st: nseen.append(spec)
+        for i in range(named.count):
+            named.draw(None, i)
+    finally:
+        jobs.draw_page = real
+    designs = [[p.seed for p in seen[b * per:(b + 1) * per] if p.kind == "design"] for b in range(4)]
+    assert len({tuple(d) for d in designs}) == 4                           # every booklet its own designs
+    first = [p.seed for p in seen[:per] if p.kind == "design"]
+    plain = []
+    jobs.draw_page = lambda ctx, g, spec, st: plain.append(spec)
+    try:
+        for i in range(one.count):
+            one.draw(None, i)
+    finally:
+        jobs.draw_page = real
+    assert first == [p.seed for p in plain if p.kind == "design"]          # the first is the one shown
+    assert named.count == 2 * per and named.name.endswith("-2-booklets-named")
+    ana = nseen[:per]
+    assert ana[0].kind == "cover" and ana[0].filled_name == "Ana"
+    assert all(p.filled_name == "Ana" for p in ana if p.kind == "design")
+    assert [p.title for p in ana if p.kind == "answers"] == ["Answers · Ana"]
+    assert nseen[per].filled_name == "Ben"
+
+
+def test_booklets_built_page_by_page_and_swapped_pages_vary_too():
+    s = Settings(gen="maze", seed=5, booklet=True, page_list=[{"gen": "maze", "seed": 100}, {"gen": "words", "seed": 200}],
+                 page_seeds={"cover": 300}, cover=True)
+    a, b = jobs.copy_settings(s, 0, True), jobs.copy_settings(s, 3, True)
+    assert a is s
+    assert [p["seed"] for p in b.page_list] == [jobs.copy_seed(100, 3), jobs.copy_seed(200, 3)]
+    assert b.page_seeds == {"cover": jobs.copy_seed(300, 3)} and [p["gen"] for p in b.page_list] == ["maze", "words"]
+    assert jobs.copy_settings(s, 3, False) is s
+
+
+def test_booklet_class_sets_fold_each_booklet_on_its_own_and_pick_pages():
+    s = Settings(gen="maze", seed=2, booklet=True, pages=6, cover=True, fold=True)
+    one = jobs.job(State(s))
+    j = jobs.job(State(s), copies=3, vary=True)
+    assert j.duplex and j.count == 3 * one.count and j.amount() == f"3 booklets, {j.count // 2} sheets (both sides)"
+    flat = jobs.job(State(replace(s, fold=False)), only="1-2", copies=3)
+    assert flat.count == 6 and "-p1-2" in flat.name
+
+
+def test_the_paper_section_offers_copies_of_a_booklet(win):
+    sb = win.sidebar
+    _set(win, gen="maze", booklet=True, name_line=True)
+    sb.copies.setText("5")
+    assert sb.copies_vary.isVisibleTo(sb) and not sb.copies_answers.isVisibleTo(sb)   # it has its own answers
+    assert sb.copies_hint.text() == "Print and Save PDF make 5 booklets, each with its own designs (the first is the one shown)."
+    sb.copies_names.setText("Ana, Ben")
+    assert sb.copies_hint.text().startswith("Print and Save PDF make 2 booklets, one for each name, each with its own designs")
+    assert sb.copies_hint.text().endswith("Each name goes on its booklet's cover, Name lines and answer pages.")
+
+
+def test_the_preview_shows_any_copy_with_its_designs_and_name():
+    from inkapp import render
+    from inkapp.classset import ClassSet
+    QApplication.instance() or QApplication([])
+    s = Settings(gen="maze", seed=4, name_line=True)
+    cs = ClassSet(count=3, vary=True, names=["Ana", "Ben", "Cara"])
+    first = render.render_view(State(s))
+    shown0 = render.render_view(State(s, copy=0, class_set=cs))
+    shown1 = render.render_view(State(s, copy=1, class_set=cs))
+    assert shown0.view.copy_label == "Copy 1 of 3 · Ana" and shown1.view.copy_label == "Copy 2 of 3 · Ben"
+    assert shown1.view.copy == 1 and render.render_view(State(s, copy=9, class_set=cs)).view.copy == 2   # kept in range
+    assert shown0.image != shown1.image                                   # copy 2 has its own maze
+    assert shown0.image != first.image                                    # and the name is on its line
+    alike = render.render_view(State(s, copy=1, class_set=ClassSet(count=3, vary=False)))
+    assert alike.image == first.image and alike.view.copy_label == "Copy 2 of 3"
+    assert render.view(State(s)).copy_label == ""                         # no class set, no copy pager
+    # a booklet: the copy's own pages (paging through them as before), its name on the cover
+    b = Settings(gen="maze", seed=4, booklet=True, pages=2, cover=True, name_line=True)
+    v = render.view(State(b, copy=1, class_set=cs))
+    assert v.kind == "booklet" and v.pages[0].filled_name == "Ben" and v.copy_label == "Copy 2 of 3 · Ben"
+    assert [p.seed for p in v.pages if p.kind == "design"] != \
+        [p.seed for p in render.view(State(b)).pages if p.kind == "design"]
+    # no class set where there can't be one
+    assert render.view(State(replace(b, poster=True), copy=1, class_set=cs)).copy_label == ""
+
+
+def test_the_copy_pager_steps_through_the_copies(win):
+    sb = win.sidebar
+    _set(win, gen="maze", name_line=True)
+    assert not sb.copy_pager.isVisibleTo(sb) and sb.class_set_view() is None
+    sb.copies_names.setText("Ana, Ben, Cara")
+    assert sb.copy_pager.isVisibleTo(sb) and sb.class_set_view().count == 3
+    win.step_copy(1)
+    win.step_copy(1)
+    win.step_copy(1)                                                       # stops at the last
+    assert win.state.copy == 2
+    win.step_copy(-5)
+    assert win.state.copy == 0
+    from inkapp import render
+    sb.sync(render.view(State(win.state.settings, copy=1, class_set=sb.class_set_view())))
+    assert sb.copy_pager.text.text() == "Copy 2 of 3 · Ben"
+    assert sb.copy_pager.back.accessibleName() == "Previous copy"
+
+
+def test_png_and_svg_save_the_copy_shown():
+    from inkapp.classset import ClassSet
+    QApplication.instance() or QApplication([])
+    s = Settings(gen="maze", seed=4, name_line=True, dpi=36)
+    cs = ClassSet(count=3, vary=True, names=["Ana", "Ben", "Cara"])
+    text0, name0 = jobs.svg(State(s))
+    text1, name1 = jobs.svg(State(s, copy=1, class_set=cs))
+    assert name1 == name0 + "-copy2" and text1 != text0 and ">Ben<" in text1
+    img0, _ = jobs.png(State(s))
+    img1, n1 = jobs.png(State(s, copy=1, class_set=cs))
+    assert n1.endswith("-copy2") and img0 != img1
+    assert jobs.svg(State(s, copy=0, class_set=cs))[1] == name0          # the first copy keeps the plain name
