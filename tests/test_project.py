@@ -234,7 +234,8 @@ def test_a_class_set_is_kept_in_the_project(win, tmp_path):
     sb.copies_answers.setChecked(False)
     assert win.isWindowModified()                                           # the file doesn't have them yet
     assert win.save_project() and not win.isWindowModified()
-    assert json.load(open(path))["classSet"] == {"copies": 12, "names": "Ana, Ben, Cara", "vary": True, "answers": False}
+    assert json.load(open(path))["classSet"] == {"copies": 12, "names": "Ana, Ben, Cara", "vary": True, "answers": False,
+                                                       "answer_book": False}
     win.new_project()                                                        # a fresh start has no class set
     assert sb.copies.text() == "" and sb.copies_names.text() == "" and sb.copies_answers.isChecked()
     assert win.open_project(path) and not win.isWindowModified()
@@ -248,7 +249,7 @@ def test_a_class_set_is_kept_in_the_project(win, tmp_path):
 
 def test_a_class_set_from_a_file_is_checked():
     cs = project.class_set({"copies": 900, "names": 5, "vary": "no", "answers": False})
-    assert cs == {"copies": 100, "names": "", "vary": True, "answers": False}
+    assert cs == {"copies": 100, "names": "", "vary": True, "answers": False, "answer_book": False}
     assert project.class_set("odd") is None and project.class_set_json({"copies": 1, "names": ""}) == {}
     data = project.to_json(State(), extra=project.class_set_json({"copies": 4, "names": "A, B"}))
     assert project.from_json(json.loads(json.dumps(data))).class_set["names"] == "A, B"

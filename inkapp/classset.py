@@ -79,6 +79,7 @@ class ClassSet:
     vary: bool = True
     answers: bool = False
     names: list = field(default_factory=list)
+    answer_book: bool = False   # booklets: their answers in one teacher's book, after them all
 
     @property
     def active(self):

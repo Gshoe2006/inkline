@@ -492,6 +492,10 @@ class Sidebar(QFrame):
         self.copies_answers.setChecked(True)
         self.copies_answers.toggled.connect(lambda _on: (self.sync(), self.class_set_changed.emit()))
         sec.add(self.copies_answers)
+        # a class set of booklets: their answers in one book for the teacher, not in each child's booklet
+        self.copies_answer_book = check("Answers in a separate teacher's book")
+        self.copies_answer_book.toggled.connect(lambda _on: (self.sync(), self.class_set_changed.emit()))
+        sec.add(self.copies_answer_book)
         self.copies_hint = sec.add(Hint())
         # look through the class set's copies in the preview: each one's designs, and its name
         self.copy_pager = Pager()
@@ -542,7 +546,8 @@ class Sidebar(QFrame):
         """Copies, Names and their switches, as a project keeps them."""
         text = self.copies_names.text().strip()   # spaces round the names, or only separators, don't count
         return {"copies": self.copies_count(), "names": text if jobs.parse_names(text, None) else "",
-                "vary": self.copies_vary.isChecked(), "answers": self.copies_answers.isChecked()}
+                "vary": self.copies_vary.isChecked(), "answers": self.copies_answers.isChecked(),
+                "answer_book": self.copies_answer_book.isChecked()}
 
     def set_class_set(self, cs=None):
         """Put Copies, Names and their switches back (None: as on a fresh start)."""
@@ -552,6 +557,7 @@ class Sidebar(QFrame):
         self.copies_names.setText(cs.get("names", ""))
         self.copies_vary.setChecked(cs.get("vary", True))
         self.copies_answers.setChecked(cs.get("answers", True))
+        self.copies_answer_book.setChecked(cs.get("answer_book", False))
         self.class_list.setCurrentIndex(0)
         self.class_list_del.setEnabled(False)
         self.sync()
@@ -563,7 +569,8 @@ class Sidebar(QFrame):
             return None
         names = self.copies_names_list()
         cs = ClassSet(count=len(names) if names else self.copies_count(), vary=self.copies_vary.isChecked(),
-                      answers=self.copies_answers.isChecked(), names=names)
+                      answers=self.copies_answers.isChecked(), names=names,
+                      answer_book=self.copies_answer_book.isChecked())
         return cs if cs.active else None   # one name is a class set too: it goes on the page
 
     def copies_names_list(self):
@@ -928,6 +935,8 @@ class Sidebar(QFrame):
         self.copies_vary.setVisible(shown and can_vary and n > 1)
         keyed = single and n > 1 and jobs.copies_have_answers(s)
         self.copies_answers.setVisible(keyed)
+        book_keys = books and n > 1 and s.key
+        self.copies_answer_book.setVisible(book_keys)
         self.copies_hint.setVisible(shown and (n > 1 or off or unnamed or bool(names)))
         if shown and (n > 1 or off or unnamed or names):
             vary = can_vary and self.copies_vary.isChecked()
@@ -942,13 +951,17 @@ class Sidebar(QFrame):
                          + (f" (the first {MAX_COPIES})" if many else "")
                          + (f", {own}" if vary and n > 1 else "."))
                 if books:
-                    text += " Each name goes on its booklet's cover, Name lines and answer pages."
+                    text += (" Each name goes on its booklet's cover and Name lines, and heads its answers in the"
+                             " teacher's book." if book_keys and self.copies_answer_book.isChecked() else
+                             " Each name goes on its booklet's cover, Name lines and answer pages.")
             elif n == 1:
                 text += f"Print and Save PDF make 1 {one}."
             else:
                 text += f"Print and Save PDF make {n} {many_}, " + (own if vary else "all alike.")
             if vary_note and (vary or not can_vary):
                 text += " " + vary_note
+            if book_keys and self.copies_answer_book.isChecked() and not names:
+                text += " The answers follow them all, in a teacher's book: each booklet is numbered to match."
             if keyed and self.copies_answers.isChecked():
                 text += (" One answer page follows." if not vary
                          else " Answer pages follow, each labelled with its copy's name." if names

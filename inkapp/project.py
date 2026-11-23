@@ -144,7 +144,8 @@ def class_set(v):
     names = v.get("names")
     return {"copies": int(_num(v.get("copies"), 1, 1, 100)),
             "names": names[:4000] if isinstance(names, str) else "",
-            "vary": v.get("vary") is not False, "answers": v.get("answers") is not False}
+            "vary": v.get("vary") is not False, "answers": v.get("answers") is not False,
+            "answer_book": v.get("answer_book") is True}
 
 
 def class_set_json(cs):

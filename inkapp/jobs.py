@@ -33,7 +33,7 @@ class Job:
     geometry: object       # the page geometry at the settings' dpi
     draw: object           # draw(ctx, i): page i onto a canvas of that geometry
     duplex: bool = False   # fold-and-staple: double-sided, flipping on the short edge
-    answers: int = 0       # copies: answer pages after them (counted in count)
+    answers: int = 0       # copies: answer pages after them; booklets: the answer book's pages (counted in count)
     copies: int = 0        # booklets: how many booklets the pages make up
 
     @property
@@ -45,10 +45,14 @@ class Job:
         if self.duplex:   # a fold-and-staple book: two printed sides per sheet
             n = self.count // 2
             sheets = f"{n} sheet{'s' if n != 1 else ''} (both sides)"
-            books = f"{self.copies} booklet{'s' if self.copies != 1 else ''}"
+            books = f"{self.copies} booklet{'s' if self.copies != 1 else ''}" + (" and an answer book" if self.answers else "")
             return f"{books}, {sheets}" if self.label == "booklets" else sheets
         if self.label == "booklets":
-            return f"{self.copies} booklet{'s' if self.copies != 1 else ''} ({self.count} pages)"
+            kids = f"{self.copies} booklet{'s' if self.copies != 1 else ''}"
+            if self.answers:
+                n = self.answers
+                return f"{kids} ({self.count - n} pages) and a {n}-page answer book"
+            return f"{kids} ({self.count} pages)"
         if self.label == "copies":
             n = self.count - self.answers
             keys = f" and {self.answers} answer page{'s' if self.answers != 1 else ''}" if self.answers else ""
@@ -121,7 +125,7 @@ def fold_sheets(indices, n):
 
 
 
-def job(state, only="", copies=1, vary=False, answers=False, names=()):
+def job(state, only="", copies=1, vary=False, answers=False, names=(), answer_book=False):
     """What Print and Save PDF produce. only: a choice of pages as parse_pages() reads it (booklets and photo
     books; empty for all). copies: how many of a single page, each with its own design when vary (Make one up),
     then with answers their answer pages, each copy numbered to match. Raises ValueError when the choice of
@@ -138,7 +142,7 @@ def job(state, only="", copies=1, vary=False, answers=False, names=()):
     photo_book = s.mode == "convert" and s.photobook and state.photos
     named = list(names)[:MAX_COPIES] if s.name_line else []
     if v.kind in ("booklet", "fold") and not photo_book and (named or int(copies or 1) > 1):
-        return _booklets(state, only, copies, vary, named)
+        return _booklets(state, only, copies, vary, named, answer_book and s.key)
     if v.kind in ("booklet", "photobook", "fold"):
         pages = book.photo_book_pages(s, state.photos) if photo_book else book.book_pages(s)
         name = f"inkline-photobook-{len(pages)}p" if photo_book else f"inkline-booklet-{s.seed}"
@@ -184,18 +188,27 @@ def job(state, only="", copies=1, vary=False, answers=False, names=()):
                lambda ctx, i: draw_page(ctx, g, pages[i], s), answers=len(keys))
 
 
-def _booklets(state, only, copies, vary, names):
+def _booklets(state, only, copies, vary, names, answer_book=False):
     """A class set of booklets: each its own (with vary, its own designs; with names, the child's name on the
-    cover, on every Name line and over its answers), one after another, each with only the pages chosen."""
+    cover, on every Name line and over its answers), one after another, each with only the pages chosen. With
+    answer_book, the answer pages leave the children's booklets and follow them all as the teacher's answer book,
+    each headed with its child's name (or "Booklet 3", which that booklet's cover then says too)."""
     s = state.settings
     copies = len(names) if names else max(1, min(MAX_COPIES, int(copies or 1)))
     vary = vary and s.mode == "make"
-    books = [(si, named_pages(book.book_pages(si), names[i] if names else ""))
+
+    def whose(i):
+        return names[i] if names else f"Booklet {i + 1}" if answer_book else ""
+    books = [(si, named_pages(book.book_pages(si), whose(i)))
              for i, si in enumerate(copy_settings(s, i, vary) for i in range(copies))]
+    keys = []
+    if answer_book:   # the answers, in booklet order, without the booklet's page numbers
+        keys = [replace(p, page_no=0) for _si, ps in books for p in ps if p.kind == "answers"]
+        books = [(si, [p for p in ps if p.kind != "answers"]) for si, ps in books]
     first = books[0][1]
     picked = parse_pages(only, first)   # every booklet has the same pages, so they're chosen once
     part = bool((only or "").strip()) and len(picked) < len(first)
-    name = f"inkline-booklet-{s.seed}-{copies}-booklets{'-named' if names else ''}"
+    name = f"inkline-booklet-{s.seed}-{copies}-booklets{'-named' if names else ''}{'-answer-book' if keys else ''}"
     if part:
         name += "-p" + describe_pages(picked, len(first)).split(" ", 1)[1].replace("–", "-") \
             .replace(", ", "_").replace(" and ", "_")
@@ -205,12 +218,15 @@ def _booklets(state, only, copies, vary, names):
             folded = book.fold_pages(pages)
             sheets = fold_sheets(picked, len(folded)) if part else range(len(folded) // 4)
             sides += [(si, folded, k) for sheet in sheets for k in (2 * sheet, 2 * sheet + 1)]
+        if keys:   # the answer book folds as a booklet of its own
+            folded = book.fold_pages(keys)
+            sides += [(s, folded, k) for sheet in range(len(folded) // 4) for k in (2 * sheet, 2 * sheet + 1)]
         return Job(f"{name}-fold", "booklets", len(sides), "landscape", book.sheet_geometry(s),
-                   lambda ctx, i: book.draw_fold_side(ctx, *sides[i]), duplex=True, copies=copies)
+                   lambda ctx, i: book.draw_fold_side(ctx, *sides[i]), duplex=True, copies=copies, answers=len(keys))
     g = geometry(s)
-    pages = [(si, ps[k]) for si, ps in books for k in picked]
+    pages = [(si, ps[k]) for si, ps in books for k in picked] + [(s, p) for p in keys]
     return Job(name, "booklets", len(pages), s.orient, g, lambda ctx, i: draw_page(ctx, g, pages[i][1], pages[i][0]),
-               copies=copies)
+               copies=copies, answers=len(keys))
 
 
 def printed_orient(s, kind):

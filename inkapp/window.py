@@ -1359,7 +1359,8 @@ class Window(QMainWindow):
             names = sb.copies_names_list() if sb.copies_row.isVisibleTo(sb) else []
             # a switch that isn't shown doesn't count (one copy has no answer pages)
             answers = sb.copies_answers.isVisibleTo(sb) and sb.copies_answers.isChecked()
-            return jobs.job(snap, only, copies, sb.copies_vary.isChecked(), answers, names)
+            book = sb.copies_answer_book.isVisibleTo(sb) and sb.copies_answer_book.isChecked()
+            return jobs.job(snap, only, copies, sb.copies_vary.isChecked(), answers, names, book)
         except ValueError as why:
             self._msg(f"{why} Fix the pages under Paper → Print or save only, or clear it to use every page.")
             self.sidebar.only_pages.setFocus()
