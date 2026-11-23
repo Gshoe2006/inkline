@@ -238,8 +238,10 @@ jobs:
         run: |
           $exe = Get-Item "dist/inkline-${{ needs.check.outputs.version }}-windows-setup.exe"
           $info = $exe.VersionInfo
-          "Product: $($info.ProductName) $($info.ProductVersion)"
-          if ($info.ProductName -ne "Inkline" -or $info.ProductVersion -ne "${{ needs.check.outputs.version }}") { exit 1 }
+          # Inno Setup pads these with spaces (it leaves room to write them in): what counts is the text
+          $name, $ver = $info.ProductName.Trim(), $info.ProductVersion.Trim()
+          "Product: '$name' '$ver'"
+          if ($name -ne "Inkline" -or $ver -ne "${{ needs.check.outputs.version }}") { exit 1 }
 
       # Signing (docs/code-signing.md): only for a release, and only once SignPath is set up for the repository
       # (the SIGNPATH_ORGANIZATION_ID variable and the SIGNPATH_API_TOKEN secret). Without them the installer

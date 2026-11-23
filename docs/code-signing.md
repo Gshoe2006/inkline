@@ -71,3 +71,11 @@ the job checks that the installer's signature is valid and publishes it with the
 approves in time, the job fails and nothing is published; re-run the workflow to try again.
 
 Test builds ("Test build only") and builds of other branches are never sent for signing.
+
+## If the first signing request is refused
+
+Inno Setup pads the installer's product name and version with spaces ("Inkline" and "4.7.1" followed by
+blanks). The SignPath documentation doesn't say whether its product-name and product-version checks ignore
+trailing spaces. If the first request is refused over them, remove the `product-name` and `product-version`
+attributes from the artifact configuration in SignPath for now, and ask SignPath support how they want an
+Inno Setup installer restricted (SignPath Foundation requires the restriction).
