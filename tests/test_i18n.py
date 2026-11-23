@@ -91,6 +91,7 @@ def _walk_states(w):
     for task in ("read", "draw", "mixed"):
         go(gen="clock", clock_task=task)
     go(gen="trace", trace_style="joined")
+    go(trace_hand="us-trad")
     go(gen="maths", maths_kind="money")
     go(gen="maths", maths_kind="divide")
     go(maths_kind="missing")
