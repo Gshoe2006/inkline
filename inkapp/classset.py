@@ -40,8 +40,10 @@ def copies_vary(s):
 
 
 def copies_have_answers(s):
-    """Whether copies of this single page can have answer pages: a puzzle (or colour by number) made up."""
-    return s.mode == "make" and has_answer(s.gen, s)
+    """Whether copies of this single page can have answer pages: a puzzle (or colour by number) made up, or a
+    sheet of several designs with one among them."""
+    from inkengine.page import sheet_gens
+    return s.mode == "make" and any(has_answer(gen, s) for gen in sheet_gens(s))
 
 
 def parse_names(text, limit=MAX_COPIES):

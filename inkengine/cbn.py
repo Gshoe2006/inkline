@@ -638,8 +638,8 @@ def draw_design_page(ctx, g, box, spec, s, lw, raster=None):
 def draw_answer(ctx, g, slot, d, s, lw, raster=None):
     """Answer page cell for a colour-by-number design: the design shrunk into the slot, each numbered space
     shaded grey by its number (1 lightest), to check a finished page against."""
-    from .page import design_box, draw_design
-    art, _kb = art_box(design_box(g, d, s), g.dpi, s.cbn_colours)
+    from .page import draw_design, item_box
+    art, _kb = art_box(item_box(g, d, s), g.dpi, s.cbn_colours)
     r = pattern(g, art, d, lw, s, raster)
     num = {q[4]: q[0] for q in r["spots"]}
     top = max(1, len(r["names"]))

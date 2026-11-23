@@ -14,7 +14,7 @@ from PySide6.QtPrintSupport import QPrinter
 
 from inkengine import book, output, poster
 from inkengine.canvas import QtCanvas
-from inkengine.page import PageSpec, draw_page, geometry, single_page
+from inkengine.page import PANELS, PageSpec, draw_page, geometry, has_answer, panel_specs, single_page
 from inkengine.testpage import draw_test_page
 
 from .classset import (MAX_COPIES, ClassSet, copies_have_answers, copies_vary, copy_labels, copy_seed,  # noqa: F401
@@ -181,6 +181,8 @@ def job(state, only="", copies=1, vary=False, answers=False, names=(), answer_bo
     designs = [replace(copy_spec(i), stamp="" if names else labels[i],
                        key_label=labels[i] if vary else "Every copy") for i in range(copies)]
     solved = designs if vary else designs[:1]
+    if PANELS.get(s.sheet, 1) > 1:   # a sheet of several designs: an answer for each puzzle on it
+        solved = [p for d in solved for p in panel_specs(g, d, s) if has_answer(p.gen, s)]
     keys = [PageSpec(kind="answers", header=True, title="Answers", items=solved[k:k + 4])
             for k in range(0, len(solved), 4)]
     pages = designs + keys

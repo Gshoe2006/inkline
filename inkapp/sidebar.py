@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QFrame, QHBoxLayout, QLabel, Q
                                QProgressBar, QScrollArea, QTabBar, QVBoxLayout, QWidget)
 
 from inkengine import ages, book, cbn, photo
-from inkengine.page import PAGE_KEYS, has_answer
+from inkengine.page import PAGE_KEYS, PANELS, SHEETS, has_answer, sheet_gens
 from inkengine.patterns import NAMES, crossword, maths, maze, name, spot, trace, words
 
 from . import jobs, theme, thumbs
@@ -226,6 +226,19 @@ class Sidebar(QFrame):
         self.design_note = sec.add(Hint())   # which booklet page the section edits, when it's built page by page
         self.gen = self._combo("gen", GEN_OPTIONS)
         sec.add(OptionRow("Pattern", self.gen))
+        # several designs on one sheet (single pages): the layout, then the patterns after this one
+        self.sheet = self._combo("sheet", list(SHEETS.items()))
+        self.sheet_row = sec.add(OptionRow("On the sheet", self.sheet))
+        self.sheet_opts = SubOptions()
+        self.panel_combos = []
+        for which in ("2nd design", "3rd design", "4th design"):
+            c = combo(list(GEN_OPTIONS))
+            c.setAccessibleName(f"{which} on the sheet")
+            c.currentIndexChanged.connect(self._panels_picked)
+            self.panel_combos.append((self.sheet_opts.add(OptionRow(which, c)), c))
+        self.sheet_hint = self.sheet_opts.add(Hint("They share Complexity and the options above. Answer pages "
+                                                   "(with copies) show each puzzle's answer."))
+        sec.add(self.sheet_opts)
         self.age = self._combo("age", list(ages.AGES.items()))
         sec.add(OptionRow("Age", self.age))
         self.age_hint = sec.add(Hint("Sets complexity, line weight and options to suit. Change any of them after."))
@@ -607,6 +620,12 @@ class Sidebar(QFrame):
         self.margin_hint.setVisible(bool(text))
 
     # --- controls bound to a setting ----------------------------------------------------------------
+    def _panels_picked(self, _i=None):
+        if self._loading:
+            return
+        self.state.update(panel_gens=",".join(c.value() for _row, c in self.panel_combos))
+        self.changed.emit("panel_gens")
+
     def _bind(self, key, control, read, write, signal):
         self._binds = getattr(self, "_binds", {})
         self._binds[key] = (control, write)
@@ -860,6 +879,16 @@ class Sidebar(QFrame):
         mix_book = s.booklet and s.mix and not listing
         self.words_opts.setVisible(s.gen == "words")
         self.age_hint.setVisible(s.age != "any")
+        sheet_ok = make and not s.booklet and not s.poster and not s.testpage   # single designs only
+        self.sheet_row.setVisible(sheet_ok)
+        n_panels = PANELS.get(s.sheet, 1) if sheet_ok else 1
+        self.sheet_opts.setVisible(n_panels > 1)
+        gens = sheet_gens(s) + ["words", "maze", "dots"]
+        was, self._loading = self._loading, True
+        for k, (row, c) in enumerate(self.panel_combos):
+            row.setVisible(k + 1 < n_panels)
+            c.set_value(gens[k + 1])
+        self._loading = was
         self.maths_opts.setVisible(s.gen == "maths")
         self.cross_opts.setVisible(s.gen == "crossword")
         self.cross_words_row.setVisible(s.cross_theme == "custom")
