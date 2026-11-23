@@ -221,3 +221,79 @@ def test_a_missing_recent_project_doesnt_ask_about_the_work(win, tmp_path, answe
     _set(win, weight=9)
     assert not win.open_project(str(tmp_path / "gone.inkline")) and asked == []
     assert win.sidebar.status.text() == "Couldn't find gone.inkline. It may have been moved or deleted."
+
+
+def test_a_class_set_is_kept_in_the_project(win, tmp_path):
+    sb = win.sidebar
+    _set(win, gen="maze", name_line=True)
+    path = str(tmp_path / "class.inkline")
+    win._write_project(path)
+    assert "classSet" not in json.load(open(path))                         # none yet: nothing written
+    sb.copies.setText("12")
+    sb.copies_names.setText("Ana, Ben, Cara")
+    sb.copies_answers.setChecked(False)
+    assert win.isWindowModified()                                           # the file doesn't have them yet
+    assert win.save_project() and not win.isWindowModified()
+    assert json.load(open(path))["classSet"] == {"copies": 12, "names": "Ana, Ben, Cara", "vary": True, "answers": False}
+    win.new_project()                                                        # a fresh start has no class set
+    assert sb.copies.text() == "" and sb.copies_names.text() == "" and sb.copies_answers.isChecked()
+    assert win.open_project(path) and not win.isWindowModified()
+    assert sb.copies.text() == "12" and sb.copies_names.text() == "Ana, Ben, Cara"
+    assert not sb.copies_answers.isChecked() and sb.copies_vary.isChecked()
+    j = win._job(State(win.state.settings))
+    assert j.count == 3 and j.name.endswith("-named")                       # the same class set prints again
+    sb.copies_names.setText("Ana, Ben")
+    assert win.isWindowModified()
+
+
+def test_a_class_set_from_a_file_is_checked():
+    cs = project.class_set({"copies": 900, "names": 5, "vary": "no", "answers": False})
+    assert cs == {"copies": 100, "names": "", "vary": True, "answers": False}
+    assert project.class_set("odd") is None and project.class_set_json({"copies": 1, "names": ""}) == {}
+    data = project.to_json(State(), extra=project.class_set_json({"copies": 4, "names": "A, B"}))
+    assert project.from_json(json.loads(json.dumps(data))).class_set["names"] == "A, B"
+
+
+def test_saved_class_lists(win, tmp_path, monkeypatch):
+    sb = win.sidebar
+    _set(win, gen="maze", name_line=True)
+    assert not sb.class_list.isEnabled() and sb.class_list.currentText() == "No saved lists yet"
+    asked = []
+    monkeypatch.setattr("inkapp.window.QInputDialog.getText",
+                        lambda *a, **k: (asked.append(k.get("text")) or ("  Class   3B ", True)))
+    sb.class_list_save_btn.click()                                          # nothing typed: nothing to save
+    assert asked == [] and "Type or paste the names first" in sb.status.text()
+    sb.copies_names.setText("Ana, Ben, Cara")
+    sb.class_list_save_btn.click()
+    assert asked == [""] and win.class_lists == {"Class 3B": "Ana, Ben, Cara"}
+    assert json.load(open(tmp_path / "config" / "class-lists.json")) == {"lists": {"Class 3B": "Ana, Ben, Cara"}}
+    assert sb.class_list.value() == "Class 3B" and sb.class_list_del.isEnabled()
+    sb.copies_names.setText("Dev")
+    sb.class_list.setCurrentIndex(sb.class_list.findData("Class 3B"))
+    sb.class_list.activated.emit(sb.class_list.currentIndex())              # choosing a list fills in its names
+    assert sb.copies_names.text() == "Ana, Ben, Cara"
+    sb.copies_names.setText("Ana, Ben, Cara, Dev")
+    sb.class_list_save_btn.click()                                          # saving again under it updates it
+    assert asked[-1] == "Class 3B" and win.class_lists["Class 3B"] == "Ana, Ben, Cara, Dev"
+    assert sb.status.text() == "Updated the list “Class 3B”."
+    sb.class_list_del.click()
+    assert win.class_lists == {} and not sb.class_list.isEnabled()
+    assert sb.copies_names.text() == "Ana, Ben, Cara, Dev"                  # the names typed stay
+    assert json.load(open(tmp_path / "config" / "class-lists.json")) == {"lists": {}}
+
+
+
+def test_spaces_round_the_names_arent_a_change_and_list_names_are_tidied(win, tmp_path, monkeypatch):
+    sb = win.sidebar
+    _set(win, gen="maze", name_line=True)
+    sb.copies_names.setText("Ana, Ben")
+    path = str(tmp_path / "s.inkline")
+    win._write_project(path)
+    sb.copies_names.setText("  Ana, Ben  ")
+    assert not win.isWindowModified()
+    sb.copies_names.setText(" , ;")                                         # only separators: no names
+    assert sb.class_set()["names"] == ""
+    monkeypatch.setattr("inkapp.window.QInputDialog.getText", lambda *a, **k: ("x" * 39 + " yyyy", True))
+    sb.copies_names.setText("Ana")
+    sb.class_list_save_btn.click()
+    assert list(win.class_lists) == ["x" * 39]                              # cut to 40, no space left at the end

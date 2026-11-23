@@ -9,7 +9,7 @@ work, and the newest result is the one shown.
 
 import threading
 import traceback
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import numpy as np
 from PySide6.QtCore import QObject, Signal
@@ -20,6 +20,8 @@ from inkengine.canvas import QtCanvas
 from inkengine.page import PAPER, Geometry, draw_page, geometry, single_page
 from inkengine.box import Box
 from inkengine.qt import ensure_app
+
+from .classset import copies_vary, copy_settings, named_pages
 
 PREVIEW_DPI = 150          # colour by number's grid is 150 dpi, so the preview shows the same regions as print
 POSTER_PREVIEW_PX = 2400   # a whole poster is drawn with its long side about this many pixels
@@ -32,10 +34,37 @@ class View:
     index: int = 0         # the page (or folded side) shown
     count: int = 1         # how many pages (or sides) the pager steps through
     label: str = ""        # what the pager says
+    copy: int = 0          # a class set: the copy shown (0 when there's no class set)
+    copy_label: str = ""   # what the copy pager says ("Copy 2 of 25 · Ana"), or "" with no class set
+
+
+def shown_copy(state):
+    """A class set's copy to show: (its settings, its name, its index, the label), or None when there's no class
+    set or what's shown can't have one (a photo book, a poster, the test page)."""
+    cs, s = getattr(state, "class_set", None), state.settings
+    if cs is None or not cs.active or s.testpage or s.poster:
+        return None
+    booklet = s.mode == "make" and s.booklet   # (Booklet left on means nothing to Convert a photo)
+    if s.mode == "convert" and s.photobook and state.photos:
+        return None
+    i = max(0, min(getattr(state, "copy", 0), cs.count - 1))
+    vary = cs.vary and (s.mode == "make" if booklet else copies_vary(s)[0])
+    return copy_settings(s, i, vary), (cs.names[i] if i < len(cs.names) else ""), i, cs.label(i)
 
 
 def view(state):
+    v = _view(state)
+    c = shown_copy(state)
+    if c is not None:
+        v.copy, v.copy_label = c[2], c[3]
+    return v
+
+
+def _view(state):
     s = state.settings
+    c = shown_copy(state)
+    if c is not None:   # a class set: the copy shown draws with its own designs, and its name
+        s = c[0]
     if s.testpage:
         return View("testpage")
     photo_book = s.mode == "convert" and s.photobook and state.photos and not s.poster
@@ -44,6 +73,8 @@ def view(state):
         return View("poster")
     if photo_book or booklet:
         pages = book.photo_book_pages(s, state.photos) if photo_book else book.book_pages(s)
+        if c is not None:
+            pages = named_pages(pages, c[1])
         if s.fold:
             pages = book.fold_pages(pages)
             sides = len(book.fold_order(len(pages)))
@@ -83,9 +114,11 @@ def render_view(state):
     """The preview image and its info bar, for whatever the state shows."""
     ensure_app()
     s, v = state.settings, view(state)
+    shown = shown_copy(state)
+    if shown is not None:   # a class set's copy: its own designs (and name), drawn with its settings
+        s = shown[0]
     P, note = None, ""
     if v.kind == "testpage":
-        from dataclasses import replace
         from inkengine.testpage import draw_test_page
         st = replace(s, orient="portrait")   # drawn at the settings' dpi, so its heading says the dpi it prints at
         full = geometry(st)
@@ -119,6 +152,8 @@ def render_view(state):
     else:
         g = geometry(s, PREVIEW_DPI)
         spec = v.pages[v.index] if v.pages else single_page(s, state.photo)
+        if shown is not None and not v.pages and shown[1]:
+            spec = replace(spec, filled_name=shown[1])
         img = _blank(g.W, g.H)
         p = QPainter(img)
         drawn = draw_page(QtCanvas(p, g.W, g.H), g, spec, s)

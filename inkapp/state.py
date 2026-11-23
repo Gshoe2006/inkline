@@ -47,6 +47,8 @@ class State:
     sel: int = 0                                  # the photo being cropped
     page: int = 0                                 # the booklet / photo book page (or folded side) shown
     book_sel: int = 0                             # the booklet page being edited, when it's built page by page
+    copy: int = 0                                 # a class set: the copy the preview shows
+    class_set: object = None                      # the Paper section's class set (classset.ClassSet), for the preview
 
     @property
     def photo(self):

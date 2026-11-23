@@ -400,6 +400,10 @@ def draw_page(ctx, g, spec, s, keep=False):
         ctx.set_font(fs * 0.4, 400)
         ctx.fill_style = "#444"
         ctx.fill_text(sub, b.x + b.w / 2, b.y + b.h * 0.14 + fs * 0.8, b.w)
+        if spec.filled_name:   # a class set's booklet: whose it is, between the title and the picture
+            ctx.set_font(fs * 0.6, 700)
+            ctx.fill_style = "#000"
+            ctx.fill_text(spec.filled_name, b.x + b.w / 2, b.y + b.h * 0.14 + fs * 1.75, b.w)
         ctx.restore()
         art = Box(b.x + b.w * 0.12, b.y + b.h * 0.26, b.w * 0.76, b.h * 0.66)
         ctx.line_width = lw

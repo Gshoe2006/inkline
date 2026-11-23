@@ -70,8 +70,8 @@ def test_the_field_shows_for_single_pages_and_says_what_will_print(win):
     sb.copies.clear()
     QTest.keyClicks(sb.copies, "ab7c")                                     # the field takes digits only
     assert sb.copies.text() == "7" and sb.copies_count() == 7
-    _set(win, booklet=True)                                                # a booklet: Print or save only instead
-    assert not sb.copies_row.isVisibleTo(sb)
+    _set(win, booklet=True)                                                # a booklet: copies of the booklet
+    assert sb.copies_row.isVisibleTo(sb) and sb.only_row.isVisibleTo(sb)
     _set(win, booklet=False, poster=True)
     assert not sb.copies_row.isVisibleTo(sb)
 
@@ -92,7 +92,10 @@ def test_save_pdf_and_print_use_the_copies(win, monkeypatch):
     assert got[-1][2] == 12 and got[-1][3] is True
     _set(win, booklet=True)
     win.print_()
-    assert got[-1][2] == 1                                                 # copies are for single pages only
+    assert got[-1][2] == 12                                                # a class set of booklets
+    _set(win, booklet=False, poster=True)
+    win.print_()
+    assert got[-1][2] == 1                                                 # a poster has no copies
 
 
 def test_pages_that_cant_vary_print_alike_and_the_hint_says_when_some_repeat(win):
@@ -285,25 +288,20 @@ def test_the_names_field_says_what_it_does(win):
     assert sb.copies.isEnabled()
 
 
-def test_run_stops_when_cancelled_and_calls_off_a_printer_job():
+def test_run_stops_a_pdf_when_cancelled():
     from PySide6.QtGui import QImage
     QApplication.instance() or QApplication([])
 
-    class Device(QImage):   # a page to paint on, with a printer's newPage and abort
+    class Device(QImage):   # a page to paint on, with a PDF writer's newPage
         def __init__(self):
             super().__init__(10, 10, QImage.Format.Format_RGB32)
-            self.aborted = False
         def newPage(self):
             return True
-        def abort(self):
-            self.aborted = True
     drawn = []
     j = jobs.Job("x", "copies", 5, "portrait", type("G", (), {"W": 10, "H": 10})(), lambda ctx, i: drawn.append(i))
-    d = Device()
-    assert jobs.run(j, d, cancelled=lambda: len(drawn) >= 2) is False and drawn == [0, 1] and d.aborted
+    assert jobs.run(j, Device(), cancelled=lambda: len(drawn) >= 2) is False and drawn == [0, 1]
     drawn.clear()
-    d2 = Device()
-    assert jobs.run(j, d2) is True and drawn == [0, 1, 2, 3, 4] and not d2.aborted
+    assert jobs.run(j, Device()) is True and drawn == [0, 1, 2, 3, 4]
 
 
 def test_cancel_stops_a_pdf_and_deletes_it(win, tmp_path, monkeypatch):
@@ -317,7 +315,7 @@ def test_cancel_stops_a_pdf_and_deletes_it(win, tmp_path, monkeypatch):
     real_run = jobs.run
     reached = threading.Event()
 
-    def slow_run(j, device, progress=None, cancelled=lambda: False, outcome=None):   # holds page 2 until Cancel
+    def slow_run(j, device, progress=None, cancelled=lambda: False):   # holds page 2 until Cancel
         def prog(i):
             if i == 1:
                 reached.set()
@@ -325,7 +323,7 @@ def test_cancel_stops_a_pdf_and_deletes_it(win, tmp_path, monkeypatch):
                 while not cancelled() and time.time() < deadline:
                     time.sleep(0.01)
             progress(i)
-        return real_run(j, device, prog, cancelled, outcome)
+        return real_run(j, device, prog, cancelled)
     monkeypatch.setattr(jobs, "run", slow_run)
     win.save("pdf")
     assert sb.progress_row.isVisibleTo(sb) and sb.cancel_btn.isEnabled()
@@ -344,21 +342,59 @@ def test_cancel_stops_a_pdf_and_deletes_it(win, tmp_path, monkeypatch):
 
 
 
-def test_a_printer_that_cant_call_off_a_job_is_reported_honestly():
-    """Qt can't call off a print job on Linux (abort() says no): the pages drawn still print, and run says how many."""
-    from PySide6.QtGui import QImage
-    QApplication.instance() or QApplication([])
+def _printer_to(path, s=None, orient="portrait"):
+    """A printer writing a PDF, set up as Print sets one up (its page from the settings)."""
+    from PySide6.QtPrintSupport import QPrinter
+    pr = QPrinter(QPrinter.PrinterMode.HighResolution)
+    pr.setPageLayout(jobs.page_layout(s or Settings(), orient))
+    pr.setFullPage(True)
+    pr.setOutputFormat(QPrinter.OutputFormat.PdfFormat)
+    pr.setOutputFileName(str(path))
+    return pr
 
-    class Device(QImage):
-        def __init__(self):
-            super().__init__(10, 10, QImage.Format.Format_RGB32)
-        def newPage(self):
-            return True
-        def abort(self):
-            return False
-    drawn, out = [], {}
-    j = jobs.Job("x", "copies", 5, "portrait", type("G", (), {"W": 10, "H": 10})(), lambda ctx, i: drawn.append(i))
-    assert jobs.run(j, Device(), cancelled=lambda: len(drawn) >= 3, outcome=out) is False and out == {"sent": 3}
+
+def test_a_print_is_drawn_first_so_cancelling_sends_nothing(tmp_path):
+    """Pages are drawn before the printer starts: a cancel at any point while drawing leaves nothing printed
+    (here a printer writing a PDF stands in for one, as Linux's printing works)."""
+    QApplication.instance() or QApplication([])
+    st = State(Settings(gen="maze", seed=3, dpi=36))
+    j = jobs.job(st, copies=4, vary=True)
+    for stop in (0, 2, 3):                                                  # before page 1, 3 and the last
+        out = tmp_path / f"stop{stop}.pdf"
+        drawn = []
+        assert jobs.run(j, _printer_to(out), progress=drawn.append, cancelled=lambda: len(drawn) > stop) is False
+        assert not out.exists()                                             # the printer was never started
+    out = tmp_path / "all.pdf"
+    assert jobs.run(j, _printer_to(out)) is True and out.exists()
+
+
+def test_a_printed_page_matches_the_saved_pdf(tmp_path):
+    """Played back from its recording, a printed page looks like the PDF saved straight from the same job."""
+    import subprocess
+    import shutil
+    from PySide6.QtGui import QImage, QPdfWriter
+    if not shutil.which("pdftoppm"):
+        pytest.skip("needs pdftoppm")
+    QApplication.instance() or QApplication([])
+    for kw in ({"gen": "maze", "title": "Mazes", "name_line": True}, {"gen": "words"}, {"gen": "mandala", "cbn": True}):
+        s = Settings(seed=8, dpi=72, **kw)
+        j = jobs.job(State(s), copies=1, names=["Ana"] if kw.get("name_line") else ())
+        printed, saved = tmp_path / "printed.pdf", tmp_path / "saved.pdf"
+        assert jobs.run(j, _printer_to(printed, s, j.orient))
+        w = QPdfWriter(str(saved))
+        w.setPageLayout(jobs.page_layout(s, j.orient))
+        w.setResolution(s.dpi)
+        assert jobs.run(j, w)
+        pics = []
+        for f in (printed, saved):
+            subprocess.run(["pdftoppm", "-r", "40", "-gray", "-png", "-singlefile", str(f), str(f.with_suffix(""))],
+                           check=True)
+            pics.append(QImage(str(f.with_suffix(".png"))).convertToFormat(QImage.Format.Format_Grayscale8))
+        a, b = pics
+        assert a.size() == b.size()
+        diff = sum(abs(a.pixelColor(x, y).value() - b.pixelColor(x, y).value()) > 64
+                   for x in range(0, a.width(), 2) for y in range(0, a.height(), 2))
+        assert diff < 0.01 * (a.width() // 2) * (a.height() // 2), (kw, diff)
 
 
 def _print_and_cancel(win, monkeypatch, at, file=None):
@@ -375,7 +411,7 @@ def _print_and_cancel(win, monkeypatch, at, file=None):
     monkeypatch.setattr(QPrintDialog, "exec", accept)
     real_run, reached = jobs.run, threading.Event()
 
-    def slow_run(j, device, progress=None, cancelled=lambda: False, outcome=None):
+    def slow_run(j, device, progress=None, cancelled=lambda: False):
         def prog(i):
             if i == at:
                 reached.set()
@@ -383,10 +419,10 @@ def _print_and_cancel(win, monkeypatch, at, file=None):
                 while not cancelled() and time.time() < deadline:
                     time.sleep(0.01)
             progress(i)
-        if not file:   # no printer here: a PDF stands in, as Linux's print system does (abort() can't stop it)
+        if not file:   # no printer here: a PDF stands in, as Linux's print system does
             device.setOutputFormat(QPrinter.OutputFormat.PdfFormat)
             device.setOutputFileName(str(win._tmp / "spool.pdf"))
-        return real_run(j, device, prog, cancelled, outcome)
+        return real_run(j, device, prog, cancelled)
     monkeypatch.setattr(jobs, "run", slow_run)
     if not file:   # so the printer isn't treated as "Print to file" afterwards
         monkeypatch.setattr(QPrinter, "outputFileName", lambda p: "")
@@ -400,19 +436,18 @@ def _print_and_cancel(win, monkeypatch, at, file=None):
     return win.sidebar.status.text()
 
 
-def test_cancelled_printing_says_what_still_went_to_the_printer(win, tmp_path, monkeypatch):
+def test_cancelled_printing_sends_nothing(win, tmp_path, monkeypatch):
     win._tmp = tmp_path
     win.sidebar.copies.setText("6")
-    assert _print_and_cancel(win, monkeypatch, 2) == ("Printing stopped. The 3 pages already drawn still went to "
-                                                     "the printer: cancel it in your system's print queue if you "
-                                                     "don't want it.")
+    assert _print_and_cancel(win, monkeypatch, 2) == "Printing cancelled: nothing was sent to the printer."
+    assert not (tmp_path / "spool.pdf").exists()                           # nothing reached the "printer"
 
 
 def test_cancelled_print_to_file_isnt_kept(win, tmp_path, monkeypatch):
     win._tmp = tmp_path
     win.sidebar.copies.setText("6")
     out = tmp_path / "printed.pdf"
-    assert _print_and_cancel(win, monkeypatch, 2, file=str(out)) == "Printing cancelled: the file wasn't kept."
+    assert _print_and_cancel(win, monkeypatch, 2, file=str(out)) == "Printing cancelled: no file was written."
     assert not out.exists()
 
 
@@ -440,3 +475,171 @@ def test_a_long_name_is_written_smaller_to_fit():
     def size(c, n):   # a text op is ("text", text, x, y, colour, weight, size)
         return [op for op in c.ops if op[0] == "text" and op[1].startswith(n)][0][6]
     assert size(long_, "Bartholomew") < size(short, "Al")
+
+
+
+def test_a_class_set_of_booklets_each_with_its_own_designs_and_name():
+    s = Settings(gen="maze", seed=11, booklet=True, pages=3, cover=True, key=True, name_line=True)
+    one = jobs.job(State(s))
+    per = one.count
+    j = jobs.job(State(s), copies=4, vary=True)
+    assert j.label == "booklets" and j.copies == 4 and j.count == 4 * per and j.amount() == f"4 booklets ({4 * per} pages)"
+    seen = []
+    real = jobs.draw_page
+    jobs.draw_page = lambda ctx, g, spec, st: seen.append(spec)
+    try:
+        for i in range(j.count):
+            j.draw(None, i)
+        named = jobs.job(State(s), copies=1, vary=True, names=["Ana", "Ben"])
+        nseen = []
+        jobs.draw_page = lambda ctx, g, spec, st: nseen.append(spec)
+        for i in range(named.count):
+            named.draw(None, i)
+    finally:
+        jobs.draw_page = real
+    designs = [[p.seed for p in seen[b * per:(b + 1) * per] if p.kind == "design"] for b in range(4)]
+    assert len({tuple(d) for d in designs}) == 4                           # every booklet its own designs
+    first = [p.seed for p in seen[:per] if p.kind == "design"]
+    plain = []
+    jobs.draw_page = lambda ctx, g, spec, st: plain.append(spec)
+    try:
+        for i in range(one.count):
+            one.draw(None, i)
+    finally:
+        jobs.draw_page = real
+    assert first == [p.seed for p in plain if p.kind == "design"]          # the first is the one shown
+    assert named.count == 2 * per and named.name.endswith("-2-booklets-named")
+    ana = nseen[:per]
+    assert ana[0].kind == "cover" and ana[0].filled_name == "Ana"
+    assert all(p.filled_name == "Ana" for p in ana if p.kind == "design")
+    assert [p.title for p in ana if p.kind == "answers"] == ["Answers · Ana"]
+    assert nseen[per].filled_name == "Ben"
+
+
+def test_booklets_built_page_by_page_and_swapped_pages_vary_too():
+    s = Settings(gen="maze", seed=5, booklet=True, page_list=[{"gen": "maze", "seed": 100}, {"gen": "words", "seed": 200}],
+                 page_seeds={"cover": 300}, cover=True)
+    a, b = jobs.copy_settings(s, 0, True), jobs.copy_settings(s, 3, True)
+    assert a is s
+    assert [p["seed"] for p in b.page_list] == [jobs.copy_seed(100, 3), jobs.copy_seed(200, 3)]
+    assert b.page_seeds == {"cover": jobs.copy_seed(300, 3)} and [p["gen"] for p in b.page_list] == ["maze", "words"]
+    assert jobs.copy_settings(s, 3, False) is s
+
+
+def test_booklet_class_sets_fold_each_booklet_on_its_own_and_pick_pages():
+    s = Settings(gen="maze", seed=2, booklet=True, pages=6, cover=True, fold=True)
+    one = jobs.job(State(s))
+    j = jobs.job(State(s), copies=3, vary=True)
+    assert j.duplex and j.count == 3 * one.count and j.amount() == f"3 booklets, {j.count // 2} sheets (both sides)"
+    flat = jobs.job(State(replace(s, fold=False)), only="1-2", copies=3)
+    assert flat.count == 6 and "-p1-2" in flat.name
+
+
+def test_the_paper_section_offers_copies_of_a_booklet(win):
+    sb = win.sidebar
+    _set(win, gen="maze", booklet=True, name_line=True)
+    sb.copies.setText("5")
+    assert sb.copies_vary.isVisibleTo(sb) and not sb.copies_answers.isVisibleTo(sb)   # it has its own answers
+    assert sb.copies_hint.text() == "Print and Save PDF make 5 booklets, each with its own designs (the first is the one shown)."
+    sb.copies_names.setText("Ana, Ben")
+    assert sb.copies_hint.text().startswith("Print and Save PDF make 2 booklets, one for each name, each with its own designs")
+    assert sb.copies_hint.text().endswith("Each name goes on its booklet's cover, Name lines and answer pages.")
+
+
+def test_the_preview_shows_any_copy_with_its_designs_and_name():
+    from inkapp import render
+    from inkapp.classset import ClassSet
+    QApplication.instance() or QApplication([])
+    s = Settings(gen="maze", seed=4, name_line=True)
+    cs = ClassSet(count=3, vary=True, names=["Ana", "Ben", "Cara"])
+    first = render.render_view(State(s))
+    shown0 = render.render_view(State(s, copy=0, class_set=cs))
+    shown1 = render.render_view(State(s, copy=1, class_set=cs))
+    assert shown0.view.copy_label == "Copy 1 of 3 · Ana" and shown1.view.copy_label == "Copy 2 of 3 · Ben"
+    assert shown1.view.copy == 1 and render.render_view(State(s, copy=9, class_set=cs)).view.copy == 2   # kept in range
+    assert shown0.image != shown1.image                                   # copy 2 has its own maze
+    assert shown0.image != first.image                                    # and the name is on its line
+    alike = render.render_view(State(s, copy=1, class_set=ClassSet(count=3, vary=False)))
+    assert alike.image == first.image and alike.view.copy_label == "Copy 2 of 3"
+    assert render.view(State(s)).copy_label == ""                         # no class set, no copy pager
+    # a booklet: the copy's own pages (paging through them as before), its name on the cover
+    b = Settings(gen="maze", seed=4, booklet=True, pages=2, cover=True, name_line=True)
+    v = render.view(State(b, copy=1, class_set=cs))
+    assert v.kind == "booklet" and v.pages[0].filled_name == "Ben" and v.copy_label == "Copy 2 of 3 · Ben"
+    assert [p.seed for p in v.pages if p.kind == "design"] != \
+        [p.seed for p in render.view(State(b)).pages if p.kind == "design"]
+    # no class set where there can't be one
+    assert render.view(State(replace(b, poster=True), copy=1, class_set=cs)).copy_label == ""
+
+
+def test_the_copy_pager_steps_through_the_copies(win):
+    sb = win.sidebar
+    _set(win, gen="maze", name_line=True)
+    assert not sb.copy_pager.isVisibleTo(sb) and sb.class_set_view() is None
+    sb.copies_names.setText("Ana, Ben, Cara")
+    assert sb.copy_pager.isVisibleTo(sb) and sb.class_set_view().count == 3
+    win.step_copy(1)
+    win.step_copy(1)
+    win.step_copy(1)                                                       # stops at the last
+    assert win.state.copy == 2
+    win.step_copy(-5)
+    assert win.state.copy == 0
+    from inkapp import render
+    sb.sync(render.view(State(win.state.settings, copy=1, class_set=sb.class_set_view())))
+    assert sb.copy_pager.text.text() == "Copy 2 of 3 · Ben"
+    assert sb.copy_pager.back.accessibleName() == "Previous copy"
+
+
+def test_png_and_svg_save_the_copy_shown():
+    from inkapp.classset import ClassSet
+    QApplication.instance() or QApplication([])
+    s = Settings(gen="maze", seed=4, name_line=True, dpi=36)
+    cs = ClassSet(count=3, vary=True, names=["Ana", "Ben", "Cara"])
+    text0, name0 = jobs.svg(State(s))
+    text1, name1 = jobs.svg(State(s, copy=1, class_set=cs))
+    assert name1 == name0 + "-copy2" and text1 != text0 and ">Ben<" in text1
+    img0, _ = jobs.png(State(s))
+    img1, n1 = jobs.png(State(s, copy=1, class_set=cs))
+    assert n1.endswith("-copy2") and img0 != img1
+    assert jobs.svg(State(s, copy=0, class_set=cs))[1] == name0          # the first copy keeps the plain name
+
+
+def test_fixes_from_checking_booklet_class_sets(win, tmp_path):
+    from inkapp import render
+    from inkapp.classset import ClassSet
+    QApplication.instance() or QApplication([])
+    # the PNG of a folded side carries the copy's name, as the preview does
+    b = Settings(gen="maze", seed=4, booklet=True, pages=2, cover=True, fold=True, name_line=True, dpi=36)
+    cs = ClassSet(count=2, vary=True, names=["Ana", "Ben"])
+    named, _ = jobs.png(State(b, copy=0, class_set=cs))
+    plain, _ = jobs.png(State(b))
+    assert named != plain
+    # one name is a class set too: the preview and PNG/SVG show it
+    sb = win.sidebar
+    _set(win, gen="maze", name_line=True)
+    sb.copies_names.setText("Ana")
+    one = sb.class_set_view()
+    assert one is not None and one.count == 1 and not sb.copy_pager.isVisibleTo(sb)
+    assert ">Ana<" in jobs.svg(State(win.state.settings, class_set=one))[0]
+    # Booklet left on from Make one up doesn't stop a photo's copies showing their names
+    p = Settings(mode="convert", booklet=True, name_line=True)
+    from inkengine.photo import Photo
+    from PySide6.QtGui import QImage, QColor
+    img = QImage(40, 30, QImage.Format.Format_ARGB32)
+    img.fill(QColor("#468"))
+    v = render.view(State(p, [Photo(img)], copy=1, class_set=ClassSet(count=2, names=["Ana", "Ben"])))
+    assert v.copy == 1 and v.copy_label == "Copy 2 of 2 · Ben"
+    # opening a project starts at its first copy
+    win.state.copy = 3
+    path = str(tmp_path / "p.inkline")
+    win._write_project(path)
+    win.open_project(path)
+    assert win.state.copy == 0
+
+
+def test_a_print_says_when_its_pages_go_to_the_printer(tmp_path):
+    QApplication.instance() or QApplication([])
+    j = jobs.job(State(Settings(gen="maze", dpi=36)), copies=3, vary=True)
+    said = []
+    assert jobs.run(j, _printer_to(tmp_path / "out.pdf"), progress=said.append)
+    assert said == [0, 1, 2, 3]                                            # 3 means: now sending

@@ -17,8 +17,8 @@ from PySide6.QtCore import QEvent, QMimeData, QTimer, Qt, Signal
 from PySide6.QtGui import QAction, QGuiApplication, QImage, QKeySequence, QShortcut, QUndoCommand, QUndoStack
 from PySide6.QtPrintSupport import QAbstractPrintDialog, QPrintDialog, QPrinter
 from PySide6.QtWidgets import (QAbstractItemView, QAbstractSlider, QAbstractSpinBox, QApplication, QComboBox, QDialog,
-                               QFileDialog, QHBoxLayout, QLineEdit, QMainWindow, QMenu, QMenuBar, QMessageBox, QUndoView,
-                               QVBoxLayout, QWidget)
+                               QFileDialog, QHBoxLayout, QInputDialog, QLineEdit, QMainWindow, QMenu, QMenuBar, QMessageBox,
+                               QUndoView, QVBoxLayout, QWidget)
 from PySide6.QtGui import QPdfWriter
 
 from inkengine import book, photo
@@ -149,6 +149,10 @@ class Window(QMainWindow):
         self.setAcceptDrops(True)
         self.state = State()
         self.saved_presets = config.read("presets.json")
+        lists = config.read("class-lists.json").get("lists")
+        self.class_lists = {k: v for k, v in lists.items() if isinstance(k, str) and isinstance(v, str)} \
+            if isinstance(lists, dict) else {}
+        self._saved_class_set = project.class_set({})   # what the open project's file holds
         # the printer last chosen in the Print dialog ("" is the system's default): its dead edges are shown
         self.printer_name = config.read("printer.json").get("name", "") if remember else ""
         if not isinstance(self.printer_name, str):
@@ -193,9 +197,7 @@ class Window(QMainWindow):
         self._cancel = threading.Event()   # set by Cancel (or Esc) while a print or save is drawing
         self._job_path = None              # the PDF being written, deleted if it's cancelled
         self._job_stopped = ""             # what the status line says when it's cancelled
-        self._job_outcome = {}             # jobs.run's note of pages that went to the printer anyway
         self._pending_save = None          # a PNG or SVG being drawn, before its file is chosen
-        self._job_unit = "page"
         self._pan_start = None
         self.history = QUndoStack(self)
         self._history_view = None   # Edit → History…, made the first time it's opened
@@ -237,6 +239,11 @@ class Window(QMainWindow):
         sb.preset_chosen.connect(self._apply_preset)
         sb.preset_save.connect(self._save_preset)
         sb.preset_delete.connect(self._delete_preset)
+        sb.class_list_save.connect(self._save_class_list)
+        sb.class_list_delete.connect(self._delete_class_list)
+        sb.fill_class_lists(self.class_lists)
+        sb.class_set_changed.connect(self._class_set_changed)
+        sb.copy_step.connect(self.step_copy)
         sb.photo_selected.connect(self._select_photo)
         sb.photo_moved.connect(self._move_photo)
         sb.photo_removed.connect(self._remove_photo)
@@ -729,16 +736,39 @@ class Window(QMainWindow):
                 self._msg(err)
 
     # --- projects (.inkline files) ------------------------------------------------------------------------
+    def _unsaved(self):
+        """Changes the project file doesn't have: an undo step, or (in a project) its class set."""
+        if not self.history.isClean():
+            return True
+        return self.project_path is not None and \
+            project.class_set(self.sidebar.class_set()) != project.class_set(self._saved_class_set)
+
+    def step_copy(self, d):
+        """The copy pager: show the class set's next or previous copy in the preview."""
+        cs = self.sidebar.class_set_view()
+        if cs is None:
+            return
+        self.state.copy = max(0, min(self.state.copy + d, cs.count - 1))
+        self.schedule()
+
+    def _class_set_changed(self):
+        """Copies, Names or their switches changed: the preview (it shows one of the copies), the title's unsaved
+        mark, and a recovery copy as for any change."""
+        self.schedule()
+        self._update_title()
+        if self.keeper is not None and self.project_path is not None and not self._keep_timer.isActive():
+            self._keep_timer.start()
+
     def _update_title(self, *_a):
         name = project.title(self.project_path) if self.project_path else ""
         # untitled work shows no unsaved mark: it was never a file (and the settings are remembered anyway)
         self.setWindowTitle(f"{name}[*] — Inkline {self.version}" if name else f"Inkline {self.version}")
         if name:
-            self.setWindowModified(not self.history.isClean())
+            self.setWindowModified(self._unsaved())
 
     def _ask_to_save(self):
         """Before the work is replaced: True to go on (saved, or the changes aren't wanted), False to stop."""
-        if self.history.isClean():
+        if not self._unsaved():
             return True
         name = project.title(self.project_path) if self.project_path else ""
         box = QMessageBox(QMessageBox.Icon.Question, "Save changes?",
@@ -757,6 +787,7 @@ class Window(QMainWindow):
         """Make what the project holds the work in the window, with a fresh history."""
         st = self.state
         st.settings, st.photos, st.sel, st.book_sel, st.page = proj.settings, list(proj.photos), proj.sel, proj.book_sel, 0
+        st.copy = 0   # another class set: its first copy
         st.mirror()
         self.project_path = path
         self.sidebar.load()
@@ -765,6 +796,8 @@ class Window(QMainWindow):
         self.sidebar.load_crop()
         self.act_test.setChecked(False)
         self.sidebar.only_pages.clear()   # another book: every page again
+        self.sidebar.set_class_set(proj.class_set)   # the project's class set, or none
+        self._saved_class_set = project.class_set(proj.class_set or {})
         self.history.clear()        # Undo doesn't reach back into the work that was open before
         self._last = _Snapshot(st)
         self.history.setClean()
@@ -823,13 +856,15 @@ class Window(QMainWindow):
     def _write_project(self, path):
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)   # big photos take a moment to pack
         try:
-            project.save(path, self.state, self.version)
+            cs = self.sidebar.class_set()
+            project.save(path, self.state, self.version, project.class_set_json(cs))
         except (OSError, ValueError):
             self._msg(f"Couldn't save {os.path.basename(path)}. Check that the folder exists and you can write to it.")
             return False
         finally:
             QApplication.restoreOverrideCursor()
         self.project_path = os.path.abspath(path)
+        self._saved_class_set = project.class_set(cs)
         self.history.setClean()
         self._keep_copy()           # saved: the recovery copy goes
         self._update_title()
@@ -842,7 +877,7 @@ class Window(QMainWindow):
         """Unsaved work that isn't remembered anywhere else: settings are (last-settings.json), photos and a
         booklet's own pages aren't, and an open project's changes aren't in its file."""
         st = self.state
-        return not self.history.isClean() and bool(st.photos or st.settings.page_list or self.project_path)
+        return self._unsaved() and bool(st.photos or st.settings.page_list or self.project_path)
 
     def _keep_copy(self):
         if self.keeper is None:
@@ -853,7 +888,7 @@ class Window(QMainWindow):
             return
         st = self.state   # a snapshot, as the preview draws from: the worker never sees the work change under it
         snap = State(replace(st.settings), [replace(p) for p in st.photos], st.sel, st.page, st.book_sel)
-        self.keeper.keep(snap, self.project_path)
+        self.keeper.keep(snap, self.project_path, project.class_set_json(self.sidebar.class_set()))
 
     def offer_recovery(self):
         """At start: if a session closed without saving its work, offer to bring that work back."""
@@ -1119,13 +1154,15 @@ class Window(QMainWindow):
 
     def _render(self):
         st = self.state
-        snap = State(replace(st.settings), [replace(p) for p in st.photos], st.sel, st.page)
+        snap = State(replace(st.settings), [replace(p) for p in st.photos], st.sel, st.page,
+                     copy=st.copy, class_set=self.sidebar.class_set_view())
         self.renderer.submit(lambda: render_view(snap))
 
     def _rendered(self, n, r):
         if n != self.renderer.latest:
             return
         self.state.page = r.view.index
+        self.state.copy = r.view.copy
         self.preview.page.set_image(r.image, r.poster)
         self.preview.page.set_pannable(self.state.settings.mode == "convert" and bool(self.state.photos)
                                        and r.view.kind not in ("fold", "testpage"))
@@ -1193,6 +1230,39 @@ class Window(QMainWindow):
         self.sidebar.fill_presets(nxt, f"s:{name}")
         self._msg(f"Updated preset “{name}”." if existed else f"Saved preset “{name}”.")
 
+    def _save_class_list(self, chosen):
+        """Paper → Names → Save…: keep the names typed as a list, under a name (the chosen list's, to update it)."""
+        names = self.sidebar.copies_names.text().strip()
+        if not jobs.parse_names(names):
+            self._msg("Type or paste the names first, then save them as a list.")
+            self.sidebar.copies_names.setFocus()
+            return
+        name, ok = QInputDialog.getText(self, "Save class list", "Name for this list:", text=chosen)
+        name = " ".join(name.split())[:40].strip()
+        if not ok or not name:
+            return
+        existed = name in self.class_lists
+        nxt = {**self.class_lists, name: names}
+        err = config.write("class-lists.json", {"lists": nxt}, "Class lists")
+        if err:
+            self._msg(err)
+            return
+        self.class_lists = nxt
+        self.sidebar.fill_class_lists(nxt, name)
+        self._msg(f"Updated the list “{name}”." if existed else f"Saved the list “{name}”.")
+
+    def _delete_class_list(self, name):
+        if name not in self.class_lists:
+            return
+        nxt = {k: v for k, v in self.class_lists.items() if k != name}
+        err = config.write("class-lists.json", {"lists": nxt}, "Class lists")
+        if err:
+            self._msg(err)
+            return
+        self.class_lists = nxt
+        self.sidebar.fill_class_lists(nxt)
+        self._msg(f"Deleted the list “{name}”. The names typed stay until you clear them.")
+
     def _delete_preset(self, name):
         nxt = {k: v for k, v in self.saved_presets.items() if k != name}
         err = config.write("presets.json", nxt, "Presets")
@@ -1243,13 +1313,14 @@ class Window(QMainWindow):
             elif kind == "png" and s.poster:
                 self._msg("Posters save as PDF (one page per sheet) or print directly.")
             return
-        snap = State(replace(s), [replace(p) for p in st.photos], st.sel, st.page)
+        snap = State(replace(s), [replace(p) for p in st.photos], st.sel, st.page,
+                     copy=st.copy, class_set=self.sidebar.class_set_view())   # PNG and SVG: the copy shown
         if kind == "pdf":
             j = self._job(snap)
             if j is None:
                 return
-            what = ("Save PDF of " + j.amount() if j.label == "copies" else f"Save {j.label} PDF") if j.count > 1 \
-                else "Save PDF"
+            what = ("Save PDF of " + j.amount() if j.label in ("copies", "booklets") else f"Save {j.label} PDF") \
+                if j.count > 1 else "Save PDF"
             path = self._ask_path(what, j.name, "pdf", "PDF document (*.pdf)")
             if not path:
                 self._msg("Save cancelled.")
@@ -1314,7 +1385,7 @@ class Window(QMainWindow):
             self._msg("Print cancelled.")
             return
         self._remember_printer(printer.printerName())
-        sent = j.amount() if j.duplex or j.label == "copies" else f"{j.count} {j.unit}s"
+        sent = j.amount() if j.duplex or j.label in ("copies", "booklets") else f"{j.count} {j.unit}s"
         done = f"Sent {sent} to the printer." if j.count > 1 else "Sent to the printer."
         times = printer.copyCount()   # the dialog's own Copies prints the whole job that many times
         if times > 1:
@@ -1347,20 +1418,21 @@ class Window(QMainWindow):
         self._busy(True, f"Rendering {j.unit} 1 of {j.count}…")
         self._pending_save = None
         cancel = self._cancel
-        self._job_outcome = outcome = {}
-        self._job_unit = j.unit
 
         def progress(i):
-            if not cancel.is_set():
+            if i >= j.count:   # a print: every page drawn, now it goes to the printer (and can't be stopped)
+                self.status.emit("Sending to the printer…")
+                QTimer.singleShot(0, lambda: sb.cancel_btn.setEnabled(False))
+            elif not cancel.is_set():
                 self.status.emit(f"Rendering {j.unit} {i + 1} of {j.count}…")
             QTimer.singleShot(0, lambda: bar.setValue(i + 1))
-        self.worker.submit(lambda: ("job", jobs.run(j, device, progress, cancel.is_set, outcome), done, failed))
+        self.worker.submit(lambda: ("job", jobs.run(j, device, progress, cancel.is_set), done, failed))
 
     def cancel_job(self):
         """Cancel (or Esc): stop the print or save after the page being drawn."""
         # only a job with a Cancel button: a single page is done in a moment (and a PNG or SVG save can't stop)
         if not self._busy_saving or self._cancel.is_set() or self._pending_save is not None \
-                or not self.sidebar.progress_row.isVisible():
+                or not self.sidebar.progress_row.isVisible() or not self.sidebar.cancel_btn.isEnabled():
             return
         self._cancel.set()
         self.sidebar.cancel_btn.setEnabled(False)
@@ -1375,14 +1447,9 @@ class Window(QMainWindow):
             message = self._job_stopped if stopped else done if ok else failed
             path = self._job_path
             if stopped and not path and isinstance(device, QPrinter) and device.outputFileName():
-                path = device.outputFileName()   # the print dialog's "Print to file": cancelled, so not kept
-                message = "Printing cancelled: the file wasn't kept."
-            elif stopped and "sent" in self._job_outcome:   # this printer system can't call a job off
-                n, unit = self._job_outcome["sent"], self._job_unit
-                message = ("Printing stopped. " + (f"The {n} {unit}{'s' if n != 1 else ''} already drawn still went"
-                           if n else "An empty job still went") + " to the printer: cancel it in your system's "
-                           "print queue if you don't want it.")
-            if stopped and path:   # a half-written PDF isn't kept
+                path = device.outputFileName()   # the print dialog's "Print to file": nothing written, or not kept
+                message = "Printing cancelled: no file was written."
+            if stopped and path and os.path.exists(path):   # a half-written PDF isn't kept
                 try:
                     os.remove(path)
                 except OSError:

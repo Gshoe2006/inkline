@@ -44,6 +44,10 @@ class Sidebar(QFrame):
     preset_chosen = Signal(str, str)   # ("b" built-in or "s" saved, name)
     preset_save = Signal(str)
     preset_delete = Signal(str)
+    class_list_save = Signal(str)     # Paper → Names: save the names as a list (the one chosen, to update it)
+    class_list_delete = Signal(str)
+    class_set_changed = Signal()      # Copies, Names or their switches changed (a project keeps them)
+    copy_step = Signal(int)           # the class set's copy pager: -1 / +1
     photo_selected = Signal(int)
     photo_moved = Signal(int, int)
     photo_removed = Signal(int)
@@ -435,22 +439,49 @@ class Sidebar(QFrame):
         self.copies = line_edit(placeholder="1", max_length=3)
         self.copies.setValidator(_CopiesValidator(self.copies))
         self.copies.setAccessibleName("Copies to print or save")
-        self.copies.textChanged.connect(lambda _t: self.sync())
+        self.copies.textChanged.connect(lambda _t: (self.sync(), self.class_set_changed.emit()))
         self.copies_row = sec.add(OptionRow("Copies", self.copies))
         # a class set: one copy per name, each name written on its copy's "Name" line (never remembered either)
         self.copies_names = line_edit(placeholder="Optional: Ana, Ben, Cara…", max_length=4000)
         self.copies_names.setAccessibleName("Names: one copy for each, written on its Name line")
-        self.copies_names.textChanged.connect(lambda _t: self.sync())
+        self.copies_names.textChanged.connect(lambda _t: (self.sync(), self.class_set_changed.emit()))
         self.copies_names_row = sec.add(OptionRow("Names", self.copies_names))
+        # class lists kept in the settings folder (class-lists.json), to use again
+        self.class_lists = {}
+        self.class_list = combo([("", "Saved lists…")])
+        self.class_list.setAccessibleName("Use a saved class list")
+        self.class_list.activated.connect(self._class_list_picked)
+        self.class_list_del = button("Delete", tip="Delete the chosen list")
+        self.class_list_del.setEnabled(False)
+        self.class_list_del.clicked.connect(lambda: self.class_list_delete.emit(self.class_list.value() or ""))
+        # as Presets pairs its drop-down with Delete; Save… on its own line, so no row is wider than Presets'
+        self.class_list_row = sec.add(_row(self.class_list, self.class_list_del))
+        self.class_list_save_btn = button("Save names as a list…", tip="Save these names as a list, to use again")
+        self.class_list_save_btn.clicked.connect(lambda: self.class_list_save.emit(self.class_list.value() or ""))
+        self.class_list_save_row = QWidget()
+        srow = QHBoxLayout(self.class_list_save_row)
+        srow.setContentsMargins(0, 0, 0, 0)
+        srow.addStretch(1)
+        srow.addWidget(self.class_list_save_btn)
+        sec.add(self.class_list_save_row)
         self.copies_vary = check("A new design on each copy")
         self.copies_vary.setChecked(True)
-        self.copies_vary.toggled.connect(lambda _on: self.sync())
+        self.copies_vary.toggled.connect(lambda _on: (self.sync(), self.class_set_changed.emit()))
         sec.add(self.copies_vary)
         self.copies_answers = check("Answer pages at the end")
         self.copies_answers.setChecked(True)
-        self.copies_answers.toggled.connect(lambda _on: self.sync())
+        self.copies_answers.toggled.connect(lambda _on: (self.sync(), self.class_set_changed.emit()))
         sec.add(self.copies_answers)
         self.copies_hint = sec.add(Hint())
+        # look through the class set's copies in the preview: each one's designs, and its name
+        self.copy_pager = Pager()
+        self.copy_pager.back.setAccessibleName("Previous copy")
+        self.copy_pager.forward.setAccessibleName("Next copy")
+        self.copy_pager.back.setToolTip("Previous copy")
+        self.copy_pager.forward.setToolTip("Next copy")
+        self.copy_pager.prev.connect(lambda: self.copy_step.emit(-1))
+        self.copy_pager.next.connect(lambda: self.copy_step.emit(1))
+        sec.add(self.copy_pager)
         self.testpage_hint = sec.add(Hint("Print it at 100% (“Actual size”), then check the squares with a ruler. Always portrait."))
         sec.add(Pair(OptionRow("Size", self._combo("paper", [("letter", "Letter"), ("a4", "A4")])),
                      OptionRow("Orientation", self._combo("orient", [("portrait", "Portrait"), ("landscape", "Landscape")]))))
@@ -466,6 +497,54 @@ class Sidebar(QFrame):
             return int(self.copies.text())
         except ValueError:
             return None
+
+    def fill_class_lists(self, lists, selected=""):
+        """The saved class lists in the drop-down, by name; selected: the one to show chosen."""
+        self.class_lists = dict(lists)
+        c = self.class_list
+        c.blockSignals(True)
+        c.clear()
+        c.addItem("Saved lists…" if lists else "No saved lists yet", "")
+        for n in sorted(lists, key=str.lower):
+            c.addItem(n, n)
+        c.setCurrentIndex(max(0, c.findData(selected)))
+        c.setEnabled(bool(lists))
+        c.blockSignals(False)
+        self.class_list_del.setEnabled(bool(selected) and selected in lists)
+
+    def _class_list_picked(self, _i):
+        name = self.class_list.value() or ""
+        self.class_list_del.setEnabled(bool(name))
+        if name in self.class_lists:
+            self.copies_names.setText(self.class_lists[name])
+
+    def class_set(self):
+        """Copies, Names and their switches, as a project keeps them."""
+        text = self.copies_names.text().strip()   # spaces round the names, or only separators, don't count
+        return {"copies": self.copies_count(), "names": text if jobs.parse_names(text, None) else "",
+                "vary": self.copies_vary.isChecked(), "answers": self.copies_answers.isChecked()}
+
+    def set_class_set(self, cs=None):
+        """Put Copies, Names and their switches back (None: as on a fresh start)."""
+        cs = cs or {}
+        n = cs.get("copies", 1)
+        self.copies.setText(str(n) if n > 1 else "")
+        self.copies_names.setText(cs.get("names", ""))
+        self.copies_vary.setChecked(cs.get("vary", True))
+        self.copies_answers.setChecked(cs.get("answers", True))
+        self.class_list.setCurrentIndex(0)
+        self.class_list_del.setEnabled(False)
+        self.sync()
+
+    def class_set_view(self):
+        """The class set Print and Save PDF would make (for the preview's copy pager), or None without one."""
+        from .classset import ClassSet
+        if not self.copies_row.isVisibleTo(self):
+            return None
+        names = self.copies_names_list()
+        cs = ClassSet(count=len(names) if names else self.copies_count(), vary=self.copies_vary.isChecked(),
+                      answers=self.copies_answers.isChecked(), names=names)
+        return cs if cs.active else None   # one name is a class set too: it goes on the page
 
     def copies_names_list(self):
         """The names typed for a class set: they replace Copies, but only with the Name line on."""
@@ -804,35 +883,41 @@ class Sidebar(QFrame):
         self.testpage_hint.setVisible(s.testpage)
         multi = (is_book or is_pbook) and not s.testpage
         single = not multi and not s.poster and not s.testpage and (make or bool(self.state.photos))
-        names = self.copies_names_list() if single else []
-        typed_names = jobs.parse_names(self.copies_names.text()) if single else []
-        n = len(names) if names else self.copies_count() if single else 1
-        self.copies_row.setVisible(single)
-        self.copies_names_row.setVisible(single)
+        books = is_book and not s.testpage   # a class set of booklets: each child their own
+        shown = single or books
+        names = self.copies_names_list() if shown else []
+        typed_names = jobs.parse_names(self.copies_names.text()) if shown else []
+        n = len(names) if names else self.copies_count() if shown else 1
+        for row in (self.copies_row, self.copies_names_row, self.class_list_row, self.class_list_save_row):
+            row.setVisible(shown)
         self.copies.setEnabled(not names)   # the names say how many
-        can_vary, vary_note = jobs.copies_vary(s)
+        # a booklet's pages each vary in their own way (and it has its own answer pages)
+        can_vary, vary_note = (True, "") if books else jobs.copies_vary(s)
         typed = self.copies_typed()
         off = not names and typed is not None and typed != n   # 0 or over the most: say what will print instead
         unnamed = bool(typed_names) and not names   # names typed, but no Name line to write them on
-        self.copies_vary.setVisible(single and can_vary and n > 1)
+        self.copies_vary.setVisible(shown and can_vary and n > 1)
         keyed = single and n > 1 and jobs.copies_have_answers(s)
         self.copies_answers.setVisible(keyed)
-        self.copies_hint.setVisible(single and (n > 1 or off or unnamed or bool(names)))
-        if single and (n > 1 or off or unnamed or names):
+        self.copies_hint.setVisible(shown and (n > 1 or off or unnamed or bool(names)))
+        if shown and (n > 1 or off or unnamed or names):
             vary = can_vary and self.copies_vary.isChecked()
+            one, many_ = ("booklet", "booklets") if books else ("copy", "copies")
+            own = ("each with its own designs" if books else "each with its own design") + " (the first is the one shown)."
             text = (f"Copies go from 1 to {MAX_COPIES}. " if off else "")
             if unnamed:
-                text += 'To write the names on the copies, turn on Page text → Add a "Name ______" line. '
+                text += f'To write the names on the {many_}, turn on Page text → Add a "Name ______" line. '
             if names:
                 many = len(jobs.parse_names(self.copies_names.text(), None)) > MAX_COPIES
-                text += (f"Print and Save PDF make {n} {'copy' if n == 1 else 'copies'}, one for each name"
+                text += (f"Print and Save PDF make {n} {one if n == 1 else many_}, one for each name"
                          + (f" (the first {MAX_COPIES})" if many else "")
-                         + (", each with its own design (the first is the one shown)." if vary and n > 1 else "."))
+                         + (f", {own}" if vary and n > 1 else "."))
+                if books:
+                    text += " Each name goes on its booklet's cover, Name lines and answer pages."
             elif n == 1:
-                text += "Print and Save PDF make 1 copy."
+                text += f"Print and Save PDF make 1 {one}."
             else:
-                text += (f"Print and Save PDF make {n} copies, "
-                         + ("each with its own design (the first is the one shown)." if vary else "all alike."))
+                text += f"Print and Save PDF make {n} {many_}, " + (own if vary else "all alike.")
             if vary_note and (vary or not can_vary):
                 text += " " + vary_note
             if keyed and self.copies_answers.isChecked():
@@ -840,6 +925,7 @@ class Sidebar(QFrame):
                          else " Answer pages follow, each labelled with its copy's name." if names
                          else " Answer pages follow, and each copy is numbered to match them.")
             self.copies_hint.setText(text)
+        self.copy_pager.setVisible(shown and n > 1)
         self.only_row.setVisible(multi)
         self.only_hint.setVisible(multi and bool(self.only_pages.text().strip()))
         if multi and self.only_pages.text().strip():
@@ -847,6 +933,7 @@ class Sidebar(QFrame):
         if view is not None:
             self.pager.set_text(view.label)
             self.ppager.set_text(view.label)
+            self.copy_pager.set_text(view.copy_label)
             p = view.pages[view.index] if view.pages and view.kind == "booklet" else None
             key = p.idx if p is not None and p.kind == "design" else "cover" if p is not None and p.kind == "cover" else None
             self.page_new.setEnabled(key is not None and not s.fold)
