@@ -6,6 +6,57 @@ To release a new version, add a section headed `## <version>` (the same text as 
 pull request that bumps `VERSION`. When it merges, `.github/workflows/release.yml` builds the packages
 and publishes a GitHub Release with that section as its notes.
 
+## 4.9.0 - 2026-11-23
+
+Inkline 4.9 puts a name on each copy of a class set, and lets you stop a long print or save.
+
+### What's new
+
+- **A name on each copy.** Type or paste a class list into **Paper → Names** (separated by commas or new lines) and Print or Save PDF makes one copy per name, up to 100, with each name written on its copy's "Name ____" line. With answer pages on, each answer is labelled with its copy's name, so the right answer sheet is easy to find. It needs **Page text → Add a "Name ______" line** turned on. It works for photo pages too. The names aren't saved: paste the list again next time.
+- **Cancel a long print or save.** A **Cancel** button beside the progress bar (or **Esc**) stops a print or PDF after the page being drawn. A half-finished PDF isn't kept.
+
+### Good to know
+
+- **Cancelling a print on Linux:** the system's printing can't call off a job once it's started, so the pages already drawn still go to the printer. Inkline says how many, and you can cancel them in your system's print queue. On Windows the whole job is called off.
+- **A long name** is written smaller to fit on the line.
+
+### Upgrading
+
+Nothing changes in what Inkline needs. Your presets, settings, projects, recent files and printer carry over.
+
+**Windows**
+Run `inkline-4.9.0-windows-setup.exe`.
+
+**Debian / Ubuntu / Linux Mint / Pop!_OS**
+```sh
+sudo apt install ./inkline_4.9.0-1_amd64.deb
+```
+
+**Arch / CachyOS / Manjaro**
+```sh
+sudo pacman -U inkline-4.9.0-1-any.pkg.tar.zst
+```
+
+**Any distro, nothing installed**
+```sh
+chmod +x inkline-4.9.0-x86_64.AppImage && ./inkline-4.9.0-x86_64.AppImage
+```
+
+**Any other distro**
+```sh
+sh inkline-4.9.0.run            # or --system for every user
+```
+
+**Flatpak**
+```sh
+flatpak install --user inkline-4.9.0.flatpak     # if a .flatpak file is attached to this release
+sh packaging/flatpak/build.sh                    # or build it from a copy of the source
+```
+
+### Found a problem?
+
+Please open an issue saying what you did, what you expected, and what happened. Include your system (distro, or Windows version), and the printer if it's about printing.
+
 ## 4.8.0 - 2026-11-23
 
 Inkline 4.8 adds answer pages to a class set of puzzles.
