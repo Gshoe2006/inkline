@@ -230,3 +230,25 @@ def test_without_a_lock_no_copies_are_kept(make, monkeypatch):
     w._keep_copy()
     _settle(w)
     assert not w.keeper.enabled and not os.path.exists(recovery.path_for())
+
+
+def test_a_projects_class_set_is_in_its_recovery_copy(make, tmp_path):
+    """A class set changed (alone, or with other changes) is copied, and recovering it brings it back, so saving
+    the recovered work doesn't lose the names from the project."""
+    w = make()
+    w.state.update(gen="maze", name_line=True)
+    w.sidebar.load()
+    path = str(tmp_path / "class.inkline")
+    w._write_project(path)
+    _settle(w)
+    w.sidebar.copies_names.setText("Ana, Ben, Cara")                       # only the class set changes
+    assert w._keep_timer.isActive() and w._worth_keeping()
+    w._keep_copy()
+    _settle(w)
+    proj, data = project.read(recovery.path_for())
+    assert proj.class_set["names"] == "Ana, Ben, Cara" and data["recovery"]["project"] == path
+    w.sidebar.set_class_set(None)                                            # as a fresh start would be
+    w._use_project(proj, path)
+    assert w.sidebar.copies_names.text() == "Ana, Ben, Cara"
+    w._write_project(path)
+    assert project.load(path).class_set["names"] == "Ana, Ben, Cara"

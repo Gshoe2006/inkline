@@ -280,3 +280,20 @@ def test_saved_class_lists(win, tmp_path, monkeypatch):
     assert win.class_lists == {} and not sb.class_list.isEnabled()
     assert sb.copies_names.text() == "Ana, Ben, Cara, Dev"                  # the names typed stay
     assert json.load(open(tmp_path / "config" / "class-lists.json")) == {"lists": {}}
+
+
+
+def test_spaces_round_the_names_arent_a_change_and_list_names_are_tidied(win, tmp_path, monkeypatch):
+    sb = win.sidebar
+    _set(win, gen="maze", name_line=True)
+    sb.copies_names.setText("Ana, Ben")
+    path = str(tmp_path / "s.inkline")
+    win._write_project(path)
+    sb.copies_names.setText("  Ana, Ben  ")
+    assert not win.isWindowModified()
+    sb.copies_names.setText(" , ;")                                         # only separators: no names
+    assert sb.class_set()["names"] == ""
+    monkeypatch.setattr("inkapp.window.QInputDialog.getText", lambda *a, **k: ("x" * 39 + " yyyy", True))
+    sb.copies_names.setText("Ana")
+    sb.class_list_save_btn.click()
+    assert list(win.class_lists) == ["x" * 39]                              # cut to 40, no space left at the end

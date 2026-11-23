@@ -244,7 +244,7 @@ class Window(QMainWindow):
         sb.class_list_save.connect(self._save_class_list)
         sb.class_list_delete.connect(self._delete_class_list)
         sb.fill_class_lists(self.class_lists)
-        sb.class_set_changed.connect(self._update_title)
+        sb.class_set_changed.connect(self._class_set_changed)
         sb.photo_selected.connect(self._select_photo)
         sb.photo_moved.connect(self._move_photo)
         sb.photo_removed.connect(self._remove_photo)
@@ -744,6 +744,12 @@ class Window(QMainWindow):
         return self.project_path is not None and \
             project.class_set(self.sidebar.class_set()) != project.class_set(self._saved_class_set)
 
+    def _class_set_changed(self):
+        """Copies, Names or their switches changed: the title's unsaved mark, and a recovery copy as for any change."""
+        self._update_title()
+        if self.keeper is not None and self.project_path is not None and not self._keep_timer.isActive():
+            self._keep_timer.start()
+
     def _update_title(self, *_a):
         name = project.title(self.project_path) if self.project_path else ""
         # untitled work shows no unsaved mark: it was never a file (and the settings are remembered anyway)
@@ -861,7 +867,7 @@ class Window(QMainWindow):
         """Unsaved work that isn't remembered anywhere else: settings are (last-settings.json), photos and a
         booklet's own pages aren't, and an open project's changes aren't in its file."""
         st = self.state
-        return not self.history.isClean() and bool(st.photos or st.settings.page_list or self.project_path)
+        return self._unsaved() and bool(st.photos or st.settings.page_list or self.project_path)
 
     def _keep_copy(self):
         if self.keeper is None:
@@ -872,7 +878,7 @@ class Window(QMainWindow):
             return
         st = self.state   # a snapshot, as the preview draws from: the worker never sees the work change under it
         snap = State(replace(st.settings), [replace(p) for p in st.photos], st.sel, st.page, st.book_sel)
-        self.keeper.keep(snap, self.project_path)
+        self.keeper.keep(snap, self.project_path, project.class_set_json(self.sidebar.class_set()))
 
     def offer_recovery(self):
         """At start: if a session closed without saving its work, offer to bring that work back."""
@@ -1220,7 +1226,7 @@ class Window(QMainWindow):
             self.sidebar.copies_names.setFocus()
             return
         name, ok = QInputDialog.getText(self, "Save class list", "Name for this list:", text=chosen)
-        name = " ".join(name.split())[:40]
+        name = " ".join(name.split())[:40].strip()
         if not ok or not name:
             return
         existed = name in self.class_lists

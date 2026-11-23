@@ -510,7 +510,8 @@ class Sidebar(QFrame):
 
     def class_set(self):
         """Copies, Names and their switches, as a project keeps them."""
-        return {"copies": self.copies_count(), "names": self.copies_names.text(),
+        text = self.copies_names.text().strip()   # spaces round the names, or only separators, don't count
+        return {"copies": self.copies_count(), "names": text if jobs.parse_names(text, None) else "",
                 "vary": self.copies_vary.isChecked(), "answers": self.copies_answers.isChecked()}
 
     def set_class_set(self, cs=None):

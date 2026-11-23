@@ -164,11 +164,13 @@ class Keeper:
         self._gen = 0          # bumped by forget(): a copy being written when the work was saved is thrown away
         self._thread = None
 
-    def keep(self, snapshot, source):
+    def keep(self, snapshot, source, extra=None):
+        """Write a copy of snapshot (soon, on a thread). source: the project it came from; extra: more keys for
+        the copy (the class set, as a project keeps it)."""
         if not self.enabled:
             return
         with self._lock:
-            self._next = (snapshot, source, self._gen)
+            self._next = (snapshot, source, self._gen, dict(extra or {}))
             start = not self._running
             self._running = True
         if start:
@@ -204,11 +206,11 @@ class Keeper:
                 if job is None:
                     self._running = False
                     return
-            snapshot, source, gen = job
+            snapshot, source, gen, extra = job
             try:
                 os.makedirs(config.config_dir(), exist_ok=True)
                 project.save(path_for(), snapshot, self.version,
-                             {"recovery": {"project": source, "saved": time.time()}})
+                             {**extra, "recovery": {"project": source, "saved": time.time()}})
             except Exception:     # noqa: BLE001 — no copy this time (the work itself is untouched); the next
                 if not isinstance(sys.exc_info()[1], OSError):   # change tries again, so this thread goes on
                     traceback.print_exc()
