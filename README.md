@@ -145,6 +145,24 @@ To check the release builds without publishing anything, open the Release workfl
 
 For a packaging-only change, bump `pkgrel` in `packaging/arch/PKGBUILD`, run `packaging/build.sh` and install with `sudo pacman -U dist/inkline-*.pkg.tar.zst`; no release is made.
 
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org).
+
+This covers the Windows installer (`inkline-<version>-windows-setup.exe`). It's signed from the first release
+after SignPath Foundation accepts Inkline; until then the installer is unsigned, and Windows SmartScreen may
+say it's from an unknown publisher.
+
+- Committers and reviewers: [Gshoe2006](https://github.com/Gshoe2006)
+- Approvers: [Gshoe2006](https://github.com/Gshoe2006)
+
+Every installer is built from this repository's source by the release workflow
+(`.github/workflows/release.yml`) on GitHub's own runners, and each release is approved for signing by hand.
+How it's set up: [docs/code-signing.md](docs/code-signing.md).
+
+**Privacy:** this program will not transfer any information to other networked systems unless specifically
+requested by the user or the person installing or operating it.
+
 ## Licence
 
 Inkline is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version (GPL-3.0-or-later). See [LICENSE](LICENSE).

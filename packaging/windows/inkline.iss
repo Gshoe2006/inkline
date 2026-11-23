@@ -13,6 +13,12 @@ AppVerName=Inkline {#VERSION}
 AppPublisher=Inkline
 AppPublisherURL=https://github.com/Gshoe2006/inkline
 AppSupportURL=https://github.com/Gshoe2006/inkline/issues
+; the installer's own file details: SignPath only signs a file whose product name and version are these
+VersionInfoProductName=Inkline
+VersionInfoProductVersion={#VERSION}
+VersionInfoProductTextVersion={#VERSION}
+VersionInfoVersion={#VERSION}
+VersionInfoDescription=Inkline installer
 DefaultDirName={autopf}\Inkline
 DefaultGroupName=Inkline
 DisableProgramGroupPage=yes
