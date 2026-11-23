@@ -6,6 +6,56 @@ To release a new version, add a section headed `## <version>` (the same text as 
 pull request that bumps `VERSION`. When it merges, `.github/workflows/release.yml` builds the packages
 and publishes a GitHub Release with that section as its notes.
 
+## 4.8.0 - 2026-11-23
+
+Inkline 4.8 adds answer pages to a class set of puzzles.
+
+### What's new
+
+- **Answer pages for copies.** When you print or save several copies of a puzzle (Paper → Copies), **Answer pages at the end** (on by default) adds their answers after the copies, four to a page as in a booklet. Each copy has "Copy 7" printed small under it, and its answer is labelled the same, so the sheets are easy to mark. Copies that are all alike share one answer. It works for mazes, word searches, sudoku, kakuro, nonograms, spot the difference, dot-to-dot and colour by number.
+
+### Good to know
+
+- **The copy's label sits in the bottom margin,** so each copy's design is exactly the one you'd get without answers, and the first copy is still the design shown. On a printer that can't print close to the edge, the label may be cut off at the ¼ in margin; a wider margin keeps it.
+- **Getting ready for a signed Windows installer.** Releases can now be signed through SignPath Foundation's free code signing for open source, once SignPath accepts Inkline. Until then the installer stays unsigned, and Windows SmartScreen may say it's from an unknown publisher: choose **More info → Run anyway**. The README's **Code signing policy** says how signing works.
+
+### Upgrading
+
+Nothing changes in what Inkline needs. Your presets, settings, projects, recent files and printer carry over.
+
+**Windows**
+Run `inkline-4.8.0-windows-setup.exe`.
+
+**Debian / Ubuntu / Linux Mint / Pop!_OS**
+```sh
+sudo apt install ./inkline_4.8.0-1_amd64.deb
+```
+
+**Arch / CachyOS / Manjaro**
+```sh
+sudo pacman -U inkline-4.8.0-1-any.pkg.tar.zst
+```
+
+**Any distro, nothing installed**
+```sh
+chmod +x inkline-4.8.0-x86_64.AppImage && ./inkline-4.8.0-x86_64.AppImage
+```
+
+**Any other distro**
+```sh
+sh inkline-4.8.0.run            # or --system for every user
+```
+
+**Flatpak**
+```sh
+flatpak install --user inkline-4.8.0.flatpak     # if a .flatpak file is attached to this release
+sh packaging/flatpak/build.sh                    # or build it from a copy of the source
+```
+
+### Found a problem?
+
+Please open an issue saying what you did, what you expected, and what happened. Include your system (distro, or Windows version), and the printer if it's about printing.
+
 ## 4.7.1 - 2026-11-23
 
 Inkline 4.7.1 prints a class set of a page, and fixes the sidebar with your desktop's style.
