@@ -25,7 +25,7 @@ def _sheet(c, kind, seed=1):
 @pytest.mark.parametrize("c", range(1, 11))
 def test_maths_sums_are_right_in_range_and_never_repeat(c):
     lv = maths.level(c)
-    for kind in maths.KINDS:
+    for kind in ("add", "sub", "addsub", "times", "bonds", "mixed"):   # (sharing and missing numbers: test_clock_scramble)
         sums = _sheet(c, kind, seed=c * 7)
         assert len(sums) == lv["count"] and len({(s[0], s[1], s[2], s[4]) for s in sums}) == len(sums)
         for a, sign, b, answer, missing in sums:
@@ -243,7 +243,8 @@ def _set(w, **kw):
 
 def test_the_sidebar_offers_each_worksheets_options(win):
     sb = win.sidebar
-    assert [v for v, _t in __import__("inkapp.sidebar", fromlist=["x"]).GEN_OPTIONS][-3:] == ["maths", "trace", "crossword"]
+    assert [v for v, _t in __import__("inkapp.sidebar", fromlist=["x"]).GEN_OPTIONS][-6:] == ["maths", "trace", "crossword", "clock",
+                                                                                           "scramble", "spelltest"]
     _set(win, gen="maths")
     assert sb.maths_opts.isVisibleTo(sb) and not sb.trace_opts.isVisibleTo(sb) and not sb.cross_opts.isVisibleTo(sb)
     sb.maths_kind.set_value("times")

@@ -23,7 +23,7 @@ HELPERS = {"label": ([0], []), "button": ([0, 2], ["tip"]), "check": ([0], []), 
            "OptionRow": ([0], []), "Section": ([0], []), "slider_row": ([0], []), "_check": ([1], []),
            "_slider": ([1], []), "_text": ([1], []), "act": ([1], []), "line_edit": ([1], ["placeholder"]), "tr": ([0], [])}
 # module-level tables whose texts are shown: their values (dicts), or each tuple's second item (lists of pairs)
-TABLES = {"NAMES", "THEME_NAMES", "KINDS", "SOURCES", "AGES", "SHEETS", "STYLE_NAMES", "BACKGROUNDS", "SHAPE_NAMES",
+TABLES = {"NAMES", "THEME_NAMES", "KINDS", "TASKS", "CURRENCIES", "LETTERS", "SOURCES", "AGES", "SHEETS", "STYLE_NAMES", "BACKGROUNDS", "SHAPE_NAMES",
           "BASES", "STEP_NAMES", "GEN_OPTIONS", "GRID_OPTIONS", "MARGINS", "PATTERN_COLOURS", "CRAYONS",
           "BUILTIN_PRESETS", "INSTRUCTIONS", "CBN_PATTERN_NOTE", "IMAGE_FILTER", "FILTER", "MESSAGES"}
 

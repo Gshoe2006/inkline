@@ -81,13 +81,24 @@ def _walk_states(w):
         st = w.state
         sb.sync(render.view(State(st.settings, st.photos, st.sel, st.page, copy=st.copy, class_set=sb.class_set_view())))
     for gen in ("mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "name", "words", "nonogram",
-                "spot", "kakuro", "maths", "trace", "crossword"):
+                "spot", "kakuro", "maths", "trace", "crossword", "clock", "scramble", "spelltest"):
         go(gen=gen)
     go(gen="maze", maze_shape="word")
     go(gen="words", ws_theme="custom", ws_words="sol, luna")
     go(gen="trace", trace_source="words")
     go(trace_source="name")
     go(gen="crossword", cross_theme="custom", cross_words="zzz")
+    for task in ("read", "draw", "mixed"):
+        go(gen="clock", clock_task=task)
+    go(gen="trace", trace_style="joined")
+    go(gen="maths", maths_kind="money")
+    go(gen="maths", maths_kind="divide")
+    go(maths_kind="missing")
+    go(gen="scramble", ws_theme="custom", ws_words="sol, luna")
+    go(pack_theme="spelling", pack_words="sol, luna")
+    sb.pack_btn.click()
+    go(pack_theme="ocean")
+    w._make_pack("x")
     go(gen="mandala", cbn=True)
     go(gen="name", name_bg="none")
     go(gen="maze", age="7-9", sheet="banner")
@@ -147,7 +158,9 @@ def test_the_window_in_each_language_asks_for_nothing_untranslated(language, tmp
                   Settings(gen="mandala", dpi=36, cbn=True, cbn_maths=True), Settings(dpi=36, testpage=True),
                   Settings(gen="maze", dpi=36, booklet=True, pages=4, fold=True),
                   Settings(gen="mandala", dpi=36, poster=True, grid="2x2", overlap=0.5),
-                  Settings(gen="maze", dpi=36, booklet=True, pages=3, key=True, cover=True)):
+                  Settings(gen="maze", dpi=36, booklet=True, pages=3, key=True, cover=True),
+                  Settings(gen="clock", dpi=36, clock_task="mixed"), Settings(gen="scramble", dpi=36),
+                  Settings(gen="spelltest", dpi=36)):
             j = jobs.job(State(s), copies=2, answers=True)
             for i in range(j.count):
                 j.draw(RecordingCanvas(), i)

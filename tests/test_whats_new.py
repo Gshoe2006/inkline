@@ -146,8 +146,9 @@ def test_pasting_needs_a_booklet_built_page_by_page_and_room(win):
     win.paste()
     assert win.sidebar.status.text().startswith("To paste pages, turn on Make a multi-page booklet")
     _set(win, booklet=True)
-    for _ in range(36):
-        win.sidebar.book_page_added.emit()
+    pl = win.state.settings.page_list   # 39 pages, in one step (adding them one at a time redraws the list 36 times)
+    win.state.update(page_list=[*pl, *[{**pl[-1], "seed": 1000 + k} for k in range(36)]])
+    win._list_changed()
     assert len(win.state.settings.page_list) == 39
     win.paste()
     assert len(win.state.settings.page_list) == 40
