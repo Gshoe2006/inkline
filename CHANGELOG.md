@@ -6,6 +6,60 @@ To release a new version, add a section headed `## <version>` (the same text as 
 pull request that bumps `VERSION`. When it merges, `.github/workflows/release.yml` builds the packages
 and publishes a GitHub Release with that section as its notes.
 
+## 4.7.1 - 2026-11-23
+
+Inkline 4.7.1 prints a class set of a page, and fixes the sidebar with your desktop's style.
+
+### What's new
+
+- **Several copies of a page.** **Paper → Copies** (1 to 100) makes Print and Save PDF give that many copies of a single page. With **A new design on each copy** (on by default), each copy has its own design: the first is the one shown, and printing again gives the same set. Turn it off for copies that are all alike. Copies isn't remembered, so a later print is one copy again.
+
+### Fixed
+
+- **The sidebar was cut off with View → Use my desktop's style.** Breeze's buttons and drop-downs are wider than Inkline's own, so the right edge of the sidebar (Delete, New design, the Pattern list) was hidden. The sidebar now widens to fit them.
+
+### Good to know
+
+- **Some pages have only a few designs.** Dot-to-dot has a handful of pictures and the smallest nonograms repeat sometimes, so with many copies some come out alike; the hint under Copies says so. A name page with nothing underneath has one design, so its copies are alike.
+- **The print dialog's own Copies** prints the whole set again: 25 copies there set to 3 is 75 sheets. The status line says so.
+
+### Upgrading
+
+Nothing changes in what Inkline needs. Your presets, settings, projects, recent files and printer carry over.
+
+**Windows**
+Run `inkline-4.7.1-windows-setup.exe`.
+
+**Debian / Ubuntu / Linux Mint / Pop!_OS**
+```sh
+sudo apt install ./inkline_4.7.1-1_amd64.deb
+```
+
+**Arch / CachyOS / Manjaro**
+```sh
+sudo pacman -U inkline-4.7.1-1-any.pkg.tar.zst
+```
+
+**Any distro, nothing installed**
+```sh
+chmod +x inkline-4.7.1-x86_64.AppImage && ./inkline-4.7.1-x86_64.AppImage
+```
+
+**Any other distro**
+```sh
+sh inkline-4.7.1.run            # or --system for every user
+```
+
+**Flatpak**
+```sh
+flatpak install --user inkline-4.7.1.flatpak     # if a .flatpak file is attached to this release
+sh packaging/flatpak/build.sh                    # or build it from a copy of the source
+```
+
+### Found a problem?
+
+Please open an issue saying what you did, what you expected, and what happened. Include your system (distro, or Windows version), and the printer if it's about printing.
+
 ## 4.7.0 - 2026-11-23
 
 Inkline 4.7 runs on Windows, and on Linux it can look like the rest of your desktop.
