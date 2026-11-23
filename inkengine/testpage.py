@@ -64,9 +64,10 @@ def draw_test_page(ctx, s, version=""):
                 text(label, x + sx * (arm + 0.02 * I), y + 0.03 * I, 0.06 * I, 400, "left" if sx > 0 else "right", "#444")
 
     y = b.y
-    paper = "A4" if s.paper == "a4" else "Letter"
+    paper = "A4" if s.paper == "a4" else tr("Letter")
     text(tr("Printer test page"), b.x, y + 0.26 * I, 0.26 * I, 700)
-    text(f"{paper} {_num(g.w)} × {_num(g.h)} in · {g.dpi} dpi" + (f" · Inkline {version}" if version else ""),
+    text(tr("{paper} {w} × {h} in · {dpi} dpi").format(paper=paper, w=_num(g.w), h=_num(g.h), dpi=g.dpi)
+         + (f" · Inkline {version}" if version else ""),
          b.x + b.w, y + 0.26 * I, 0.1 * I, 400, "right", "#444")
     y += 0.55 * I
 
@@ -95,7 +96,7 @@ def draw_test_page(ctx, s, version=""):
     def square(x, side, label, note):   # true-size squares
         ctx.line_width = hair * 2
         ctx.stroke_rect(x, y, side, side)
-        text(label, x + side / 2, y + side / 2 + 0.08 * I, 0.22 * I, 700, "center")
+        text(tr(label), x + side / 2, y + side / 2 + 0.08 * I, 0.22 * I, 700, "center")
         text(tr(note), x + side / 2, y + side / 2 + 0.3 * I, 0.08 * I, 400, "center", "#444")
 
     square(b.x, 2 * I, "2 in", "= 5.08 cm on each side")

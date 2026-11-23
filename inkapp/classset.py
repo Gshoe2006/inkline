@@ -5,6 +5,7 @@ name on each. Print and Save PDF (jobs.py) and the preview (render.py) build eac
 import re
 from dataclasses import dataclass, field, replace
 
+from inkengine.i18n import tr
 from inkengine.page import has_answer
 
 MAX_COPIES = 100
@@ -89,5 +90,5 @@ class ClassSet:
 
     def label(self, i):
         """What the preview's copy pager says: "Copy 2 of 25 · Ana"."""
-        text = f"Copy {i + 1} of {self.count}"
+        text = tr("Copy {i} of {n}").format(i=i + 1, n=self.count)
         return f"{text} · {self.names[i]}" if self.names and i < len(self.names) else text

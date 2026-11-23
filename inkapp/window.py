@@ -84,12 +84,12 @@ class _Snapshot:
     def what(self, before):
         """A name for the change from before to this, for "Undo …"."""
         if self.settings.mode != before.settings.mode:
-            return STEP_NAMES["mode"]
+            return tr(STEP_NAMES["mode"])
         if [id(p) for p in self.photos] != [id(p) for p in before.photos]:
             n, m = len(self.photos), len(before.photos)
-            return "Add photos" if n > m else "Remove photo" if n < m else "Move photo"
+            return tr("Add photos") if n > m else tr("Remove photo") if n < m else tr("Move photo")
         if self.crops != before.crops:
-            return "Crop"
+            return tr("Crop")
         a, b = self.settings.to_dict(), before.settings.to_dict()
         changed = [k for k in a if a[k] != b[k]]
         if "page_list" in changed and self.settings.page_list and before.settings.page_list:
@@ -99,8 +99,8 @@ class _Snapshot:
                 keys = {k for x, y in zip(pa, pb) for k in set(x) | set(y) if x.get(k) != y.get(k)}
                 changed = sorted(keys) if keys else changed
         if len(changed) == 1:
-            return STEP_NAMES.get(changed[0], changed[0].replace("_", " ").capitalize())
-        return "Changes"
+            return tr(STEP_NAMES.get(changed[0], changed[0].replace("_", " ").capitalize()))
+        return tr("Changes")
 
 
 class _Step(QUndoCommand):
@@ -382,7 +382,7 @@ class Window(QMainWindow):
         if more:
             st.update(**more)
             self.sidebar.load()
-            self._step_name = STEP_NAMES.get(key, key)   # "Undo Age", not "Undo Changes"
+            self._step_name = tr(STEP_NAMES.get(key, key))   # "Undo Age", not "Undo Changes"
         if st.book_page is not None and (key in PAGE_KEYS or more) and key != "seed":
             # the Design section edits the selected page
             st.write_page(**{k: getattr(st.settings, k) for k in [key, *more] if k in PAGE_KEYS})
@@ -438,7 +438,7 @@ class Window(QMainWindow):
             self.sidebar.fill_pages()
         else:
             self.state.update(seed=new_seed(), page_seeds={})   # a fresh booklet drops any swapped pages
-        self._step_name = "New design"   # however many settings that changed
+        self._step_name = tr("New design")   # however many settings that changed
         self._changed("seed")
 
     def design_options(self):
@@ -456,7 +456,7 @@ class Window(QMainWindow):
             def chosen(seed):
                 st.write_page(seed=seed)
                 self.sidebar.fill_pages()
-                self._step_name = "New design"
+                self._step_name = tr("New design")
                 self._changed("seed")
             return (lambda seed: (s, replace(spec, seed=seed))), chosen, tr("page {n}").format(n=i + 1)
         if s.booklet and not s.poster:   # a quick booklet: its seed, seen on the design page shown
@@ -473,13 +473,13 @@ class Window(QMainWindow):
 
             def chosen(seed):
                 st.update(seed=seed, page_seeds={})
-                self._step_name = "New design"
+                self._step_name = tr("New design")
                 self._changed("seed")
             return candidate, chosen, tr("the whole booklet (each shows page {n})").format(n=i + 1 + (1 if s.cover else 0))
 
         def chosen(seed):
             st.update(seed=seed, page_seeds={})   # as New design does
-            self._step_name = "New design"
+            self._step_name = tr("New design")
             self._changed("seed")
         # a single page, or a poster's design, shown on one page (a poster's sheets would be too small to judge)
         one = replace(s, poster=False, fold=False, booklet=False)
@@ -513,11 +513,11 @@ class Window(QMainWindow):
             shown = view(st)
             p = shown.pages[shown.index] if shown.kind == "booklet" and shown.pages else None
             base = {k: getattr(s, k) for k in PAGE_KEYS}
-            self._step_name = "Edit pages one by one"
+            self._step_name = tr("Edit pages one by one")
             st.update(page_list=[{**base, "gen": d.gen, "seed": d.seed, "complexity": d.c} for d in designs])
             st.book_sel = p.idx if p is not None and p.kind == "design" else 0
         else:
-            self._step_name = "Back to quick booklet"
+            self._step_name = tr("Back to quick booklet")
             st.update(page_list=[], pages=max(2, min(MAX_BOOK_PAGES, len(s.page_list))))
             st.book_sel = 0
         self._list_changed()
@@ -546,7 +546,7 @@ class Window(QMainWindow):
     def _set_page_answer(self, on):
         if self.state.book_page is None:
             return
-        self._step_name = "Include its answer" if on else "Leave its answer out"
+        self._step_name = tr("Include its answer") if on else tr("Leave its answer out")
         self.state.write_page(answer=on)
         self.sidebar.fill_pages()
         self.sidebar.sync()
@@ -557,7 +557,7 @@ class Window(QMainWindow):
         pl = self.state.settings.page_list
         if not pl or len(pl) >= MAX_BOOK_PAGES:
             return
-        self._step_name = "Add page"
+        self._step_name = tr("Add page")
         new = {k: v for k, v in pl[-1].items() if k != "answer"}   # a new page has its answer, like any new page
         self.state.update(page_list=[*pl, {**new, "seed": new_seed()}])
         self.state.book_sel = len(pl)
@@ -567,7 +567,7 @@ class Window(QMainWindow):
         pl = self.state.settings.page_list
         if len(pl) >= MAX_BOOK_PAGES:
             return
-        self._step_name = "Duplicate page"
+        self._step_name = tr("Duplicate page")
         self.state.update(page_list=[*pl[:i + 1], {**pl[i], "seed": new_seed()}, *pl[i + 1:]])   # same settings, a new design
         self.state.book_sel = i + 1
         self._list_changed()
@@ -624,7 +624,7 @@ class Window(QMainWindow):
             return
         kept = pages[:room]
         at = self.state.book_sel + 1
-        self._step_name = "Paste pages" if len(kept) > 1 else "Paste page"
+        self._step_name = tr("Paste pages") if len(kept) > 1 else tr("Paste page")
         self.state.update(page_list=[*pl[:at], *kept, *pl[at:]])
         self.state.book_sel = at
         self._list_changed()
@@ -641,7 +641,7 @@ class Window(QMainWindow):
             return
         order = list(range(len(pl)))
         order.insert(j, order.pop(i))
-        self._step_name = "Move page"
+        self._step_name = tr("Move page")
         self.state.update(page_list=[pl[k] for k in order])
         old = max(0, min(self.state.book_sel, len(pl) - 1))
         self.state.book_sel = order.index(old)   # the page being edited stays selected, wherever it went
@@ -651,7 +651,7 @@ class Window(QMainWindow):
         pl = self.state.settings.page_list
         if len(pl) < 2:
             return
-        self._step_name = "Remove page"
+        self._step_name = tr("Remove page")
         self.state.update(page_list=pl[:i] + pl[i + 1:])
         sel = self.state.book_sel
         self.state.book_sel = sel - 1 if sel > i else sel
@@ -1151,7 +1151,7 @@ class Window(QMainWindow):
         if now.same(self._last):
             self._last = now   # no edit, but the next step starts from the page and photo chosen now
             return
-        self.history.push(_Step(self, self._last, now, tr(name or now.what(self._last)), self._gesture(), timed))
+        self.history.push(_Step(self, self._last, now, name or now.what(self._last), self._gesture(), timed))
         if self.keeper is not None and not self._keep_timer.isActive():
             self._keep_timer.start()   # a copy within the minute, then again a minute after the next change
         self._last = now
@@ -1245,7 +1245,7 @@ class Window(QMainWindow):
         p = BUILTIN_PRESETS.get(name) if group == "b" else self.saved_presets.get(name)
         if p is None:
             return
-        self._step_name = f"“{name}”"   # Edit → Undo “Maze booklet with answers”
+        self._step_name = tr("“{name}”").format(name=tr(name) if group == "b" else name)   # Edit → Undo “Maze booklet with answers”
         self.state.apply_preset(p)
         self.state.mirror()
         self.sidebar.only_pages.clear()

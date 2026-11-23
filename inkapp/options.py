@@ -33,7 +33,9 @@ class Options(QDialog):
         lay = QVBoxLayout(self)
         lay.setContentsMargins(theme.PAD_X, theme.PAD_X, theme.PAD_X, theme.PAD_X)
         lay.setSpacing(theme.SECTION_GAP)
-        lay.addWidget(Hint(tr("Click a design to use it for {what}.").format(what=what)))
+        hint = Hint()
+        hint.setText(tr("Click a design to use it for {what}.").format(what=what))
+        lay.addWidget(hint)
         grid = QGridLayout()
         grid.setSpacing(theme.PAIR_GAP)
         self.buttons = []
@@ -74,7 +76,7 @@ class Options(QDialog):
             self.keys.append(thumbs.key(s, spec))
             specs.append(spec)
             b.setIcon(QIcon())
-            b.setText("Drawing…")   # until its picture arrives (colour by number takes a moment)
+            b.setText(tr("Drawing…"))   # until its picture arrives (colour by number takes a moment)
             b.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
             b.setToolTip(tr("seed {n}").format(n=seed))
         self._settings = s

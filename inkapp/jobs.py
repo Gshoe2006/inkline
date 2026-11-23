@@ -133,7 +133,8 @@ def _runs(indices):
 def describe_pages(indices, total, sheets=False):
     """ "pages 3–5 and 8": a short name for a choice of pages (1-based, ranges joined); with sheets, of sheets."""
     runs = _runs(indices)
-    names = ", ".join(runs[:-1]) + (" " + tr("and") + " " if len(runs) > 1 else "") + runs[-1] if runs else ""
+    names = (tr("{list} and {last}").format(list=", ".join(runs[:-1]), last=runs[-1]) if len(runs) > 1
+             else runs[0] if runs else "")
     if sheets:
         return (tr("sheets {names}") if len(indices) > 1 else tr("sheet {names}")).format(names=names)
     return (tr("pages {names}") if len(indices) > 1 else tr("page {names}")).format(names=names)
@@ -190,7 +191,7 @@ def job(state, only="", copies=1, vary=False, answers=False, names=(), answer_bo
     vary = vary and copies_vary(s)[0]   # a photo has one look, a plain name page one design: their copies are alike
     name = f"{base_name(state)}-{copies}{'-designs' if vary else '-copies'}{'-named' if names else ''}"
     answers = answers and copies_have_answers(s)
-    labels = copy_labels(names) if names else [f"Copy {i + 1}" for i in range(copies)]
+    labels = copy_labels(names) if names else [tr("Copy {n}").format(n=i + 1) for i in range(copies)]
 
     def copy_spec(i):
         si = replace(spec, seed=copy_seed(s.seed, i)) if vary else spec
@@ -201,11 +202,11 @@ def job(state, only="", copies=1, vary=False, answers=False, names=(), answer_bo
     # margin: a page number's band would shrink the design, and copy 1 would no longer be the one shown); alike
     # copies share one answer
     designs = [replace(copy_spec(i), stamp="" if names else labels[i],
-                       key_label=labels[i] if vary else "Every copy") for i in range(copies)]
+                       key_label=labels[i] if vary else tr("Every copy")) for i in range(copies)]
     solved = designs if vary else designs[:1]
     if PANELS.get(s.sheet, 1) > 1:   # a sheet of several designs: an answer for each puzzle on it
         solved = [p for d in solved for p in panel_specs(g, d, s) if has_answer(p.gen, s)]
-    keys = [PageSpec(kind="answers", header=True, title="Answers", items=solved[k:k + 4])
+    keys = [PageSpec(kind="answers", header=True, title=tr("Answers"), items=solved[k:k + 4])
             for k in range(0, len(solved), 4)]
     pages = designs + keys
     return Job(name + "-with-answers", "copies", len(pages), s.orient, g,
@@ -222,7 +223,7 @@ def _booklets(state, only, copies, vary, names, answer_book=False):
     vary = vary and s.mode == "make"
 
     def whose(i):
-        return names[i] if names else f"Booklet {i + 1}" if answer_book else ""
+        return names[i] if names else tr("Booklet {n}").format(n=i + 1) if answer_book else ""
     books = [(si, named_pages(book.book_pages(si), whose(i)))
              for i, si in enumerate(copy_settings(s, i, vary) for i in range(copies))]
     keys = []

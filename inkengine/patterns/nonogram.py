@@ -201,8 +201,12 @@ def draw_nonogram(ctx, box, dpi, lw, nono, solve=False):
         ctx.set_font(fc, 400)
         ctx.fill_style = "#555"
         n_given = sum(givens) if givens else 0
-        extra = f" · {n_given} square{'s' if n_given > 1 else ''} shaded to start you off" if n_given else ""
-        ctx.fill_text(f"{w} × {h} · shade squares to find the picture{extra}", mid, y0 + side + cap * 0.42, box.w)
+        if n_given:
+            line = (tr("{w} × {h} · shade squares to find the picture · {n} squares shaded to start you off") if n_given > 1
+                    else tr("{w} × {h} · shade squares to find the picture · 1 square shaded to start you off"))
+        else:
+            line = tr("{w} × {h} · shade squares to find the picture")
+        ctx.fill_text(line.format(w=w, h=h, n=n_given), mid, y0 + side + cap * 0.42, box.w)
         ctx.fill_text(tr("Each number is a run of shaded squares, in order, with at least one gap between runs."),
                       mid, y0 + side + cap * 0.42 + fc * 1.5, box.w)
     ctx.restore()

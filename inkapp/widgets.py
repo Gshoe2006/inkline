@@ -26,6 +26,11 @@ def label(text, role="label"):
     return _role(QLabel(tr(text)), role)
 
 
+def label_as(text, role="label"):
+    """A label for text that's already in the person's language (built from translated pieces)."""
+    return _role(QLabel(text), role)
+
+
 def button(text, role=None, tip=None):
     b = QPushButton(tr(text))
     if role:
@@ -209,6 +214,7 @@ class Pager(QWidget):
         self.forward.setAccessibleName(tr("Next page"))
         self.text = label("", "pager")
         self.text.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.text.setWordWrap(True)   # a long page name (or a longer language) wraps rather than widening the sidebar
         lay.addWidget(self.back)
         lay.addWidget(self.text, 1)
         lay.addWidget(self.forward)

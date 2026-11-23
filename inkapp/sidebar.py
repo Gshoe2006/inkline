@@ -138,7 +138,7 @@ class Sidebar(QFrame):
         lay.setSpacing(10)
         n = QLabel("Inkline")
         n.setObjectName("brandName")
-        t = QLabel("black & white for print")
+        t = QLabel(tr("black & white for print"))
         t.setObjectName("brandTag")
         v = QLabel(tr("dev build") if version == "dev" else f"v{version}")
         v.setObjectName("brandVersion")
@@ -194,8 +194,8 @@ class Sidebar(QFrame):
         s = self.state.settings
         self.tabs = QTabBar()
         self.tabs.setObjectName("modeTabs")
-        self.tabs.addTab("Make one up")
-        self.tabs.addTab("Convert a photo")
+        self.tabs.addTab(tr("Make one up"))
+        self.tabs.addTab(tr("Convert a photo"))
         self.tabs.setExpanding(True)
         self.tabs.setDrawBase(False)
         self.tabs.currentChanged.connect(lambda i: None if self._loading else self.mode_changed.emit("make" if i == 0 else "convert"))
@@ -367,7 +367,7 @@ class Sidebar(QFrame):
         dl = QVBoxLayout(drop)
         dl.setContentsMargins(14, 14, 14, 14)
         dl.setSpacing(theme.PAIR_GAP)
-        self.src = QLabel("Drop an image anywhere, paste one, or")
+        self.src = QLabel(tr("Drop an image anywhere, paste one, or"))
         self.src.setObjectName("dropText")
         self.src.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.src.setWordWrap(True)
@@ -713,7 +713,7 @@ class Sidebar(QFrame):
         for i, ph in enumerate(st.photos):
             item = QListWidgetItem()
             item.setToolTip(ph.name)
-            item.setData(Qt.ItemDataRole.AccessibleTextRole, f"Photo {i + 1}: {ph.name}")
+            item.setData(Qt.ItemDataRole.AccessibleTextRole, tr("Photo {n}: {name}").format(n=i + 1, name=ph.name))
             item.setSizeHint(QSize(0, row_h))
             lst.addItem(item)
             row = QWidget()
@@ -732,7 +732,7 @@ class Sidebar(QFrame):
                                       ("↓", "Move down", lambda _c=False, i=i: self.photo_moved.emit(i, 1), i == len(st.photos) - 1),
                                       ("✕", "Remove", lambda _c=False, i=i: self.photo_removed.emit(i), len(st.photos) < 2)):
                 b = button(txt, "mini", tip)
-                b.setAccessibleName(tip)
+                b.setAccessibleName(tr(tip))
                 b.setEnabled(not off)
                 b.clicked.connect(fn)
                 rl.addWidget(b)

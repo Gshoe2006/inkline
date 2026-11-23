@@ -62,6 +62,11 @@ def main():
     # the language: View → Language's choice, else the system's (Spanish if it's Spanish), before any window is built
     chosen = config.read("preferences.json").get("language")
     i18n.set_language(chosen if chosen in i18n.LANGUAGES else i18n.system_language(QLocale.system().name()))
+    if i18n.LANG != "en":   # Qt's own words too (Save and Cancel buttons, a text field's right-click menu)
+        from PySide6.QtCore import QLibraryInfo, QTranslator
+        qt_words = QTranslator(app)
+        if qt_words.load(f"qtbase_{i18n.LANG}", QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)):
+            app.installTranslator(qt_words)
     from inkapp.window import Window
     theme.remember_desktop(app)   # the desktop's own look, for View → Use my desktop's style
     theme.DESKTOP["on"] = bool(theme.desktop_style_name()) and config.read("preferences.json").get("desktop_style") is True

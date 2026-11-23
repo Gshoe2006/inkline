@@ -49,7 +49,7 @@ def test_choosing_a_language():
 
 def _walk_states(w):
     """Drive the window through its states, so every string it can show is asked for."""
-    from inkapp import render
+    from inkapp import render, theme
     from inkapp.state import State
     sb = w.sidebar
 
@@ -85,10 +85,23 @@ def _walk_states(w):
     sb.only_pages.setText("99")
     go(fold=True)
     go(fold=False, mix=True)
+    for _ in range(3):
+        QApplication.processEvents()   # the layouts settle
+    sb.fit_width()
+    assert sb.width() == theme.SIDEBAR_WIDTH   # longer Spanish words wrap rather than widen the sidebar
+    w.history.undo()
+    w.history.redo()
     w.edit_pages() if hasattr(w, "edit_pages") else None
     go(booklet=False, poster=True)
     go(poster=False, testpage=True)
     go(testpage=False, mode="convert")
+    from PySide6.QtGui import QColor, QImage
+    from inkengine.photo import Photo
+    img = QImage(30, 20, QImage.Format.Format_ARGB32)
+    img.fill(QColor("#468"))
+    w.add_photos([Photo(img, name="a.png"), Photo(img.copy(), name="b.png")], False)
+    w._move_photo(0, 1)
+    w.history.undo()
     for style in ("fs", "atkinson", "bayer", "halftone", "engrave", "stipple", "cbn", "nono", "threshold", "line"):
         go(style=style)
     go(mode="make")
@@ -112,13 +125,23 @@ def test_the_window_in_spanish_asks_for_nothing_untranslated(spanish, tmp_path, 
                   Settings(gen="crossword", dpi=36), Settings(gen="sudoku", dpi=36), Settings(gen="kakuro", dpi=36),
                   Settings(gen="nonogram", dpi=36), Settings(gen="spot", dpi=36), Settings(gen="mandala", dpi=36, cbn=True),
                   Settings(gen="mandala", dpi=36, cbn=True, cbn_maths=True), Settings(dpi=36, testpage=True),
-                  Settings(gen="maze", dpi=36, booklet=True, pages=4, fold=True)):
+                  Settings(gen="maze", dpi=36, booklet=True, pages=4, fold=True),
+                  Settings(gen="mandala", dpi=36, poster=True, grid="2x2", overlap=0.5),
+                  Settings(gen="maze", dpi=36, booklet=True, pages=3, key=True, cover=True)):
             j = jobs.job(State(s), copies=2, answers=True)
             for i in range(j.count):
                 j.draw(RecordingCanvas(), i)
             j.amount()
             render.render_view(State(s))
-        jobs.job(State(Settings(gen="maze", booklet=True, pages=2, key=True)), copies=2, answer_book=True).amount()
+        j = jobs.job(State(Settings(gen="maze", dpi=36, booklet=True, pages=2, key=True)), copies=2, answer_book=True)
+        j.amount()
+        j.draw(RecordingCanvas(), j.count - 1)
+        jobs.describe_pages([0, 1, 3], 5)
+        from inkapp.classset import ClassSet
+        ClassSet(count=3, names=[]).label(1)
+        from inkapp.state import BUILTIN_PRESETS
+        w._apply_preset("b", next(iter(BUILTIN_PRESETS)))
+        assert w.history.undoText() == "«" + i18n.tr(next(iter(BUILTIN_PRESETS))) + "»"
         missing = sorted(m for m in i18n.MISSING if re.search(r"[A-Za-z]{2}", m))
         assert missing == []
         # and the window really is in Spanish

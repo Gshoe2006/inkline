@@ -460,7 +460,7 @@ def draw_page(ctx, g, spec, s, keep=False):
             ctx.save()
             ctx.set_font(fs, 600)
             ctx.fill_style, ctx.text_align = "#000", "left"
-            name = d.key_label or (f"{d.label} · {tr('page')} {d.page_no}" if d.page_no else d.label)
+            name = d.key_label or (tr("{label} · page {n}").format(label=d.label, n=d.page_no) if d.page_no else d.label)
             ctx.fill_text(name, cell.x, cell.y + fs)
             ctx.restore()
             ctx.line_width = max(1, lw * 0.45)
