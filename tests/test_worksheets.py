@@ -98,8 +98,7 @@ def test_tracing_draws_a_model_then_dotted_copies_to_trace():
     for text in set(out["rows"]):
         models = [op for op in c.ops if op[0] == "text" and op[1] == text]
         traced = [op for op in c.ops if op[0] == "stroke_text" and op[1] == text]
-        rows = out["rows"].count(text)
-        assert len(models) == rows and len(traced) >= rows                     # each row: a model, and one or more to trace
+        assert models and traced                                               # each in ink, and dotted to trace
 
 
 def test_a_class_set_traces_each_childs_name():
@@ -264,3 +263,74 @@ def test_the_sidebar_offers_each_worksheets_options(win):
     assert maths_switch.isVisibleTo(sb)
     maths_switch.setChecked(True)
     assert win.state.settings.cbn_maths
+
+
+
+def test_long_handwriting_stays_big_enough_to_trace():
+    """A long name or word isn't shrunk to a few millimetres: it gets rows of its own, in ink then dotted, and
+    a full name is traced word by word."""
+    s = Settings(gen="trace", seed=3, dpi=72, complexity=4, trace_source="name",
+                 name_text="Maximilian-Alexander Featherstonehaugh")
+    c = RecordingCanvas()
+    out = draw_page(c, geometry(s), single_page(s), s)
+    assert set(out["rows"]) == {"Maximilian-Alexander", "Featherstonehaugh"}
+    sizes = {op[6] for op in c.ops if op[0] in ("text", "stroke_text") and op[1] in out["rows"]}
+    assert min(sizes) >= 72 * 0.3                                              # never below about 8 mm
+    for word in set(out["rows"]):
+        assert any(op[0] == "text" and op[1] == word for op in c.ops)
+        assert any(op[0] == "stroke_text" and op[1] == word for op in c.ops)
+
+
+def test_crossword_letters_lose_their_accents_not_themselves():
+    from inkengine.patterns import crossword
+    assert [w for w, _c in crossword.parse_entries("café: a shop; naïve: x; über: y; École: z")] == \
+        ["CAFE", "NAIVE", "UBER", "ECOLE"]
+
+
+def test_your_own_crossword_words_cross_words_placed_after_them():
+    from inkengine.patterns import crossword
+    s = Settings(cross_theme="custom", cross_words="elephant: big; buzzy: like a bee; zen: calm")
+    for seed in range(6):
+        _g, clues, left = crossword.make_crossword(mulberry32(seed), 1, s)
+        assert sorted(e[1] for e in clues) == ["BUZZY", "ELEPHANT", "ZEN"] and left == []
+
+
+def test_own_crossword_lists_are_capped_and_an_unusable_one_says_so():
+    from inkengine.patterns import crossword
+    many = "; ".join(f"{w}: clue" for w in ["cat", "act", "tac", "tic", "tock", "clock", "lock", "rock", "sock",
+                                             "dock", "duck", "luck", "tuck", "muck", "pick", "kick", "lick", "tick",
+                                             "sick", "nick", "rick", "wick", "chick", "brick", "trick", "stick",
+                                             "slick", "flick", "click", "thick", "quick", "prick"])
+    assert crossword.own_note(Settings(cross_theme="custom", cross_words=many)) == "Only the first 30 of your words are used."
+    entries, own = crossword.entries_for(mulberry32(1), Settings(cross_theme="custom", cross_words=many))
+    assert own and len(entries) == 30
+    assert "can be used" in crossword.own_note(Settings(cross_theme="custom", cross_words="1234; !!"))
+
+
+def test_long_crossword_clues_wrap_instead_of_squashing():
+    s = Settings(gen="crossword", seed=1, dpi=72, cross_theme="custom",
+                 cross_words="cat: " + "a very long clue about a small animal that likes milk and sleeping " * 2
+                 + "; act: to perform")
+    c = RecordingCanvas()
+    draw_page(c, geometry(s), single_page(s), s)
+    from inkengine.page import design_box
+    box = design_box(geometry(s), single_page(s), s)
+    lines = [op for op in c.ops if op[0] == "text" and ("clue" in op[1] or "sleeping" in op[1] or "milk" in op[1])]
+    assert len(lines) >= 3                                                     # wrapped onto several lines
+    ctx = RecordingCanvas()
+    for op in lines:
+        ctx.set_font(op[6], op[5])
+        assert ctx.measure_text(op[1]) <= box.w / 2 + 1                         # each one fits its column
+
+
+def test_colour_by_maths_small_spaces_get_short_sums():
+    from inkengine import cbn
+    for n in range(2, 13):
+        assert "+" in cbn.sum_for(n, 5, 3, small=True)
+    assert cbn.sum_for(1, 5, 3, small=True).endswith(tuple("123456789"))       # 1 can only be taken away
+
+
+def test_harder_maths_has_no_tiny_numbers_and_the_blank_fits_the_answer():
+    sums = _sheet(10, "addsub", 4)
+    assert all(min(a, b) >= 50 for a, sign, b, _ans, _m in sums)              # sums to 1000: no "5 − 3"
+    assert not any(1 in (a, b) for a, sign, b, _ans, _m in _sheet(3, "addsub", 4))   # "+ 1" only within 10

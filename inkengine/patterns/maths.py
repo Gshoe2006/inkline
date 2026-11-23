@@ -40,13 +40,15 @@ def make_sum(rnd, kind, lv):
     if kind == "addsub":
         kind = "add" if pick(rnd, 2) == 0 else "sub"
     top = lv["top"]
+    # the smallest numbers grow with the largest: "+ 1" only within 10, and no "5 − 3" among sums to 1000
+    lo = 1 if top <= 10 else max(2, top // 20)
     if kind == "add":
-        a = _between(rnd, 1, top - 1)
-        b = _between(rnd, 1, top - a)
+        a = _between(rnd, lo, top - lo)
+        b = _between(rnd, lo, top - a)
         return a, "+", b, a + b, "result"
     if kind == "sub":
-        a = _between(rnd, 2, top)
-        b = _between(rnd, 1, a)
+        a = _between(rnd, 2 * lo, top)
+        b = _between(rnd, lo, a - lo) if a - lo >= lo else lo
         return a, "−", b, a - b, "result"
     if kind == "times":
         t = lv["tables"][pick(rnd, len(lv["tables"]))]
@@ -84,11 +86,11 @@ def _pieces(s):
     return f"{a} {sign} {b} = ", "", answer
 
 
-def _width(ctx, n, s):
+def _width(ctx, n, s, blank=BLANK):
     """How wide sum s is written, at the current font size (its number, the sum, the blank)."""
     before, after, _fill = _pieces(s)
     size = ctx.font_size
-    return size * 1.5 + ctx.measure_text(before) + size * BLANK + ctx.measure_text(after)
+    return size * 1.5 + ctx.measure_text(before) + size * blank + ctx.measure_text(after)
 
 
 def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, solve=False, **_opts):
@@ -102,9 +104,11 @@ def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, solve=False, **_opts)
     ctx.save()
     # as large as the rows allow, but every sum (number, sum, blank, a bond's "= 10") inside its column
     ctx.set_font(100, 500)
-    widest = max(_width(ctx, len(sums), s) for s in sums) / 100
+    digits = max(len(str(_pieces(s)[2])) for s in sums)
+    blank_fs = max(BLANK, 0.75 * digits + 1.0)   # room for the longest answer in a child's writing
+    widest = max(_width(ctx, len(sums), s, blank_fs) for s in sums) / 100
     fs = min(rh * 0.42, cw * 0.9 / widest, dpi * 0.36)
-    blank = fs * BLANK
+    blank = fs * blank_fs
     ctx.text_baseline, ctx.text_align = "alphabetic", "left"
     for k, s in enumerate(sums):
         before, after, fill = _pieces(s)
@@ -126,7 +130,7 @@ def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, solve=False, **_opts)
         if solve:
             ctx.fill_style = "#666"
             ctx.text_align = "center"
-            ctx.fill_text(str(fill), x + blank / 2, y)
+            ctx.fill_text(str(fill), x + blank / 2, y - fs * 0.08)   # just above the line
             ctx.text_align = "left"
             ctx.fill_style = "#000"
         ctx.fill_text(after, x + blank, y)

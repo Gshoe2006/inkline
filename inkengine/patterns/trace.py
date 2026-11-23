@@ -53,13 +53,26 @@ def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, filled_name="", **_op
     # model, two to trace and a space to write it), so every row has something to trace
     ctx.set_font(100, 500)
     widest = max(ctx.measure_text(text) for text in texts) / 100
+    if room * 0.98 / (widest * 2 + 0.6) < dpi * 0.45 and any(" " in text for text in texts):
+        # too long to trace at a good size (a full name): each word of it on rows of its own
+        words = [w for text in texts for w in text.split()]
+        texts = [words[k % len(words)] for k in range(len(texts))]
+        widest = max(ctx.measure_text(text) for text in texts) / 100
     tall = box.h / len(texts) * 0.66
 
     def across(n):   # the size at which the widest text fits n times
         return room * 0.98 / (widest * n + max(0.6, widest * 0.35) * (n - 1))
-    # four times across if that keeps it big enough, else three (the model, one to trace, the space): long words
-    fs = min(tall, across(4) if across(4) >= tall * 0.6 else across(3))
+    # four times across if that keeps it big enough, else three (the model, one to trace, the space). Too long
+    # even for that at a size a child can trace: rows in pairs, the text in ink on one and dotted on the next
+    pairs = across(3) < min(tall, dpi * 0.45)
+    if pairs:
+        fs = min(tall, across(1), dpi * 0.6)
+        texts = [x for text in texts[: max(1, len(texts) // 2)] for x in (text, text)]
+    else:
+        fs = min(tall, across(4) if across(4) >= tall * 0.6 else across(3))
     rows = max(len(texts), min(2 * len(texts), 16, int(box.h // (fs * 1.6))))   # smaller writing: more rows
+    if pairs:
+        rows -= rows % 2
     texts = [texts[k % len(texts)] for k in range(rows)]
     rh = box.h / rows
     dot = max(1.0, min(lw * 1.1, fs * 0.03))
@@ -80,10 +93,11 @@ def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, filled_name="", **_op
         gap = max(fs * 0.6, unit * 0.35)
         width = min(unit, room)
         fits = max(1, int((room + gap) // (width + gap)))
-        traced = max(1, fits - 1) if fits > 2 else fits   # leave the last place empty, to write it unaided
+        traced = 1 if pairs else max(1, fits - 1) if fits > 2 else fits   # leave the last place empty
+        alone = pairs and r % 2 == 1   # in pairs: the second row of each is the dotted one
         x = box.x + fs * 0.15
         for k in range(traced):
-            if k == 0:   # the model, in solid ink
+            if k == 0 and not alone:   # the model, in solid ink
                 ctx.fill_style = "#000"
                 ctx.fill_text(text, x, base, room)
             else:        # then dotted outlines to trace

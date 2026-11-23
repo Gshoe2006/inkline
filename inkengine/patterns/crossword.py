@@ -12,6 +12,7 @@ anything are left out and reported, as the word search does. The answer page sho
 """
 
 import re
+import unicodedata
 
 from ..rng import pick
 
@@ -35,6 +36,13 @@ THEMES = {
 }
 THEME_NAMES = {"animals": "Animals", "food": "Food", "space": "Space", "custom": "Your own words and clues"}
 MAX_WORD = 15
+MAX_OWN = 30    # your own words used, at most
+
+
+def letters(word):
+    """A word as crossword letters: capitals A-Z, accents taken off (café → CAFE), anything else left out."""
+    plain = unicodedata.normalize("NFKD", word).encode("ascii", "ignore").decode("ascii")
+    return re.sub(r"[^A-Z]", "", plain.upper())
 
 
 def count_for(c):
@@ -48,7 +56,7 @@ def parse_entries(text):
         if not part.strip():
             continue
         word, _, clue = part.partition(":")
-        word = re.sub(r"[^A-Z]", "", word.upper())
+        word = letters(word)
         if 2 <= len(word) <= MAX_WORD and word not in seen:
             seen.add(word)
             out.append((word, clue.strip() or "?"))
@@ -62,8 +70,8 @@ def entries_for(rnd, settings):
     if theme == "custom":
         mine = parse_entries(getattr(settings, "cross_words", ""))
         if mine:
-            return mine, True
-        theme = "animals"
+            return mine[:MAX_OWN], True
+        theme = "animals"   # none of them usable: the note says so
     pool = parse_entries(THEMES.get(theme, THEMES["animals"]))
     for i in range(len(pool) - 1, 0, -1):
         j = pick(rnd, i + 1)
@@ -121,8 +129,43 @@ def layout(rnd, entries, want):
             r, c, across = choices[pick(rnd, len(choices))]
             put(word, clue, r, c, across)
         else:
-            left.append(word)
-    return grid, placed, left
+            left.append((word, clue))
+    # a word that found no place may cross one placed after it: try those again until nothing more fits
+    while left and len(placed) < want:
+        before = len(placed)
+        retry, left = left, []
+        grid, placed, still = _place_more(rnd, grid, placed, retry, want, put)
+        left = still
+        if len(placed) == before:
+            break
+    return grid, placed, [w for w, _c in left]
+
+
+def _place_more(rnd, grid, placed, entries, want, put):
+    still = []
+    for word, clue in entries:
+        if len(placed) >= want:
+            still.append((word, clue))
+            continue
+        best, choices = 0, []
+        for (y, x), (ch, _d) in list(grid.items()):
+            for k, wc in enumerate(word):
+                if wc != ch:
+                    continue
+                for across in (True, False):
+                    r, c = (y, x - k) if across else (y - k, x)
+                    n = _fits(grid, word, r, c, 0 if across else 1, 1 if across else 0)
+                    if n and n >= best:
+                        if n > best:
+                            best, choices = n, []
+                        choices.append((r, c, across))
+        if choices:
+            choices = sorted(set(choices))
+            r, c, across = choices[pick(rnd, len(choices))]
+            put(word, clue, r, c, across)
+        else:
+            still.append((word, clue))
+    return grid, placed, still
 
 
 def _area(grid):
@@ -143,7 +186,7 @@ def best_layout(rnd, entries, want, own):
         for i in range(len(order) - 1, 0, -1):
             j = pick(rnd, i + 1)
             order[i], order[j] = order[j], order[i]
-        if own:   # all of your words, longest first
+        if own and t == 0:   # all of your words: longest first, then other orders
             order.sort(key=lambda e: -len(e[0]))
         else:     # the theme's words: the first ones wanted, longest first, the rest standing by
             order = sorted(order[:want], key=lambda e: -len(e[0])) + order[want:]
@@ -168,17 +211,45 @@ def make_crossword(rnd, c, settings):
     return grid, number(placed), left
 
 
+def own_note(settings):
+    """What the sidebar says about your own list itself: too many words, or none usable."""
+    if getattr(settings, "cross_theme", "") != "custom":
+        return ""
+    mine = parse_entries(getattr(settings, "cross_words", ""))
+    if not mine:
+        return "None of your words can be used (they need letters A-Z), so animal words are shown."
+    if len(mine) > MAX_OWN:
+        return f"Only the first {MAX_OWN} of your words are used."
+    return ""
+
+
 def note(cw):
-    """What the sidebar says about words left out."""
-    left = cw.get("left") if isinstance(cw, dict) else None
-    return f"Left out (no place to cross): {', '.join(w.lower() for w in left)}." if left else ""
+    """What the sidebar says about words left out, and about your own list."""
+    if not isinstance(cw, dict):
+        return ""
+    left = cw.get("left")
+    parts = [cw.get("own", "")] + ([f"Left out (no place to cross): {', '.join(w.lower() for w in left)}."] if left else [])
+    return " ".join(p for p in parts if p)
+
+
+def _wrap(ctx, text, width):
+    """text broken into lines no wider than width (a word longer than that keeps a line to itself)."""
+    lines, line = [], ""
+    for word in text.split():
+        trial = f"{line} {word}".strip()
+        if line and ctx.measure_text(trial) > width:
+            lines.append(line)
+            line = "  " + word   # continued lines indented a little
+        else:
+            line = trial if not line.startswith("  ") else f"{line} {word}"
+    return lines + ([line] if line else [])
 
 
 def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, solve=False, **_opts):
     """The numbered grid with its clues (or, with solve=True, the grid filled in)."""
     grid, clues, left = make_crossword(rnd, c, settings)
     if not grid:
-        return {"left": left, "clues": []}
+        return {"left": left, "clues": [], "own": own_note(settings)}
     rows = [r for r, _c in grid]
     cols = [c for _r, c in grid]
     r0, c0 = min(rows), min(cols)
@@ -191,10 +262,10 @@ def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, solve=False, **_opts)
     for (r, c), (ch, _d) in grid.items():
         x, y = x0 + (c - c0) * cs, y0 + (r - r0) * cs
         ctx.stroke_rect(x, y, cs, cs)
-        if solve:
-            ctx.set_font(cs * 0.6, 600)
+        if solve:   # the letter low and to the right, clear of the square's number
+            ctx.set_font(cs * 0.55, 600)
             ctx.fill_style, ctx.text_align = "#000", "center"
-            ctx.fill_text(ch, x + cs / 2, y + cs * 0.72)
+            ctx.fill_text(ch, x + cs * 0.56, y + cs * 0.82)
     ctx.set_font(cs * 0.28, 400)
     ctx.fill_style, ctx.text_align = "#000", "left"
     done = set()
@@ -202,18 +273,26 @@ def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, solve=False, **_opts)
         if (r, c) not in done:
             done.add((r, c))
             ctx.fill_text(str(n), x0 + (c - c0) * cs + cs * 0.08, y0 + (r - r0) * cs + cs * 0.3)
-    if not solve:   # the clues, Across then Down, in two columns under the grid
+    if not solve:   # the clues, Across then Down, in two columns under the grid, wrapped to fit
         top = box.y + area_h + dpi * 0.15
-        fs = min(dpi * 0.15, (box.y + box.h - top) / (max(len([e for e in clues if e[5]]),
-                                                          len([e for e in clues if not e[5]])) + 1.5) / 1.35)
+        col_w = box.w / 2 - dpi * 0.15
+        room = box.y + box.h - top
+        fs = dpi * 0.15
+        while True:   # the largest size (down to a floor) at which both columns fit
+            ctx.set_font(fs, 400)
+            lines = {a: [ln for e in clues if e[5] == a for ln in _wrap(ctx, f"{e[0]}. {e[2]} ({len(e[1])})", col_w)]
+                     for a in (True, False)}
+            need = (max(len(lines[True]), len(lines[False])) + 1.5) * fs * 1.35
+            if need <= room or fs <= dpi * 0.09:
+                break
+            fs *= 0.92
         for k, (title, across) in enumerate((("Across", True), ("Down", False))):
             x, y = box.x + k * box.w / 2, top + fs
             ctx.set_font(fs * 1.1, 700)
             ctx.fill_text(title, x, y)
             ctx.set_font(fs, 400)
-            for n, w, cl, _r, _c, a in clues:
-                if a == across:
-                    y += fs * 1.35
-                    ctx.fill_text(f"{n}. {cl} ({len(w)})", x, y, box.w / 2 - fs)
+            for line in lines[across]:
+                y += fs * 1.35
+                ctx.fill_text(line, x, y)
     ctx.restore()
-    return {"left": left, "clues": clues}
+    return {"left": left, "clues": clues, "own": own_note(settings)}

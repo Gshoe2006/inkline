@@ -462,17 +462,18 @@ def draw_numbers(ctx, pts, dpi, labels=None):
     ctx.fill_style, ctx.text_align, ctx.text_baseline = "#666", "center", "alphabetic"
     for k, (n, x, y, r) in enumerate(pts):
         text = labels[k] if labels else str(n)
-        fs = max(dpi * 0.06, min(dpi * 0.15, r * 1.2)) * (0.62 if labels else 1)
+        fs = max(dpi * 0.07, min(dpi * 0.15, r * 1.2) * 0.8) if labels else max(dpi * 0.06, min(dpi * 0.15, r * 1.2))
         ctx.set_font(fs, 500)
         ctx.fill_text(text, x, y + fs * 0.36, r * 2.2 if labels else None)
     ctx.restore()
 
 
-def sum_for(n, seed, region):
-    """Colour by maths: a small sum whose answer is n ("2+3" or "8−3" for 5), the same for a space every time."""
+def sum_for(n, seed, region, small=False):
+    """Colour by maths: a small sum whose answer is n ("2+3" or "8−3" for 5), the same for a space every time. In
+    a small space (small=True), an adding sum where it can be, short enough to read there."""
     from .rng import mulberry32, pick
     rnd = mulberry32((seed * 31 + region * 7919 + n) & 0xFFFFFFFF)
-    if n >= 2 and pick(rnd, 2):
+    if n >= 2 and (small or pick(rnd, 2)):
         a = 1 + pick(rnd, n - 1)
         return f"{a}+{n - a}"
     b = 1 + pick(rnd, 9)
@@ -629,7 +630,7 @@ def draw_design_page(ctx, g, box, spec, s, lw, raster=None):
     art, kb = art_box(box, g.dpi, s.cbn_colours)
     draw_design(ctx, g, art, spec.gen, spec.seed, spec.c, s, lw)
     r = pattern(g, art, spec, lw, s, raster)
-    sums = [sum_for(q[0], spec.seed, q[4]) for q in r["spots"]] if s.cbn_maths else None
+    sums = [sum_for(q[0], spec.seed, q[4], small=q[3] < g.dpi * 0.12) for q in r["spots"]] if s.cbn_maths else None
     draw_numbers(ctx, [q[:4] for q in r["spots"]], g.dpi, sums)
     draw_key(ctx, kb, r["names"], g.dpi, "Work out each sum, then colour:" if sums else "Colour key")
     return r
