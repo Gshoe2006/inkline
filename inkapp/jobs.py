@@ -115,6 +115,20 @@ def copy_seed(seed, i):
     return seed if i == 0 else (seed + i * 104729) & 0xFFFFFFFF
 
 
+def copies_vary(s):
+    """(whether copies of this single page can each have their own design, a note when some of them repeat or
+    none can differ, or "")."""
+    if s.mode != "make":
+        return False, ""
+    if s.gen == "name" and s.name_bg == "none":
+        return False, "A name page with nothing underneath has no design to change, so its copies are alike."
+    if s.gen == "dots":
+        return True, "Dot-to-dot has only a handful of pictures, so some copies repeat."
+    if s.gen == "nonogram" and s.complexity <= 1:
+        return True, "The smallest nonograms sometimes repeat: raise Complexity for more variety."
+    return True, ""
+
+
 def job(state, only="", copies=1, vary=False):
     """What Print and Save PDF produce. only: a choice of pages as parse_pages() reads it (booklets and photo
     books; empty for all). copies: how many of a single page, each with its own design when vary (Make one up).
@@ -149,7 +163,7 @@ def job(state, only="", copies=1, vary=False):
     copies = max(1, min(MAX_COPIES, int(copies or 1)))
     if copies == 1:
         return Job(base_name(state), "page", 1, s.orient, g, lambda ctx, i: draw_page(ctx, g, spec, s))
-    vary = vary and s.mode == "make"   # a photo has one look: its copies are alike
+    vary = vary and copies_vary(s)[0]   # a photo has one look, a plain name page one design: their copies are alike
     name = f"{base_name(state)}-{copies}{'-designs' if vary else '-copies'}"
 
     def draw(ctx, i):

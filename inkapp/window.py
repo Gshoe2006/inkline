@@ -1238,7 +1238,8 @@ class Window(QMainWindow):
             j = self._job(snap)
             if j is None:
                 return
-            what = f"Save {j.label} PDF" if j.count > 1 else "Save PDF"
+            what = ("Save PDF of " + j.amount() if j.label == "copies" else f"Save {j.label} PDF") if j.count > 1 \
+                else "Save PDF"
             path = self._ask_path(what, j.name, "pdf", "PDF document (*.pdf)")
             if not path:
                 self._msg("Save cancelled.")
@@ -1299,8 +1300,12 @@ class Window(QMainWindow):
             self._msg("Print cancelled.")
             return
         self._remember_printer(printer.printerName())
-        done = (f"Sent {j.amount() if j.duplex else f'{j.count} {j.unit}s'} to the printer." if j.count > 1
-                else "Sent to the printer.")
+        sent = j.amount() if j.duplex or j.label == "copies" else f"{j.count} {j.unit}s"
+        done = f"Sent {sent} to the printer." if j.count > 1 else "Sent to the printer."
+        times = printer.copyCount()   # the dialog's own Copies prints the whole job that many times
+        if times > 1:
+            done = done[:-1] + (f", {times} times over" if j.count > 1 else f", {times} copies") \
+                + " (Copies in the print dialog)."
         self._start(j, printer, done, "The printer didn't accept the job. Check that it's connected.")
 
     def _remember_printer(self, name):

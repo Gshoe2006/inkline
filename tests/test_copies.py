@@ -92,3 +92,56 @@ def test_save_pdf_and_print_use_the_copies(win, monkeypatch):
     _set(win, booklet=True)
     win.print_()
     assert got[-1][2] == 1                                                 # copies are for single pages only
+
+
+def test_pages_that_cant_vary_print_alike_and_the_hint_says_when_some_repeat(win):
+    assert jobs.copies_vary(Settings(gen="name", name_bg="none"))[0] is False
+    assert jobs.copies_vary(Settings(gen="name", name_bg="flow")) == (True, "")
+    assert jobs.copies_vary(Settings(gen="maze")) == (True, "")
+    assert jobs.copies_vary(Settings(gen="dots"))[1].startswith("Dot-to-dot has only a handful")
+    assert jobs.copies_vary(Settings(gen="nonogram", complexity=1))[1] and not jobs.copies_vary(Settings(gen="nonogram", complexity=2))[1]
+    plain = State(Settings(gen="name", name_bg="none", seed=5))
+    j = jobs.job(plain, copies=3, vary=True)
+    assert j.name.endswith("-3-copies") and [s for s, _ in _drawn(j)] == [5, 5, 5]
+    sb = win.sidebar
+    _set(win, gen="name", name_bg="none")
+    sb.copies.setText("4")
+    assert not sb.copies_vary.isVisibleTo(sb)                              # nothing to vary: no switch for it
+    assert sb.copies_hint.text().startswith("Print and Save PDF make 4 copies, all alike. A name page")
+    _set(win, gen="dots")
+    assert sb.copies_vary.isVisibleTo(sb) and sb.copies_hint.text().endswith("some copies repeat.")
+    sb.copies_vary.setChecked(False)
+    assert sb.copies_hint.text().endswith("all alike.")                    # alike anyway: no note about repeats
+
+
+def test_a_number_out_of_range_says_what_will_print_and_is_put_right_on_leaving(win):
+    sb = win.sidebar
+    sb.copies.setText("101")
+    assert sb.copies_count() == 100
+    assert sb.copies_hint.isVisibleTo(sb) and sb.copies_hint.text().startswith("Copies go from 1 to 100. Print and Save PDF make 100 copies")
+    sb.copies.setText("0")
+    assert sb.copies_hint.text() == "Copies go from 1 to 100. Print and Save PDF make 1 copy."
+    assert sb.copies.validator().fixup("000") == "1" and sb.copies.validator().fixup("250") == "100"
+    sb.copies.setText("")
+    assert not sb.copies_hint.isVisibleTo(sb)
+
+
+def test_print_says_copies_and_the_print_dialogs_own_copies(win, monkeypatch):
+    from PySide6.QtPrintSupport import QPrintDialog
+    sb = win.sidebar
+    sb.copies.setText("25")
+    told = []
+    monkeypatch.setattr(win, "_start", lambda j, dev, done, failed: told.append(done))
+
+    def accept(d, times):
+        d.printer().setCopyCount(times)
+        return QPrintDialog.DialogCode.Accepted
+    monkeypatch.setattr(QPrintDialog, "exec", lambda d: accept(d, 1))
+    win.print_()
+    assert told[-1] == "Sent 25 copies to the printer."
+    monkeypatch.setattr(QPrintDialog, "exec", lambda d: accept(d, 3))
+    win.print_()
+    assert told[-1] == "Sent 25 copies to the printer, 3 times over (Copies in the print dialog)."
+    sb.copies.setText("")
+    win.print_()
+    assert told[-1] == "Sent to the printer, 3 copies (Copies in the print dialog)."
