@@ -787,6 +787,7 @@ class Window(QMainWindow):
         """Make what the project holds the work in the window, with a fresh history."""
         st = self.state
         st.settings, st.photos, st.sel, st.book_sel, st.page = proj.settings, list(proj.photos), proj.sel, proj.book_sel, 0
+        st.copy = 0   # another class set: its first copy
         st.mirror()
         self.project_path = path
         self.sidebar.load()
@@ -1419,7 +1420,10 @@ class Window(QMainWindow):
         cancel = self._cancel
 
         def progress(i):
-            if not cancel.is_set():
+            if i >= j.count:   # a print: every page drawn, now it goes to the printer (and can't be stopped)
+                self.status.emit("Sending to the printer…")
+                QTimer.singleShot(0, lambda: sb.cancel_btn.setEnabled(False))
+            elif not cancel.is_set():
                 self.status.emit(f"Rendering {j.unit} {i + 1} of {j.count}…")
             QTimer.singleShot(0, lambda: bar.setValue(i + 1))
         self.worker.submit(lambda: ("job", jobs.run(j, device, progress, cancel.is_set), done, failed))
@@ -1428,7 +1432,7 @@ class Window(QMainWindow):
         """Cancel (or Esc): stop the print or save after the page being drawn."""
         # only a job with a Cancel button: a single page is done in a moment (and a PNG or SVG save can't stop)
         if not self._busy_saving or self._cancel.is_set() or self._pending_save is not None \
-                or not self.sidebar.progress_row.isVisible():
+                or not self.sidebar.progress_row.isVisible() or not self.sidebar.cancel_btn.isEnabled():
             return
         self._cancel.set()
         self.sidebar.cancel_btn.setEnabled(False)

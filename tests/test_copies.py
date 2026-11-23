@@ -602,3 +602,44 @@ def test_png_and_svg_save_the_copy_shown():
     img1, n1 = jobs.png(State(s, copy=1, class_set=cs))
     assert n1.endswith("-copy2") and img0 != img1
     assert jobs.svg(State(s, copy=0, class_set=cs))[1] == name0          # the first copy keeps the plain name
+
+
+def test_fixes_from_checking_booklet_class_sets(win, tmp_path):
+    from inkapp import render
+    from inkapp.classset import ClassSet
+    QApplication.instance() or QApplication([])
+    # the PNG of a folded side carries the copy's name, as the preview does
+    b = Settings(gen="maze", seed=4, booklet=True, pages=2, cover=True, fold=True, name_line=True, dpi=36)
+    cs = ClassSet(count=2, vary=True, names=["Ana", "Ben"])
+    named, _ = jobs.png(State(b, copy=0, class_set=cs))
+    plain, _ = jobs.png(State(b))
+    assert named != plain
+    # one name is a class set too: the preview and PNG/SVG show it
+    sb = win.sidebar
+    _set(win, gen="maze", name_line=True)
+    sb.copies_names.setText("Ana")
+    one = sb.class_set_view()
+    assert one is not None and one.count == 1 and not sb.copy_pager.isVisibleTo(sb)
+    assert ">Ana<" in jobs.svg(State(win.state.settings, class_set=one))[0]
+    # Booklet left on from Make one up doesn't stop a photo's copies showing their names
+    p = Settings(mode="convert", booklet=True, name_line=True)
+    from inkengine.photo import Photo
+    from PySide6.QtGui import QImage, QColor
+    img = QImage(40, 30, QImage.Format.Format_ARGB32)
+    img.fill(QColor("#468"))
+    v = render.view(State(p, [Photo(img)], copy=1, class_set=ClassSet(count=2, names=["Ana", "Ben"])))
+    assert v.copy == 1 and v.copy_label == "Copy 2 of 2 · Ben"
+    # opening a project starts at its first copy
+    win.state.copy = 3
+    path = str(tmp_path / "p.inkline")
+    win._write_project(path)
+    win.open_project(path)
+    assert win.state.copy == 0
+
+
+def test_a_print_says_when_its_pages_go_to_the_printer(tmp_path):
+    QApplication.instance() or QApplication([])
+    j = jobs.job(State(Settings(gen="maze", dpi=36)), copies=3, vary=True)
+    said = []
+    assert jobs.run(j, _printer_to(tmp_path / "out.pdf"), progress=said.append)
+    assert said == [0, 1, 2, 3]                                            # 3 means: now sending

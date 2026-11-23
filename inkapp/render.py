@@ -44,8 +44,8 @@ def shown_copy(state):
     cs, s = getattr(state, "class_set", None), state.settings
     if cs is None or not cs.active or s.testpage or s.poster:
         return None
-    booklet = s.mode == "make" and s.booklet
-    if s.booklet and not booklet or (s.mode == "convert" and s.photobook and state.photos):
+    booklet = s.mode == "make" and s.booklet   # (Booklet left on means nothing to Convert a photo)
+    if s.mode == "convert" and s.photobook and state.photos:
         return None
     i = max(0, min(getattr(state, "copy", 0), cs.count - 1))
     vary = cs.vary and (s.mode == "make" if booklet else copies_vary(s)[0])

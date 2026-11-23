@@ -289,6 +289,8 @@ def _print(j, printer, progress, cancelled):
         pages.append(pic)
     if cancelled():
         return False
+    if progress:
+        progress(j.count)   # every page drawn: now they go to the printer
     p = QPainter()
     if not p.begin(printer):
         return False
@@ -345,6 +347,11 @@ def _shown(state):
     return s, v, spec, (f"-copy{c[2] + 1}" if c is not None and c[2] else "")
 
 
+def _shown_name(state):
+    c = shown_copy(state)
+    return c[1] if c is not None else ""
+
+
 def svg(state):
     """The page shown as SVG (a poster: the whole poster), and the file name to suggest."""
     s, v, spec, more = _shown(state)
@@ -361,7 +368,8 @@ def png(state):
         j = job(state)
         return output_image(j, 0), j.name
     if v.kind == "fold":   # the side shown, of the copy shown (its designs)
-        return output_image(job(replace(state, settings=s, class_set=None)), v.index), base_name(state) + more
+        names = [c_name] if (c_name := _shown_name(state)) else []
+        return output_image(job(replace(state, settings=s, class_set=None), names=names), v.index), base_name(state) + more
     return output.render_image(s, spec), base_name(state) + more   # 2.x's PNG name, whichever page is shown
 
 

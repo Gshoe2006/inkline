@@ -544,7 +544,7 @@ class Sidebar(QFrame):
         names = self.copies_names_list()
         cs = ClassSet(count=len(names) if names else self.copies_count(), vary=self.copies_vary.isChecked(),
                       answers=self.copies_answers.isChecked(), names=names)
-        return cs if cs.count > 1 else None
+        return cs if cs.active else None   # one name is a class set too: it goes on the page
 
     def copies_names_list(self):
         """The names typed for a class set: they replace Copies, but only with the Name line on."""
