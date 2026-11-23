@@ -109,9 +109,9 @@ def test_pages_that_cant_vary_print_alike_and_the_hint_says_when_some_repeat(win
     assert not sb.copies_vary.isVisibleTo(sb)                              # nothing to vary: no switch for it
     assert sb.copies_hint.text().startswith("Print and Save PDF make 4 copies, all alike. A name page")
     _set(win, gen="dots")
-    assert sb.copies_vary.isVisibleTo(sb) and sb.copies_hint.text().endswith("some copies repeat.")
+    assert sb.copies_vary.isVisibleTo(sb) and "some copies repeat." in sb.copies_hint.text()
     sb.copies_vary.setChecked(False)
-    assert sb.copies_hint.text().endswith("all alike.")                    # alike anyway: no note about repeats
+    assert "all alike." in sb.copies_hint.text() and "repeat" not in sb.copies_hint.text()   # alike anyway
 
 
 def test_a_number_out_of_range_says_what_will_print_and_is_put_right_on_leaving(win):
@@ -145,3 +145,70 @@ def test_print_says_copies_and_the_print_dialogs_own_copies(win, monkeypatch):
     sb.copies.setText("")
     win.print_()
     assert told[-1] == "Sent to the printer, 3 copies (Copies in the print dialog)."
+
+
+def test_answer_pages_after_the_copies_each_copy_numbered_to_match():
+    st = State(Settings(gen="maze", seed=1234))
+    j = jobs.job(st, copies=9, vary=True, answers=True)
+    assert j.count == 9 + 3 and j.answers == 3 and j.amount() == "9 copies and 3 answer pages"
+    assert j.name.endswith("-9-designs-with-answers")
+    seen = []
+    real = jobs.draw_page
+    jobs.draw_page = lambda ctx, g, spec, s: seen.append(spec)
+    try:
+        for i in range(j.count):
+            j.draw(None, i)
+    finally:
+        jobs.draw_page = real
+    copies, keys = seen[:9], seen[9:]
+    assert [c.page_no for c in copies] == list(range(1, 10))               # the number at the foot of each copy
+    assert [c.seed for c in copies] == [s for s, _ in _drawn(jobs.job(st, copies=9, vary=True))]   # same designs
+    assert all(k.kind == "answers" and k.title == "Answers" for k in keys)
+    assert [d.key_label for k in keys for d in k.items] == [f"Copy {n}" for n in range(1, 10)]
+    assert [d.seed for k in keys for d in k.items] == [c.seed for c in copies]   # each answer is its copy's
+
+
+def test_alike_copies_share_one_answer_and_pages_without_answers_get_none():
+    st = State(Settings(gen="sudoku", seed=5))
+    j = jobs.job(st, copies=6, vary=False, answers=True)
+    assert j.count == 7 and j.amount() == "6 copies and 1 answer page"
+    assert jobs.job(State(Settings(gen="mandala")), copies=6, vary=True, answers=True).answers == 0   # nothing to solve
+    assert jobs.job(State(Settings(mode="convert")), copies=3, answers=True).answers == 0              # a photo
+    assert jobs.job(st, copies=6, vary=True, answers=False).count == 6
+
+
+def test_the_answers_switch_shows_for_puzzles_and_says_what_it_adds(win):
+    sb = win.sidebar
+    _set(win, gen="maze")
+    assert not sb.copies_answers.isVisibleTo(sb)                           # one copy: no switch
+    sb.copies.setText("5")
+    assert sb.copies_answers.isVisibleTo(sb) and sb.copies_answers.isChecked()
+    assert sb.copies_hint.text().endswith("Answer pages follow, and each copy is numbered to match them.")
+    sb.copies_vary.setChecked(False)
+    assert sb.copies_hint.text().endswith("all alike. One answer page follows.")
+    sb.copies_answers.setChecked(False)
+    assert sb.copies_hint.text().endswith("all alike.")
+    _set(win, gen="mandala")
+    assert not sb.copies_answers.isVisibleTo(sb)
+
+
+def test_answer_pages_draw_for_every_kind_of_puzzle():
+    """Each puzzle's copies and answers really draw (the engine, at a low resolution)."""
+    from PySide6.QtGui import QImage, QPainter
+    from inkengine.canvas import QtCanvas
+    from inkengine.patterns import GENERATORS
+    from inkengine.page import has_answer
+    QApplication.instance() or QApplication([])
+    for gen in GENERATORS:
+        s = Settings(gen=gen, seed=99, dpi=24, complexity=2)
+        if not has_answer(gen, s):
+            continue
+        j = jobs.job(State(s), copies=2, vary=True, answers=True)
+        assert j.answers == 1, gen
+        g = j.geometry
+        for i in range(j.count):
+            img = QImage(g.W, g.H, QImage.Format.Format_RGB32)
+            img.fill(0xFFFFFFFF)
+            p = QPainter(img)
+            j.draw(QtCanvas(p, g.W, g.H), i)
+            p.end()

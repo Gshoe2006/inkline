@@ -1271,7 +1271,7 @@ class Window(QMainWindow):
         only = sb.only_pages.text() if sb.only_row.isVisibleTo(sb) else ""
         copies = sb.copies_count() if sb.copies_row.isVisibleTo(sb) else 1
         try:
-            return jobs.job(snap, only, copies, sb.copies_vary.isChecked())
+            return jobs.job(snap, only, copies, sb.copies_vary.isChecked(), sb.copies_answers.isChecked())
         except ValueError as why:
             self._msg(f"{why} Fix the pages under Paper → Print or save only, or clear it to use every page.")
             self.sidebar.only_pages.setFocus()

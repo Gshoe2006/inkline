@@ -13,7 +13,7 @@ from PySide6.QtGui import QPageLayout, QPageSize, QPainter
 
 from inkengine import book, output, poster
 from inkengine.canvas import QtCanvas
-from inkengine.page import draw_page, geometry, single_page
+from inkengine.page import PageSpec, draw_page, geometry, has_answer, single_page
 from inkengine.testpage import draw_test_page
 
 from .render import view
@@ -30,6 +30,7 @@ class Job:
     geometry: object       # the page geometry at the settings' dpi
     draw: object           # draw(ctx, i): page i onto a canvas of that geometry
     duplex: bool = False   # fold-and-staple: double-sided, flipping on the short edge
+    answers: int = 0       # copies: answer pages after them (counted in count)
 
     @property
     def unit(self):
@@ -41,7 +42,9 @@ class Job:
             n = self.count // 2
             return f"{n} sheet{'s' if n != 1 else ''} (both sides)"
         if self.label == "copies":
-            return f"{self.count} copies"
+            n = self.count - self.answers
+            keys = f" and {self.answers} answer page{'s' if self.answers != 1 else ''}" if self.answers else ""
+            return f"{n} copies{keys}"
         return f"{self.count}-{self.unit} {self.label}"
 
 
@@ -129,10 +132,16 @@ def copies_vary(s):
     return True, ""
 
 
-def job(state, only="", copies=1, vary=False):
+def copies_have_answers(s):
+    """Whether copies of this single page can have answer pages: a puzzle (or colour by number) made up."""
+    return s.mode == "make" and has_answer(s.gen, s)
+
+
+def job(state, only="", copies=1, vary=False, answers=False):
     """What Print and Save PDF produce. only: a choice of pages as parse_pages() reads it (booklets and photo
-    books; empty for all). copies: how many of a single page, each with its own design when vary (Make one up).
-    Raises ValueError when the choice of pages doesn't make sense."""
+    books; empty for all). copies: how many of a single page, each with its own design when vary (Make one up),
+    then with answers their answer pages, each copy numbered to match. Raises ValueError when the choice of
+    pages doesn't make sense."""
     s, v = state.settings, view(state)
     if v.kind == "testpage":
         st = replace(s, orient="portrait")
@@ -165,13 +174,23 @@ def job(state, only="", copies=1, vary=False):
         return Job(base_name(state), "page", 1, s.orient, g, lambda ctx, i: draw_page(ctx, g, spec, s))
     vary = vary and copies_vary(s)[0]   # a photo has one look, a plain name page one design: their copies are alike
     name = f"{base_name(state)}-{copies}{'-designs' if vary else '-copies'}"
-
-    def draw(ctx, i):
-        if not vary:
-            return draw_page(ctx, g, spec, s)
-        si = replace(s, seed=copy_seed(s.seed, i))
-        return draw_page(ctx, g, single_page(si, state.photo), si)
-    return Job(name, "copies", copies, s.orient, g, draw)
+    answers = answers and copies_have_answers(s)
+    if not answers:
+        def draw(ctx, i):
+            if not vary:
+                return draw_page(ctx, g, spec, s)
+            si = replace(s, seed=copy_seed(s.seed, i))
+            return draw_page(ctx, g, single_page(si, state.photo), si)
+        return Job(name, "copies", copies, s.orient, g, draw)
+    # each copy carries its number at the foot, and its answer is "Copy 7"; alike copies share one answer
+    designs = [replace(spec, seed=copy_seed(s.seed, i) if vary else s.seed, page_no=i + 1,
+                       key_label=f"Copy {i + 1}" if vary else "Every copy") for i in range(copies)]
+    solved = designs if vary else designs[:1]
+    keys = [PageSpec(kind="answers", header=True, title="Answers", items=solved[k:k + 4])
+            for k in range(0, len(solved), 4)]
+    pages = designs + keys
+    return Job(name + "-with-answers", "copies", len(pages), s.orient, g,
+               lambda ctx, i: draw_page(ctx, g, pages[i], s), answers=len(keys))
 
 
 def printed_orient(s, kind):

@@ -230,6 +230,7 @@ class PageSpec:
     photo: object = None         # photo, pcover: the photo.Photo to convert
     count: int = 0               # pcover: how many photo pages follow
     opts: dict = field(default_factory=dict)      # design: this page's own settings (a booklet built page by page)
+    key_label: str = ""          # design: what its answer is called on the answer pages, instead of label · page
 
     def __post_init__(self):
         if self.header is None:
@@ -347,7 +348,8 @@ def draw_page(ctx, g, spec, s, keep=False):
             ctx.save()
             ctx.set_font(fs, 600)
             ctx.fill_style, ctx.text_align = "#000", "left"
-            ctx.fill_text(f"{d.label} · page {d.page_no}" if d.page_no else d.label, cell.x, cell.y + fs)
+            name = d.key_label or (f"{d.label} · page {d.page_no}" if d.page_no else d.label)
+            ctx.fill_text(name, cell.x, cell.y + fs)
             ctx.restore()
             ctx.line_width = max(1, lw * 0.45)
             slot = Box(cell.x, cell.y + fs * 1.6, cell.w, cell.h - fs * 1.6).inset(fs * 0.6)
