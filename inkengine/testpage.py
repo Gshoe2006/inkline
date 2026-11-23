@@ -11,6 +11,7 @@ from dataclasses import replace
 from .box import Box
 from .page import geometry
 from .photo import convert, grey_ramp
+from . import i18n
 from .i18n import tr
 
 _ramp = None
@@ -113,9 +114,11 @@ def draw_test_page(ctx, s, version=""):
     ramp_w, ramp_h, ramp = b.w - label_w, 0.36 * I, _grey_ramp()
     text(tr("Dither styles at dot size {n} (from white to black)").format(n=s.dot), b.x, y, 0.11 * I, 700)
     y += 0.12 * I
-    for style, name in (("fs", "Smooth"), ("atkinson", "Crisp"), ("bayer", "Ordered"), ("halftone", "Halftone"),
+    for style, name in (("fs", "Smooth"), ("atkinson", "Crisp"), ("bayer", "Pattern"), ("halftone", "Halftone"),
                         ("engrave", "Engraving"), ("stipple", "Stippling"), ("threshold", "Solid")):
-        text(tr(name), b.x, y + ramp_h * 0.62, 0.1 * I, 600)
+        # "Pattern" (2.x's word, kept in English) is the ordered dither here, not Design → Pattern: its own key
+        text(name if i18n.LANG == "en" else tr("Ordered" if name == "Pattern" else name), b.x, y + ramp_h * 0.62,
+             0.1 * I, 600)
         r = Box(b.x + label_w, y, ramp_w, ramp_h)
         convert(ctx, r, g.dpi, s, ramp, style=style)
         ctx.line_width = hair
