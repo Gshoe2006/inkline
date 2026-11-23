@@ -1,0 +1,96 @@
+"""Handwriting and tracing: rows of writing lines, each with a letter, number, word or name written once in
+solid and then in dotted outline to trace over, with room at the end to write it unaided.
+
+What's traced is a setting: capital or small letters, numbers, your own words, or a name (a class set's name
+for each copy, else the name page's text). Letters and numbers start at a different place on each design, so
+copies of a sheet practise different ones. Complexity sets the size: 4 big rows at 1, 11 smaller ones at 10.
+
+Each row has the four lines handwriting is taught on: the top line, a dashed middle line, the base line
+(darker) and a light line below for tails.
+"""
+
+import re
+
+from ..rng import pick
+
+SOURCES = {"upper": "Capital letters", "lower": "Small letters", "numbers": "Numbers", "words": "Your own words",
+           "name": "A name"}
+UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+LOWER = UPPER.lower()
+DIGITS = "0123456789"
+
+
+def rows_for(c):
+    """How many rows of writing at complexity c (1..10)."""
+    return [4, 5, 5, 6, 7, 7, 8, 9, 10, 11][c - 1]
+
+
+def words_from(text):
+    return [w for w in (x.strip() for x in re.split(r"[,;\n]+", text or "")) if w][:40]
+
+
+def lines_to_trace(rnd, c, settings, name=""):
+    """The text of each row."""
+    n = rows_for(c)
+    source = getattr(settings, "trace_source", "upper")
+    if source == "name":
+        who = name or (getattr(settings, "name_text", "") or "").strip() or "Your name"
+        return [who] * n
+    if source == "words":
+        words = words_from(getattr(settings, "trace_text", "")) or ["cat", "dog", "sun", "tree"]
+        start = pick(rnd, len(words))
+        return [words[(start + k) % len(words)] for k in range(n)]
+    chars = DIGITS if source == "numbers" else LOWER if source == "lower" else UPPER
+    start = pick(rnd, len(chars))
+    return [chars[(start + k) % len(chars)] for k in range(n)]
+
+
+def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, filled_name="", **_opts):
+    texts = lines_to_trace(rnd, c, settings, filled_name)
+    room = box.w * 0.97
+    ctx.save()
+    # one size for the whole sheet: as big as the rows allow, but the widest text fits four times across (the
+    # model, two to trace and a space to write it), so every row has something to trace
+    ctx.set_font(100, 500)
+    widest = max(ctx.measure_text(text) for text in texts) / 100
+    tall = box.h / len(texts) * 0.66
+
+    def across(n):   # the size at which the widest text fits n times
+        return room * 0.98 / (widest * n + max(0.6, widest * 0.35) * (n - 1))
+    # four times across if that keeps it big enough, else three (the model, one to trace, the space): long words
+    fs = min(tall, across(4) if across(4) >= tall * 0.6 else across(3))
+    rows = max(len(texts), min(2 * len(texts), 16, int(box.h // (fs * 1.6))))   # smaller writing: more rows
+    texts = [texts[k % len(texts)] for k in range(rows)]
+    rh = box.h / rows
+    dot = max(1.0, min(lw * 1.1, fs * 0.03))
+    ctx.text_baseline, ctx.text_align = "alphabetic", "left"
+    for r, text in enumerate(texts):
+        base = box.y + r * rh + (rh + fs * 0.52) / 2   # the letters' body in the middle of the row
+        top, mid, tail = base - fs * 0.72, base - fs * 0.52, base + fs * 0.2
+        for y, width, dash, colour in ((top, 0.5, (), "#999"), (mid, 0.5, (fs * 0.06, fs * 0.06), "#aaa"),
+                                       (base, 0.9, (), "#555"), (tail, 0.4, (fs * 0.03, fs * 0.08), "#bbb")):
+            ctx.line_width, ctx.line_dash, ctx.stroke_style = max(1.0, lw * width), dash, colour
+            ctx.begin_path()
+            ctx.move_to(box.x, y)
+            ctx.line_to(box.x + box.w, y)
+            ctx.stroke()
+        ctx.line_dash = ()
+        ctx.set_font(fs, 500)
+        unit = ctx.measure_text(text)
+        gap = max(fs * 0.6, unit * 0.35)
+        width = min(unit, room)
+        fits = max(1, int((room + gap) // (width + gap)))
+        traced = max(1, fits - 1) if fits > 2 else fits   # leave the last place empty, to write it unaided
+        x = box.x + fs * 0.15
+        for k in range(traced):
+            if k == 0:   # the model, in solid ink
+                ctx.fill_style = "#000"
+                ctx.fill_text(text, x, base, room)
+            else:        # then dotted outlines to trace
+                ctx.line_width, ctx.stroke_style = dot, "#555"
+                ctx.line_dash = (fs * 0.035, fs * 0.04)
+                ctx.stroke_text(text, x, base, room)
+                ctx.line_dash = ()
+            x += width + gap
+    ctx.restore()
+    return {"rows": texts}

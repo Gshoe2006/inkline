@@ -39,18 +39,19 @@ def _coerce(v, kind):
 RANGES = {"seed": (0, 4294967295), "complexity": (1, 10), "weight": (1, 10), "margin": (0, 2), "dpi": (36, 1200),
           "pages": (2, 40), "overlap": (0, 1), "brightness": (-100, 100), "contrast": (20, 300), "threshold": (1, 254),
           "dot": (1, 8), "pnono_size": (10, 30), "pcbn_colours": (4, 16), "cbn_colours": (3, 12)}
-LENGTHS = {"title": 80, "maze_word": 12, "ws_words": 300, "name_text": 40}
+LENGTHS = {"title": 80, "maze_word": 12, "ws_words": 300, "name_text": 40, "trace_text": 300, "cross_words": 2000}
 
 
 def _choices():
     from . import poster
-    from .patterns import name, spot, words
+    from .patterns import crossword, maths, name, spot, trace, words
     try:
         from .photo import STYLES
     except ImportError:      # the engine without Qt: no photo styles to check against
         STYLES = None
     return {"gen": set(NAMES), "paper": set(PAPER), "orient": {"portrait", "landscape"}, "maze_shape": set(maze.SHAPE_NAMES),
             "spot_base": set(spot.BASES), "ws_theme": set(words.THEME_NAMES) | {"custom"}, "name_bg": set(name.BACKGROUNDS),
+            "maths_kind": set(maths.KINDS), "trace_source": set(trace.SOURCES), "cross_theme": set(crossword.THEME_NAMES),
             "grid": set(poster.GRIDS), "mode": {"make", "convert"}, "fit": {"contain", "cover"},
             **({"style": set(STYLES)} if STYLES else {})}
 
@@ -89,6 +90,11 @@ class Settings:
     ws_words: str = ""           # word search: your own words, for ws_theme "custom"
     name_text: str = "Hello"     # name page: the name or word (up to 40 characters)
     name_bg: str = "none"        # name page: none | flow | contour | truchet underneath
+    maths_kind: str = "add"      # maths drill: patterns.maths.KINDS (add, sub, addsub, times, bonds, mixed)
+    trace_source: str = "upper"  # handwriting: patterns.trace.SOURCES (upper, lower, numbers, words, name)
+    trace_text: str = ""         # handwriting: your own words, for trace_source "words"
+    cross_theme: str = "animals" # crossword: a theme from patterns.crossword.THEMES, or "custom"
+    cross_words: str = ""        # crossword: your own "word: clue" lines, for cross_theme "custom"
     # booklets (book.py)
     booklet: bool = False        # several pages: cover, designs, answers
     pages: int = 10              # design pages, 2..40
@@ -119,6 +125,7 @@ class Settings:
     pcbn_colours: int = 8        # colour by number crayons, 4..16
     cbn: bool = False            # mandalas, woven tiles, contours and name pages as colour by number
     cbn_colours: int = 6         # their crayons, 3..12
+    cbn_maths: bool = False      # colour by maths: a sum in each space instead of its number
     # photo books (book.py)
     photobook: bool = False      # several photos, a page each
     testpage: bool = False       # show the printer test page instead
@@ -149,8 +156,9 @@ class Settings:
 
 
 # What each page of a booklet built page by page keeps for itself; the rest is the booklet's.
-PAGE_KEYS = ("gen", "seed", "complexity", "cbn", "cbn_colours", "maze_shape", "maze_word", "ws_theme", "ws_words",
-             "name_text", "name_bg", "spot_base")
+PAGE_KEYS = ("gen", "seed", "complexity", "cbn", "cbn_colours", "cbn_maths", "maze_shape", "maze_word", "ws_theme", "ws_words",
+             "name_text", "name_bg", "spot_base", "maths_kind", "trace_source", "trace_text",
+             "cross_theme", "cross_words")
 
 
 # Page-only keys: not settings of their own (nothing at the top level mirrors them). "answer": False leaves
@@ -352,7 +360,7 @@ def draw_page(ctx, g, spec, s, keep=False):
         from . import cbn
         if cbn.is_cbn_design(spec.gen, s):   # colour by number: the crayon key takes a band under the design
             return cbn.draw_design_page(ctx, g, box, spec, s, lw)
-        return draw_design(ctx, g, box, spec.gen, spec.seed, spec.c, s, lw)
+        return draw_design(ctx, g, box, spec.gen, spec.seed, spec.c, s, lw, filled_name=spec.filled_name)
     if spec.kind == "answers":
         area = design_box(g, spec, s)
         gap, fs = g.dpi * 0.3, g.dpi * 0.14
@@ -408,8 +416,8 @@ def draw_page(ctx, g, spec, s, keep=False):
         art = Box(b.x + b.w * 0.12, b.y + b.h * 0.26, b.w * 0.76, b.h * 0.66)
         ctx.line_width = lw
         first = spec.designs[0].gen
-        # a puzzle would give away a page's answer, so puzzle books get a mandala on the cover
-        draw_design(ctx, g, art, "mandala" if first in HAS_ANSWER else first, spec.art_seed, 6, s, lw)
+        # a puzzle would give away a page's answer (and handwriting is no picture), so their books get a mandala
+        draw_design(ctx, g, art, "mandala" if first in HAS_ANSWER or first == "trace" else first, spec.art_seed, 6, s, lw)
         return None
     if spec.kind == "blank":   # padding in a fold-and-staple book
         return None

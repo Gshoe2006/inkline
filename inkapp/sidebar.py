@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QFrame, QHBoxLayout, QLabel, Q
 
 from inkengine import book, cbn, photo
 from inkengine.page import PAGE_KEYS, has_answer
-from inkengine.patterns import NAMES, maze, name, spot, words
+from inkengine.patterns import NAMES, crossword, maths, maze, name, spot, trace, words
 
 from . import jobs, theme, thumbs
 from .jobs import MAX_COPIES
@@ -24,7 +24,8 @@ from .widgets import (Hint, OptionRow, Pager, Pair, Section, SubOptions, button,
 GEN_OPTIONS = [("mandala", "Mandala (colouring page)"), ("maze", "Maze"), ("truchet", "Woven tiles"),
                ("contour", "Topographic contours"), ("flow", "Flow lines"), ("dots", "Dot-to-dot"), ("sudoku", "Sudoku"),
                ("name", "Name or word (bubble letters)"), ("words", "Word search"), ("nonogram", "Nonogram (picture logic)"),
-               ("spot", "Spot the difference"), ("kakuro", "Kakuro (cross sums)")]
+               ("spot", "Spot the difference"), ("kakuro", "Kakuro (cross sums)"), ("maths", "Maths drill"),
+               ("trace", "Handwriting (letters and words to trace)"), ("crossword", "Crossword")]
 GRID_OPTIONS = [("2x2", "2 × 2"), ("3x3", "3 × 3"), ("4x4", "4 × 4"), ("2x1", "2 across × 1"), ("3x2", "3 across × 2"),
                 ("1x2", "1 across × 2"), ("2x3", "2 across × 3")]
 CBN_PATTERN_NOTE = "Repeated spaces share a number, and spaces side by side get different colours."
@@ -244,13 +245,32 @@ class Sidebar(QFrame):
         self.spot_opts = SubOptions()
         self.spot_base = self._combo("spot_base", list(spot.BASES.items()))
         self.spot_opts.add(OptionRow("Picture", self.spot_base))
-        sec.add(self.words_opts, self.maze_opts, self.name_opts, self.spot_opts)
+        self.maths_opts = SubOptions()
+        self.maths_kind = self._combo("maths_kind", list(maths.KINDS.items()))
+        self.maths_opts.add(OptionRow("Sums", self.maths_kind))
+        self.maths_opts.add(Hint("Complexity sets how big the numbers get and how many sums there are."))
+        self.trace_opts = SubOptions()
+        self.trace_source = self._combo("trace_source", list(trace.SOURCES.items()))
+        self.trace_opts.add(OptionRow("Trace", self.trace_source))
+        self.trace_text = self._text("trace_text", "e.g. cat, dog, sun, my name", 300)
+        self.trace_text_row = self.trace_opts.add(OptionRow("Your words", self.trace_text))
+        self.trace_hint = self.trace_opts.add(Hint())
+        self.cross_opts = SubOptions()
+        self.cross_theme = self._combo("cross_theme", list(crossword.THEME_NAMES.items()))
+        self.cross_opts.add(OptionRow("Words from", self.cross_theme))
+        self.cross_words = self._text("cross_words", "e.g. cat: Says miaow; sun: Our nearest star", 2000)
+        self.cross_words_row = self.cross_opts.add(OptionRow("Your words and clues", self.cross_words))
+        self.cross_words_hint = self.cross_opts.add(Hint("Each as word: clue, separated by ; (a word without a clue gets ?)."))
+        self.cross_note = self.cross_opts.add(Hint())
+        sec.add(self.words_opts, self.maze_opts, self.name_opts, self.spot_opts, self.maths_opts, self.trace_opts,
+                self.cross_opts)
         sec.add(self._slider("complexity", "Complexity", 1, 10, lambda v: f"{v} / 10"))
         sec.add(self._slider("weight", "Line weight", 1, 10, lambda v: f"{v / 150 * 25.4:.2f} mm"))
         sec.add(self._check("frame", "Draw a border around the design"))
         sec.add(self._check("cbn", "Colour by number (a number in each space, with a crayon key)"))
         self.cbn_opts = SubOptions()
         self.cbn_opts.add(self._slider("cbn_colours", "Colours", 3, 12))
+        self.cbn_opts.add(self._check("cbn_maths", "Colour by maths (a sum in each space: its answer is the colour)"))
         self.cbn_note = self.cbn_opts.add(Hint(CBN_PATTERN_NOTE))
         sec.add(self.cbn_opts)
         # a booklet built page by page: this page's solution on the answer pages (shown for puzzles and colour by number)
@@ -829,6 +849,15 @@ class Sidebar(QFrame):
         listing = s.booklet and bool(s.page_list)   # built page by page: Design edits the selected page
         mix_book = s.booklet and s.mix and not listing
         self.words_opts.setVisible(s.gen == "words")
+        self.maths_opts.setVisible(s.gen == "maths")
+        self.cross_opts.setVisible(s.gen == "crossword")
+        self.cross_words_row.setVisible(s.cross_theme == "custom")
+        self.cross_words_hint.setVisible(s.cross_theme == "custom")
+        self.trace_opts.setVisible(s.gen == "trace")
+        self.trace_text_row.setVisible(s.trace_source == "words")
+        self.trace_hint.setVisible(s.trace_source == "name")
+        self.trace_hint.setText("Traces each child's name from Paper → Names, or else the name page's text."
+                                if s.trace_source == "name" else "")
         self.ws_words_row.setVisible(s.ws_theme == "custom")
         self.maze_opts.setVisible(s.gen == "maze" or mix_book)
         self.maze_word_row.setVisible(s.maze_shape == "word")
@@ -959,6 +988,7 @@ class Sidebar(QFrame):
         self.svg_btn.setToolTip(tips[s.style] if vector else "Vector lines for Inkscape, Cricut, Silhouette or laser cutters"
                                 if make else "Photos are made of pixels; choose Engraving, Stippling, Colour by number or Nonogram for SVG")
         self.ws_note.setVisible(bool(self.ws_note.text()) and s.gen == "words")
+        self.cross_note.setVisible(bool(self.cross_note.text()) and s.gen == "crossword")
         self.synced.emit()
 
     def set_status(self, text):
@@ -993,6 +1023,12 @@ def _page_detail(gen, p):
         return p.get("maze_word", "").strip()
     if gen == "name":
         return p.get("name_text", "").strip()
+    if gen == "maths":
+        return maths.KINDS.get(p.get("maths_kind", "add"), "")
+    if gen == "trace":
+        return trace.SOURCES.get(p.get("trace_source", "upper"), "")
+    if gen == "crossword":
+        return "Your words" if p.get("cross_theme") == "custom" else crossword.THEME_NAMES.get(p.get("cross_theme"), "")
     return ""
 
 

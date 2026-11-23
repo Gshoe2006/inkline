@@ -158,11 +158,11 @@ def render_view(state):
         p = QPainter(img)
         drawn = draw_page(QtCanvas(p, g.W, g.H), g, spec, s)
         p.end()
-        if s.mode == "make" and spec.kind == "design" and spec.gen == "words":
-            # a word search (a single page or a booklet's) says which words didn't fit: its grid doesn't
-            # depend on the drawing's size, so the one just drawn is the one that prints
-            from inkengine.patterns import words
-            note = words.note(drawn) if isinstance(drawn, dict) else ""
+        if s.mode == "make" and spec.kind == "design" and spec.gen in ("words", "crossword"):
+            # a word search or crossword (a single page or a booklet's) says which words didn't fit: its grid
+            # doesn't depend on the drawing's size, so the one just drawn is the one that prints
+            from inkengine.patterns import crossword, words
+            note = (words if spec.gen == "words" else crossword).note(drawn) if isinstance(drawn, dict) else ""
     paper = _paper_name(s)
     if v.kind == "testpage":
         info = [[("Printer test page", True), (f" {_num(g.w)} × {_num(g.h)} in", False)],

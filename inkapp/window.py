@@ -41,6 +41,8 @@ STEP_NAMES = {"gen": "Pattern", "complexity": "Complexity", "weight": "Line weig
               "pages": "Design pages", "ramp": "Get harder", "mix": "Mix every pattern", "cover": "Cover page",
               "page_nums": "Page numbers", "key": "Answer pages", "maze_shape": "Maze shape", "maze_word": "Word or name", "spot_base": "Picture",
               "ws_theme": "Words from", "ws_words": "Your words", "name_text": "Name or word", "name_bg": "Around the letters",
+              "maths_kind": "Sums", "trace_source": "Trace", "trace_text": "Words to trace",
+              "cbn_maths": "Colour by maths", "cross_theme": "Crossword words", "cross_words": "Crossword words and clues",
               "mode": "Mode", "style": "Style", "brightness": "Brightness", "contrast": "Contrast", "threshold": "Threshold",
               "dot": "Dot size", "fit": "Placement", "invert": "Invert", "pnono_size": "Squares across",
               "pnono_answer": "Show the answer", "pcbn_colours": "Colours", "photobook": "Photo book", "pcover": "Cover page",
@@ -1169,6 +1171,7 @@ class Window(QMainWindow):
         self.preview.set_info(r.info)
         self.preview.set_busy("")
         self.sidebar.ws_note.setText(r.note)
+        self.sidebar.cross_note.setText(r.note)
         self.sidebar.sync(r.view)
         self._view = r.view
         self._show_printer_edges()
