@@ -44,6 +44,14 @@ def _booklet(w, **kw):
     w.sidebar.pages_edit.emit(True)
 
 
+def _fill(win, n):
+    """The booklet's page list made n pages long in one step, each a copy of the last with its own design (adding
+    them one at a time fills the list again each time, which only slows the test)."""
+    pl = win.state.settings.page_list
+    win.state.update(page_list=[*pl, *[{**pl[-1], "seed": 5000 + k} for k in range(n - len(pl))]])
+    win._list_changed()
+
+
 def _designs(w):
     return [(p.gen, p.seed, p.c) for p in book.book_pages(w.state.settings) if p.kind == "design"]
 
@@ -138,7 +146,8 @@ def test_the_last_page_cant_be_removed_and_forty_is_the_most(win):
     assert len(win.state.settings.page_list) == 1
     sb.book_page_removed.emit(0)
     assert len(win.state.settings.page_list) == 1
-    for _ in range(45):
+    _fill(win, 38)   # up to 38 in one step, then Add page past the most
+    for _ in range(3):
         sb.book_page_added.emit()
     assert len(win.state.settings.page_list) == 40 and not sb.page_add.isEnabled()
 
@@ -475,8 +484,8 @@ def test_keys_do_nothing_where_their_buttons_are_off(win):
     steps = h.count()
     QTest.keyClick(lst, Qt.Key.Key_Down, Qt.KeyboardModifier.AltModifier)    # the last can't go down
     assert h.count() == steps
-    for _ in range(34):
-        win.sidebar.book_page_added.emit()
+    _fill(win, 39)
+    win.sidebar.book_page_added.emit()
     assert len(win.state.settings.page_list) == 40
     lst.setFocus()
     steps = h.count()

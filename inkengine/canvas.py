@@ -31,6 +31,7 @@ class State:
     line_join: str = "miter"       # miter | round | bevel
     font_size: float = 10.0
     font_weight: int = 400
+    font_family: str = ""          # a family to use first ("" for Inkline's usual sans-serif)
     text_align: str = "start"      # start | left | center | right | end
     text_baseline: str = "alphabetic"   # alphabetic | middle | top
     line_dash: tuple = ()          # dash and gap lengths in page pixels; () is a solid line
@@ -60,8 +61,8 @@ class Canvas:
         else:
             super().__setattr__(name, value)
 
-    def set_font(self, size, weight=400):
-        self.st.font_size, self.st.font_weight = size, weight
+    def set_font(self, size, weight=400, family=""):
+        self.st.font_size, self.st.font_weight, self.st.font_family = size, weight, family
 
     def save(self):
         self._stack.append(self.st)
@@ -182,7 +183,7 @@ class Canvas:
 
     def measure_text(self, text):
         """Width of text in the current font, in page pixels."""
-        return QFontMetricsF(make_font(self.st.font_size, self.st.font_weight)).horizontalAdvance(text)
+        return QFontMetricsF(make_font(self.st.font_size, self.st.font_weight, self.st.font_family)).horizontalAdvance(text)
 
     def _on_save(self):
         pass
@@ -200,7 +201,7 @@ class Canvas:
             x -= drawn / 2
         elif align in ("right", "end"):
             x -= drawn
-        fm = QFontMetricsF(make_font(self.st.font_size, self.st.font_weight))
+        fm = QFontMetricsF(make_font(self.st.font_size, self.st.font_weight, self.st.font_family))
         if self.st.text_baseline == "middle":
             y += (fm.ascent() - fm.descent()) / 2
         elif self.st.text_baseline == "top":
@@ -337,7 +338,7 @@ class QtCanvas(Canvas):
         self.p.save()
         self.p.translate(x, y)
         self.p.scale(scale, 1)
-        font = make_font(self.st.font_size, self.st.font_weight)
+        font = make_font(self.st.font_size, self.st.font_weight, self.st.font_family)
         if _is_white(self.st.fill_style):
             # White text only ever covers an outline of the same text (name pages' bubble letters).
             # Fill the same glyph shapes the outline used: in a PDF, drawText writes real text whose
@@ -354,7 +355,7 @@ class QtCanvas(Canvas):
     def stroke_text(self, text, x, y, max_width=None):
         x, y, scale = self._text_origin(text, x, y, max_width)
         path = QPainterPath()
-        path.addText(QPointF(0, 0), make_font(self.st.font_size, self.st.font_weight), text)
+        path.addText(QPointF(0, 0), make_font(self.st.font_size, self.st.font_weight, self.st.font_family), text)
         self.p.save()
         self.p.translate(x, y)
         self.p.scale(scale, 1)
@@ -479,7 +480,7 @@ class SvgCanvas(Canvas):
         squeeze = ""
         if max_width and self.measure_text(text) > max_width:
             squeeze = f' textLength="{fx(max_width)}" lengthAdjust="spacingAndGlyphs"'
-        family = ", ".join(f"'{f}'" if " " in f else f for f in FONT_FAMILIES)
+        family = ", ".join(f"'{f}'" if " " in f else f for f in ([s.font_family] if s.font_family else []) + FONT_FAMILIES)
         self.out.append(f'<text x="{fx(x)}" y="{fx(y)}" font-family="{family}" font-size="{fx(s.font_size)}" '
                         f'font-weight="{s.font_weight}" {paint} text-anchor="{anchor}"{baseline}{squeeze}>'
                         f"{_esc(text)}</text>")
