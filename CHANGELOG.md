@@ -6,6 +6,62 @@ To release a new version, add a section headed `## <version>` (the same text as 
 pull request that bumps `VERSION`. When it merges, `.github/workflows/release.yml` builds the packages
 and publishes a GitHub Release with that section as its notes.
 
+## 5.0.0 - 2026-11-23
+
+Inkline 5.0 is made for the classroom: maths drills, handwriting, crosswords and colour by maths, several puzzles on one sheet, an answer book for the teacher, age levels, and Inkline in Spanish.
+
+### What's new
+
+- **Maths drills.** **Pattern → Maths drill** makes a sheet of sums: adding, taking away, both, times tables, number bonds ("7 + _ = 10"), or all of them mixed. **Complexity** goes from sums within 10 up to 1,000, and from the 2, 5 and 10 times tables up to the 12. No answer goes below zero, no sum appears twice, and the answer page writes each answer in its blank.
+- **Handwriting.** **Pattern → Handwriting** draws rows of handwriting lines: the text once in ink, dotted copies to trace, then room to write it alone. Trace capital letters, small letters, numbers, your own words or a name. With **Paper → Names**, each child traces their own name.
+- **Crosswords.** **Pattern → Crossword** builds a crossword from a theme with clues for children, or from your own list (`word: clue`, one per line). Words only cross, never sit side by side, and the answer page fills the grid in.
+- **Colour by maths.** Under colour by number, **Colour by maths** puts a small sum in each space ("2+3"). Its answer is the colour to use.
+- **Several puzzles on one sheet.** **On the sheet** fits one design, two halves or four quarters on a page, each with its own pattern, and each puzzle gets its own answer.
+- **An answer book for the teacher.** With copies of a booklet, **Answers in a separate teacher's book** moves every booklet's answer pages into one book at the end, each headed with the child's name (or "Booklet 3").
+- **Age levels.** **Age** (4–6, 7–9, or 10 and up) sets each pattern's complexity and options to suit that age in one step.
+- **Inkline in Spanish.** Inkline uses Spanish when your system does, or choose it under **View → Language** (it takes effect next time Inkline starts). Everything in the window and on printed pages is in Spanish, word searches and crosswords use Spanish words with Ñ, and handwriting uses the Spanish alphabet. Corrections to the translation are welcome.
+
+### Fixed
+
+- A recovery copy of unsaved work always goes to the same folder for the whole session.
+
+### Upgrading
+
+Nothing changes in what Inkline needs. Your presets, settings, projects, recent files and printer carry over.
+
+**Windows**
+Run `inkline-5.0.0-windows-setup.exe`.
+
+**Debian / Ubuntu / Linux Mint / Pop!_OS**
+```sh
+sudo apt install ./inkline_5.0.0-1_amd64.deb
+```
+
+**Arch / CachyOS / Manjaro**
+```sh
+sudo pacman -U inkline-5.0.0-1-any.pkg.tar.zst
+```
+
+**Any distro, nothing installed**
+```sh
+chmod +x inkline-5.0.0-x86_64.AppImage && ./inkline-5.0.0-x86_64.AppImage
+```
+
+**Any other distro**
+```sh
+sh inkline-5.0.0.run            # or --system for every user
+```
+
+**Flatpak**
+```sh
+flatpak install --user inkline-5.0.0.flatpak     # if a .flatpak file is attached to this release
+sh packaging/flatpak/build.sh                    # or build it from a copy of the source
+```
+
+### Found a problem?
+
+Please open an issue saying what you did, what you expected, and what happened. Include your system (distro, or Windows version), and the printer if it's about printing.
+
 ## 4.10.0 - 2026-11-23
 
 Inkline 4.10 makes class sets something to keep: booklets for every child, saved class lists, and a class set that's saved with the project.
