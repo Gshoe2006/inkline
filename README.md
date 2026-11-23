@@ -1,6 +1,6 @@
 # Inkline
 
-A Linux desktop app that converts photos to, or generates, black & white images for printing.
+A desktop app for Linux and Windows that converts photos to, or generates, black & white images for printing.
 
 - **Make one up:** mandala colouring pages, mazes (rectangular, or shaped like a heart, star, fish, house or any word or name), dot-to-dots, sudoku and nonograms (each with exactly one solution), spot the difference (two copies of a mandala, woven tiles or contours, 5 to 10 changes to find), kakuro (cross sums, with a few starter numbers and exactly one solution), word search (themes or your own words, each word hidden exactly once), name pages in bubble letters, woven tiles, topographic contours, flow lines; mandalas, woven tiles, contours and name pages can also be colour-by-number, with repeated spaces sharing a number, a crayon key, and shaded answer pages in booklets.
 - **Convert a photo:** Floyd–Steinberg, Atkinson and ordered dithering, halftone dots, engraving lines and stippling dots (both also save as SVG), solid black & white, a line drawing (colouring page), colour by number (regions of similar colour, each numbered, with a key naming the crayon to use; also saves as SVG), or a nonogram puzzle that reveals the photo (always solvable by logic alone), with rotate, zoom and pan to crop.

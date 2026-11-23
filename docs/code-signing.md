@@ -33,6 +33,8 @@ it decides which projects to accept. A young project may be asked to wait.
 
 ## 2. Apply
 
+Answers ready to copy into the form are in [signpath-application.md](signpath-application.md).
+
 Fill in the form at [signpath.org/apply](https://signpath.org/apply) with the repository
 (`https://github.com/Gshoe2006/inkline`), the licence (GPL-3.0), what's signed (the Windows installer, built
 by GitHub Actions) and where releases are published (GitHub Releases).
@@ -55,7 +57,19 @@ In SignPath ([app.signpath.io](https://app.signpath.io)):
 
 ## 4. Tell the repository
 
-In GitHub, open the repository's Settings → Secrets and variables → Actions:
+The quickest way is the setup script. Run it on your own computer with the [GitHub CLI](https://cli.github.com)
+signed in (`gh auth login`):
+
+```sh
+bash packaging/windows/signpath-setup.sh            # asks for the organization ID and the API token
+bash packaging/windows/signpath-setup.sh --check    # shows what's set up
+bash packaging/windows/signpath-setup.sh --remove   # stops signing again
+```
+
+It checks that two-factor authentication is on for your GitHub account. It then saves the token as the secret
+`SIGNPATH_API_TOKEN`, without showing it, and the organization ID as the variable `SIGNPATH_ORGANIZATION_ID`.
+
+Or do it by hand in GitHub, under the repository's Settings → Secrets and variables → Actions:
 
 - **Secret** `SIGNPATH_API_TOKEN`: the API token.
 - **Variable** `SIGNPATH_ORGANIZATION_ID`: the organization ID (SignPath shows it under the organization's
