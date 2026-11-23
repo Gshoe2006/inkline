@@ -21,11 +21,11 @@ from PySide6.QtWidgets import (QAbstractItemView, QAbstractSlider, QAbstractSpin
                                QUndoView, QVBoxLayout, QWidget)
 from PySide6.QtGui import QPdfWriter
 
-from inkengine import ages, book, photo
+from inkengine import ages, book, pack, photo
 from inkengine import i18n
 from inkengine.i18n import tr
 from inkengine.page import PAGE_KEYS, Settings, clean_page, design_box, geometry, single_page
-from inkengine.patterns import NAMES
+from inkengine.patterns import NAMES, crossword
 
 from . import config, jobs, project, recovery, theme, whatsnew
 from .preview import Preview
@@ -1257,7 +1257,11 @@ class Window(QMainWindow):
         if p is None:
             return
         self._step_name = tr("“{name}”").format(name=tr(name) if group == "b" else name)   # Edit → Undo “Maze booklet with answers”
-        self.state.apply_preset(p)
+        if p.get("pack"):   # a worksheet pack: its pages are made for the age (and theme) chosen now
+            self.state.update(**pack.week(self.state.settings, [new_seed() for _ in pack.DAYS]))
+            self.state.page = self.state.book_sel = 0
+        else:
+            self.state.apply_preset(p)
         self.state.mirror()
         self.sidebar.only_pages.clear()
         self.sidebar.load()
@@ -1265,7 +1269,13 @@ class Window(QMainWindow):
         if self.state.settings.mode == "convert" and not self.state.photos:
             self.state.photos = [sample_photo()]
             self.sidebar.fill_photos()
-        self._msg(tr("Applied “{name}”.").format(name=tr(name)))
+        s = self.state.settings
+        if p.get("pack"):
+            self._msg(tr("A week of worksheets for {age}, about {theme}. For another age, choose it under Age; for another "
+                         "theme, choose it on the crossword or word search page. Then choose this preset again.").format(
+                age=tr(ages.AGES[s.age]).lower(), theme=tr(crossword.THEME_NAMES[s.cross_theme]).lower()))
+        else:
+            self._msg(tr("Applied “{name}”.").format(name=tr(name)))
         self.schedule()
         self.remember_soon()
 

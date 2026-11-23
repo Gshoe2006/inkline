@@ -84,7 +84,7 @@ def test_the_booklet_preset_makes_a_kakuro_booklet_with_answers(tmp_path, monkey
     from inkapp.state import BUILTIN_PRESETS
     from inkapp.window import Window
     from inkengine import book
-    assert len(BUILTIN_PRESETS) == 20
+    assert len(BUILTIN_PRESETS) == 21
     w = Window("3.4.0", remember=False)
     w._apply_preset("b", "Kakuro booklet with answers")
     s = w.state.settings
