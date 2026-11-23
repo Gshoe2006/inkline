@@ -1,0 +1,45 @@
+name: Translation fix
+description: A word or sentence in Inkline's Spanish or French that's wrong, unclear or could be said better
+title: "Translation: "
+labels: ["translation"]
+body:
+  - type: dropdown
+    id: language
+    attributes:
+      label: Language
+      options:
+        - Español (Spanish)
+        - Français (French)
+    validations:
+      required: true
+  - type: input
+    id: where
+    attributes:
+      label: Where you saw it
+      description: The menu, sidebar section or printed page, e.g. "Paper → Copies" or "the answer pages of a crossword".
+    validations:
+      required: true
+  - type: textarea
+    id: now
+    attributes:
+      label: What it says now
+      description: Copy the text exactly, or attach a screenshot.
+    validations:
+      required: true
+  - type: textarea
+    id: better
+    attributes:
+      label: What it should say
+      description: Keep anything in {curly brackets} as it is (Inkline fills in a number or name there).
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why (optional)
+      description: For example, "a teacher in Mexico would say …", or the word is the wrong one for this puzzle.
+  - type: markdown
+    attributes:
+      value: |
+        Checking a whole translation? `python3 packaging/translation_sheet.py es` (or `fr`) writes every string as a
+        spreadsheet with a column for better wording. Attach the filled-in sheet to an issue.

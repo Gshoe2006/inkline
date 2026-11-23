@@ -20,6 +20,8 @@ SOURCES = {"upper": "Capital letters", "lower": "Small letters", "numbers": "Num
 UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 LOWER = UPPER.lower()
 DIGITS = "0123456789"
+DEFAULT_WORDS = {"en": ["cat", "dog", "sun", "tree"], "es": ["gato", "perro", "sol", "árbol"],
+                 "fr": ["chat", "chien", "soleil", "arbre"]}   # Your own words, empty
 
 
 def rows_for(c):
@@ -39,10 +41,10 @@ def lines_to_trace(rnd, c, settings, name=""):
         who = name or (getattr(settings, "name_text", "") or "").strip() or tr("Your name")
         return [who] * n
     if source == "words":
-        words = words_from(getattr(settings, "trace_text", "")) or ["cat", "dog", "sun", "tree"]
+        words = words_from(getattr(settings, "trace_text", "")) or DEFAULT_WORDS.get(i18n.LANG, DEFAULT_WORDS["en"])
         start = pick(rnd, len(words))
         return [words[(start + k) % len(words)] for k in range(n)]
-    upper = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ" if i18n.LANG == "es" else UPPER   # the Spanish alphabet has Ñ
+    upper = i18n.alphabet() if i18n.LANG in i18n.ALPHABETS else UPPER   # the Spanish alphabet has Ñ
     chars = DIGITS if source == "numbers" else upper.lower() if source == "lower" else upper
     start = pick(rnd, len(chars))
     return [chars[(start + k) % len(chars)] for k in range(n)]

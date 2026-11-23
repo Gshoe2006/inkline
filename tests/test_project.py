@@ -11,6 +11,7 @@ from PySide6.QtWidgets import QApplication, QMessageBox
 from inkapp import project
 from inkapp.state import State
 from inkengine.photo import Photo
+from conftest import settle
 
 
 def _wait(ms):
@@ -46,7 +47,7 @@ def win(tmp_path, monkeypatch, answers):
     from inkapp.window import Window
     w = Window("4.0.0", remember=True)
     w.show()
-    _wait(100)
+    settle(w)
     yield w
     w.history.setClean()   # closing doesn't ask
     w.close()

@@ -11,8 +11,13 @@ what still needs translating.
 
 import json
 import os
+import re
+import unicodedata
 
-LANGUAGES = {"en": "English", "es": "Español"}
+LANGUAGES = {"en": "English", "es": "Español", "fr": "Français"}
+# letters a language's word puzzles keep as they are (others lose their accents: É → E); its alphabet for tracing
+KEEP_LETTERS = {"es": "Ñ"}
+ALPHABETS = {"es": "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ"}
 HERE = os.path.dirname(os.path.abspath(__file__))
 LANG = "en"
 MISSING = set()
@@ -53,3 +58,18 @@ def tr(text):
         MISSING.add(text)
         return text
     return out
+
+
+def grid_letters(word):
+    """A word as puzzle letters in the current language: capitals A-Z, accents off (café → CAFE, œuf → OEUF),
+    the language's own letters kept (Spanish NIÑO), anything else left out."""
+    keep = KEEP_LETTERS.get(LANG, "")
+    w = unicodedata.normalize("NFC", (word or "").upper()).replace("Œ", "OE").replace("Æ", "AE").replace("ß", "SS")
+    out = "".join(ch if ch in keep else unicodedata.normalize("NFKD", ch).encode("ascii", "ignore").decode("ascii")
+                  for ch in w)
+    return re.sub(f"[^A-Z{keep}]", "", out)
+
+
+def alphabet():
+    """The capital letters of the current language's alphabet, in order."""
+    return ALPHABETS.get(LANG, "ABCDEFGHIJKLMNOPQRSTUVWXYZ")

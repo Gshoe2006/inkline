@@ -12,7 +12,6 @@ anything are left out and reported, as the word search does. The answer page sho
 """
 
 import re
-import unicodedata
 
 from ..rng import pick
 from .. import i18n
@@ -55,6 +54,29 @@ THEMES_ES = {
              "planeta: La Tierra es uno; astronauta: Viaja al espacio; telescopio: Para mirar las estrellas; "
              "galaxia: Miles de millones de estrellas; nave: Lleva astronautas",
 }
+THEMES_FR = {
+    "animals": "chat: Il fait miaou; chien: Il aboie et remue la queue; vache: Elle nous donne du lait; cheval: On "
+               "peut monter dessus; mouton: Sa laine sert à faire des pulls; canard: Il fait coin-coin; grenouille: "
+               "Elle est verte et elle saute; hibou: Il hulule la nuit; lion: Le roi de la savane; tigre: Un grand "
+               "félin avec des rayures; zèbre: Un cheval avec des rayures; singe: Il se balance dans les arbres; "
+               "lapin: Il a de longues oreilles et il saute; souris: Petite, elle aime le fromage; éléphant: Il a "
+               "une trompe; girafe: Elle a un très long cou; serpent: Long et sans pattes; ours: Gros, poilu et il "
+               "aime le miel; poisson: Il nage et a des nageoires; abeille: Elle fait du miel",
+    "food": "pomme: Un fruit rouge ou vert; banane: Un fruit long et jaune; pain: On en fait des tartines; "
+            "fromage: Les souris l'adorent; oeuf: Les poules le pondent; lait: Une boisson blanche de la vache; "
+            "pizza: Ronde avec des garnitures dessus; carotte: Un légume orange; soupe: On la mange chaude dans "
+            "une assiette creuse; gâteau: Il a des bougies pour un anniversaire; miel: Les abeilles le "
+            "fabriquent; riz: De petits grains blancs; poire: Un fruit en forme de cloche; citron: Un fruit jaune "
+            "et acide; raisin: Petits fruits en grappes; haricot: Un légume vert, long et fin; confiture: On "
+            "l'étale sur les tartines; pâtes: Les spaghettis en sont",
+    "space": "soleil: Notre étoile la plus proche; lune: Elle brille la nuit; étoile: Elle scintille dans le ciel; "
+             "terre: La planète où nous vivons; mars: La planète rouge; fusée: Elle vole dans l'espace; comète: "
+             "Elle a une longue queue; orbite: Le chemin autour d'une planète; saturne: La planète avec des "
+             "anneaux; planète: La Terre en est une; astronaute: Il voyage dans l'espace; télescope: Pour regarder "
+             "les étoiles; galaxie: Des milliards d'étoiles; navette: Elle transporte les astronautes; ciel: Il "
+             "est bleu le jour",
+}
+THEMES_BY_LANGUAGE = {"es": THEMES_ES, "fr": THEMES_FR}
 THEME_NAMES = {"animals": "Animals", "food": "Food", "space": "Space", "custom": "Your own words and clues"}
 MAX_WORD = 15
 MAX_OWN = 30    # your own words used, at most
@@ -63,11 +85,7 @@ MAX_OWN = 30    # your own words used, at most
 def letters(word):
     """A word as crossword letters: capitals A-Z, accents taken off (café → CAFE), anything else left out. In
     Spanish, Ñ stays (NIÑO)."""
-    if i18n.LANG == "es":
-        w = "".join(ch for ch in unicodedata.normalize("NFD", word.upper()) if unicodedata.category(ch) != "Mn" or ch == "\u0303")
-        return re.sub(r"[^A-ZÑ]", "", unicodedata.normalize("NFC", w))
-    plain = unicodedata.normalize("NFKD", word).encode("ascii", "ignore").decode("ascii")
-    return re.sub(r"[^A-Z]", "", plain.upper())
+    return i18n.grid_letters(word)
 
 
 def count_for(c):
@@ -97,7 +115,7 @@ def entries_for(rnd, settings):
         if mine:
             return mine[:MAX_OWN], True
         theme = "animals"   # none of them usable: the note says so
-    themes = THEMES_ES if i18n.LANG == "es" else THEMES
+    themes = THEMES_BY_LANGUAGE.get(i18n.LANG, THEMES)
     pool = parse_entries(themes.get(theme, themes["animals"]))
     for i in range(len(pool) - 1, 0, -1):
         j = pick(rnd, i + 1)

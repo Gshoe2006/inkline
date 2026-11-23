@@ -185,7 +185,8 @@ class Window(QMainWindow):
 
         self.renderer = Renderer()
         self.renderer.finished.connect(self._rendered)
-        self.renderer.failed.connect(lambda _n, _why: self._msg(tr("The preview couldn't be drawn. Try another setting, or start fresh from Presets.")))
+        self.renderer.failed.connect(self._render_failed)
+        self.shown = 0   # the last preview request whose result reached the window (tests wait for it)
         self.renderer.busy.connect(lambda on: None if on or not self.renderer.idle else self.preview.set_busy(""))
         self.renderer.converting.connect(lambda: self.preview.set_busy(tr("converting photo…")))
         self.worker = Renderer()        # saving and printing
@@ -1202,7 +1203,17 @@ class Window(QMainWindow):
                      copy=st.copy, class_set=self.sidebar.class_set_view())
         self.renderer.submit(lambda: render_view(snap))
 
+    def _render_failed(self, n, _why):
+        self.shown = max(self.shown, n)
+        self._msg(tr("The preview couldn't be drawn. Try another setting, or start fresh from Presets."))
+
+    @property
+    def preview_settled(self):
+        """Every preview asked for has been drawn and shown: nothing scheduled, drawing or on its way."""
+        return not self._render_timer.isActive() and self.renderer.idle and self.shown == self.renderer.latest
+
     def _rendered(self, n, r):
+        self.shown = max(self.shown, n)
         if n != self.renderer.latest:
             return
         self.state.page = r.view.index

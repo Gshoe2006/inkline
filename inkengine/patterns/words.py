@@ -12,7 +12,6 @@ inside another listed word (RAIN in RAINBOW, SUN backwards in VENUS), are left o
 
 import math
 import re
-import unicodedata
 
 from ..rng import pick
 from .. import i18n
@@ -42,6 +41,21 @@ THEMES_ES = {
     "sports": "futbol tenis golf hockey rugby ciclismo patinaje esqui remo boxeo karate surf tiro beisbol criquet "
               "buceo judo carrera",
 }
+THEMES_FR = {
+    "animals": "chat chien cheval tigre zèbre lapin singe girafe lion ours souris mouton chèvre canard grenouille "
+               "hibou aigle panda koala loutre chameau serpent tortue loup renard pingouin écureuil",
+    "ocean": "vague coquillage crabe baleine requin corail pieuvre dauphin phoque marée sable récif calmar algue "
+             "étoile méduse homard ancre bateau perle sel moule",
+    "space": "étoile lune planète comète fusée orbite galaxie saturne mars vénus terre jupiter astéroïde nébuleuse "
+             "soleil météorite cratère astronaute télescope satellite",
+    "food": "pomme pain fromage pizza pâtes soupe salade banane raisin mangue carotte riz miel biscuit gâteau "
+            "pêche citron tartine beurre poire prune ananas",
+    "weather": "pluie neige vent nuage orage soleil tonnerre brouillard grêle givre flocon brise rosée chaleur froid "
+               "bruine tornade éclair tempête",
+    "sports": "football tennis golf hockey rugby vélo patinage ski aviron boxe karaté surf judo natation course "
+              "basket danse escrime voile plongée",
+}
+THEMES_BY_LANGUAGE = {"es": THEMES_ES, "fr": THEMES_FR}
 THEME_NAMES = {"animals": "Animals", "ocean": "Ocean", "space": "Space", "food": "Food", "weather": "Weather",
                "sports": "Sports", "custom": "Your own list"}
 DIRS = [(0, 1), (1, 0), (1, 1), (-1, 1), (0, -1), (-1, 0), (-1, -1), (1, -1)]   # E, S, SE, NE, then the backwards ones
@@ -54,16 +68,14 @@ def level(c):
 
 
 def clean_word(w):
-    if i18n.LANG == "es":   # Spanish: accents off, Ñ kept (NIÑO, not NINO)
-        w = unicodedata.normalize("NFC", "".join(ch for ch in unicodedata.normalize("NFD", w.upper())
-                                                 if unicodedata.category(ch) != "Mn" or ch == "\u0303"))
-        return re.sub(r"[^A-ZÑ]", "", w)
-    return re.sub(r"[^A-Z]", "", w.upper())
+    if i18n.LANG != "en":   # accents off, the language's own letters kept (Spanish NIÑO, not NINO)
+        return i18n.grid_letters(w)
+    return re.sub(r"[^A-Z]", "", w.upper())   # as 2.x did (its recordings are checked)
 
 
 def _alphabet():
     """The letters that fill a grid's gaps: A-Z, and Ñ in Spanish (so a word's Ñ doesn't stand out)."""
-    return "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ" if i18n.LANG == "es" else None
+    return i18n.alphabet() if i18n.LANG in i18n.ALPHABETS else None
 
 
 def hidden_in(w, o):
@@ -84,7 +96,7 @@ def word_pool(rnd, c, theme="animals", own_words=""):
         mine = list(dict.fromkeys(w for w in (clean_word(x) for x in re.split(r"[\s,;]+", own_words)) if len(w) >= 2))
         if mine:
             return mine
-    themes = THEMES_ES if i18n.LANG == "es" else THEMES
+    themes = THEMES_BY_LANGUAGE.get(i18n.LANG, THEMES)
     pool = [w for w in (clean_word(x) for x in themes.get(theme, themes["animals"]).split(" ")) if len(w) <= lv["size"]]
     _shuffle(pool, rnd)
     chosen = []   # skip any word that hides inside (or contains) one already chosen
