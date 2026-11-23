@@ -14,8 +14,9 @@ from PySide6.QtPrintSupport import QPrinter
 
 from inkengine import book, output, poster
 from inkengine.canvas import QtCanvas
-from inkengine.page import PageSpec, draw_page, geometry, single_page
+from inkengine.page import PANELS, PageSpec, draw_page, geometry, has_answer, panel_specs, single_page
 from inkengine.testpage import draw_test_page
+from inkengine.i18n import tr
 
 from .classset import (MAX_COPIES, ClassSet, copies_have_answers, copies_vary, copy_labels, copy_seed,  # noqa: F401
                        copy_settings, named_pages, parse_names)
@@ -33,7 +34,7 @@ class Job:
     geometry: object       # the page geometry at the settings' dpi
     draw: object           # draw(ctx, i): page i onto a canvas of that geometry
     duplex: bool = False   # fold-and-staple: double-sided, flipping on the short edge
-    answers: int = 0       # copies: answer pages after them (counted in count)
+    answers: int = 0       # copies: answer pages after them; booklets: the answer book's pages (counted in count)
     copies: int = 0        # booklets: how many booklets the pages make up
 
     @property
@@ -42,18 +43,30 @@ class Job:
 
     def amount(self):
         """ "14-page booklet", "2 sheets (both sides)": what the job prints, for the status line."""
+        books = (tr("1 booklet") if self.copies == 1 else tr("{n} booklets")).format(n=self.copies)
         if self.duplex:   # a fold-and-staple book: two printed sides per sheet
             n = self.count // 2
-            sheets = f"{n} sheet{'s' if n != 1 else ''} (both sides)"
-            books = f"{self.copies} booklet{'s' if self.copies != 1 else ''}"
-            return f"{books}, {sheets}" if self.label == "booklets" else sheets
+            sheets = (tr("1 sheet (both sides)") if n == 1 else tr("{n} sheets (both sides)")).format(n=n)
+            if self.label != "booklets":
+                return sheets
+            return (tr("{books} and an answer book, {sheets}") if self.answers else tr("{books}, {sheets}")).format(
+                books=books, sheets=sheets)
         if self.label == "booklets":
-            return f"{self.copies} booklet{'s' if self.copies != 1 else ''} ({self.count} pages)"
+            if self.answers:
+                return tr("{books} ({n} pages) and a {m}-page answer book").format(books=books, n=self.count - self.answers,
+                                                                                   m=self.answers)
+            return tr("{books} ({n} pages)").format(books=books, n=self.count)
         if self.label == "copies":
             n = self.count - self.answers
-            keys = f" and {self.answers} answer page{'s' if self.answers != 1 else ''}" if self.answers else ""
-            return f"{n} copies{keys}"
-        return f"{self.count}-{self.unit} {self.label}"
+            if self.answers:
+                return (tr("{n} copies and 1 answer page") if self.answers == 1 else
+                        tr("{n} copies and {m} answer pages")).format(n=n, m=self.answers)
+            return tr("{n} copies").format(n=n)
+        if self.label == "poster":
+            return tr("{n}-sheet poster").format(n=self.count)
+        if self.label == "photo book":
+            return tr("{n}-page photo book").format(n=self.count)
+        return tr("{n}-page booklet").format(n=self.count)
 
 
 def base_name(state):
@@ -66,41 +79,47 @@ def base_name(state):
     return "inkline-" + re.sub(r"[^\w-]+", "-", nm).lower()
 
 
+COVER_WORDS = ("cover", "the cover", "portada", "la portada")
+ANSWER_WORDS = ("answers", "answer", "answer pages", "respuestas", "soluciones")
+
+
 def parse_pages(text, pages):
     """Which pages (0-based, in order) a list like "3-5, 8, cover, answers" picks, counting as the pager does
     (the cover, when there is one, is page 1). Empty text picks every page. Raises ValueError with a message
-    to show when the text doesn't make sense."""
+    to show when the text doesn't make sense. "cover" and "answers" are understood in every language Inkline has."""
     text = (text or "").strip().lower().replace("–", "-").replace("—", "-")
     if not text:
         return list(range(len(pages)))
     n, chosen = len(pages), set()
     for token in [t.strip() for t in re.split(r"[,;]", text) if t.strip()]:
-        if token in ("cover", "the cover"):
+        if token in COVER_WORDS or token == tr("cover").lower():
             found = [i for i, p in enumerate(pages) if p.kind in ("cover", "pcover")]
             if not found:
-                raise ValueError("This book has no cover page.")
+                raise ValueError(tr("This book has no cover page."))
             chosen.update(found)
-        elif token in ("answers", "answer", "answer pages"):
+        elif token in ANSWER_WORDS or token == tr("answers").lower():
             found = [i for i, p in enumerate(pages) if p.kind == "answers"]
             if not found:
-                raise ValueError("This book has no answer pages.")
+                raise ValueError(tr("This book has no answer pages."))
             chosen.update(found)
         elif m := re.fullmatch(r"(\d+)\s*(?:-\s*(\d+))?", token):
             a, b = int(m.group(1)), int(m.group(2) or m.group(1))
             if a > b:
                 a, b = b, a
             if a < 1 or b > n:
-                raise ValueError(f"There's no page {b if b > n else a}: this book has {n} page{'s' if n != 1 else ''}.")
+                raise ValueError((tr("There's no page {p}: this book has {n} pages.") if n != 1 else
+                                  tr("There's no page {p}: this book has 1 page.")).format(p=b if b > n else a, n=n))
             chosen.update(range(a - 1, b))
         else:
-            raise ValueError(f"“{token}” isn't a page. Use page numbers, ranges like 3-5, “cover” or “answers”.")
+            raise ValueError(tr("“{token}” isn't a page. Use page numbers, ranges like 3-5, “cover” or “answers”.").format(
+                token=token))
     if not chosen:
-        raise ValueError("No pages there. Use page numbers, ranges like 3-5, “cover” or “answers”.")
+        raise ValueError(tr("No pages there. Use page numbers, ranges like 3-5, “cover” or “answers”."))
     return sorted(chosen)
 
 
-def describe_pages(indices, total):
-    """ "pages 3–5 and 8": a short name for a choice of pages (1-based, ranges joined)."""
+def _runs(indices):
+    """["3–5", "8"]: a choice of pages (0-based) as 1-based runs."""
     runs, start = [], None
     for k, i in enumerate(indices):
         if start is None:
@@ -108,8 +127,17 @@ def describe_pages(indices, total):
         if k + 1 == len(indices) or indices[k + 1] != i + 1:
             runs.append(f"{start + 1}" if start == i else f"{start + 1}–{i + 1}")
             start = None
-    names = ", ".join(runs[:-1]) + (" and " if len(runs) > 1 else "") + runs[-1] if runs else ""
-    return f"page{'s' if len(indices) > 1 else ''} {names}"
+    return runs
+
+
+def describe_pages(indices, total, sheets=False):
+    """ "pages 3–5 and 8": a short name for a choice of pages (1-based, ranges joined); with sheets, of sheets."""
+    runs = _runs(indices)
+    names = (tr("{list} and {last}").format(list=", ".join(runs[:-1]), last=runs[-1]) if len(runs) > 1
+             else runs[0] if runs else "")
+    if sheets:
+        return (tr("sheets {names}") if len(indices) > 1 else tr("sheet {names}")).format(names=names)
+    return (tr("pages {names}") if len(indices) > 1 else tr("page {names}")).format(names=names)
 
 
 def fold_sheets(indices, n):
@@ -121,7 +149,7 @@ def fold_sheets(indices, n):
 
 
 
-def job(state, only="", copies=1, vary=False, answers=False, names=()):
+def job(state, only="", copies=1, vary=False, answers=False, names=(), answer_book=False):
     """What Print and Save PDF produce. only: a choice of pages as parse_pages() reads it (booklets and photo
     books; empty for all). copies: how many of a single page, each with its own design when vary (Make one up),
     then with answers their answer pages, each copy numbered to match. Raises ValueError when the choice of
@@ -138,7 +166,7 @@ def job(state, only="", copies=1, vary=False, answers=False, names=()):
     photo_book = s.mode == "convert" and s.photobook and state.photos
     named = list(names)[:MAX_COPIES] if s.name_line else []
     if v.kind in ("booklet", "fold") and not photo_book and (named or int(copies or 1) > 1):
-        return _booklets(state, only, copies, vary, named)
+        return _booklets(state, only, copies, vary, named, answer_book and s.key)
     if v.kind in ("booklet", "photobook", "fold"):
         pages = book.photo_book_pages(s, state.photos) if photo_book else book.book_pages(s)
         name = f"inkline-photobook-{len(pages)}p" if photo_book else f"inkline-booklet-{s.seed}"
@@ -146,8 +174,7 @@ def job(state, only="", copies=1, vary=False, answers=False, names=()):
         picked = parse_pages(only, pages)
         part = bool((only or "").strip()) and len(picked) < len(pages)
         if part:   # inkline-booklet-123-p1_3-5_8
-            name += "-p" + describe_pages(picked, len(pages)).split(" ", 1)[1].replace("–", "-") \
-                .replace(", ", "_").replace(" and ", "_")
+            name += "-p" + "_".join(_runs(picked)).replace("–", "-")
         if s.fold:
             pages = book.fold_pages(pages)
             sides = [k for sheet in (fold_sheets(picked, len(pages)) if part else range(len(pages) // 4))
@@ -164,7 +191,7 @@ def job(state, only="", copies=1, vary=False, answers=False, names=()):
     vary = vary and copies_vary(s)[0]   # a photo has one look, a plain name page one design: their copies are alike
     name = f"{base_name(state)}-{copies}{'-designs' if vary else '-copies'}{'-named' if names else ''}"
     answers = answers and copies_have_answers(s)
-    labels = copy_labels(names) if names else [f"Copy {i + 1}" for i in range(copies)]
+    labels = copy_labels(names) if names else [tr("Copy {n}").format(n=i + 1) for i in range(copies)]
 
     def copy_spec(i):
         si = replace(spec, seed=copy_seed(s.seed, i)) if vary else spec
@@ -175,42 +202,55 @@ def job(state, only="", copies=1, vary=False, answers=False, names=()):
     # margin: a page number's band would shrink the design, and copy 1 would no longer be the one shown); alike
     # copies share one answer
     designs = [replace(copy_spec(i), stamp="" if names else labels[i],
-                       key_label=labels[i] if vary else "Every copy") for i in range(copies)]
+                       key_label=labels[i] if vary else tr("Every copy")) for i in range(copies)]
     solved = designs if vary else designs[:1]
-    keys = [PageSpec(kind="answers", header=True, title="Answers", items=solved[k:k + 4])
+    if PANELS.get(s.sheet, 1) > 1:   # a sheet of several designs: an answer for each puzzle on it
+        solved = [p for d in solved for p in panel_specs(g, d, s) if has_answer(p.gen, s)]
+    keys = [PageSpec(kind="answers", header=True, title=tr("Answers"), items=solved[k:k + 4])
             for k in range(0, len(solved), 4)]
     pages = designs + keys
     return Job(name + "-with-answers", "copies", len(pages), s.orient, g,
                lambda ctx, i: draw_page(ctx, g, pages[i], s), answers=len(keys))
 
 
-def _booklets(state, only, copies, vary, names):
+def _booklets(state, only, copies, vary, names, answer_book=False):
     """A class set of booklets: each its own (with vary, its own designs; with names, the child's name on the
-    cover, on every Name line and over its answers), one after another, each with only the pages chosen."""
+    cover, on every Name line and over its answers), one after another, each with only the pages chosen. With
+    answer_book, the answer pages leave the children's booklets and follow them all as the teacher's answer book,
+    each headed with its child's name (or "Booklet 3", which that booklet's cover then says too)."""
     s = state.settings
     copies = len(names) if names else max(1, min(MAX_COPIES, int(copies or 1)))
     vary = vary and s.mode == "make"
-    books = [(si, named_pages(book.book_pages(si), names[i] if names else ""))
+
+    def whose(i):
+        return names[i] if names else tr("Booklet {n}").format(n=i + 1) if answer_book else ""
+    books = [(si, named_pages(book.book_pages(si), whose(i)))
              for i, si in enumerate(copy_settings(s, i, vary) for i in range(copies))]
+    keys = []
+    if answer_book:   # the answers, in booklet order, without the booklet's page numbers
+        keys = [replace(p, page_no=0) for _si, ps in books for p in ps if p.kind == "answers"]
+        books = [(si, [p for p in ps if p.kind != "answers"]) for si, ps in books]
     first = books[0][1]
     picked = parse_pages(only, first)   # every booklet has the same pages, so they're chosen once
     part = bool((only or "").strip()) and len(picked) < len(first)
-    name = f"inkline-booklet-{s.seed}-{copies}-booklets{'-named' if names else ''}"
+    name = f"inkline-booklet-{s.seed}-{copies}-booklets{'-named' if names else ''}{'-answer-book' if keys else ''}"
     if part:
-        name += "-p" + describe_pages(picked, len(first)).split(" ", 1)[1].replace("–", "-") \
-            .replace(", ", "_").replace(" and ", "_")
+        name += "-p" + "_".join(_runs(picked)).replace("–", "-")
     if s.fold:   # each booklet folds and staples on its own: its sheets, one booklet after another
         sides = []
         for si, pages in books:
             folded = book.fold_pages(pages)
             sheets = fold_sheets(picked, len(folded)) if part else range(len(folded) // 4)
             sides += [(si, folded, k) for sheet in sheets for k in (2 * sheet, 2 * sheet + 1)]
+        if keys:   # the answer book folds as a booklet of its own
+            folded = book.fold_pages(keys)
+            sides += [(s, folded, k) for sheet in range(len(folded) // 4) for k in (2 * sheet, 2 * sheet + 1)]
         return Job(f"{name}-fold", "booklets", len(sides), "landscape", book.sheet_geometry(s),
-                   lambda ctx, i: book.draw_fold_side(ctx, *sides[i]), duplex=True, copies=copies)
+                   lambda ctx, i: book.draw_fold_side(ctx, *sides[i]), duplex=True, copies=copies, answers=len(keys))
     g = geometry(s)
-    pages = [(si, ps[k]) for si, ps in books for k in picked]
+    pages = [(si, ps[k]) for si, ps in books for k in picked] + [(s, p) for p in keys]
     return Job(name, "booklets", len(pages), s.orient, g, lambda ctx, i: draw_page(ctx, g, pages[i][1], pages[i][0]),
-               copies=copies)
+               copies=copies, answers=len(keys))
 
 
 def printed_orient(s, kind):

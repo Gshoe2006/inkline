@@ -11,6 +11,8 @@ from dataclasses import replace
 from .box import Box
 from .page import geometry
 from .photo import convert, grey_ramp
+from . import i18n
+from .i18n import tr
 
 _ramp = None
 
@@ -63,9 +65,10 @@ def draw_test_page(ctx, s, version=""):
                 text(label, x + sx * (arm + 0.02 * I), y + 0.03 * I, 0.06 * I, 400, "left" if sx > 0 else "right", "#444")
 
     y = b.y
-    paper = "A4" if s.paper == "a4" else "Letter"
-    text("Printer test page", b.x, y + 0.26 * I, 0.26 * I, 700)
-    text(f"{paper} {_num(g.w)} × {_num(g.h)} in · {g.dpi} dpi" + (f" · Inkline {version}" if version else ""),
+    paper = "A4" if s.paper == "a4" else tr("Letter")
+    text(tr("Printer test page"), b.x, y + 0.26 * I, 0.26 * I, 700)
+    text(tr("{paper} {w} × {h} in · {dpi} dpi").format(paper=paper, w=_num(g.w), h=_num(g.h), dpi=g.dpi)
+         + (f" · Inkline {version}" if version else ""),
          b.x + b.w, y + 0.26 * I, 0.1 * I, 400, "right", "#444")
     y += 0.55 * I
 
@@ -84,7 +87,7 @@ def draw_test_page(ctx, s, version=""):
             line(x, y0, x, y0 + h, hair)
             if whole:
                 text(str(i // sub), x + 0.02 * I, y0 + 0.32 * I, 0.09 * I, 600)
-        text(unit, b.x + length + 0.1 * I, y0 + 0.12 * I, 0.1 * I, 600)
+        text(tr(unit), b.x + length + 0.1 * I, y0 + 0.12 * I, 0.1 * I, 600)
 
     ruler(y, 6 * I, 6, 8, "inches")
     y += 0.5 * I
@@ -94,8 +97,8 @@ def draw_test_page(ctx, s, version=""):
     def square(x, side, label, note):   # true-size squares
         ctx.line_width = hair * 2
         ctx.stroke_rect(x, y, side, side)
-        text(label, x + side / 2, y + side / 2 + 0.08 * I, 0.22 * I, 700, "center")
-        text(note, x + side / 2, y + side / 2 + 0.3 * I, 0.08 * I, 400, "center", "#444")
+        text(tr(label), x + side / 2, y + side / 2 + 0.08 * I, 0.22 * I, 700, "center")
+        text(tr(note), x + side / 2, y + side / 2 + 0.3 * I, 0.08 * I, 400, "center", "#444")
 
     square(b.x, 2 * I, "2 in", "= 5.08 cm on each side")
     square(b.x + 2.6 * I, 5 * CM, "5 cm", "= 1.97 in on each side")
@@ -103,17 +106,19 @@ def draw_test_page(ctx, s, version=""):
     for dy, t, wt in ((0.3, "If these squares measure smaller, your", 600), (0.46, "printer is shrinking the page. Print at", 400),
                       (0.62, "100% / “Actual size”, not “Fit to page”.", 400), (0.94, "The innermost corner mark you can", 600),
                       (1.1, "see shows how close to the paper", 400), (1.26, "edge your printer can print.", 400)):
-        text(t, tx, y + dy * I, 0.1 * I, wt)
+        text(tr(t), tx, y + dy * I, 0.1 * I, wt)   # (each line its own key: a translation keeps the breaks)
     y += 2 * I + 0.35 * I
 
     # grey ramps in each dither style at the current dot size, with neutral settings
     label_w = 1.75 * I
     ramp_w, ramp_h, ramp = b.w - label_w, 0.36 * I, _grey_ramp()
-    text(f"Dither styles at dot size {s.dot} (from white to black)", b.x, y, 0.11 * I, 700)
+    text(tr("Dither styles at dot size {n} (from white to black)").format(n=s.dot), b.x, y, 0.11 * I, 700)
     y += 0.12 * I
     for style, name in (("fs", "Smooth"), ("atkinson", "Crisp"), ("bayer", "Pattern"), ("halftone", "Halftone"),
                         ("engrave", "Engraving"), ("stipple", "Stippling"), ("threshold", "Solid")):
-        text(name, b.x, y + ramp_h * 0.62, 0.1 * I, 600)
+        # "Pattern" (2.x's word, kept in English) is the ordered dither here, not Design → Pattern: its own key
+        text(name if i18n.LANG == "en" else tr("Ordered" if name == "Pattern" else name), b.x, y + ramp_h * 0.62,
+             0.1 * I, 600)
         r = Box(b.x + label_w, y, ramp_w, ramp_h)
         convert(ctx, r, g.dpi, s, ramp, style=style)
         ctx.line_width = hair
@@ -125,7 +130,7 @@ def draw_test_page(ctx, s, version=""):
     y += 0.28 * I
 
     # smooth dither at dot sizes 1-4: pick the one that stays crisp on this printer
-    text("Smooth dither at dot sizes 1 to 4 (pick the smallest that doesn't smudge)", b.x, y, 0.11 * I, 700)
+    text(tr("Smooth dither at dot sizes 1 to 4 (pick the smallest that doesn't smudge)"), b.x, y, 0.11 * I, 700)
     y += 0.12 * I
     gap = 0.15 * I
     cell_w = (b.w - 3 * gap) / 4
@@ -134,11 +139,11 @@ def draw_test_page(ctx, s, version=""):
         convert(ctx, r, g.dpi, s, ramp, style="fs", dot=d)
         ctx.line_width = hair
         ctx.stroke_rect(*r)
-        text(f"dot {d}", r.x + r.w / 2, y + ramp_h + 0.13 * I, 0.08 * I, 600, "center")
+        text(tr("dot {n}").format(n=d), r.x + r.w / 2, y + ramp_h + 0.13 * I, 0.08 * I, 600, "center")
     y += ramp_h + 0.38 * I
 
     # line weights 1-10, as the Line weight slider draws them
-    text("Line weights (the Line weight slider)", b.x, y, 0.11 * I, 700)
+    text(tr("Line weights (the Line weight slider)"), b.x, y, 0.11 * I, 700)
     y += 0.14 * I
     col_w, row_h = b.w / 2, 0.19 * I
     for wgt in range(1, 11):

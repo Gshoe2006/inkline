@@ -10,10 +10,11 @@ from PySide6.QtCore import QPointF, QRectF, Qt, Signal
 from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen
 from PySide6.QtWidgets import QFrame, QGraphicsDropShadowEffect, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
+from inkengine.i18n import tr
 from inkengine.poster import row_name, sheet_rect
 
 from . import theme
-from .widgets import label
+from .widgets import label_as
 
 
 class Page(QWidget):
@@ -36,7 +37,7 @@ class Page(QWidget):
         shadow.setOffset(0, 8)
         shadow.setColor(QColor(*theme.SHADOW_COLOUR))
         self.setGraphicsEffect(shadow)
-        self.setAccessibleName("Page preview")
+        self.setAccessibleName(tr("Page preview"))
 
     def set_image(self, image, poster=None):
         self.image, self.poster = image, poster
@@ -157,7 +158,7 @@ class Preview(QWidget):
         self.page = Page()
         sl.addWidget(self.page)
         lay.addWidget(stage, 1)
-        self.busy = QLabel("rendering…", stage)
+        self.busy = QLabel(tr("rendering…"), stage)
         self.busy.setObjectName("busy")
         self.busy.hide()
         self._stage = stage
@@ -187,7 +188,7 @@ class Preview(QWidget):
             lay.setContentsMargins(0, 0, 0, 0)
             lay.setSpacing(0)
             for text, bold in runs:
-                lay.addWidget(label(text.replace(" ", "\u00a0"), "infoBold" if bold else "info"))
+                lay.addWidget(label_as(text.replace(" ", "\u00a0"), "infoBold" if bold else "info"))
             self._bar.insertWidget(i, box)
 
     def set_drop(self, over):

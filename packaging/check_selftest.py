@@ -12,7 +12,8 @@ import subprocess
 import sys
 import xml.etree.ElementTree as ET
 
-PATTERNS = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "words", "nonogram", "spot", "kakuro", "mazeshape", "name", "cbnpattern", "nonophoto"]
+PATTERNS = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "words", "nonogram", "spot", "kakuro", "maths",
+            "trace", "crossword", "mazeshape", "name", "cbnpattern", "nonophoto"]
 PAGE_PX = (2550, 3300)                     # Letter at 300 dpi
 PDF_PAGES = {**{n: 1 for n in PATTERNS + ["convert", "engrave", "stipple", "cbn", "testpage"]},
              "booklet": 9,                 # cover + 6 mazes + 2 answer pages
@@ -70,8 +71,11 @@ def main(d):
             # paths, and a sudoku is 20 straight lines plus its numbers (text).
             commands = sum(len(re.findall(r"[MLHVCQA]", el.get("d", ""))) for el in root.iter("{http://www.w3.org/2000/svg}path"))
             texts = sum(1 for _ in root.iter("{http://www.w3.org/2000/svg}text"))
-            if commands + texts < 60:
-                problems.append(f"{n}.svg draws only {commands} path segments and {texts} labels; expected a full design")
+            shapes = sum(1 for tag in ("rect", "circle", "line") for _ in root.iter("{http://www.w3.org/2000/svg}" + tag))
+            need = 40 if n == "crossword" else 60   # a crossword is a few dozen squares and its clues
+            if commands + texts + shapes < need:
+                problems.append(f"{n}.svg draws only {commands} path segments, {shapes} shapes and {texts} labels; "
+                                "expected a full design")
         except (OSError, ET.ParseError) as e:
             problems.append(f"{n}.svg: {e}")
     return problems

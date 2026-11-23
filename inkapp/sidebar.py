@@ -11,9 +11,10 @@ from PySide6.QtGui import QIntValidator, QKeySequence, QPixmap, QShortcut
 from PySide6.QtWidgets import (QAbstractItemView, QFrame, QHBoxLayout, QLabel, QListWidget, QListWidgetItem,
                                QProgressBar, QScrollArea, QTabBar, QVBoxLayout, QWidget)
 
-from inkengine import book, cbn, photo
-from inkengine.page import PAGE_KEYS, has_answer
-from inkengine.patterns import NAMES, maze, name, spot, words
+from inkengine import ages, book, cbn, photo
+from inkengine.i18n import tr
+from inkengine.page import PAGE_KEYS, PANELS, SHEETS, has_answer, sheet_gens
+from inkengine.patterns import NAMES, crossword, maths, maze, name, spot, trace, words
 
 from . import jobs, theme, thumbs
 from .jobs import MAX_COPIES
@@ -24,7 +25,8 @@ from .widgets import (Hint, OptionRow, Pager, Pair, Section, SubOptions, button,
 GEN_OPTIONS = [("mandala", "Mandala (colouring page)"), ("maze", "Maze"), ("truchet", "Woven tiles"),
                ("contour", "Topographic contours"), ("flow", "Flow lines"), ("dots", "Dot-to-dot"), ("sudoku", "Sudoku"),
                ("name", "Name or word (bubble letters)"), ("words", "Word search"), ("nonogram", "Nonogram (picture logic)"),
-               ("spot", "Spot the difference"), ("kakuro", "Kakuro (cross sums)")]
+               ("spot", "Spot the difference"), ("kakuro", "Kakuro (cross sums)"), ("maths", "Maths drill"),
+               ("trace", "Handwriting (letters and words to trace)"), ("crossword", "Crossword")]
 GRID_OPTIONS = [("2x2", "2 × 2"), ("3x3", "3 × 3"), ("4x4", "4 × 4"), ("2x1", "2 across × 1"), ("3x2", "3 across × 2"),
                 ("1x2", "1 across × 2"), ("2x3", "2 across × 3")]
 CBN_PATTERN_NOTE = "Repeated spaces share a number, and spaces side by side get different colours."
@@ -136,9 +138,9 @@ class Sidebar(QFrame):
         lay.setSpacing(10)
         n = QLabel("Inkline")
         n.setObjectName("brandName")
-        t = QLabel("black & white for print")
+        t = QLabel(tr("black & white for print"))
         t.setObjectName("brandTag")
-        v = QLabel("dev build" if version == "dev" else f"v{version}")
+        v = QLabel(tr("dev build") if version == "dev" else f"v{version}")
         v.setObjectName("brandVersion")
         v.setToolTip(f"Inkline {version}")
         lay.addWidget(n, 0, Qt.AlignmentFlag.AlignBaseline)
@@ -171,7 +173,7 @@ class Sidebar(QFrame):
         lay.addWidget(self.status)
         self.progress = QProgressBar()
         self.progress.setTextVisible(False)
-        self.progress.setAccessibleName("Saving progress")
+        self.progress.setAccessibleName(tr("Saving progress"))
         # stops a long print or save after the page being drawn (the window wires it up: cancel_job)
         self.cancel_btn = button("Cancel", "mini", "Stop printing or saving (Esc)")
         self.progress_row = QWidget()
@@ -192,8 +194,8 @@ class Sidebar(QFrame):
         s = self.state.settings
         self.tabs = QTabBar()
         self.tabs.setObjectName("modeTabs")
-        self.tabs.addTab("Make one up")
-        self.tabs.addTab("Convert a photo")
+        self.tabs.addTab(tr("Make one up"))
+        self.tabs.addTab(tr("Convert a photo"))
         self.tabs.setExpanding(True)
         self.tabs.setDrawBase(False)
         self.tabs.currentChanged.connect(lambda i: None if self._loading else self.mode_changed.emit("make" if i == 0 else "convert"))
@@ -202,12 +204,12 @@ class Sidebar(QFrame):
         # Presets
         sec = Section("Presets")
         self.preset = combo([("", "Choose a preset…")])
-        self.preset.setAccessibleName("Apply a preset")
+        self.preset.setAccessibleName(tr("Apply a preset"))
         self.preset_del = button("Delete")
         self.preset_del.setEnabled(False)
         sec.add(_row(self.preset, self.preset_del))
         self.preset_name = line_edit(placeholder="Name for current settings", max_length=40)
-        self.preset_name.setAccessibleName("Preset name")
+        self.preset_name.setAccessibleName(tr("Preset name"))
         save = button("Save")
         sec.add(_row(self.preset_name, save))
         self.preset.activated.connect(self._preset_picked)
@@ -225,6 +227,22 @@ class Sidebar(QFrame):
         self.design_note = sec.add(Hint())   # which booklet page the section edits, when it's built page by page
         self.gen = self._combo("gen", GEN_OPTIONS)
         sec.add(OptionRow("Pattern", self.gen))
+        # several designs on one sheet (single pages): the layout, then the patterns after this one
+        self.sheet = self._combo("sheet", list(SHEETS.items()))
+        self.sheet_row = sec.add(OptionRow("On the sheet", self.sheet))
+        self.sheet_opts = SubOptions()
+        self.panel_combos = []
+        for which in ("2nd design", "3rd design", "4th design"):
+            c = combo(list(GEN_OPTIONS))
+            c.setAccessibleName(tr("{which} on the sheet").format(which=tr(which)))
+            c.currentIndexChanged.connect(self._panels_picked)
+            self.panel_combos.append((self.sheet_opts.add(OptionRow(which, c)), c))
+        self.sheet_hint = self.sheet_opts.add(Hint("They share Complexity and the options above. Answer pages "
+                                                   "(with copies) show each puzzle's answer."))
+        sec.add(self.sheet_opts)
+        self.age = self._combo("age", list(ages.AGES.items()))
+        sec.add(OptionRow("Age", self.age))
+        self.age_hint = sec.add(Hint("Sets complexity, line weight and options to suit. Change any of them after."))
         self.words_opts = SubOptions()
         self.ws_theme = self._combo("ws_theme", list(words.THEME_NAMES.items()))
         self.words_opts.add(OptionRow("Words from", self.ws_theme))
@@ -244,13 +262,32 @@ class Sidebar(QFrame):
         self.spot_opts = SubOptions()
         self.spot_base = self._combo("spot_base", list(spot.BASES.items()))
         self.spot_opts.add(OptionRow("Picture", self.spot_base))
-        sec.add(self.words_opts, self.maze_opts, self.name_opts, self.spot_opts)
+        self.maths_opts = SubOptions()
+        self.maths_kind = self._combo("maths_kind", list(maths.KINDS.items()))
+        self.maths_opts.add(OptionRow("Sums", self.maths_kind))
+        self.maths_opts.add(Hint("Complexity sets how big the numbers get and how many sums there are."))
+        self.trace_opts = SubOptions()
+        self.trace_source = self._combo("trace_source", list(trace.SOURCES.items()))
+        self.trace_opts.add(OptionRow("Trace", self.trace_source))
+        self.trace_text = self._text("trace_text", "e.g. cat, dog, sun, my name", 300)
+        self.trace_text_row = self.trace_opts.add(OptionRow("Your words", self.trace_text))
+        self.trace_hint = self.trace_opts.add(Hint())
+        self.cross_opts = SubOptions()
+        self.cross_theme = self._combo("cross_theme", list(crossword.THEME_NAMES.items()))
+        self.cross_opts.add(OptionRow("Words from", self.cross_theme))
+        self.cross_words = self._text("cross_words", "e.g. cat: Says miaow; sun: Our nearest star", 2000)
+        self.cross_words_row = self.cross_opts.add(OptionRow("Your words and clues", self.cross_words))
+        self.cross_words_hint = self.cross_opts.add(Hint("Each as word: clue, separated by ; (a word without a clue gets ?)."))
+        self.cross_note = self.cross_opts.add(Hint())
+        sec.add(self.words_opts, self.maze_opts, self.name_opts, self.spot_opts, self.maths_opts, self.trace_opts,
+                self.cross_opts)
         sec.add(self._slider("complexity", "Complexity", 1, 10, lambda v: f"{v} / 10"))
         sec.add(self._slider("weight", "Line weight", 1, 10, lambda v: f"{v / 150 * 25.4:.2f} mm"))
         sec.add(self._check("frame", "Draw a border around the design"))
         sec.add(self._check("cbn", "Colour by number (a number in each space, with a crayon key)"))
         self.cbn_opts = SubOptions()
         self.cbn_opts.add(self._slider("cbn_colours", "Colours", 3, 12))
+        self.cbn_opts.add(self._check("cbn_maths", "Colour by maths (a sum in each space: its answer is the colour)"))
         self.cbn_note = self.cbn_opts.add(Hint(CBN_PATTERN_NOTE))
         sec.add(self.cbn_opts)
         # a booklet built page by page: this page's solution on the answer pages (shown for puzzles and colour by number)
@@ -298,7 +335,7 @@ class Sidebar(QFrame):
         for key, fn in keys:
             QShortcut(key, self.page_list, context=Qt.ShortcutContext.WidgetShortcut).activated.connect(fn)
         self.page_list.setObjectName("pageList")
-        self.page_list.setAccessibleName("Booklet pages")
+        self.page_list.setAccessibleName(tr("Booklet pages"))
         self.page_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.page_list.currentRowChanged.connect(lambda i: None if self._loading or i < 0 else self.book_page_selected.emit(i))
         self.book_opts.add(self.page_list)
@@ -330,7 +367,7 @@ class Sidebar(QFrame):
         dl = QVBoxLayout(drop)
         dl.setContentsMargins(14, 14, 14, 14)
         dl.setSpacing(theme.PAIR_GAP)
-        self.src = QLabel("Drop an image anywhere, paste one, or")
+        self.src = QLabel(tr("Drop an image anywhere, paste one, or"))
         self.src.setObjectName("dropText")
         self.src.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.src.setWordWrap(True)
@@ -361,8 +398,8 @@ class Sidebar(QFrame):
         self.pbook_opts.add(Hint("Click a photo to crop it; each photo keeps its own crop. PDF and Print use every page, or only those chosen under Paper."))
         self.photo_panel.add(self.pbook_opts)
         rotl, rotr, reset = button("↺", tip="Rotate left 90°"), button("↻", tip="Rotate right 90°"), button("Reset")
-        rotl.setAccessibleName("Rotate left")
-        rotr.setAccessibleName("Rotate right")
+        rotl.setAccessibleName(tr("Rotate left"))
+        rotr.setAccessibleName(tr("Rotate right"))
         for b, kind in ((rotl, "rotl"), (rotr, "rotr"), (reset, "reset")):
             b.clicked.connect(lambda _c=False, k=kind: self.crop.emit(k))
         crop = QWidget()
@@ -430,7 +467,7 @@ class Sidebar(QFrame):
         # Print and Save PDF of a booklet or photo book: every page, or only some (not a setting: never remembered,
         # so a range typed for one reprint can't shorten a later print unnoticed)
         self.only_pages = line_edit(placeholder="All pages, or e.g. 3-5, 8, cover", max_length=80)
-        self.only_pages.setAccessibleName("Print or save only these pages")
+        self.only_pages.setAccessibleName(tr("Print or save only these pages"))
         self.only_pages.textChanged.connect(lambda _t: self.sync())
         self.only_row = sec.add(OptionRow("Print or save only", self.only_pages))
         self.only_hint = sec.add(Hint())
@@ -438,18 +475,18 @@ class Sidebar(QFrame):
         # setting either, so it's never remembered
         self.copies = line_edit(placeholder="1", max_length=3)
         self.copies.setValidator(_CopiesValidator(self.copies))
-        self.copies.setAccessibleName("Copies to print or save")
+        self.copies.setAccessibleName(tr("Copies to print or save"))
         self.copies.textChanged.connect(lambda _t: (self.sync(), self.class_set_changed.emit()))
         self.copies_row = sec.add(OptionRow("Copies", self.copies))
         # a class set: one copy per name, each name written on its copy's "Name" line (never remembered either)
         self.copies_names = line_edit(placeholder="Optional: Ana, Ben, Cara…", max_length=4000)
-        self.copies_names.setAccessibleName("Names: one copy for each, written on its Name line")
+        self.copies_names.setAccessibleName(tr("Names: one copy for each, written on its Name line"))
         self.copies_names.textChanged.connect(lambda _t: (self.sync(), self.class_set_changed.emit()))
         self.copies_names_row = sec.add(OptionRow("Names", self.copies_names))
         # class lists kept in the settings folder (class-lists.json), to use again
         self.class_lists = {}
         self.class_list = combo([("", "Saved lists…")])
-        self.class_list.setAccessibleName("Use a saved class list")
+        self.class_list.setAccessibleName(tr("Use a saved class list"))
         self.class_list.activated.connect(self._class_list_picked)
         self.class_list_del = button("Delete", tip="Delete the chosen list")
         self.class_list_del.setEnabled(False)
@@ -472,13 +509,17 @@ class Sidebar(QFrame):
         self.copies_answers.setChecked(True)
         self.copies_answers.toggled.connect(lambda _on: (self.sync(), self.class_set_changed.emit()))
         sec.add(self.copies_answers)
+        # a class set of booklets: their answers in one book for the teacher, not in each child's booklet
+        self.copies_answer_book = check("Answers in a separate teacher's book")
+        self.copies_answer_book.toggled.connect(lambda _on: (self.sync(), self.class_set_changed.emit()))
+        sec.add(self.copies_answer_book)
         self.copies_hint = sec.add(Hint())
         # look through the class set's copies in the preview: each one's designs, and its name
         self.copy_pager = Pager()
-        self.copy_pager.back.setAccessibleName("Previous copy")
-        self.copy_pager.forward.setAccessibleName("Next copy")
-        self.copy_pager.back.setToolTip("Previous copy")
-        self.copy_pager.forward.setToolTip("Next copy")
+        self.copy_pager.back.setAccessibleName(tr("Previous copy"))
+        self.copy_pager.forward.setAccessibleName(tr("Next copy"))
+        self.copy_pager.back.setToolTip(tr("Previous copy"))
+        self.copy_pager.forward.setToolTip(tr("Next copy"))
         self.copy_pager.prev.connect(lambda: self.copy_step.emit(-1))
         self.copy_pager.next.connect(lambda: self.copy_step.emit(1))
         sec.add(self.copy_pager)
@@ -504,7 +545,7 @@ class Sidebar(QFrame):
         c = self.class_list
         c.blockSignals(True)
         c.clear()
-        c.addItem("Saved lists…" if lists else "No saved lists yet", "")
+        c.addItem(tr("Saved lists…") if lists else tr("No saved lists yet"), "")
         for n in sorted(lists, key=str.lower):
             c.addItem(n, n)
         c.setCurrentIndex(max(0, c.findData(selected)))
@@ -522,7 +563,8 @@ class Sidebar(QFrame):
         """Copies, Names and their switches, as a project keeps them."""
         text = self.copies_names.text().strip()   # spaces round the names, or only separators, don't count
         return {"copies": self.copies_count(), "names": text if jobs.parse_names(text, None) else "",
-                "vary": self.copies_vary.isChecked(), "answers": self.copies_answers.isChecked()}
+                "vary": self.copies_vary.isChecked(), "answers": self.copies_answers.isChecked(),
+                "answer_book": self.copies_answer_book.isChecked()}
 
     def set_class_set(self, cs=None):
         """Put Copies, Names and their switches back (None: as on a fresh start)."""
@@ -532,6 +574,7 @@ class Sidebar(QFrame):
         self.copies_names.setText(cs.get("names", ""))
         self.copies_vary.setChecked(cs.get("vary", True))
         self.copies_answers.setChecked(cs.get("answers", True))
+        self.copies_answer_book.setChecked(cs.get("answer_book", False))
         self.class_list.setCurrentIndex(0)
         self.class_list_del.setEnabled(False)
         self.sync()
@@ -543,7 +586,8 @@ class Sidebar(QFrame):
             return None
         names = self.copies_names_list()
         cs = ClassSet(count=len(names) if names else self.copies_count(), vary=self.copies_vary.isChecked(),
-                      answers=self.copies_answers.isChecked(), names=names)
+                      answers=self.copies_answers.isChecked(), names=names,
+                      answer_book=self.copies_answer_book.isChecked())
         return cs if cs.active else None   # one name is a class set too: it goes on the page
 
     def copies_names_list(self):
@@ -568,15 +612,22 @@ class Sidebar(QFrame):
         what = jobs.describe_pages(picked, len(pages))
         if s.fold:
             sheets = jobs.fold_sheets(picked, len(book.fold_pages(pages)))
-            names = jobs.describe_pages(sheets, 0).replace("page", "sheet")
-            return f"Prints {names}, both sides: {'they hold' if len(sheets) > 1 else 'it holds'} {what}."
-        return f"Prints and saves {what} of {len(pages)}."
+            names = jobs.describe_pages(sheets, 0, sheets=True)
+            return (tr("Prints {sheets}, both sides: they hold {what}.") if len(sheets) > 1 else
+                    tr("Prints {sheets}, both sides: it holds {what}.")).format(sheets=names, what=what)
+        return tr("Prints and saves {what} of {n}.").format(what=what, n=len(pages))
 
     def set_margin_warning(self, text):
         self.margin_hint.setText(text)
         self.margin_hint.setVisible(bool(text))
 
     # --- controls bound to a setting ----------------------------------------------------------------
+    def _panels_picked(self, _i=None):
+        if self._loading:
+            return
+        self.state.update(panel_gens=",".join(c.value() for _row, c in self.panel_combos))
+        self.changed.emit("panel_gens")
+
     def _bind(self, key, control, read, write, signal):
         self._binds = getattr(self, "_binds", {})
         self._binds[key] = (control, write)
@@ -634,13 +685,13 @@ class Sidebar(QFrame):
         self._loading = True
         c = self.preset
         c.clear()
-        c.addItem("Choose a preset…", "")
-        c.addItem("— Built-in —", None)
+        c.addItem(tr("Choose a preset…"), "")
+        c.addItem(tr("— Built-in —"), None)
         c.model().item(c.count() - 1).setEnabled(False)
         for n in BUILTIN_PRESETS:
-            c.addItem(n, f"b:{n}")
+            c.addItem(tr(n), f"b:{n}")
         if saved:
-            c.addItem("— Saved —", None)
+            c.addItem(tr("— Saved —"), None)
             c.model().item(c.count() - 1).setEnabled(False)
             for n in sorted(saved, key=str.lower):
                 c.addItem(n, f"s:{n}")
@@ -662,7 +713,7 @@ class Sidebar(QFrame):
         for i, ph in enumerate(st.photos):
             item = QListWidgetItem()
             item.setToolTip(ph.name)
-            item.setData(Qt.ItemDataRole.AccessibleTextRole, f"Photo {i + 1}: {ph.name}")
+            item.setData(Qt.ItemDataRole.AccessibleTextRole, tr("Photo {n}: {name}").format(n=i + 1, name=ph.name))
             item.setSizeHint(QSize(0, row_h))
             lst.addItem(item)
             row = QWidget()
@@ -681,7 +732,7 @@ class Sidebar(QFrame):
                                       ("↓", "Move down", lambda _c=False, i=i: self.photo_moved.emit(i, 1), i == len(st.photos) - 1),
                                       ("✕", "Remove", lambda _c=False, i=i: self.photo_removed.emit(i), len(st.photos) < 2)):
                 b = button(txt, "mini", tip)
-                b.setAccessibleName(tip)
+                b.setAccessibleName(tr(tip))
                 b.setEnabled(not off)
                 b.clicked.connect(fn)
                 rl.addWidget(b)
@@ -690,12 +741,12 @@ class Sidebar(QFrame):
         lst.setFixedHeight(min(260, max(1, len(st.photos)) * (row_h + 4) + 4))
         lst.setCurrentRow(st.sel)
         n = len(st.photos)
-        self.photo_count.setText(f"{n} photo{'' if n == 1 else 's'}")
+        self.photo_count.setText(tr("1 photo") if n == 1 else tr("{n} photos").format(n=n))
         if n:
             nm = st.photo.name if st.photo else ""
-            self.src.setText(f"{n} photos · editing {nm}" if n > 1 else nm)
+            self.src.setText(tr("{n} photos · editing {name}").format(n=n, name=nm) if n > 1 else nm)
         else:
-            self.src.setText("Drop images anywhere, paste one, or")
+            self.src.setText(tr("Drop images anywhere, paste one, or"))
         self.src.setProperty("named", "true" if n else "false")   # the name in bold ink, as 2.x's <strong>
         self.src.style().unpolish(self.src)
         self.src.style().polish(self.src)
@@ -713,13 +764,13 @@ class Sidebar(QFrame):
         for i, p in enumerate(pl):
             gen = p.get("gen") if p.get("gen") in NAMES else st.settings.gen
             detail = _page_detail(gen, p)
-            text = f"{i + 1}. {NAMES[gen]}{f' · {detail}' if detail else ''} · {p.get('complexity', cx)}/10"
+            text = f"{i + 1}. {tr(NAMES[gen])}{f' · {tr(detail)}' if detail else ''} · {p.get('complexity', cx)}/10"
             if p.get("answer", True) is False and st.settings.key and has_answer(gen, _own_settings(st.settings, p)):
-                text += " · no answer"
+                text += " · " + tr("no answer")
             item = QListWidgetItem()
-            item.setToolTip(text + (f"\nWords: {p['ws_words']}" if gen == "words" and p.get("ws_theme") == "custom"
-                                    and p.get("ws_words") else ""))
-            item.setData(Qt.ItemDataRole.AccessibleTextRole, f"Page {text}")
+            item.setToolTip(text + ("\n" + tr("Words: {words}").format(words=p["ws_words"])
+                                    if gen == "words" and p.get("ws_theme") == "custom" and p.get("ws_words") else ""))
+            item.setData(Qt.ItemDataRole.AccessibleTextRole, tr("Page {text}").format(text=text))
             item.setSizeHint(QSize(0, row_h))
             lst.addItem(item)
             row = QWidget()
@@ -752,8 +803,9 @@ class Sidebar(QFrame):
                     ("↓", "Move down", "Alt+↓", lambda _c=False, i=i: self.book_page_moved.emit(i, 1), i == len(pl) - 1),
                     ("⧉", "Duplicate with a new design", "Ctrl+D", lambda _c=False, i=i: self.book_page_copied.emit(i), full),
                     ("✕", "Remove", "Delete", lambda _c=False, i=i: self.book_page_removed.emit(i), len(pl) < 2)):
-                b = button(txt, "mini", f"{tip} ({key})")
-                b.setAccessibleName(tip)
+                b = button(txt, "mini")
+                b.setToolTip(f"{tr(tip)} ({key})")
+                b.setAccessibleName(tr(tip))
                 b.setEnabled(not off)
                 b.clicked.connect(fn)
                 # the list is filled again (this button goes): the focus goes back to the list, so the keys named
@@ -766,10 +818,10 @@ class Sidebar(QFrame):
         lst.setCurrentRow(st.book_sel if pl else -1)
         self.refresh_thumbs()
         n = len(pl)
-        self.page_count.setText(f"{n} design page{'' if n == 1 else 's'}")
+        self.page_count.setText(tr("1 design page") if n == 1 else tr("{n} design pages").format(n=n))
         self.page_add.setEnabled(0 < n < MAX_BOOK_PAGES)
-        self.page_add.setToolTip(f"A booklet has at most {MAX_BOOK_PAGES} design pages" if n >= MAX_BOOK_PAGES else
-                                 "Add a page like the last one, with a new design")
+        self.page_add.setToolTip(tr("A booklet has at most {n} design pages").format(n=MAX_BOOK_PAGES) if n >= MAX_BOOK_PAGES
+                                 else tr("Add a page like the last one, with a new design"))
         self._loading = False
 
     def _page_key(self, what):
@@ -829,6 +881,26 @@ class Sidebar(QFrame):
         listing = s.booklet and bool(s.page_list)   # built page by page: Design edits the selected page
         mix_book = s.booklet and s.mix and not listing
         self.words_opts.setVisible(s.gen == "words")
+        self.age_hint.setVisible(s.age != "any")
+        sheet_ok = make and not s.booklet and not s.poster and not s.testpage   # single designs only
+        self.sheet_row.setVisible(sheet_ok)
+        n_panels = PANELS.get(s.sheet, 1) if sheet_ok else 1
+        self.sheet_opts.setVisible(n_panels > 1)
+        gens = sheet_gens(s) + ["words", "maze", "dots"]
+        was, self._loading = self._loading, True
+        for k, (row, c) in enumerate(self.panel_combos):
+            row.setVisible(k + 1 < n_panels)
+            c.set_value(gens[k + 1])
+        self._loading = was
+        self.maths_opts.setVisible(s.gen == "maths")
+        self.cross_opts.setVisible(s.gen == "crossword")
+        self.cross_words_row.setVisible(s.cross_theme == "custom")
+        self.cross_words_hint.setVisible(s.cross_theme == "custom")
+        self.trace_opts.setVisible(s.gen == "trace")
+        self.trace_text_row.setVisible(s.trace_source == "words")
+        self.trace_hint.setVisible(s.trace_source == "name")
+        self.trace_hint.setText(tr("Traces each child's name from Paper → Names, or else the name page's text.")
+                                if s.trace_source == "name" else "")
         self.ws_words_row.setVisible(s.ws_theme == "custom")
         self.maze_opts.setVisible(s.gen == "maze" or mix_book)
         self.maze_word_row.setVisible(s.maze_shape == "word")
@@ -841,9 +913,9 @@ class Sidebar(QFrame):
             note = CBN_PATTERN_NOTE
         else:
             note = "Works on mandalas, woven tiles, contours and name pages; choose one of those to see it."
-        self.cbn_note.setText(note)
+        self.cbn_note.setText(tr(note))
         page = self.state.book_page if listing else None
-        self.seed.setText(f"seed {page.get('seed', s.seed) if page else s.seed}")
+        self.seed.setText(tr("seed {n}").format(n=page.get('seed', s.seed) if page else s.seed))
         self.design_note.setVisible(page is not None)
         answers = page is not None and s.key and has_answer(s.gen, s)
         self.page_answer_check.setVisible(answers)
@@ -852,8 +924,8 @@ class Sidebar(QFrame):
             self.page_answer_check.setChecked(page.get("answer", True) is not False)
             self._loading = was
         if page is not None:
-            self.design_note.setText(f"Editing page {self.state.book_sel + 1} of {len(s.page_list)} of the booklet. "
-                                     "Line weight and border apply to every page.")
+            self.design_note.setText(tr("Editing page {i} of {n} of the booklet. Line weight and border apply to every "
+                                        "page.").format(i=self.state.book_sel + 1, n=len(s.page_list)))
         self.book_opts.setVisible(s.booklet)
         for w in (self.pages_row, self.ramp_check, self.mix_check, self.pages_edit_btn):
             w.setVisible(not listing)
@@ -876,10 +948,14 @@ class Sidebar(QFrame):
             n = len(pages)
             padded = -(-n // 4) * 4
             half = book.half_geometry(s)
-            extra = f" ({padded - n} blank page{'s' if padded - n > 1 else ''} added at the end)" if padded > n else ""
-            self.fold_hint.setText(f"{n} pages of {half.w:g} × {half.h:g} in → {padded // 4} sheet{'s' if padded > 4 else ''}{extra}. "
-                                   "Print double-sided, flipping on the short edge. Stack the sheets in order, fold in half, "
-                                   "staple along the fold.")
+            blanks = padded - n
+            extra = (" " + (tr("({n} blank pages added at the end)") if blanks > 1 else
+                            tr("(1 blank page added at the end)")).format(n=blanks)) if blanks else ""
+            sheets = (tr("{n} sheets") if padded > 4 else tr("1 sheet")).format(n=padded // 4)
+            self.fold_hint.setText(tr("{n} pages of {w} × {h} in → {sheets}").format(n=n, w=f"{half.w:g}", h=f"{half.h:g}",
+                                                                                   sheets=sheets) + extra + ". " +
+                                   tr("Print double-sided, flipping on the short edge. Stack the sheets in order, fold "
+                                      "in half, staple along the fold."))
         self.testpage_hint.setVisible(s.testpage)
         multi = (is_book or is_pbook) and not s.testpage
         single = not multi and not s.poster and not s.testpage and (make or bool(self.state.photos))
@@ -899,31 +975,58 @@ class Sidebar(QFrame):
         self.copies_vary.setVisible(shown and can_vary and n > 1)
         keyed = single and n > 1 and jobs.copies_have_answers(s)
         self.copies_answers.setVisible(keyed)
+        book_keys = books and n > 1 and s.key
+        self.copies_answer_book.setVisible(book_keys)
         self.copies_hint.setVisible(shown and (n > 1 or off or unnamed or bool(names)))
         if shown and (n > 1 or off or unnamed or names):
             vary = can_vary and self.copies_vary.isChecked()
-            one, many_ = ("booklet", "booklets") if books else ("copy", "copies")
-            own = ("each with its own designs" if books else "each with its own design") + " (the first is the one shown)."
-            text = (f"Copies go from 1 to {MAX_COPIES}. " if off else "")
+            parts = [tr("Copies go from 1 to {top}.").format(top=MAX_COPIES)] if off else []
             if unnamed:
-                text += f'To write the names on the {many_}, turn on Page text → Add a "Name ______" line. '
+                parts.append(tr('To write the names on the booklets, turn on Page text → Add a "Name ______" line.')
+                             if books else
+                             tr('To write the names on the copies, turn on Page text → Add a "Name ______" line.'))
+            # whole sentences, so each language can phrase them (and agree them with booklet or copy) its own way
             if names:
                 many = len(jobs.parse_names(self.copies_names.text(), None)) > MAX_COPIES
-                text += (f"Print and Save PDF make {n} {one if n == 1 else many_}, one for each name"
-                         + (f" (the first {MAX_COPIES})" if many else "")
-                         + (f", {own}" if vary and n > 1 else "."))
+                if n == 1:
+                    sentence = tr("Print and Save PDF make 1 booklet, for the name.") if books else \
+                        tr("Print and Save PDF make 1 copy, for the name.")
+                elif books:
+                    sentence = (tr("Print and Save PDF make {n} booklets, one for each name (the first {top}), each with "
+                                   "its own designs (the first is the one shown).") if vary and many else
+                                tr("Print and Save PDF make {n} booklets, one for each name, each with its own designs "
+                                   "(the first is the one shown).") if vary else
+                                tr("Print and Save PDF make {n} booklets, one for each name (the first {top}).") if many
+                                else tr("Print and Save PDF make {n} booklets, one for each name."))
+                else:
+                    sentence = (tr("Print and Save PDF make {n} copies, one for each name (the first {top}), each with "
+                                   "its own design (the first is the one shown).") if vary and many else
+                                tr("Print and Save PDF make {n} copies, one for each name, each with its own design "
+                                   "(the first is the one shown).") if vary else
+                                tr("Print and Save PDF make {n} copies, one for each name (the first {top}).") if many
+                                else tr("Print and Save PDF make {n} copies, one for each name."))
+                parts.append(sentence.format(n=n, top=MAX_COPIES))
                 if books:
-                    text += " Each name goes on its booklet's cover, Name lines and answer pages."
+                    parts.append(tr("Each name goes on its booklet's cover and Name lines, and heads its answers in "
+                                    "the teacher's book.") if book_keys and self.copies_answer_book.isChecked() else
+                                 tr("Each name goes on its booklet's cover, Name lines and answer pages."))
             elif n == 1:
-                text += f"Print and Save PDF make 1 {one}."
+                parts.append(tr("Print and Save PDF make 1 booklet.") if books else tr("Print and Save PDF make 1 copy."))
+            elif books:
+                parts.append((tr("Print and Save PDF make {n} booklets, each with its own designs (the first is the one "
+                                 "shown).") if vary else tr("Print and Save PDF make {n} booklets, all alike.")).format(n=n))
             else:
-                text += f"Print and Save PDF make {n} {many_}, " + (own if vary else "all alike.")
+                parts.append((tr("Print and Save PDF make {n} copies, each with its own design (the first is the one "
+                                 "shown).") if vary else tr("Print and Save PDF make {n} copies, all alike.")).format(n=n))
             if vary_note and (vary or not can_vary):
-                text += " " + vary_note
+                parts.append(tr(vary_note))
+            if book_keys and self.copies_answer_book.isChecked() and not names:
+                parts.append(tr("The answers follow them all, in a teacher's book: each booklet is numbered to match."))
             if keyed and self.copies_answers.isChecked():
-                text += (" One answer page follows." if not vary
-                         else " Answer pages follow, each labelled with its copy's name." if names
-                         else " Answer pages follow, and each copy is numbered to match them.")
+                parts.append(tr("One answer page follows.") if not vary else
+                             tr("Answer pages follow, each labelled with its copy's name.") if names else
+                             tr("Answer pages follow, and each copy is numbered to match them."))
+            text = " ".join(parts)
             self.copies_hint.setText(text)
         self.copy_pager.setVisible(shown and n > 1)
         self.only_row.setVisible(multi)
@@ -939,9 +1042,9 @@ class Sidebar(QFrame):
             self.page_new.setEnabled(key is not None and not s.fold)
             # built page by page, a page's New design is Design's own button; the cover keeps its New cover art
             self.page_new.setVisible(not listing or key == "cover")
-            self.page_new.setToolTip("Turn off fold-and-staple to pick a single page" if s.fold else
-                                     "Answer pages follow their puzzles" if key is None else "")
-            self.page_new.setText("New cover art" if p is not None and p.kind == "cover" else "New design for this page")
+            self.page_new.setToolTip(tr("Turn off fold-and-staple to pick a single page") if s.fold else
+                                     tr("Answer pages follow their puzzles") if key is None else "")
+            self.page_new.setText(tr("New cover art") if p is not None and p.kind == "cover" else tr("New design for this page"))
             seeds = s.page_seeds or {}
             self.page_orig.setVisible(key is not None and (key in seeds or str(key) in seeds) and not s.fold
                                       and (not listing or key == "cover"))
@@ -949,16 +1052,19 @@ class Sidebar(QFrame):
         # the footer's buttons: PNG isn't for posters; SVG suits designs and the vector photo styles
         poster = s.poster and not s.testpage
         self.png_btn.setEnabled(not poster)
-        self.png_btn.setToolTip("Posters save as PDF (one page per sheet) or print directly" if poster else "Save PNG (Ctrl+Shift+E)")
+        self.png_btn.setToolTip(tr("Posters save as PDF (one page per sheet) or print directly") if poster
+                                else tr("Save PNG (Ctrl+Shift+E)"))
         vector = not make and s.style in photo.VECTOR_STYLES
         self.svg_btn.setEnabled((make or vector) and not s.testpage and not fold)
-        tips = {"engrave": "Engraving lines save as vector paths, for laser engravers and plotters",
-                "stipple": "Stippling dots save as vector circles, for laser engravers and plotters",
-                "nono": "Photo nonograms save as vector lines and text, for editing in Inkscape",
-                "cbn": "Colour-by-number outlines save as vector lines, for editing in Inkscape"}
-        self.svg_btn.setToolTip(tips[s.style] if vector else "Vector lines for Inkscape, Cricut, Silhouette or laser cutters"
-                                if make else "Photos are made of pixels; choose Engraving, Stippling, Colour by number or Nonogram for SVG")
+        tips = {"engrave": tr("Engraving lines save as vector paths, for laser engravers and plotters"),
+                "stipple": tr("Stippling dots save as vector circles, for laser engravers and plotters"),
+                "nono": tr("Photo nonograms save as vector lines and text, for editing in Inkscape"),
+                "cbn": tr("Colour-by-number outlines save as vector lines, for editing in Inkscape")}
+        self.svg_btn.setToolTip(tips[s.style] if vector else tr("Vector lines for Inkscape, Cricut, Silhouette or laser cutters"
+                                   if make else "Photos are made of pixels; choose Engraving, Stippling, Colour by number or "
+                                                "Nonogram for SVG"))
         self.ws_note.setVisible(bool(self.ws_note.text()) and s.gen == "words")
+        self.cross_note.setVisible(bool(self.cross_note.text()) and s.gen == "crossword")
         self.synced.emit()
 
     def set_status(self, text):
@@ -993,6 +1099,12 @@ def _page_detail(gen, p):
         return p.get("maze_word", "").strip()
     if gen == "name":
         return p.get("name_text", "").strip()
+    if gen == "maths":
+        return maths.KINDS.get(p.get("maths_kind", "add"), "")
+    if gen == "trace":
+        return trace.SOURCES.get(p.get("trace_source", "upper"), "")
+    if gen == "crossword":
+        return "Your words" if p.get("cross_theme") == "custom" else crossword.THEME_NAMES.get(p.get("cross_theme"), "")
     return ""
 
 

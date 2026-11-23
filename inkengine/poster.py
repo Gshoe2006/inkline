@@ -8,6 +8,7 @@ overlap starts, and a label (A1, A2... rows down, columns across) saying where i
 """
 
 from .box import Box
+from .i18n import tr
 from .page import Geometry, draw_page, geometry, js_round
 
 GRIDS = ["2x2", "3x3", "4x4", "2x1", "3x2", "1x2", "2x3"]
@@ -52,9 +53,10 @@ def sheet_rect(P, i):
 
 def sheet_label(P, i):
     c, r, _ = sheet_rect(P, i)
-    text = f"Sheet {row_name(r)}{c + 1}  ·  row {r + 1} of {P.rows}, column {c + 1} of {P.cols}"
+    text = tr("Sheet {name}  ·  row {r} of {rows}, column {c} of {cols}").format(
+        name=f"{row_name(r)}{c + 1}", r=r + 1, rows=P.rows, c=c + 1, cols=P.cols)
     if P.o > 0:
-        text += f"  ·  dashed ticks mark the {'½' if P.o == 0.5 else '¼'} in overlap"
+        text += "  ·  " + tr("dashed ticks mark the {size} in overlap").format(size="½" if P.o == 0.5 else "¼")
     return text
 
 
@@ -114,7 +116,8 @@ def size_note(s):
     """e.g. "Finished poster: 14.75 × 19.75 in, from 4 Letter sheets." """
     P = poster_geometry(s, 1)
     paper = "A4" if s.paper == "a4" else "Letter"
-    return f"Finished poster: {_num(P.w)} × {_num(P.h)} in, from {P.sheets} {paper} sheets."
+    return tr("Finished poster: {w} × {h} in, from {n} {paper} sheets.").format(w=_num(P.w), h=_num(P.h), n=P.sheets,
+                                                                                paper=paper)
 
 
 def _num(x):

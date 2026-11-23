@@ -13,6 +13,7 @@ from PySide6.QtWidgets import QDialog, QGridLayout, QHBoxLayout, QLabel, QToolBu
 
 from . import theme, thumbs
 from .widgets import Hint, button
+from inkengine.i18n import tr
 
 COUNT = 6                     # designs shown at once (3 across, 2 down)
 LOOK = thumbs.Look(h=190, dpi=40, thicken=1.3, darken=1.4)   # big enough to judge; lines still read
@@ -25,14 +26,16 @@ class Options(QDialog):
     def __init__(self, parent, candidate, chosen, what):
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)   # one at a time: nothing left drawing after closing
-        self.setWindowTitle("More designs")
+        self.setWindowTitle(tr("More designs"))
         self.candidate, self.chosen = candidate, chosen
         self.thumbs = thumbs.Thumbnails(LOOK)
         self.thumbs.ready.connect(self._ready)
         lay = QVBoxLayout(self)
         lay.setContentsMargins(theme.PAD_X, theme.PAD_X, theme.PAD_X, theme.PAD_X)
         lay.setSpacing(theme.SECTION_GAP)
-        lay.addWidget(Hint(f"Click a design to use it for {what}."))
+        hint = Hint()
+        hint.setText(tr("Click a design to use it for {what}.").format(what=what))
+        lay.addWidget(hint)
         grid = QGridLayout()
         grid.setSpacing(theme.PAIR_GAP)
         self.buttons = []
@@ -41,7 +44,7 @@ class Options(QDialog):
             b.setObjectName("designOption")
             b.setIconSize(QSize(LOOK.h, LOOK.h))
             b.setFixedSize(LOOK.h + FRAME, LOOK.h + FRAME)
-            b.setAccessibleName(f"Design {i + 1}")
+            b.setAccessibleName(tr("Design {n}").format(n=i + 1))
             b.setCursor(Qt.CursorShape.PointingHandCursor)
             b.clicked.connect(lambda _c=False, i=i: self._pick(i))
             grid.addWidget(b, i // 3, i % 3)
@@ -73,9 +76,9 @@ class Options(QDialog):
             self.keys.append(thumbs.key(s, spec))
             specs.append(spec)
             b.setIcon(QIcon())
-            b.setText("Drawing…")   # until its picture arrives (colour by number takes a moment)
+            b.setText(tr("Drawing…"))   # until its picture arrives (colour by number takes a moment)
             b.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
-            b.setToolTip(f"seed {seed}")
+            b.setToolTip(tr("seed {n}").format(n=seed))
         self._settings = s
         self.thumbs.request(s, specs)
 

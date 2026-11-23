@@ -12,6 +12,7 @@ from .box import Box
 from .patterns import GENERATORS, HAS_ANSWER, NAMES
 from .patterns import maze
 from .rng import mulberry32
+from .i18n import tr
 
 PAPER = {"letter": (8.5, 11.0), "a4": (8.27, 11.69)}
 
@@ -39,18 +40,19 @@ def _coerce(v, kind):
 RANGES = {"seed": (0, 4294967295), "complexity": (1, 10), "weight": (1, 10), "margin": (0, 2), "dpi": (36, 1200),
           "pages": (2, 40), "overlap": (0, 1), "brightness": (-100, 100), "contrast": (20, 300), "threshold": (1, 254),
           "dot": (1, 8), "pnono_size": (10, 30), "pcbn_colours": (4, 16), "cbn_colours": (3, 12)}
-LENGTHS = {"title": 80, "maze_word": 12, "ws_words": 300, "name_text": 40}
+LENGTHS = {"title": 80, "maze_word": 12, "ws_words": 300, "name_text": 40, "trace_text": 300, "cross_words": 2000, "panel_gens": 200}
 
 
 def _choices():
     from . import poster
-    from .patterns import name, spot, words
+    from .patterns import crossword, maths, name, spot, trace, words
     try:
         from .photo import STYLES
     except ImportError:      # the engine without Qt: no photo styles to check against
         STYLES = None
     return {"gen": set(NAMES), "paper": set(PAPER), "orient": {"portrait", "landscape"}, "maze_shape": set(maze.SHAPE_NAMES),
             "spot_base": set(spot.BASES), "ws_theme": set(words.THEME_NAMES) | {"custom"}, "name_bg": set(name.BACKGROUNDS),
+            "age": {"any", "4-6", "7-9", "10+"}, "sheet": set(SHEETS), "maths_kind": set(maths.KINDS), "trace_source": set(trace.SOURCES), "cross_theme": set(crossword.THEME_NAMES),
             "grid": set(poster.GRIDS), "mode": {"make", "convert"}, "fit": {"contain", "cover"},
             **({"style": set(STYLES)} if STYLES else {})}
 
@@ -74,6 +76,7 @@ class Settings:
     gen: str = "maze"
     seed: int = 20261117
     complexity: int = 5          # 1..10
+    age: str = "any"             # ages.AGES: a starting point for complexity and options (any, 4-6, 7-9, 10+)
     weight: int = 4              # line weight 1..10
     frame: bool = False          # border around the design
     title: str = ""
@@ -89,6 +92,13 @@ class Settings:
     ws_words: str = ""           # word search: your own words, for ws_theme "custom"
     name_text: str = "Hello"     # name page: the name or word (up to 40 characters)
     name_bg: str = "none"        # name page: none | flow | contour | truchet underneath
+    maths_kind: str = "add"      # maths drill: patterns.maths.KINDS (add, sub, addsub, times, bonds, mixed)
+    trace_source: str = "upper"  # handwriting: patterns.trace.SOURCES (upper, lower, numbers, words, name)
+    trace_text: str = ""         # handwriting: your own words, for trace_source "words"
+    cross_theme: str = "animals" # crossword: a theme from patterns.crossword.THEMES, or "custom"
+    cross_words: str = ""        # crossword: your own "word: clue" lines, for cross_theme "custom"
+    sheet: str = "one"           # several designs on one sheet: SHEETS (one, halves, sides, quarters, banner)
+    panel_gens: str = "words,maze,dots"   # the other designs on the sheet, in order (the first is gen)
     # booklets (book.py)
     booklet: bool = False        # several pages: cover, designs, answers
     pages: int = 10              # design pages, 2..40
@@ -119,6 +129,7 @@ class Settings:
     pcbn_colours: int = 8        # colour by number crayons, 4..16
     cbn: bool = False            # mandalas, woven tiles, contours and name pages as colour by number
     cbn_colours: int = 6         # their crayons, 3..12
+    cbn_maths: bool = False      # colour by maths: a sum in each space instead of its number
     # photo books (book.py)
     photobook: bool = False      # several photos, a page each
     testpage: bool = False       # show the printer test page instead
@@ -149,8 +160,9 @@ class Settings:
 
 
 # What each page of a booklet built page by page keeps for itself; the rest is the booklet's.
-PAGE_KEYS = ("gen", "seed", "complexity", "cbn", "cbn_colours", "maze_shape", "maze_word", "ws_theme", "ws_words",
-             "name_text", "name_bg", "spot_base")
+PAGE_KEYS = ("gen", "seed", "complexity", "cbn", "cbn_colours", "cbn_maths", "maze_shape", "maze_word", "ws_theme", "ws_words",
+             "name_text", "name_bg", "spot_base", "maths_kind", "trace_source", "trace_text",
+             "cross_theme", "cross_words")
 
 
 # Page-only keys: not settings of their own (nothing at the top level mirrors them). "answer": False leaves
@@ -233,6 +245,7 @@ class PageSpec:
     key_label: str = ""          # design: what its answer is called on the answer pages, instead of label · page
     stamp: str = ""              # design: a small note in the bottom margin ("Copy 7"), leaving the design as it is
     filled_name: str = ""        # written on the "Name ____" line (a class set with a name on each copy)
+    panel_box: object = None     # one of several designs on a sheet: its place on the page (a Box)
 
     def __post_init__(self):
         if self.header is None:
@@ -244,6 +257,61 @@ def single_page(s, photo=None):
     if s.mode == "convert":
         return PageSpec(kind="photo", photo=photo, title=s.title.strip(), name=s.name_line)
     return PageSpec(kind="design", gen=s.gen, seed=s.seed, c=s.complexity, title=s.title.strip(), name=s.name_line)
+
+
+SHEETS = {"one": "One design", "halves": "Two, one above the other", "sides": "Two, side by side",
+          "quarters": "Four", "banner": "One wide, two below"}
+PANELS = {"one": 1, "halves": 2, "sides": 2, "quarters": 4, "banner": 3}
+
+
+def sheet_gens(s):
+    """The patterns on the sheet, in order: the Design section's, then panel_gens (unknown ones skipped,
+    missing ones taken from the defaults)."""
+    n = PANELS.get(s.sheet, 1)
+    rest = [x.strip() for x in (s.panel_gens or "").split(",") if x.strip() in GENERATORS]
+    defaults = ["words", "maze", "dots"]
+    while len(rest) < 3:
+        rest.append(defaults[len(rest)])
+    return ([s.gen] + rest)[:n]
+
+
+def sheet_boxes(box, sheet, gap):
+    """Each design's place on a sheet laid out as sheet."""
+    x, y, w, h = box
+    if sheet == "halves":
+        hh = (h - gap) / 2
+        return [Box(x, y, w, hh), Box(x, y + hh + gap, w, hh)]
+    if sheet == "sides":
+        ww = (w - gap) / 2
+        return [Box(x, y, ww, h), Box(x + ww + gap, y, ww, h)]
+    if sheet == "quarters":
+        ww, hh = (w - gap) / 2, (h - gap) / 2
+        return [Box(x + i * (ww + gap), y + j * (hh + gap), ww, hh) for j in range(2) for i in range(2)]
+    if sheet == "banner":
+        top = (h - gap) * 0.45
+        ww = (w - gap) / 2
+        low = y + top + gap
+        return [Box(x, y, w, top), Box(x, low, ww, h - top - gap), Box(x + ww + gap, low, ww, h - top - gap)]
+    return [box]
+
+
+def panel_specs(g, spec, s):
+    """A design page with several designs on it: one PageSpec for each, with its own pattern, its own seed (the
+    first keeps the page's, so one design alone looks as before) and its place on the page. [] for one design."""
+    if spec.kind != "design" or spec.idx >= 0 or s.poster or PANELS.get(s.sheet, 1) < 2:
+        return []   # (a single page only: not a booklet's pages, nor a poster)
+    box = design_box(g, spec, s)
+    out = []
+    for k, (gen, b) in enumerate(zip(sheet_gens(s), sheet_boxes(box, s.sheet, g.dpi * 0.3))):
+        out.append(replace(spec, gen=gen, seed=(spec.seed + k * 7919) & 0xFFFFFFFF, header=False, page_no=0,
+                           title="", name=False, stamp="", panel_box=b, label=tr(NAMES[gen]),
+                           key_label=f"{spec.key_label} · {tr(NAMES[gen])}" if spec.key_label else ""))
+    return out
+
+
+def item_box(g, d, s):
+    """Where a puzzle was drawn on its page: its place on a sheet of several, else the page's design box."""
+    return d.panel_box if d.panel_box is not None else design_box(g, d, s)
 
 
 def line_width(s, g):
@@ -275,7 +343,7 @@ def draw_bands(ctx, g, spec):
             ctx.fill_text(spec.title, b.x, y, b.w * (0.55 if spec.name else 1))
         if spec.name:
             ctx.set_font(fs * 0.75, 400)
-            lx, label = b.x + b.w * 0.6, "Name"
+            lx, label = b.x + b.w * 0.6, tr("Name")
             ctx.fill_text(label, lx, y)
             ctx.line_width = g.dpi / 150
             ctx.begin_path()
@@ -331,7 +399,8 @@ def draw_page(ctx, g, spec, s, keep=False):
         ctx.fill_text(spec.title, b.x + b.w / 2, b.y + b.h * 0.12, b.w)
         ctx.set_font(fs * 0.4, 400)
         ctx.fill_style = "#444"
-        ctx.fill_text(f"{spec.count} {'page' if spec.count == 1 else 'pages'} to colour", b.x + b.w / 2, b.y + b.h * 0.12 + fs * 0.8, b.w)
+        ctx.fill_text((tr("1 page to colour") if spec.count == 1 else tr("{n} pages to colour")).format(n=spec.count),
+                      b.x + b.w / 2, b.y + b.h * 0.12 + fs * 0.8, b.w)
         ctx.restore()
         return convert(ctx, Box(b.x + b.w * 0.08, b.y + b.h * 0.24, b.w * 0.84, b.h * 0.7), g.dpi, s, spec.photo)
     if spec.kind == "photo":   # photos skip the pattern frame, but take the title, name line and page number
@@ -350,9 +419,37 @@ def draw_page(ctx, g, spec, s, keep=False):
             ctx.stroke_rect(*box.inset(-lw * 6))
             ctx.line_width = lw
         from . import cbn
+        panels = panel_specs(g, spec, s)
+        if panels:   # several designs on the sheet, a light line between them
+            ctx.save()
+            ctx.stroke_style, ctx.line_width = "#bbb", max(1.0, lw * 0.4)
+            for a, b in zip(panels, panels[1:]):
+                pa, pb = a.panel_box, b.panel_box
+                ctx.begin_path()
+                if abs(pa.y - pb.y) < 1:   # side by side: a line down between them
+                    x = (pa.x + pa.w + pb.x) / 2
+                    ctx.move_to(x, pb.y)
+                    ctx.line_to(x, pb.y + pb.h)
+                else:                      # one above the other: a line across
+                    y = (pa.y + pa.h + pb.y) / 2
+                    ctx.move_to(box.x, y)
+                    ctx.line_to(box.x + box.w, y)
+                ctx.stroke()
+            ctx.restore()
+            out = []
+            for p in panels:
+                ctx.save()
+                ctx.stroke_style = ctx.fill_style = "#000"
+                ctx.line_width = lw
+                if cbn.is_cbn_design(p.gen, s):
+                    out.append(cbn.draw_design_page(ctx, g, p.panel_box, p, s, lw))
+                else:
+                    out.append(draw_design(ctx, g, p.panel_box, p.gen, p.seed, p.c, s, lw, filled_name=spec.filled_name))
+                ctx.restore()
+            return {"panels": out}
         if cbn.is_cbn_design(spec.gen, s):   # colour by number: the crayon key takes a band under the design
             return cbn.draw_design_page(ctx, g, box, spec, s, lw)
-        return draw_design(ctx, g, box, spec.gen, spec.seed, spec.c, s, lw)
+        return draw_design(ctx, g, box, spec.gen, spec.seed, spec.c, s, lw, filled_name=spec.filled_name)
     if spec.kind == "answers":
         area = design_box(g, spec, s)
         gap, fs = g.dpi * 0.3, g.dpi * 0.14
@@ -363,7 +460,7 @@ def draw_page(ctx, g, spec, s, keep=False):
             ctx.save()
             ctx.set_font(fs, 600)
             ctx.fill_style, ctx.text_align = "#000", "left"
-            name = d.key_label or (f"{d.label} · page {d.page_no}" if d.page_no else d.label)
+            name = d.key_label or (tr("{label} · page {n}").format(label=d.label, n=d.page_no) if d.page_no else d.label)
             ctx.fill_text(name, cell.x, cell.y + fs)
             ctx.restore()
             ctx.line_width = max(1, lw * 0.45)
@@ -372,10 +469,10 @@ def draw_page(ctx, g, spec, s, keep=False):
             if cbn.is_cbn_design(d.gen, sd):   # shaded by number
                 cbn.draw_answer(ctx, g, slot, d, sd, lw)
             elif d.gen == "maze":   # same grid as the puzzle page, so it's the same maze
-                grid = maze.grid_size(design_box(g, d, sd), d.c, sd.maze_shape, sd.maze_word)
+                grid = maze.grid_size(item_box(g, d, sd), d.c, sd.maze_shape, sd.maze_word)
                 draw_design(ctx, g, slot, "maze", d.seed, d.c, sd, ctx.line_width, grid=grid, solve=True)
             elif d.gen == "spot":   # the puzzle page's own picture and changes, scaled into the slot
-                src = design_box(g, d, sd)
+                src = item_box(g, d, sd)
                 k = min(slot.w / src.w, slot.h / src.h)
                 ctx.save()
                 ctx.translate(slot.x + (slot.w - src.w * k) / 2 - src.x * k, slot.y + (slot.h - src.h * k) / 2 - src.y * k)
@@ -395,8 +492,11 @@ def draw_page(ctx, g, spec, s, keep=False):
         ctx.fill_text(spec.title, b.x + b.w / 2, b.y + b.h * 0.14, b.w)
         kinds = list(dict.fromkeys(d.gen for d in spec.designs))
         n = len(spec.designs)
-        what = (NAMES[kinds[0]].lower() + (" pages" if n > 1 else " page")) if len(kinds) == 1 else "pages"
-        sub = f"{n} {what}" + (" · easy to hard" if s.ramp and n > 1 else "")
+        if len(kinds) == 1:
+            sub = (tr("{n} {pattern} pages") if n > 1 else tr("1 {pattern} page")).format(n=n, pattern=tr(NAMES[kinds[0]]).lower())
+        else:
+            sub = (tr("{n} pages") if n > 1 else tr("1 page")).format(n=n)
+        sub += " · " + tr("easy to hard") if s.ramp and n > 1 else ""
         ctx.set_font(fs * 0.4, 400)
         ctx.fill_style = "#444"
         ctx.fill_text(sub, b.x + b.w / 2, b.y + b.h * 0.14 + fs * 0.8, b.w)
@@ -408,17 +508,17 @@ def draw_page(ctx, g, spec, s, keep=False):
         art = Box(b.x + b.w * 0.12, b.y + b.h * 0.26, b.w * 0.76, b.h * 0.66)
         ctx.line_width = lw
         first = spec.designs[0].gen
-        # a puzzle would give away a page's answer, so puzzle books get a mandala on the cover
-        draw_design(ctx, g, art, "mandala" if first in HAS_ANSWER else first, spec.art_seed, 6, s, lw)
+        # a puzzle would give away a page's answer (and handwriting is no picture), so their books get a mandala
+        draw_design(ctx, g, art, "mandala" if first in HAS_ANSWER or first == "trace" else first, spec.art_seed, 6, s, lw)
         return None
     if spec.kind == "blank":   # padding in a fold-and-staple book
         return None
     raise ValueError(f"unknown page kind {spec.kind!r}")
 
 
-def answer_page(specs, title="Answers"):
+def answer_page(specs, title=None):
     """An answer page for up to four puzzle pages."""
     items = [d for d in specs if d.gen in HAS_ANSWER][:4]
     for d in items:
-        d.label = d.label or NAMES.get(d.gen, d.gen)
-    return PageSpec(kind="answers", title=title, items=items)
+        d.label = d.label or tr(NAMES.get(d.gen, d.gen))
+    return PageSpec(kind="answers", title=title or tr("Answers"), items=items)

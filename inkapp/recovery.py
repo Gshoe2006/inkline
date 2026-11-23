@@ -21,6 +21,7 @@ import uuid
 from datetime import datetime
 
 from . import config, project
+from inkengine.i18n import tr
 
 PREFIX = "recovery-"
 SESSION = uuid.uuid4().hex[:12]
@@ -124,14 +125,14 @@ def describe(path, data):
     today = datetime.now().date()
     parts = [when.strftime("%H:%M") if when.date() == today else when.strftime("%d %b, %H:%M")]
     src = (data.get("recovery") or {}).get("project")
-    parts.append(project.title(src) if isinstance(src, str) and src else "untitled work")
+    parts.append(project.title(src) if isinstance(src, str) and src else tr("untitled work"))
     settings = data.get("settings") or {}
     pages = settings.get("page_list") or settings.get("pageList") or []
     if isinstance(pages, list) and pages:
-        parts.append(f"{len(pages)} page{'s' if len(pages) != 1 else ''}")
+        parts.append((tr("1 page") if len(pages) == 1 else tr("{n} pages")).format(n=len(pages)))
     photos = data.get("photos") or []
     if isinstance(photos, list) and photos:
-        parts.append(f"{len(photos)} photo{'s' if len(photos) != 1 else ''}")
+        parts.append((tr("1 photo") if len(photos) == 1 else tr("{n} photos")).format(n=len(photos)))
     return " · ".join(parts)
 
 
@@ -153,6 +154,7 @@ class Keeper:
 
     def __init__(self, version):
         self.version = version
+        self.path = path_for()   # fixed for the session: a copy always goes where this session's lock is
         try:
             hold()
             self.enabled = True
@@ -182,7 +184,7 @@ class Keeper:
         with self._lock:
             self._next = None
             self._gen += 1
-        discard()
+        discard(self.path)
 
     def finish(self, wait=3.0):
         """Closing: let a copy being written finish (so no half-written file is left), then remove it."""
@@ -192,7 +194,7 @@ class Keeper:
             thread = self._thread
         if thread is not None:
             thread.join(wait)
-        discard()
+        discard(self.path)
 
     @property
     def idle(self):
@@ -208,8 +210,8 @@ class Keeper:
                     return
             snapshot, source, gen, extra = job
             try:
-                os.makedirs(config.config_dir(), exist_ok=True)
-                project.save(path_for(), snapshot, self.version,
+                os.makedirs(os.path.dirname(self.path), exist_ok=True)
+                project.save(self.path, snapshot, self.version,
                              {**extra, "recovery": {"project": source, "saved": time.time()}})
             except Exception:     # noqa: BLE001 — no copy this time (the work itself is untouched); the next
                 if not isinstance(sys.exc_info()[1], OSError):   # change tries again, so this thread goes on
@@ -218,4 +220,4 @@ class Keeper:
             with self._lock:
                 stale = gen != self._gen
             if stale:             # saved or closed while this was being written
-                discard()
+                discard(self.path)

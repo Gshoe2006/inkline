@@ -21,7 +21,9 @@ from PySide6.QtWidgets import (QAbstractItemView, QAbstractSlider, QAbstractSpin
                                QUndoView, QVBoxLayout, QWidget)
 from PySide6.QtGui import QPdfWriter
 
-from inkengine import book, photo
+from inkengine import ages, book, photo
+from inkengine import i18n
+from inkengine.i18n import tr
 from inkengine.page import PAGE_KEYS, Settings, clean_page, design_box, geometry, single_page
 from inkengine.patterns import NAMES
 
@@ -41,6 +43,8 @@ STEP_NAMES = {"gen": "Pattern", "complexity": "Complexity", "weight": "Line weig
               "pages": "Design pages", "ramp": "Get harder", "mix": "Mix every pattern", "cover": "Cover page",
               "page_nums": "Page numbers", "key": "Answer pages", "maze_shape": "Maze shape", "maze_word": "Word or name", "spot_base": "Picture",
               "ws_theme": "Words from", "ws_words": "Your words", "name_text": "Name or word", "name_bg": "Around the letters",
+              "maths_kind": "Sums", "trace_source": "Trace", "trace_text": "Words to trace",
+              "cbn_maths": "Colour by maths", "age": "Age", "sheet": "On the sheet", "panel_gens": "Designs on the sheet", "cross_theme": "Crossword words", "cross_words": "Crossword words and clues",
               "mode": "Mode", "style": "Style", "brightness": "Brightness", "contrast": "Contrast", "threshold": "Threshold",
               "dot": "Dot size", "fit": "Placement", "invert": "Invert", "pnono_size": "Squares across",
               "pnono_answer": "Show the answer", "pcbn_colours": "Colours", "photobook": "Photo book", "pcover": "Cover page",
@@ -80,12 +84,12 @@ class _Snapshot:
     def what(self, before):
         """A name for the change from before to this, for "Undo …"."""
         if self.settings.mode != before.settings.mode:
-            return STEP_NAMES["mode"]
+            return tr(STEP_NAMES["mode"])
         if [id(p) for p in self.photos] != [id(p) for p in before.photos]:
             n, m = len(self.photos), len(before.photos)
-            return "Add photos" if n > m else "Remove photo" if n < m else "Move photo"
+            return tr("Add photos") if n > m else tr("Remove photo") if n < m else tr("Move photo")
         if self.crops != before.crops:
-            return "Crop"
+            return tr("Crop")
         a, b = self.settings.to_dict(), before.settings.to_dict()
         changed = [k for k in a if a[k] != b[k]]
         if "page_list" in changed and self.settings.page_list and before.settings.page_list:
@@ -95,8 +99,8 @@ class _Snapshot:
                 keys = {k for x, y in zip(pa, pb) for k in set(x) | set(y) if x.get(k) != y.get(k)}
                 changed = sorted(keys) if keys else changed
         if len(changed) == 1:
-            return STEP_NAMES.get(changed[0], changed[0].replace("_", " ").capitalize())
-        return "Changes"
+            return tr(STEP_NAMES.get(changed[0], changed[0].replace("_", " ").capitalize()))
+        return tr("Changes")
 
 
 class _Step(QUndoCommand):
@@ -181,9 +185,9 @@ class Window(QMainWindow):
 
         self.renderer = Renderer()
         self.renderer.finished.connect(self._rendered)
-        self.renderer.failed.connect(lambda _n, _why: self._msg("The preview couldn't be drawn. Try another setting, or start fresh from Presets."))
+        self.renderer.failed.connect(lambda _n, _why: self._msg(tr("The preview couldn't be drawn. Try another setting, or start fresh from Presets.")))
         self.renderer.busy.connect(lambda on: None if on or not self.renderer.idle else self.preview.set_busy(""))
-        self.renderer.converting.connect(lambda: self.preview.set_busy("converting photo…"))
+        self.renderer.converting.connect(lambda: self.preview.set_busy(tr("converting photo…")))
         self.worker = Renderer()        # saving and printing
         self.worker.finished.connect(self._job_done)
         self.worker.failed.connect(lambda _n, why: self._job_failed(why))
@@ -215,7 +219,7 @@ class Window(QMainWindow):
             self.state.photos = [sample_photo()]
             self.sidebar.fill_photos()
         if restored:
-            self._msg("Reopened with your last settings. Presets → Start fresh resets them.")
+            self._msg(tr("Reopened with your last settings. Presets → Start fresh resets them."))
         self._last = _Snapshot(self.state)   # where the history starts: nothing to undo yet
         self.history.cleanChanged.connect(self._update_title)
         self.history.cleanChanged.connect(lambda clean: self._keep_copy() if clean else None)   # undone back to saved
@@ -272,24 +276,24 @@ class Window(QMainWindow):
         mb = self.menuBar()
 
         def act(menu, text, fn, keys=None):
-            a = QAction(text, self)
+            a = QAction(tr(text), self)
             if keys:
                 a.setShortcut(QKeySequence(keys))
             a.triggered.connect(fn)
             menu.addAction(a)
             return a
 
-        f = mb.addMenu("&File")
+        f = mb.addMenu(tr("&File"))
         act(f, "Ne&w project", self.new_project)
         act(f, "Open pro&ject…", lambda: self.open_project(), "Ctrl+Shift+O")
-        self.recent_projects_menu = f.addMenu("Open recen&t project")
+        self.recent_projects_menu = f.addMenu(tr("Open recen&t project"))
         self.recent_projects_menu.aboutToShow.connect(self._fill_recent_projects)
         self.recent_projects_menu.setEnabled(bool(self.recent_projects))
         act(f, "Sa&ve project", self.save_project, "Ctrl+S")
         act(f, "Save project &as…", self.save_project_as, "Ctrl+Shift+S")
         f.addSeparator()
         act(f, "&Open image…", lambda: self.open_images(self.state.settings.photobook), "Ctrl+O")
-        self.recent_menu = f.addMenu("Open &recent image")
+        self.recent_menu = f.addMenu(tr("Open &recent image"))
         self.recent_menu.aboutToShow.connect(self._fill_recent)
         self.recent_menu.setEnabled(bool(self.recent))
         f.addSeparator()
@@ -300,10 +304,10 @@ class Window(QMainWindow):
         act(f, "&Print…", self.print_, "Ctrl+P")
         f.addSeparator()
         act(f, "&Quit", self.close, "Ctrl+Q")
-        e = mb.addMenu("&Edit")
-        undo = self.history.createUndoAction(self, "&Undo")
+        e = mb.addMenu(tr("&Edit"))
+        undo = self.history.createUndoAction(self, tr("&Undo"))
         undo.setShortcuts(QKeySequence.StandardKey.Undo)
-        redo = self.history.createRedoAction(self, "&Redo")
+        redo = self.history.createRedoAction(self, tr("&Redo"))
         redo.setShortcuts(QKeySequence.StandardKey.Redo)
         e.addAction(undo)
         e.addAction(redo)
@@ -314,7 +318,7 @@ class Window(QMainWindow):
         act(e, "&Paste\tCtrl+V", self.paste)
         e.addSeparator()
         act(e, "&History…", self.show_history, "Ctrl+H")
-        v = mb.addMenu("&View")
+        v = mb.addMenu(tr("&View"))
         act(v, "&New design", self.new_design, "Ctrl+N")
         act(v, "&More designs…", self.more_designs, "Ctrl+Shift+N")
         act(v, "Pre&vious page\t←", lambda: self.step_page(-1))
@@ -323,18 +327,27 @@ class Window(QMainWindow):
         self.act_test = act(v, "Printer &test page", self._toggle_test_page)
         self.act_test.setCheckable(True)
         v.addSeparator()
+        lang_menu = v.addMenu(tr("&Language"))
+        self.lang_actions = {}
+        for code, name in i18n.LANGUAGES.items():   # each in its own language, so anyone can find theirs
+            a = lang_menu.addAction(name)
+            a.setCheckable(True)
+            a.setChecked(code == i18n.LANG)
+            a.triggered.connect(lambda _on=False, code=code: self._choose_language(code))
+            self.lang_actions[code] = a
         self.act_desktop = act(v, "Use my &desktop's style", self._toggle_desktop_style)
         self.act_desktop.setCheckable(True)
         self.act_desktop.setChecked(theme.DESKTOP["on"])
         name = theme.desktop_style_name()
         if name:
-            self.act_desktop.setToolTip(f"Look like your other apps ({name.capitalize()}) instead of Inkline's own style")
+            self.act_desktop.setToolTip(tr("Look like your other apps ({name}) instead of Inkline's own style").format(
+                name=name.capitalize()))
         else:   # the Flatpak, AppImage and .deb bring their own Qt, without the desktop's style plugins
             self.act_desktop.setEnabled(False)
-            self.act_desktop.setToolTip("This copy of Inkline brings its own Qt, which can't load your desktop's style. "
-                                        "The Arch package and the .run installer use your system's Qt and can.")
+            self.act_desktop.setToolTip(tr("This copy of Inkline brings its own Qt, which can't load your desktop's "
+                                           "style. The Arch package and the .run installer use your system's Qt and can."))
         v.setToolTipsVisible(True)
-        h = mb.addMenu("&Help")
+        h = mb.addMenu(tr("&Help"))
         act(h, "&What's new", lambda: self.show_whats_new())
         act(h, "&About Inkline", self._about)
 
@@ -361,8 +374,18 @@ class Window(QMainWindow):
             st.page = 0
         elif key == "cover" and st.book_page is not None:
             self._show_book_page()
-        if st.book_page is not None and key in PAGE_KEYS and key != "seed":
-            st.write_page(**{key: getattr(st.settings, key)})   # the Design section edits the selected page
+        more = {}
+        if key == "age":   # an age: complexity and options to suit (one step with the age itself)
+            more = ages.for_age(st.settings)
+        elif key == "gen" and s.age != "any":   # another pattern at the age chosen: its complexity for that age
+            more = ages.for_pattern(st.settings)
+        if more:
+            st.update(**more)
+            self.sidebar.load()
+            self._step_name = tr(STEP_NAMES.get(key, key))   # "Undo Age", not "Undo Changes"
+        if st.book_page is not None and (key in PAGE_KEYS or more) and key != "seed":
+            # the Design section edits the selected page
+            st.write_page(**{k: getattr(st.settings, k) for k in [key, *more] if k in PAGE_KEYS})
             self.sidebar.fill_pages()
         elif st.listing and key in BOOKLET_LOOK:
             self.sidebar.refresh_thumbs()
@@ -415,7 +438,7 @@ class Window(QMainWindow):
             self.sidebar.fill_pages()
         else:
             self.state.update(seed=new_seed(), page_seeds={})   # a fresh booklet drops any swapped pages
-        self._step_name = "New design"   # however many settings that changed
+        self._step_name = tr("New design")   # however many settings that changed
         self._changed("seed")
 
     def design_options(self):
@@ -433,9 +456,9 @@ class Window(QMainWindow):
             def chosen(seed):
                 st.write_page(seed=seed)
                 self.sidebar.fill_pages()
-                self._step_name = "New design"
+                self._step_name = tr("New design")
                 self._changed("seed")
-            return (lambda seed: (s, replace(spec, seed=seed))), chosen, f"page {i + 1}"
+            return (lambda seed: (s, replace(spec, seed=seed))), chosen, tr("page {n}").format(n=i + 1)
         if s.booklet and not s.poster:   # a quick booklet: its seed, seen on the design page shown
             v = view(st)
             if v.kind == "fold" and v.pages:   # a folded side: the first design page on it
@@ -450,18 +473,18 @@ class Window(QMainWindow):
 
             def chosen(seed):
                 st.update(seed=seed, page_seeds={})
-                self._step_name = "New design"
+                self._step_name = tr("New design")
                 self._changed("seed")
-            return candidate, chosen, f"the whole booklet (each shows page {i + 1 + (1 if s.cover else 0)})"
+            return candidate, chosen, tr("the whole booklet (each shows page {n})").format(n=i + 1 + (1 if s.cover else 0))
 
         def chosen(seed):
             st.update(seed=seed, page_seeds={})   # as New design does
-            self._step_name = "New design"
+            self._step_name = tr("New design")
             self._changed("seed")
         # a single page, or a poster's design, shown on one page (a poster's sheets would be too small to judge)
         one = replace(s, poster=False, fold=False, booklet=False)
         return (lambda seed: (replace(one, seed=seed), single_page(replace(one, seed=seed)))), chosen, \
-            "the poster's design (shown on one page)" if s.poster else "this page"
+            tr("the poster's design (shown on one page)") if s.poster else tr("this page")
 
     def more_designs(self):
         offer = self.design_options()
@@ -490,11 +513,11 @@ class Window(QMainWindow):
             shown = view(st)
             p = shown.pages[shown.index] if shown.kind == "booklet" and shown.pages else None
             base = {k: getattr(s, k) for k in PAGE_KEYS}
-            self._step_name = "Edit pages one by one"
+            self._step_name = tr("Edit pages one by one")
             st.update(page_list=[{**base, "gen": d.gen, "seed": d.seed, "complexity": d.c} for d in designs])
             st.book_sel = p.idx if p is not None and p.kind == "design" else 0
         else:
-            self._step_name = "Back to quick booklet"
+            self._step_name = tr("Back to quick booklet")
             st.update(page_list=[], pages=max(2, min(MAX_BOOK_PAGES, len(s.page_list))))
             st.book_sel = 0
         self._list_changed()
@@ -523,7 +546,7 @@ class Window(QMainWindow):
     def _set_page_answer(self, on):
         if self.state.book_page is None:
             return
-        self._step_name = "Include its answer" if on else "Leave its answer out"
+        self._step_name = tr("Include its answer") if on else tr("Leave its answer out")
         self.state.write_page(answer=on)
         self.sidebar.fill_pages()
         self.sidebar.sync()
@@ -534,7 +557,7 @@ class Window(QMainWindow):
         pl = self.state.settings.page_list
         if not pl or len(pl) >= MAX_BOOK_PAGES:
             return
-        self._step_name = "Add page"
+        self._step_name = tr("Add page")
         new = {k: v for k, v in pl[-1].items() if k != "answer"}   # a new page has its answer, like any new page
         self.state.update(page_list=[*pl, {**new, "seed": new_seed()}])
         self.state.book_sel = len(pl)
@@ -544,7 +567,7 @@ class Window(QMainWindow):
         pl = self.state.settings.page_list
         if len(pl) >= MAX_BOOK_PAGES:
             return
-        self._step_name = "Duplicate page"
+        self._step_name = tr("Duplicate page")
         self.state.update(page_list=[*pl[:i + 1], {**pl[i], "seed": new_seed()}, *pl[i + 1:]])   # same settings, a new design
         self.state.book_sel = i + 1
         self._list_changed()
@@ -552,7 +575,7 @@ class Window(QMainWindow):
     def copy_pages(self, everything=False):
         """The selected page (or every page) onto the clipboard, to paste into this or another booklet."""
         if not self._listing():
-            self._msg("Copying pages works in a booklet built page by page: turn on Edit pages one by one.")
+            self._msg(tr("Copying pages works in a booklet built page by page: turn on Edit pages one by one."))
             return
         pl = self.state.settings.page_list
         pages = list(pl) if everything else [pl[self.state.book_sel]]
@@ -560,10 +583,11 @@ class Window(QMainWindow):
         # "from": this window, so closing it only touches pages it put there itself, not another Inkline's
         md.setData(PAGES_MIME, json.dumps({"app": "Inkline", "from": self._clip_id, "pages": pages}).encode("utf-8"))
         names = [NAMES.get(p.get("gen"), "page") for p in pages]
-        md.setText("Inkline booklet pages: " + ", ".join(names))
+        md.setText(tr("Inkline booklet pages:") + " " + ", ".join(tr(n) for n in names))
         QGuiApplication.clipboard().setMimeData(md)
-        self._msg(f"Copied {len(pages)} pages. Paste them into a booklet with Ctrl+V." if len(pages) > 1 else
-                  f"Copied page {self.state.book_sel + 1} ({names[0]}). Paste it into a booklet with Ctrl+V.")
+        self._msg(tr("Copied {n} pages. Paste them into a booklet with Ctrl+V.").format(n=len(pages)) if len(pages) > 1 else
+                  tr("Copied page {n} ({name}). Paste it into a booklet with Ctrl+V.").format(
+                      n=self.state.book_sel + 1, name=tr(names[0])))
 
     def _release_clipboard(self):
         """Closing: pages this window put on the clipboard stay there as their description (plain text). Data
@@ -588,25 +612,26 @@ class Window(QMainWindow):
             pages = []
         pages = [p for p in pages if p.get("gen") in NAMES]
         if not pages:
-            self._msg("There are no pages to paste.")
+            self._msg(tr("There are no pages to paste."))
             return
         if not self._listing():
-            self._msg("To paste pages, turn on Make a multi-page booklet, then Edit pages one by one.")
+            self._msg(tr("To paste pages, turn on Make a multi-page booklet, then Edit pages one by one."))
             return
         pl = self.state.settings.page_list
         room = MAX_BOOK_PAGES - len(pl)
         if room <= 0:
-            self._msg(f"A booklet holds up to {MAX_BOOK_PAGES} design pages, so there's no room to paste.")
+            self._msg(tr("A booklet holds up to {n} design pages, so there's no room to paste.").format(n=MAX_BOOK_PAGES))
             return
         kept = pages[:room]
         at = self.state.book_sel + 1
-        self._step_name = "Paste pages" if len(kept) > 1 else "Paste page"
+        self._step_name = tr("Paste pages") if len(kept) > 1 else tr("Paste page")
         self.state.update(page_list=[*pl[:at], *kept, *pl[at:]])
         self.state.book_sel = at
         self._list_changed()
         left = len(pages) - len(kept)
-        self._msg(f"Pasted {len(kept)} of {len(pages)} pages: a booklet holds up to {MAX_BOOK_PAGES}." if left else
-                  f"Pasted {len(kept)} page{'s' if len(kept) > 1 else ''} after page {at}.")
+        self._msg(tr("Pasted {n} of {m} pages: a booklet holds up to {top}.").format(n=len(kept), m=len(pages), top=MAX_BOOK_PAGES)
+                  if left else (tr("Pasted {n} pages after page {at}.") if len(kept) > 1 else
+                                tr("Pasted 1 page after page {at}.")).format(n=len(kept), at=at))
 
     def _move_book_page(self, i, d):
         """Move page i by d places (↑ ↓ are ±1; a drag can be any distance)."""
@@ -616,7 +641,7 @@ class Window(QMainWindow):
             return
         order = list(range(len(pl)))
         order.insert(j, order.pop(i))
-        self._step_name = "Move page"
+        self._step_name = tr("Move page")
         self.state.update(page_list=[pl[k] for k in order])
         old = max(0, min(self.state.book_sel, len(pl) - 1))
         self.state.book_sel = order.index(old)   # the page being edited stays selected, wherever it went
@@ -626,7 +651,7 @@ class Window(QMainWindow):
         pl = self.state.settings.page_list
         if len(pl) < 2:
             return
-        self._step_name = "Remove page"
+        self._step_name = tr("Remove page")
         self.state.update(page_list=pl[:i] + pl[i + 1:])
         sel = self.state.book_sel
         self.state.book_sel = sel - 1 if sel > i else sel
@@ -684,8 +709,23 @@ class Window(QMainWindow):
                                "Preferences")
             if err:
                 self._msg(err)
-        self._msg(f"Using your desktop's style ({theme.desktop_style_name().capitalize()})." if on else
-                  "Using Inkline's own style.")
+        self._msg(tr("Using your desktop's style ({name}).").format(name=theme.desktop_style_name().capitalize()) if on
+                  else tr("Using Inkline's own style."))
+
+    def _choose_language(self, code):
+        """View → Language: remembered, and used from the next start (the window is built in its language)."""
+        for c, a in self.lang_actions.items():
+            a.setChecked(c == code)
+        err = config.write("preferences.json", {**config.read("preferences.json"), "language": code}, "Preferences")
+        if err:
+            self._msg(err)
+            return
+        if code == i18n.LANG:
+            self._msg(tr("Inkline is in {language}.").format(language=i18n.LANGUAGES[code]))
+        else:   # said in the language chosen, which the person can read
+            i18n_next = i18n.catalog(code)
+            text = "Restart Inkline to use {language}."
+            self._msg(i18n_next.get(text, text).format(language=i18n.LANGUAGES[code]))
 
     def _toggle_test_page(self):
         self.state.update(testpage=not self.state.settings.testpage)
@@ -694,7 +734,8 @@ class Window(QMainWindow):
 
     # --- photos --------------------------------------------------------------------------------------
     def open_images(self, append=False):
-        files, _ = QFileDialog.getOpenFileNames(self, "Add photos" if append else "Open image", self.last_dir, IMAGE_FILTER)
+        files, _ = QFileDialog.getOpenFileNames(self, tr("Add photos" if append else "Open image"), self.last_dir,
+                                                tr(IMAGE_FILTER))
         if files:
             self.last_dir = os.path.dirname(files[0])
             self._load_files(files, append)
@@ -710,7 +751,7 @@ class Window(QMainWindow):
             except OSError:
                 bad.append(os.path.basename(f))
         if bad:
-            self._msg(f"Couldn't read {', '.join(bad)} as an image. Try PNG, JPEG or WebP.")
+            self._msg(tr("Couldn't read {files} as an image. Try PNG, JPEG or WebP.").format(files=", ".join(bad)))
         st = self.state
         room = MAX_PHOTOS - len(st.photos) if append and st.photos else MAX_PHOTOS
         self._add_recent(opened[:max(0, room)])   # only the photos add_photos will keep
@@ -771,12 +812,12 @@ class Window(QMainWindow):
         if not self._unsaved():
             return True
         name = project.title(self.project_path) if self.project_path else ""
-        box = QMessageBox(QMessageBox.Icon.Question, "Save changes?",
-                          f"Save the changes to “{name}”?" if name else "Save your work as a project first?",
+        box = QMessageBox(QMessageBox.Icon.Question, tr("Save changes?"),
+                          tr("Save the changes to “{name}”?").format(name=name) if name else tr("Save your work as a project first?"),
                           QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Discard
                           | QMessageBox.StandardButton.Cancel, self)
-        box.button(QMessageBox.StandardButton.Discard).setText("Don't save")
-        box.setInformativeText("Your changes will be lost if you don't save them.")
+        box.button(QMessageBox.StandardButton.Discard).setText(tr("Don't save"))
+        box.setInformativeText(tr("Your changes will be lost if you don't save them."))
         box.setDefaultButton(QMessageBox.StandardButton.Save)
         answer = box.exec()
         if answer == QMessageBox.StandardButton.Save:
@@ -810,19 +851,19 @@ class Window(QMainWindow):
         if not self._ask_to_save():
             return
         self._use_project(project.Project(State().settings), None)
-        self._msg("New project. Settings are back to their defaults.")
+        self._msg(tr("New project. Settings are back to their defaults."))
 
     def open_project(self, path=None):
         asked = path is None
         if asked:   # asked before the file is chosen, as other apps do
             if not self._ask_to_save():
                 return False
-            path, _ = QFileDialog.getOpenFileName(self, "Open project", self.last_dir, project.FILTER)
+            path, _ = QFileDialog.getOpenFileName(self, tr("Open project"), self.last_dir, tr(project.FILTER))
             if not path:
                 return False
         name = os.path.basename(path)
         if not os.path.isfile(path):   # found missing before asking about the work open now
-            self._msg(f"Couldn't find {name}. It may have been moved or deleted.")
+            self._msg(tr("Couldn't find {name}. It may have been moved or deleted.").format(name=name))
             if path in self.recent_projects:
                 self._set_recent_projects([p for p in self.recent_projects if p != path])
             return False
@@ -831,16 +872,18 @@ class Window(QMainWindow):
         try:
             proj = project.load(path)
         except project.ProjectError as why:
-            self._msg(f"Couldn't open {name}: it {why}. Choose another project, or a copy of this one.")
+            self._msg(tr("Couldn't open {name}: it {why}. Choose another project, or a copy of this one.").format(
+                name=name, why=tr(str(why))))
             return False
         except OSError:
-            self._msg(f"Couldn't open {name}. Check that you're allowed to read it.")
+            self._msg(tr("Couldn't open {name}. Check that you're allowed to read it.").format(name=name))
             return False
         self.last_dir = os.path.dirname(os.path.abspath(path))
         self._use_project(proj, os.path.abspath(path))
         self._add_recent_project(self.project_path)
         lost = proj.skipped
-        self._msg(f"Opened {name}, without {lost} damaged photo{'s' if lost > 1 else ''}." if lost else f"Opened {name}.")
+        self._msg(((tr("Opened {name}, without {n} damaged photos.") if lost > 1 else
+                    tr("Opened {name}, without 1 damaged photo.")) if lost else tr("Opened {name}.")).format(name=name, n=lost))
         return True
 
     def save_project(self):
@@ -849,8 +892,8 @@ class Window(QMainWindow):
         return self._write_project(self.project_path)
 
     def save_project_as(self):
-        name = project.title(self.project_path) if self.project_path else "My project"
-        path = self._ask_path("Save project", name, project.EXT, project.FILTER)
+        name = project.title(self.project_path) if self.project_path else tr("My project")
+        path = self._ask_path(tr("Save project"), name, project.EXT, project.FILTER)
         return self._write_project(path) if path else False
 
     def _write_project(self, path):
@@ -859,7 +902,8 @@ class Window(QMainWindow):
             cs = self.sidebar.class_set()
             project.save(path, self.state, self.version, project.class_set_json(cs))
         except (OSError, ValueError):
-            self._msg(f"Couldn't save {os.path.basename(path)}. Check that the folder exists and you can write to it.")
+            self._msg(tr("Couldn't save {name}. Check that the folder exists and you can write to it.").format(
+                name=os.path.basename(path)))
             return False
         finally:
             QApplication.restoreOverrideCursor()
@@ -869,7 +913,7 @@ class Window(QMainWindow):
         self._keep_copy()           # saved: the recovery copy goes
         self._update_title()
         self._add_recent_project(self.project_path)
-        self._msg(f"Saved {os.path.basename(path)}.")
+        self._msg(tr("Saved {name}.").format(name=os.path.basename(path)))
         return True
 
     # --- getting work back after Inkline closes unexpectedly -----------------------------------------------
@@ -900,10 +944,10 @@ class Window(QMainWindow):
             except (project.ProjectError, OSError):
                 recovery.discard(path)   # a damaged copy is no use to anyone
                 continue
-            box = QMessageBox(QMessageBox.Icon.Question, "Recover unsaved work?",
-                              "Inkline closed before your work was saved. Recover it?",
+            box = QMessageBox(QMessageBox.Icon.Question, tr("Recover unsaved work?"),
+                              tr("Inkline closed before your work was saved. Recover it?"),
                               QMessageBox.StandardButton.Discard, self)
-            recover = box.addButton("Recover", QMessageBox.ButtonRole.AcceptRole)
+            recover = box.addButton(tr("Recover"), QMessageBox.ButtonRole.AcceptRole)
             box.setInformativeText(recovery.describe(path, data))
             box.setDefaultButton(recover)
             box.exec()
@@ -913,7 +957,7 @@ class Window(QMainWindow):
                 self.history.resetClean()   # recovered, not saved: the title shows it and closing asks
                 self._update_title()
                 self._keep_copy()           # this session keeps it now
-                self._msg("Recovered your unsaved work. Save it as a project to keep it.")
+                self._msg(tr("Recovered your unsaved work. Save it as a project to keep it."))
             recovery.discard(path)
             return box.clickedButton() is recover
         return False
@@ -953,7 +997,7 @@ class Window(QMainWindow):
 
     def open_recent(self, path):
         if not os.path.isfile(path):
-            self._msg(f"Couldn't find {os.path.basename(path)}. It may have been moved or deleted.")
+            self._msg(tr("Couldn't find {name}. It may have been moved or deleted.").format(name=os.path.basename(path)))
             self._set_recent([p for p in self.recent if p != path])
             return
         self.last_dir = os.path.dirname(path)
@@ -965,10 +1009,10 @@ class Window(QMainWindow):
         if append and st.photos:
             room = MAX_PHOTOS - len(st.photos)
             if room <= 0:
-                self._msg(f"A photo book holds up to {MAX_PHOTOS} photos.")
+                self._msg(tr("A photo book holds up to {n} photos.").format(n=MAX_PHOTOS))
                 return
             if len(new) > room:
-                self._msg(f"Added {room} photos; a photo book holds up to {MAX_PHOTOS}.")
+                self._msg(tr("Added {n} photos; a photo book holds up to {top}.").format(n=room, top=MAX_PHOTOS))
             first = len(st.photos)
             st.photos.extend(new[:room])
         else:
@@ -1093,7 +1137,7 @@ class Window(QMainWindow):
     # --- the preview ---------------------------------------------------------------------------------
     def schedule(self):
         self._record()
-        self.preview.set_busy("rendering…")
+        self.preview.set_busy(tr("rendering…"))
         self._render_timer.start()
 
     # --- undo and redo ---------------------------------------------------------------------------------
@@ -1169,6 +1213,7 @@ class Window(QMainWindow):
         self.preview.set_info(r.info)
         self.preview.set_busy("")
         self.sidebar.ws_note.setText(r.note)
+        self.sidebar.cross_note.setText(r.note)
         self.sidebar.sync(r.view)
         self._view = r.view
         self._show_printer_edges()
@@ -1190,15 +1235,17 @@ class Window(QMainWindow):
             return
         reach = f"{math.ceil(round(worst * 100, 6)) / 100:g}"   # up to the next hundredth: 0.07 stays 0.07
         enough = next((label for m, label in MARGINS if m >= worst - 1e-6), None)
-        fix = f"Choose a {enough} margin or more." if enough else "No margin choice is wide enough for it."
-        self.sidebar.set_margin_warning(f"{name} can't print the outer {reach} in of the page, so the design will be cut off. {fix}")
+        fix = tr("Choose a {margin} margin or more.").format(margin=tr(enough)) if enough else \
+            tr("No margin choice is wide enough for it.")
+        self.sidebar.set_margin_warning(tr("{printer} can't print the outer {reach} in of the page, so the design will be "
+                                           "cut off.").format(printer=name, reach=reach) + " " + fix)
 
     # --- presets and remembered settings -------------------------------------------------------------
     def _apply_preset(self, group, name):
         p = BUILTIN_PRESETS.get(name) if group == "b" else self.saved_presets.get(name)
         if p is None:
             return
-        self._step_name = f"“{name}”"   # Edit → Undo “Maze booklet with answers”
+        self._step_name = tr("“{name}”").format(name=tr(name) if group == "b" else name)   # Edit → Undo “Maze booklet with answers”
         self.state.apply_preset(p)
         self.state.mirror()
         self.sidebar.only_pages.clear()
@@ -1207,17 +1254,17 @@ class Window(QMainWindow):
         if self.state.settings.mode == "convert" and not self.state.photos:
             self.state.photos = [sample_photo()]
             self.sidebar.fill_photos()
-        self._msg(f"Applied “{name}”.")
+        self._msg(tr("Applied “{name}”.").format(name=tr(name)))
         self.schedule()
         self.remember_soon()
 
     def _save_preset(self, name):
         if not name:
-            self._msg("Type a name for the preset first.")
+            self._msg(tr("Type a name for the preset first."))
             self.sidebar.preset_name.setFocus()
             return
         if name in BUILTIN_PRESETS:
-            self._msg("That name belongs to a built-in preset. Choose another.")
+            self._msg(tr("That name belongs to a built-in preset. Choose another."))
             return
         existed = name in self.saved_presets
         nxt = {**self.saved_presets, name: self.state.preset_values()}
@@ -1228,16 +1275,16 @@ class Window(QMainWindow):
         self.saved_presets = nxt
         self.sidebar.preset_name.clear()
         self.sidebar.fill_presets(nxt, f"s:{name}")
-        self._msg(f"Updated preset “{name}”." if existed else f"Saved preset “{name}”.")
+        self._msg((tr("Updated preset “{name}”.") if existed else tr("Saved preset “{name}”.")).format(name=name))
 
     def _save_class_list(self, chosen):
         """Paper → Names → Save…: keep the names typed as a list, under a name (the chosen list's, to update it)."""
         names = self.sidebar.copies_names.text().strip()
         if not jobs.parse_names(names):
-            self._msg("Type or paste the names first, then save them as a list.")
+            self._msg(tr("Type or paste the names first, then save them as a list."))
             self.sidebar.copies_names.setFocus()
             return
-        name, ok = QInputDialog.getText(self, "Save class list", "Name for this list:", text=chosen)
+        name, ok = QInputDialog.getText(self, tr("Save class list"), tr("Name for this list:"), text=chosen)
         name = " ".join(name.split())[:40].strip()
         if not ok or not name:
             return
@@ -1249,7 +1296,7 @@ class Window(QMainWindow):
             return
         self.class_lists = nxt
         self.sidebar.fill_class_lists(nxt, name)
-        self._msg(f"Updated the list “{name}”." if existed else f"Saved the list “{name}”.")
+        self._msg((tr("Updated the list “{name}”.") if existed else tr("Saved the list “{name}”.")).format(name=name))
 
     def _delete_class_list(self, name):
         if name not in self.class_lists:
@@ -1261,7 +1308,7 @@ class Window(QMainWindow):
             return
         self.class_lists = nxt
         self.sidebar.fill_class_lists(nxt)
-        self._msg(f"Deleted the list “{name}”. The names typed stay until you clear them.")
+        self._msg(tr("Deleted the list “{name}”. The names typed stay until you clear them.").format(name=name))
 
     def _delete_preset(self, name):
         nxt = {k: v for k, v in self.saved_presets.items() if k != name}
@@ -1271,7 +1318,7 @@ class Window(QMainWindow):
             return
         self.saved_presets = nxt
         self.sidebar.fill_presets(nxt)
-        self._msg(f"Deleted preset “{name}”.")
+        self._msg(tr("Deleted preset “{name}”.").format(name=name))
 
     def _restore(self):
         if not self.remember:
@@ -1294,7 +1341,7 @@ class Window(QMainWindow):
 
     # --- saving and printing ----------------------------------------------------------------------------
     def _ask_path(self, title, name, ext, filt):
-        path, _ = QFileDialog.getSaveFileName(self, title, os.path.join(self.last_dir, f"{name}.{ext}"), filt)
+        path, _ = QFileDialog.getSaveFileName(self, title, os.path.join(self.last_dir, f"{name}.{ext}"), tr(filt))
         if not path:
             return None
         if not path.lower().endswith("." + ext):
@@ -1309,9 +1356,9 @@ class Window(QMainWindow):
         btn = {"png": self.sidebar.png_btn, "pdf": self.sidebar.pdf_btn, "svg": self.sidebar.svg_btn}[kind]
         if not btn.isEnabled():   # the menu and shortcuts do what the button would: nothing, and say why
             if kind == "svg" and s.mode != "make" and s.style not in photo.VECTOR_STYLES:
-                self._msg("Photos are made of pixels, so they save as PNG or PDF. Choose Engraving, Stippling, Colour by number or Nonogram for SVG.")
+                self._msg(tr("Photos are made of pixels, so they save as PNG or PDF. Choose Engraving, Stippling, Colour by number or Nonogram for SVG."))
             elif kind == "png" and s.poster:
-                self._msg("Posters save as PDF (one page per sheet) or print directly.")
+                self._msg(tr("Posters save as PDF (one page per sheet) or print directly."))
             return
         snap = State(replace(s), [replace(p) for p in st.photos], st.sel, st.page,
                      copy=st.copy, class_set=self.sidebar.class_set_view())   # PNG and SVG: the copy shown
@@ -1319,20 +1366,21 @@ class Window(QMainWindow):
             j = self._job(snap)
             if j is None:
                 return
-            what = ("Save PDF of " + j.amount() if j.label in ("copies", "booklets") else f"Save {j.label} PDF") \
-                if j.count > 1 else "Save PDF"
+            what = (tr("Save PDF of {what}").format(what=j.amount()) if j.label in ("copies", "booklets")
+                    else tr("Save {what} PDF").format(what=tr(j.label))) if j.count > 1 else tr("Save PDF")
             path = self._ask_path(what, j.name, "pdf", "PDF document (*.pdf)")
             if not path:
-                self._msg("Save cancelled.")
+                self._msg(tr("Save cancelled."))
                 return
             dev = QPdfWriter(path)
             dev.setPageLayout(jobs.page_layout(s, j.orient))
             dev.setResolution(j.geometry.dpi)
             dev.setTitle(j.name)
             dev.setCreator("Inkline")
-            done = f"Saved {j.amount()} as {os.path.basename(path)}" if j.count > 1 else f"Saved {os.path.basename(path)}"
-            self._start(j, dev, done, f"Couldn't write {path}. Check the folder permissions.",
-                        stopped="Save cancelled: the PDF wasn't kept.", path=path)
+            done = (tr("Saved {what} as {name}") if j.count > 1 else tr("Saved {name}")).format(
+                what=j.amount(), name=os.path.basename(path))
+            self._start(j, dev, done, tr("Couldn't write {path}. Check the folder permissions.").format(path=path),
+                        stopped=tr("Save cancelled: the PDF wasn't kept."), path=path)
             return
         ext, filt = ("png", "PNG image (*.png)") if kind == "png" else ("svg", "SVG vector image (*.svg)")
 
@@ -1343,7 +1391,7 @@ class Window(QMainWindow):
             text, nm = jobs.svg(snap)
             return ("svg", text, nm)
         self._pending_save = (kind, ext, filt)
-        self._busy(True, "Rendering page 1 of 1…")
+        self._busy(True, tr("Rendering page {i} of {n}…").format(i=1, n=1))
         self.worker.submit(work)
 
     def _job(self, snap):
@@ -1356,9 +1404,11 @@ class Window(QMainWindow):
             names = sb.copies_names_list() if sb.copies_row.isVisibleTo(sb) else []
             # a switch that isn't shown doesn't count (one copy has no answer pages)
             answers = sb.copies_answers.isVisibleTo(sb) and sb.copies_answers.isChecked()
-            return jobs.job(snap, only, copies, sb.copies_vary.isChecked(), answers, names)
+            book = sb.copies_answer_book.isVisibleTo(sb) and sb.copies_answer_book.isChecked()
+            return jobs.job(snap, only, copies, sb.copies_vary.isChecked(), answers, names, book)
         except ValueError as why:
-            self._msg(f"{why} Fix the pages under Paper → Print or save only, or clear it to use every page.")
+            self._msg(tr("{why} Fix the pages under Paper → Print or save only, or clear it to use every page.").format(
+                why=why))
             self.sidebar.only_pages.setFocus()
             return None
 
@@ -1377,22 +1427,23 @@ class Window(QMainWindow):
         printer.setColorMode(QPrinter.ColorMode.GrayScale)
         if j.duplex:   # fold-and-staple books: double-sided, flipping on the short edge
             printer.setDuplex(QPrinter.DuplexMode.DuplexShortSide)
-        self._msg("Opening the print dialog…")
+        self._msg(tr("Opening the print dialog…"))
         dialog = QPrintDialog(printer, self)
         # which pages print is chosen under Paper → Print or save only: the dialog's own range would be ignored
         dialog.setOption(QAbstractPrintDialog.PrintDialogOption.PrintPageRange, False)
         if dialog.exec() != QPrintDialog.DialogCode.Accepted:
-            self._msg("Print cancelled.")
+            self._msg(tr("Print cancelled."))
             return
         self._remember_printer(printer.printerName())
-        sent = j.amount() if j.duplex or j.label in ("copies", "booklets") else f"{j.count} {j.unit}s"
-        done = f"Sent {sent} to the printer." if j.count > 1 else "Sent to the printer."
+        sent = j.amount()
         times = printer.copyCount()   # the dialog's own Copies prints the whole job that many times
         if times > 1:
-            done = done[:-1] + (f", {times} times over" if j.count > 1 else f", {times} copies") \
-                + " (Copies in the print dialog)."
-        self._start(j, printer, done, "The printer didn't accept the job. Check that it's connected.",
-                    stopped="Printing cancelled: nothing was sent to the printer.")
+            done = (tr("Sent {what} to the printer, {times} times over (Copies in the print dialog).") if j.count > 1
+                    else tr("Sent to the printer, {times} copies (Copies in the print dialog).")).format(what=sent, times=times)
+        else:
+            done = tr("Sent {what} to the printer.").format(what=sent) if j.count > 1 else tr("Sent to the printer.")
+        self._start(j, printer, done, tr("The printer didn't accept the job. Check that it's connected."),
+                    stopped=tr("Printing cancelled: nothing was sent to the printer."))
 
     def _remember_printer(self, name):
         jobs.forget_printer_margins()   # the printers, or the system's default, may have changed
@@ -1403,28 +1454,29 @@ class Window(QMainWindow):
                 self._msg(err)
         self._show_printer_edges()
 
-    def _start(self, j, device, done, failed, stopped="Cancelled.", path=None):
+    def _start(self, j, device, done, failed, stopped="", path=None):
         """Draw a print or PDF job on the worker. stopped: the status line if it's cancelled; path: the PDF being
         written, deleted then."""
         self._device = device   # kept alive while the worker draws on it
         self._cancel.clear()
-        self._job_path, self._job_stopped = path, stopped
+        self._job_path, self._job_stopped = path, stopped or tr("Cancelled.")
         sb = self.sidebar
         bar = sb.progress
         bar.setRange(0, j.count)
         bar.setValue(0)
         sb.cancel_btn.setEnabled(True)
         sb.progress_row.setVisible(j.count > 1)
-        self._busy(True, f"Rendering {j.unit} 1 of {j.count}…")
+        rendering = tr("Rendering sheet {i} of {n}…") if j.unit == "sheet" else tr("Rendering page {i} of {n}…")
+        self._busy(True, rendering.format(i=1, n=j.count))
         self._pending_save = None
         cancel = self._cancel
 
         def progress(i):
             if i >= j.count:   # a print: every page drawn, now it goes to the printer (and can't be stopped)
-                self.status.emit("Sending to the printer…")
+                self.status.emit(tr("Sending to the printer…"))
                 QTimer.singleShot(0, lambda: sb.cancel_btn.setEnabled(False))
             elif not cancel.is_set():
-                self.status.emit(f"Rendering {j.unit} {i + 1} of {j.count}…")
+                self.status.emit(rendering.format(i=i + 1, n=j.count))
             QTimer.singleShot(0, lambda: bar.setValue(i + 1))
         self.worker.submit(lambda: ("job", jobs.run(j, device, progress, cancel.is_set), done, failed))
 
@@ -1436,7 +1488,7 @@ class Window(QMainWindow):
             return
         self._cancel.set()
         self.sidebar.cancel_btn.setEnabled(False)
-        self._msg("Cancelling after this page…")
+        self._msg(tr("Cancelling after this page…"))
 
     def _job_done(self, _n, r):
         kind = r[0]
@@ -1448,7 +1500,7 @@ class Window(QMainWindow):
             path = self._job_path
             if stopped and not path and isinstance(device, QPrinter) and device.outputFileName():
                 path = device.outputFileName()   # the print dialog's "Print to file": nothing written, or not kept
-                message = "Printing cancelled: no file was written."
+                message = tr("Printing cancelled: no file was written.")
             if stopped and path and os.path.exists(path):   # a half-written PDF isn't kept
                 try:
                     os.remove(path)
@@ -1460,9 +1512,9 @@ class Window(QMainWindow):
         _k, data, name = r
         k, ext, filt = self._pending_save
         self._busy(False, "")
-        path = self._ask_path(f"Save {ext.upper()}", name, ext, filt)
+        path = self._ask_path(tr("Save {kind}").format(kind=ext.upper()), name, ext, filt)
         if not path:
-            self._msg("Save cancelled.")
+            self._msg(tr("Save cancelled."))
             return
         try:
             if k == "png":
@@ -1471,14 +1523,14 @@ class Window(QMainWindow):
             else:
                 with open(path, "w", encoding="utf-8") as f:
                     f.write(data)
-            self._msg(f"Saved {os.path.basename(path)}")
+            self._msg(tr("Saved {name}").format(name=os.path.basename(path)))
         except OSError:
-            self._msg(f"Couldn't write {path}. Check the folder permissions.")
+            self._msg(tr("Couldn't write {path}. Check the folder permissions.").format(path=path))
 
     def _job_failed(self, _why):
         self._job_path = None
         self._cancel.clear()
-        self._busy(False, "That couldn't be finished. Check the folder permissions or the printer, then try again.")
+        self._busy(False, tr("That couldn't be finished. Check the folder permissions or the printer, then try again."))
         self._device = None
 
     def _busy(self, on, text):
@@ -1498,9 +1550,9 @@ class Window(QMainWindow):
         """Every undo step in a list beside the window: choosing one goes back (or forward) to it."""
         if self._history_view is None:
             d = QDialog(self)
-            d.setWindowTitle("History")
+            d.setWindowTitle(tr("History"))
             view = QUndoView(self.history, d)
-            view.setEmptyLabel("Start")    # the top row: how things were before the first step
+            view.setEmptyLabel(tr("Start"))    # the top row: how things were before the first step
             lay = QVBoxLayout(d)
             lay.setContentsMargins(8, 8, 8, 8)
             lay.addWidget(view)
@@ -1521,18 +1573,18 @@ class Window(QMainWindow):
         text = whatsnew.notes(self.version, seen)
         if not text:
             if seen is None:   # from the Help menu: say so rather than show nothing
-                self._msg("There are no release notes for this version of Inkline.")
+                self._msg(tr("There are no release notes for this version of Inkline."))
             return False
         whatsnew.WhatsNew(self, self.version, text).exec()
         return True
 
     def _about(self):
-        QMessageBox.about(self, "About Inkline", f"<b>Inkline {self.version}</b><br>Black &amp; white images for printing: "
-                                                 "colouring pages, puzzles, booklets, posters and photo conversions.")
+        QMessageBox.about(self, tr("About Inkline"), f"<b>Inkline {self.version}</b><br>" + tr(
+            "Black &amp; white images for printing: colouring pages, puzzles, booklets, posters and photo conversions."))
 
     def closeEvent(self, e):
         if self._busy_saving:   # a PDF or print job is still drawing from the work
-            self._msg("Cancel the save or print (or wait for it to finish), then close Inkline.")
+            self._msg(tr("Cancel the save or print (or wait for it to finish), then close Inkline."))
             e.ignore()
             return
         # unsaved changes to a project, or to photos (they aren't remembered), ask first; untitled settings

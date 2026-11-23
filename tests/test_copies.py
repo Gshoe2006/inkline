@@ -643,3 +643,61 @@ def test_a_print_says_when_its_pages_go_to_the_printer(tmp_path):
     said = []
     assert jobs.run(j, _printer_to(tmp_path / "out.pdf"), progress=said.append)
     assert said == [0, 1, 2, 3]                                            # 3 means: now sending
+
+
+def _pages_of(j):
+    seen = []
+    real = jobs.draw_page
+    jobs.draw_page = lambda ctx, g, spec, st: seen.append(spec)
+    try:
+        for i in range(j.count):
+            j.draw(None, i)
+    finally:
+        jobs.draw_page = real
+    return seen
+
+
+def test_a_teachers_answer_book_gathers_every_booklets_answers():
+    s = Settings(gen="maze", seed=11, booklet=True, pages=4, cover=True, key=True, name_line=True)
+    plain = jobs.job(State(s), names=["Ana", "Ben", "Cara"])
+    j = jobs.job(State(s), names=["Ana", "Ben", "Cara"], answer_book=True)
+    assert j.count == plain.count and j.answers == 3 and j.name.endswith("-named-answer-book")
+    assert j.amount() == f"3 booklets ({j.count - 3} pages) and a 3-page answer book"
+    pages = _pages_of(j)
+    kids, book = pages[:-3], pages[-3:]
+    assert not any(p.kind == "answers" for p in kids)                      # no answers in the children's booklets
+    assert [p.title for p in book] == ["Answers · Ana", "Answers · Ben", "Answers · Cara"]
+    assert all(p.page_no == 0 for p in book)
+    by_kid = [p for p in _pages_of(plain) if p.kind == "answers"]
+    assert [[d.seed for d in p.items] for p in book] == [[d.seed for d in p.items] for p in by_kid]   # same answers
+
+
+def test_unnamed_booklets_are_numbered_to_match_the_answer_book():
+    s = Settings(gen="sudoku", seed=2, booklet=True, pages=2, cover=True, key=True)
+    pages = _pages_of(jobs.job(State(s), copies=2, answer_book=True))
+    covers = [p for p in pages if p.kind == "cover"]
+    assert [p.filled_name for p in covers] == ["Booklet 1", "Booklet 2"]
+    assert [p.title for p in pages if p.kind == "answers"] == ["Answers · Booklet 1", "Answers · Booklet 2"]
+    assert not any(p.filled_name for p in _pages_of(jobs.job(State(s), copies=2)) if p.kind == "cover")   # only then
+
+
+def test_the_answer_book_folds_on_its_own_and_needs_answer_pages():
+    s = Settings(gen="maze", seed=3, booklet=True, pages=6, cover=True, key=True, fold=True)
+    j = jobs.job(State(s), copies=2, answer_book=True)
+    assert j.duplex and j.answers == 4 and "and an answer book" in j.amount()   # 2 × 2 answer pages
+    assert jobs.job(State(replace(s, key=False)), copies=2, answer_book=True).answers == 0   # no answer pages: no book
+
+
+def test_the_answer_book_switch_shows_for_booklet_class_sets(win):
+    sb = win.sidebar
+    _set(win, gen="maze", booklet=True, key=True, name_line=True)
+    assert not sb.copies_answer_book.isVisibleTo(sb)                      # one booklet: nothing to gather
+    sb.copies_names.setText("Ana, Ben")
+    assert sb.copies_answer_book.isVisibleTo(sb) and not sb.copies_answer_book.isChecked()
+    sb.copies_answer_book.setChecked(True)
+    assert "heads its answers in the teacher's book" in sb.copies_hint.text()
+    j = win._job(State(win.state.settings))
+    assert j.answers > 0
+    _set(win, key=False)
+    assert not sb.copies_answer_book.isVisibleTo(sb)
+    assert win._job(State(win.state.settings)).answers == 0

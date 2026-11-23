@@ -12,8 +12,11 @@ inside another listed word (RAIN in RAINBOW, SUN backwards in VENUS), are left o
 
 import math
 import re
+import unicodedata
 
 from ..rng import pick
+from .. import i18n
+from ..i18n import tr
 
 THEMES = {
     "animals": "cat dog horse tiger zebra rabbit monkey giraffe lion bear mouse sheep goat duck frog owl eagle panda koala otter camel hippo snake turtle wolf fox",
@@ -22,6 +25,22 @@ THEMES = {
     "food": "apple bread cheese pizza pasta soup salad banana grape mango carrot rice honey cookie muffin peach lemon toast butter pear plum",
     "weather": "rain snow wind cloud storm sunny thunder fog hail frost rainbow breeze mist sleet heat chilly drizzle tornado",
     "sports": "soccer tennis golf hockey rugby cycling skating skiing rowing boxing karate surfing archery baseball cricket diving judo running",
+}
+# The same themes in Spanish, used when Inkline is in Spanish (words keep Ñ; other accents come off, as Spanish
+# word searches print them)
+THEMES_ES = {
+    "animals": "gato perro caballo tigre cebra conejo mono jirafa leon oso raton oveja cabra pato rana buho aguila "
+               "panda koala nutria camello hipopotamo serpiente tortuga lobo zorro pingüino ardilla",
+    "ocean": "ola concha cangrejo ballena tiburon coral pulpo delfin foca marea arena arrecife calamar alga estrella "
+             "medusa langosta ancla barco perla sal almeja",
+    "space": "estrella luna planeta cometa cohete orbita galaxia saturno marte venus tierra jupiter asteroide "
+             "nebulosa extraterrestre sol meteorito crater astronauta telescopio",
+    "food": "manzana pan queso pizza pasta sopa ensalada platano uva mango zanahoria arroz miel galleta magdalena "
+            "melocoton limon tostada mantequilla pera ciruela piña",
+    "weather": "lluvia nieve viento nube tormenta sol trueno niebla granizo escarcha arcoiris brisa rocio calor frio "
+               "llovizna tornado",
+    "sports": "futbol tenis golf hockey rugby ciclismo patinaje esqui remo boxeo karate surf tiro beisbol criquet "
+              "buceo judo carrera",
 }
 THEME_NAMES = {"animals": "Animals", "ocean": "Ocean", "space": "Space", "food": "Food", "weather": "Weather",
                "sports": "Sports", "custom": "Your own list"}
@@ -35,7 +54,16 @@ def level(c):
 
 
 def clean_word(w):
+    if i18n.LANG == "es":   # Spanish: accents off, Ñ kept (NIÑO, not NINO)
+        w = unicodedata.normalize("NFC", "".join(ch for ch in unicodedata.normalize("NFD", w.upper())
+                                                 if unicodedata.category(ch) != "Mn" or ch == "\u0303"))
+        return re.sub(r"[^A-ZÑ]", "", w)
     return re.sub(r"[^A-Z]", "", w.upper())
+
+
+def _alphabet():
+    """The letters that fill a grid's gaps: A-Z, and Ñ in Spanish (so a word's Ñ doesn't stand out)."""
+    return "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ" if i18n.LANG == "es" else None
 
 
 def hidden_in(w, o):
@@ -56,7 +84,8 @@ def word_pool(rnd, c, theme="animals", own_words=""):
         mine = list(dict.fromkeys(w for w in (clean_word(x) for x in re.split(r"[\s,;]+", own_words)) if len(w) >= 2))
         if mine:
             return mine
-    pool = [w for w in (clean_word(x) for x in THEMES.get(theme, THEMES["animals"]).split(" ")) if len(w) <= lv["size"]]
+    themes = THEMES_ES if i18n.LANG == "es" else THEMES
+    pool = [w for w in (clean_word(x) for x in themes.get(theme, themes["animals"]).split(" ")) if len(w) <= lv["size"]]
     _shuffle(pool, rnd)
     chosen = []   # skip any word that hides inside (or contains) one already chosen
     for w in pool:
@@ -113,9 +142,10 @@ def make_word_search(rnd, c, words):
             if not done:
                 skipped.append(f"{w} (no room left)")
         blanks = [i for i, ch in enumerate(grid) if not ch]
+        letters = _alphabet()
         for _fill in range(30):   # fill the gaps; redo the fill if it spells a listed word a second time
             for i in blanks:
-                grid[i] = chr(65 + pick(rnd, 26))
+                grid[i] = letters[pick(rnd, len(letters))] if letters else chr(65 + pick(rnd, 26))
             if all(find_word(grid, size, p["word"]) == 1 for p in placed):
                 return {"size": size, "grid": grid, "placed": placed, "skipped": left + skipped}
     return None
@@ -125,7 +155,7 @@ def note(ws):
     """What to tell the person about words that were left out, or ""."""
     if not ws or not ws["skipped"]:
         return ""
-    text = f"Left out: {', '.join(ws['skipped'])}."
+    text = tr("Left out: {words}.").format(words=", ".join(ws["skipped"]))
     return text + (" Raise Complexity for a bigger grid." if any("too long" in t for t in ws["skipped"]) else "")
 
 
@@ -176,7 +206,7 @@ def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, solve=False, **_opts)
             fs = avail / (rows * 1.6 + 1.8)
         ctx.text_align = "left"
         ctx.set_font(fs, 700)
-        ctx.fill_text("Find these words", box.x, top + fs)
+        ctx.fill_text(tr("Find these words"), box.x, top + fs)
         ctx.set_font(fs, 500)
         ctx.line_width = max(1, lw * 0.4)
         col_w = box.w / cols

@@ -5,6 +5,7 @@ name on each. Print and Save PDF (jobs.py) and the preview (render.py) build eac
 import re
 from dataclasses import dataclass, field, replace
 
+from inkengine.i18n import tr
 from inkengine.page import has_answer
 
 MAX_COPIES = 100
@@ -40,8 +41,10 @@ def copies_vary(s):
 
 
 def copies_have_answers(s):
-    """Whether copies of this single page can have answer pages: a puzzle (or colour by number) made up."""
-    return s.mode == "make" and has_answer(s.gen, s)
+    """Whether copies of this single page can have answer pages: a puzzle (or colour by number) made up, or a
+    sheet of several designs with one among them."""
+    from inkengine.page import sheet_gens
+    return s.mode == "make" and any(has_answer(gen, s) for gen in sheet_gens(s))
 
 
 def parse_names(text, limit=MAX_COPIES):
@@ -79,6 +82,7 @@ class ClassSet:
     vary: bool = True
     answers: bool = False
     names: list = field(default_factory=list)
+    answer_book: bool = False   # booklets: their answers in one teacher's book, after them all
 
     @property
     def active(self):
@@ -86,5 +90,5 @@ class ClassSet:
 
     def label(self, i):
         """What the preview's copy pager says: "Copy 2 of 25 · Ana"."""
-        text = f"Copy {i + 1} of {self.count}"
+        text = tr("Copy {i} of {n}").format(i=i + 1, n=self.count)
         return f"{text} · {self.names[i]}" if self.names and i < len(self.names) else text

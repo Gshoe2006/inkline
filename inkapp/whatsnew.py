@@ -11,6 +11,8 @@ import re
 
 from PySide6.QtWidgets import QDialog, QHBoxLayout, QTextBrowser, QVBoxLayout
 
+from inkengine.i18n import tr
+
 from . import config, theme
 from .widgets import button
 
@@ -94,7 +96,7 @@ def due(version, remember):
 class WhatsNew(QDialog):
     def __init__(self, parent, version, text):
         super().__init__(parent)
-        self.setWindowTitle(f"What's new in Inkline {version}")
+        self.setWindowTitle(tr("What's new in Inkline {version}").format(version=version))
         lay = QVBoxLayout(self)
         lay.setContentsMargins(theme.PAD_X, theme.PAD_X, theme.PAD_X, theme.PAD_X)
         lay.setSpacing(theme.SECTION_GAP)

@@ -24,6 +24,7 @@ import numpy as np
 from PySide6.QtGui import QColor, QImage, QPainter
 
 from .box import Box
+from .i18n import tr
 
 CBN_DPI, CBN_PAT_DPI = 150, 100
 CRAYONS = [("White", 255, 255, 255), ("Light grey", 200, 200, 200), ("Grey", 128, 128, 128), ("Black", 30, 30, 30),
@@ -455,18 +456,32 @@ def key_height(box, dpi, n):
     return min(box.h * 0.22, dpi * (0.42 + math.ceil(n / key_cols(box.w, dpi)) * 0.24))
 
 
-def draw_numbers(ctx, pts, dpi):
-    """Numbers, each centred on its region's deepest point: pts are (n, x, y, r) in page pixels, n from 1."""
+def draw_numbers(ctx, pts, dpi, labels=None):
+    """Numbers, each centred on its region's deepest point: pts are (n, x, y, r) in page pixels, n from 1. labels:
+    what to write instead of each number (colour by maths: a sum), smaller to fit."""
     ctx.save()
     ctx.fill_style, ctx.text_align, ctx.text_baseline = "#666", "center", "alphabetic"
-    for n, x, y, r in pts:
-        fs = max(dpi * 0.06, min(dpi * 0.15, r * 1.2))
+    for k, (n, x, y, r) in enumerate(pts):
+        text = labels[k] if labels else str(n)
+        fs = max(dpi * 0.07, min(dpi * 0.15, r * 1.2) * 0.8) if labels else max(dpi * 0.06, min(dpi * 0.15, r * 1.2))
         ctx.set_font(fs, 500)
-        ctx.fill_text(str(n), x, y + fs * 0.36)
+        ctx.fill_text(text, x, y + fs * 0.36, r * 2.2 if labels else None)
     ctx.restore()
 
 
-def draw_key(ctx, kb, names, dpi):
+def sum_for(n, seed, region, small=False):
+    """Colour by maths: a small sum whose answer is n ("2+3" or "8−3" for 5), the same for a space every time. In
+    a small space (small=True), an adding sum where it can be, short enough to read there."""
+    from .rng import mulberry32, pick
+    rnd = mulberry32((seed * 31 + region * 7919 + n) & 0xFFFFFFFF)
+    if n >= 2 and (small or pick(rnd, 2)):
+        a = 1 + pick(rnd, n - 1)
+        return f"{a}+{n - a}"
+    b = 1 + pick(rnd, 9)
+    return f"{n + b}−{b}"
+
+
+def draw_key(ctx, kb, names, dpi, title=None):
     """The key: a ring with each number, and the crayon it means, to try the colour in before starting."""
     cols = key_cols(kb.w, dpi)
     rows = math.ceil(len(names) / cols)
@@ -476,7 +491,7 @@ def draw_key(ctx, kb, names, dpi):
     ctx.fill_style = ctx.stroke_style = "#000"
     ctx.text_baseline, ctx.text_align = "alphabetic", "left"
     ctx.set_font(fs, 700)
-    ctx.fill_text("Colour key", kb.x, top)
+    ctx.fill_text(title or tr("Colour key"), kb.x, top)
     ctx.line_width = max(1, dpi / 150)
     for i, name in enumerate(names):
         cx = kb.x + (i % cols) * col_w + r + ctx.line_width
@@ -489,7 +504,7 @@ def draw_key(ctx, kb, names, dpi):
         ctx.fill_text(str(i + 1), cx, cy + fs * 0.3)
         ctx.text_align = "left"
         ctx.set_font(fs, 400)
-        ctx.fill_text(name, cx + r + fs * 0.5, cy + fs * 0.35, col_w - 2 * r - fs * 1.2)
+        ctx.fill_text(tr(name), cx + r + fs * 0.5, cy + fs * 0.35, col_w - 2 * r - fs * 1.2)
     ctx.restore()
 
 
@@ -616,16 +631,17 @@ def draw_design_page(ctx, g, box, spec, s, lw, raster=None):
     art, kb = art_box(box, g.dpi, s.cbn_colours)
     draw_design(ctx, g, art, spec.gen, spec.seed, spec.c, s, lw)
     r = pattern(g, art, spec, lw, s, raster)
-    draw_numbers(ctx, [q[:4] for q in r["spots"]], g.dpi)
-    draw_key(ctx, kb, r["names"], g.dpi)
+    sums = [sum_for(q[0], spec.seed, q[4], small=q[3] < g.dpi * 0.12) for q in r["spots"]] if s.cbn_maths else None
+    draw_numbers(ctx, [q[:4] for q in r["spots"]], g.dpi, sums)
+    draw_key(ctx, kb, r["names"], g.dpi, tr("Work out each sum, then colour:") if sums else None)
     return r
 
 
 def draw_answer(ctx, g, slot, d, s, lw, raster=None):
     """Answer page cell for a colour-by-number design: the design shrunk into the slot, each numbered space
     shaded grey by its number (1 lightest), to check a finished page against."""
-    from .page import design_box, draw_design
-    art, _kb = art_box(design_box(g, d, s), g.dpi, s.cbn_colours)
+    from .page import draw_design, item_box
+    art, _kb = art_box(item_box(g, d, s), g.dpi, s.cbn_colours)
     r = pattern(g, art, d, lw, s, raster)
     num = {q[4]: q[0] for q in r["spots"]}
     top = max(1, len(r["names"]))
@@ -650,5 +666,6 @@ def draw_answer(ctx, g, slot, d, s, lw, raster=None):
     ctx.save()
     ctx.set_font(fs, 400)
     ctx.fill_style, ctx.text_align = "#555", "center"
-    ctx.fill_text(f"Shaded by number: 1 lightest to {top} darkest", slot.x + slot.w / 2, slot.y + slot.h - fs * 0.3, slot.w)
+    ctx.fill_text(tr("Shaded by number: 1 lightest to {n} darkest").format(n=top), slot.x + slot.w / 2,
+                  slot.y + slot.h - fs * 0.3, slot.w)
     ctx.restore()

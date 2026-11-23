@@ -116,7 +116,9 @@ def _from_json(data):
     except (TypeError, ValueError):
         fmt = 0
     if fmt > FORMAT:
-        raise ProjectError(f"was saved by a newer Inkline ({data.get('version', 'unknown version')}). Update Inkline to open it")
+        from inkengine.i18n import tr
+        raise ProjectError(tr("was saved by a newer Inkline ({version}). Update Inkline to open it").format(
+            version=data.get("version", tr("unknown version"))))
     s = Settings.from_dict({**Settings().to_dict(), **Settings.from_dict(data["settings"]).to_dict()})
     photos, skipped = [], 0
     listed = data.get("photos") or []
@@ -144,7 +146,8 @@ def class_set(v):
     names = v.get("names")
     return {"copies": int(_num(v.get("copies"), 1, 1, 100)),
             "names": names[:4000] if isinstance(names, str) else "",
-            "vary": v.get("vary") is not False, "answers": v.get("answers") is not False}
+            "vary": v.get("vary") is not False, "answers": v.get("answers") is not False,
+            "answer_book": v.get("answer_book") is True}
 
 
 def class_set_json(cs):

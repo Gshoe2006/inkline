@@ -17,6 +17,7 @@ from functools import lru_cache
 from itertools import combinations
 
 from ..rng import pick
+from ..i18n import tr
 
 INSTRUCTIONS = "Fill each white square with 1 to 9 so every run adds up to its clue. No number repeats in a run."
 
@@ -312,6 +313,6 @@ def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, solve=False, **_opts)
     if not solve:
         ctx.set_font(min(dpi * 0.13, cap * 0.5), 400)
         ctx.text_align, ctx.fill_style = "center", "#555"
-        ctx.fill_text(INSTRUCTIONS, box.x + box.w / 2, top + gh + cap * 0.7, box.w)
+        ctx.fill_text(tr(INSTRUCTIONS), box.x + box.w / 2, top + gh + cap * 0.7, box.w)
     ctx.restore()
     return {"white": white, "runs": runs, "solution": solution, "starters": given}
