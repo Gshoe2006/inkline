@@ -68,3 +68,32 @@ def test_a_window_that_remembers_nothing_saves_no_preference(desktop, win, tmp_p
     w = win(remember=False)
     w.act_desktop.trigger()
     assert not (tmp_path / "preferences.json").exists()
+
+
+def test_a_style_with_wider_controls_widens_the_sidebar_instead_of_cutting_them_off(desktop, win):
+    from PySide6.QtCore import QSize
+    from PySide6.QtWidgets import QProxyStyle, QStyle, QStyleFactory
+
+    class Wide(QProxyStyle):   # like Breeze: roomier buttons and drop-downs than Inkline's
+        def sizeFromContents(self, ct, opt, size, w=None):
+            s = super().sizeFromContents(ct, opt, size, w)
+            if ct in (QStyle.ContentsType.CT_PushButton, QStyle.ContentsType.CT_ComboBox):
+                return QSize(s.width() + 90, s.height())
+            return s
+    app = QApplication.instance()
+    theme.apply(app, dark=False)
+    w = win()
+    sb = w.sidebar
+    app.processEvents()
+    assert sb.width() == theme.SIDEBAR_WIDTH
+    w.act_desktop.trigger()
+    app.setStyle(Wide(QStyleFactory.create("Fusion")))
+    for _ in range(3):
+        app.processEvents()
+    sc = sb._scroll
+    assert theme.SIDEBAR_WIDTH < sb.width() <= theme.MAX_SIDEBAR_WIDTH
+    assert sc.widget().width() <= sc.viewport().width()                     # nothing runs past the right edge
+    w.act_desktop.trigger()                                                  # Inkline's look: its own width again
+    for _ in range(3):
+        app.processEvents()
+    assert sb.width() == theme.SIDEBAR_WIDTH

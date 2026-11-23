@@ -6,7 +6,7 @@ defaults are 2.x's. The sections, in 2.x's order: Presets, then Design and Bookl
 Photo ("Convert a photo"), then Page text, Poster and Paper.
 """
 
-from PySide6.QtCore import QPoint, QSize, Qt, Signal
+from PySide6.QtCore import QEvent, QPoint, QSize, Qt, QTimer, Signal
 from PySide6.QtGui import QIntValidator, QKeySequence, QPixmap, QShortcut
 from PySide6.QtWidgets import (QAbstractItemView, QFrame, QHBoxLayout, QLabel, QListWidget, QListWidgetItem,
                                QProgressBar, QScrollArea, QTabBar, QVBoxLayout, QWidget)
@@ -85,10 +85,43 @@ class Sidebar(QFrame):
         self.col.setSpacing(theme.SECTION_GAP)
         scroll.setWidget(column)
         outer.addWidget(scroll, 1)
+        self._scroll, self._column = scroll, column
         self._build()
         self.col.addStretch(1)
-        outer.addWidget(self._footer())
+        self._foot = self._footer()
+        outer.addWidget(self._foot)
+        # the desktop's style (Breeze...) can make the controls wider than Inkline's own: the sidebar widens to fit
+        # them rather than cut them off on the right (fit_width)
+        self._fit_pending = False
+        column.installEventFilter(self)
         self.load()
+        self._fit_later()   # once shown: the widgets' sizes are only right after the stylesheet has polished them
+
+    def fit_width(self):
+        """As wide as Inkline's sidebar, or wider when the controls shown need more (up to MAX_SIDEBAR_WIDTH)."""
+        self._fit_pending = False
+        sc = self._scroll
+        bar = sc.verticalScrollBar().sizeHint().width()
+        need = max(self._column.minimumSizeHint().width() + bar + 2 * sc.frameWidth(),
+                   self._foot.minimumSizeHint().width())
+        w = max(theme.SIDEBAR_WIDTH, min(theme.MAX_SIDEBAR_WIDTH, need))
+        if w != self.width() or self.minimumWidth() != w:
+            self.setFixedWidth(w)
+
+    def _fit_later(self):
+        if not self._fit_pending:
+            self._fit_pending = True
+            QTimer.singleShot(0, self.fit_width)
+
+    def eventFilter(self, obj, ev):
+        if obj is self._column and ev.type() == QEvent.Type.LayoutRequest:   # a part shown or hidden, a restyle
+            self._fit_later()
+        return super().eventFilter(obj, ev)
+
+    def changeEvent(self, ev):
+        if ev.type() in (QEvent.Type.StyleChange, QEvent.Type.FontChange):
+            self._fit_later()
+        super().changeEvent(ev)
 
     # --- holders ------------------------------------------------------------------------------------
     def _brand(self, version):
