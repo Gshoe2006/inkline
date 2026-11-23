@@ -32,6 +32,7 @@ class Project:
     sel: int = 0          # the photo being cropped
     book_sel: int = 0     # the booklet page being edited
     skipped: int = 0      # photos in the file that couldn't be read (left out)
+    class_set: dict = None   # Paper → Copies and Names: how many, the names, new designs, answers (None: none)
 
 
 _PACKED = {}                  # photo id -> its PNG, base64: a photo's picture never changes (its crop is kept apart),
@@ -133,7 +134,25 @@ def _from_json(data):
                             name=str(p.get("name") or "photo")))
     sel = int(_num(data.get("sel"), 0, 0, max(0, len(photos) - 1)))
     book_sel = int(_num(data.get("bookSel"), 0, 0, max(0, len(s.page_list) - 1)))
-    return Project(replace(s, testpage=False), photos, sel, book_sel, skipped)
+    return Project(replace(s, testpage=False), photos, sel, book_sel, skipped, class_set(data.get("classSet")))
+
+
+def class_set(v):
+    """A class set as kept in a project (Copies, Names and their switches), each value checked; None if absent."""
+    if not isinstance(v, dict):
+        return None
+    names = v.get("names")
+    return {"copies": int(_num(v.get("copies"), 1, 1, 100)),
+            "names": names[:4000] if isinstance(names, str) else "",
+            "vary": v.get("vary") is not False, "answers": v.get("answers") is not False}
+
+
+def class_set_json(cs):
+    """What a project file keeps of a class set: {"classSet": ...}, or {} when it's as on a fresh start."""
+    cs = class_set(cs)
+    if cs is None or cs == class_set({}):
+        return {}
+    return {"classSet": cs}
 
 
 def load(path):

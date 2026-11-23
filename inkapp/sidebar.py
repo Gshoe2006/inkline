@@ -44,6 +44,9 @@ class Sidebar(QFrame):
     preset_chosen = Signal(str, str)   # ("b" built-in or "s" saved, name)
     preset_save = Signal(str)
     preset_delete = Signal(str)
+    class_list_save = Signal(str)     # Paper → Names: save the names as a list (the one chosen, to update it)
+    class_list_delete = Signal(str)
+    class_set_changed = Signal()      # Copies, Names or their switches changed (a project keeps them)
     photo_selected = Signal(int)
     photo_moved = Signal(int, int)
     photo_removed = Signal(int)
@@ -435,20 +438,38 @@ class Sidebar(QFrame):
         self.copies = line_edit(placeholder="1", max_length=3)
         self.copies.setValidator(_CopiesValidator(self.copies))
         self.copies.setAccessibleName("Copies to print or save")
-        self.copies.textChanged.connect(lambda _t: self.sync())
+        self.copies.textChanged.connect(lambda _t: (self.sync(), self.class_set_changed.emit()))
         self.copies_row = sec.add(OptionRow("Copies", self.copies))
         # a class set: one copy per name, each name written on its copy's "Name" line (never remembered either)
         self.copies_names = line_edit(placeholder="Optional: Ana, Ben, Cara…", max_length=4000)
         self.copies_names.setAccessibleName("Names: one copy for each, written on its Name line")
-        self.copies_names.textChanged.connect(lambda _t: self.sync())
+        self.copies_names.textChanged.connect(lambda _t: (self.sync(), self.class_set_changed.emit()))
         self.copies_names_row = sec.add(OptionRow("Names", self.copies_names))
+        # class lists kept in the settings folder (class-lists.json), to use again
+        self.class_lists = {}
+        self.class_list = combo([("", "Saved lists…")])
+        self.class_list.setAccessibleName("Use a saved class list")
+        self.class_list.activated.connect(self._class_list_picked)
+        self.class_list_save_btn = button("Save…", tip="Save these names as a list, to use again")
+        self.class_list_save_btn.clicked.connect(lambda: self.class_list_save.emit(self.class_list.value() or ""))
+        self.class_list_del = button("Delete", tip="Delete the chosen list")
+        self.class_list_del.setEnabled(False)
+        self.class_list_del.clicked.connect(lambda: self.class_list_delete.emit(self.class_list.value() or ""))
+        self.class_list_row = QWidget()
+        lrow = QHBoxLayout(self.class_list_row)
+        lrow.setContentsMargins(0, 0, 0, 0)
+        lrow.setSpacing(theme.PAIR_GAP)
+        lrow.addWidget(self.class_list, 1)
+        lrow.addWidget(self.class_list_save_btn)
+        lrow.addWidget(self.class_list_del)
+        sec.add(self.class_list_row)
         self.copies_vary = check("A new design on each copy")
         self.copies_vary.setChecked(True)
-        self.copies_vary.toggled.connect(lambda _on: self.sync())
+        self.copies_vary.toggled.connect(lambda _on: (self.sync(), self.class_set_changed.emit()))
         sec.add(self.copies_vary)
         self.copies_answers = check("Answer pages at the end")
         self.copies_answers.setChecked(True)
-        self.copies_answers.toggled.connect(lambda _on: self.sync())
+        self.copies_answers.toggled.connect(lambda _on: (self.sync(), self.class_set_changed.emit()))
         sec.add(self.copies_answers)
         self.copies_hint = sec.add(Hint())
         self.testpage_hint = sec.add(Hint("Print it at 100% (“Actual size”), then check the squares with a ruler. Always portrait."))
@@ -466,6 +487,43 @@ class Sidebar(QFrame):
             return int(self.copies.text())
         except ValueError:
             return None
+
+    def fill_class_lists(self, lists, selected=""):
+        """The saved class lists in the drop-down, by name; selected: the one to show chosen."""
+        self.class_lists = dict(lists)
+        c = self.class_list
+        c.blockSignals(True)
+        c.clear()
+        c.addItem("Saved lists…" if lists else "No saved lists yet", "")
+        for n in sorted(lists, key=str.lower):
+            c.addItem(n, n)
+        c.setCurrentIndex(max(0, c.findData(selected)))
+        c.setEnabled(bool(lists))
+        c.blockSignals(False)
+        self.class_list_del.setEnabled(bool(selected) and selected in lists)
+
+    def _class_list_picked(self, _i):
+        name = self.class_list.value() or ""
+        self.class_list_del.setEnabled(bool(name))
+        if name in self.class_lists:
+            self.copies_names.setText(self.class_lists[name])
+
+    def class_set(self):
+        """Copies, Names and their switches, as a project keeps them."""
+        return {"copies": self.copies_count(), "names": self.copies_names.text(),
+                "vary": self.copies_vary.isChecked(), "answers": self.copies_answers.isChecked()}
+
+    def set_class_set(self, cs=None):
+        """Put Copies, Names and their switches back (None: as on a fresh start)."""
+        cs = cs or {}
+        n = cs.get("copies", 1)
+        self.copies.setText(str(n) if n > 1 else "")
+        self.copies_names.setText(cs.get("names", ""))
+        self.copies_vary.setChecked(cs.get("vary", True))
+        self.copies_answers.setChecked(cs.get("answers", True))
+        self.class_list.setCurrentIndex(0)
+        self.class_list_del.setEnabled(False)
+        self.sync()
 
     def copies_names_list(self):
         """The names typed for a class set: they replace Copies, but only with the Name line on."""
@@ -809,6 +867,7 @@ class Sidebar(QFrame):
         n = len(names) if names else self.copies_count() if single else 1
         self.copies_row.setVisible(single)
         self.copies_names_row.setVisible(single)
+        self.class_list_row.setVisible(single)
         self.copies.setEnabled(not names)   # the names say how many
         can_vary, vary_note = jobs.copies_vary(s)
         typed = self.copies_typed()

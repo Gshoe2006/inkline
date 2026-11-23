@@ -17,8 +17,8 @@ from PySide6.QtCore import QEvent, QMimeData, QTimer, Qt, Signal
 from PySide6.QtGui import QAction, QGuiApplication, QImage, QKeySequence, QShortcut, QUndoCommand, QUndoStack
 from PySide6.QtPrintSupport import QAbstractPrintDialog, QPrintDialog, QPrinter
 from PySide6.QtWidgets import (QAbstractItemView, QAbstractSlider, QAbstractSpinBox, QApplication, QComboBox, QDialog,
-                               QFileDialog, QHBoxLayout, QLineEdit, QMainWindow, QMenu, QMenuBar, QMessageBox, QUndoView,
-                               QVBoxLayout, QWidget)
+                               QFileDialog, QHBoxLayout, QInputDialog, QLineEdit, QMainWindow, QMenu, QMenuBar, QMessageBox,
+                               QUndoView, QVBoxLayout, QWidget)
 from PySide6.QtGui import QPdfWriter
 
 from inkengine import book, photo
@@ -149,6 +149,10 @@ class Window(QMainWindow):
         self.setAcceptDrops(True)
         self.state = State()
         self.saved_presets = config.read("presets.json")
+        lists = config.read("class-lists.json").get("lists")
+        self.class_lists = {k: v for k, v in lists.items() if isinstance(k, str) and isinstance(v, str)} \
+            if isinstance(lists, dict) else {}
+        self._saved_class_set = project.class_set({})   # what the open project's file holds
         # the printer last chosen in the Print dialog ("" is the system's default): its dead edges are shown
         self.printer_name = config.read("printer.json").get("name", "") if remember else ""
         if not isinstance(self.printer_name, str):
@@ -237,6 +241,10 @@ class Window(QMainWindow):
         sb.preset_chosen.connect(self._apply_preset)
         sb.preset_save.connect(self._save_preset)
         sb.preset_delete.connect(self._delete_preset)
+        sb.class_list_save.connect(self._save_class_list)
+        sb.class_list_delete.connect(self._delete_class_list)
+        sb.fill_class_lists(self.class_lists)
+        sb.class_set_changed.connect(self._update_title)
         sb.photo_selected.connect(self._select_photo)
         sb.photo_moved.connect(self._move_photo)
         sb.photo_removed.connect(self._remove_photo)
@@ -729,16 +737,23 @@ class Window(QMainWindow):
                 self._msg(err)
 
     # --- projects (.inkline files) ------------------------------------------------------------------------
+    def _unsaved(self):
+        """Changes the project file doesn't have: an undo step, or (in a project) its class set."""
+        if not self.history.isClean():
+            return True
+        return self.project_path is not None and \
+            project.class_set(self.sidebar.class_set()) != project.class_set(self._saved_class_set)
+
     def _update_title(self, *_a):
         name = project.title(self.project_path) if self.project_path else ""
         # untitled work shows no unsaved mark: it was never a file (and the settings are remembered anyway)
         self.setWindowTitle(f"{name}[*] — Inkline {self.version}" if name else f"Inkline {self.version}")
         if name:
-            self.setWindowModified(not self.history.isClean())
+            self.setWindowModified(self._unsaved())
 
     def _ask_to_save(self):
         """Before the work is replaced: True to go on (saved, or the changes aren't wanted), False to stop."""
-        if self.history.isClean():
+        if not self._unsaved():
             return True
         name = project.title(self.project_path) if self.project_path else ""
         box = QMessageBox(QMessageBox.Icon.Question, "Save changes?",
@@ -765,6 +780,8 @@ class Window(QMainWindow):
         self.sidebar.load_crop()
         self.act_test.setChecked(False)
         self.sidebar.only_pages.clear()   # another book: every page again
+        self.sidebar.set_class_set(proj.class_set)   # the project's class set, or none
+        self._saved_class_set = project.class_set(proj.class_set or {})
         self.history.clear()        # Undo doesn't reach back into the work that was open before
         self._last = _Snapshot(st)
         self.history.setClean()
@@ -823,13 +840,15 @@ class Window(QMainWindow):
     def _write_project(self, path):
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)   # big photos take a moment to pack
         try:
-            project.save(path, self.state, self.version)
+            cs = self.sidebar.class_set()
+            project.save(path, self.state, self.version, project.class_set_json(cs))
         except (OSError, ValueError):
             self._msg(f"Couldn't save {os.path.basename(path)}. Check that the folder exists and you can write to it.")
             return False
         finally:
             QApplication.restoreOverrideCursor()
         self.project_path = os.path.abspath(path)
+        self._saved_class_set = project.class_set(cs)
         self.history.setClean()
         self._keep_copy()           # saved: the recovery copy goes
         self._update_title()
@@ -1192,6 +1211,39 @@ class Window(QMainWindow):
         self.sidebar.preset_name.clear()
         self.sidebar.fill_presets(nxt, f"s:{name}")
         self._msg(f"Updated preset “{name}”." if existed else f"Saved preset “{name}”.")
+
+    def _save_class_list(self, chosen):
+        """Paper → Names → Save…: keep the names typed as a list, under a name (the chosen list's, to update it)."""
+        names = self.sidebar.copies_names.text().strip()
+        if not jobs.parse_names(names):
+            self._msg("Type or paste the names first, then save them as a list.")
+            self.sidebar.copies_names.setFocus()
+            return
+        name, ok = QInputDialog.getText(self, "Save class list", "Name for this list:", text=chosen)
+        name = " ".join(name.split())[:40]
+        if not ok or not name:
+            return
+        existed = name in self.class_lists
+        nxt = {**self.class_lists, name: names}
+        err = config.write("class-lists.json", {"lists": nxt}, "Class lists")
+        if err:
+            self._msg(err)
+            return
+        self.class_lists = nxt
+        self.sidebar.fill_class_lists(nxt, name)
+        self._msg(f"Updated the list “{name}”." if existed else f"Saved the list “{name}”.")
+
+    def _delete_class_list(self, name):
+        if name not in self.class_lists:
+            return
+        nxt = {k: v for k, v in self.class_lists.items() if k != name}
+        err = config.write("class-lists.json", {"lists": nxt}, "Class lists")
+        if err:
+            self._msg(err)
+            return
+        self.class_lists = nxt
+        self.sidebar.fill_class_lists(nxt)
+        self._msg(f"Deleted the list “{name}”. The names typed stay until you clear them.")
 
     def _delete_preset(self, name):
         nxt = {k: v for k, v in self.saved_presets.items() if k != name}
