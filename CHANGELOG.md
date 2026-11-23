@@ -6,6 +6,53 @@ To release a new version, add a section headed `## <version>` (the same text as 
 pull request that bumps `VERSION`. When it merges, `.github/workflows/release.yml` builds the packages
 and publishes a GitHub Release with that section as its notes.
 
+## 5.1.0 - 2026-11-23
+
+Inkline 5.1 adds a week of worksheets in one click, and Inkline in French.
+
+### What's new
+
+- **A week of worksheets.** **Presets → Worksheet pack: a week, with answers** makes a booklet with one worksheet for each school day: a maths drill, handwriting, a crossword, a word search and a maze. Each is set for the age chosen under **Age**, the crossword and word search share a theme (animals, food or space), and the booklet has a cover, a name line on every page and the answers at the end. With **Paper → Copies** or **Names** every child gets a pack, and the answers can go in one teacher's book. Change any page in the page list. For another age, or another theme (on the crossword or word search page), pick the preset again.
+- **Inkline in French.** Choose **Français** under **View → Language**, or Inkline uses it when your system does. Everything in the window and on printed pages is in French, and word searches, crosswords and handwriting sheets use French words.
+- **Help improve the translations.** The Spanish and French haven't been checked by a native speaker yet. If you spot something wrong, use the **Translation fix** form on the issues page. To check a whole translation, `python3 packaging/translation_sheet.py es` (or `fr`) writes it as a spreadsheet with a column for better wording.
+
+### Upgrading
+
+Nothing changes in what Inkline needs. Your presets, settings, projects, recent files and printer carry over.
+
+**Windows**
+Run `inkline-5.1.0-windows-setup.exe`.
+
+**Debian / Ubuntu / Linux Mint / Pop!_OS**
+```sh
+sudo apt install ./inkline_5.1.0-1_amd64.deb
+```
+
+**Arch / CachyOS / Manjaro**
+```sh
+sudo pacman -U inkline-5.1.0-1-any.pkg.tar.zst
+```
+
+**Any distro, nothing installed**
+```sh
+chmod +x inkline-5.1.0-x86_64.AppImage && ./inkline-5.1.0-x86_64.AppImage
+```
+
+**Any other distro**
+```sh
+sh inkline-5.1.0.run            # or --system for every user
+```
+
+**Flatpak**
+```sh
+flatpak install --user inkline-5.1.0.flatpak     # if a .flatpak file is attached to this release
+sh packaging/flatpak/build.sh                    # or build it from a copy of the source
+```
+
+### Found a problem?
+
+Please open an issue saying what you did, what you expected, and what happened. Include your system (distro, or Windows version), and the printer if it's about printing.
+
 ## 5.0.0 - 2026-11-23
 
 Inkline 5.0 is made for the classroom: maths drills, handwriting, crosswords and colour by maths, several puzzles on one sheet, an answer book for the teacher, age levels, and Inkline in Spanish.
