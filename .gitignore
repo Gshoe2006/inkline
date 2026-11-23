@@ -15,3 +15,6 @@ selftest-output/
 build-flatpak/
 .flatpak-builder/
 repo-flatpak/
+
+# PyInstaller (packaging/windows/build.py)
+build/

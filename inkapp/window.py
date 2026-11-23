@@ -305,6 +305,18 @@ class Window(QMainWindow):
         v.addSeparator()
         self.act_test = act(v, "Printer &test page", self._toggle_test_page)
         self.act_test.setCheckable(True)
+        v.addSeparator()
+        self.act_desktop = act(v, "Use my &desktop's style", self._toggle_desktop_style)
+        self.act_desktop.setCheckable(True)
+        self.act_desktop.setChecked(theme.DESKTOP["on"])
+        name = theme.desktop_style_name()
+        if name:
+            self.act_desktop.setToolTip(f"Look like your other apps ({name.capitalize()}) instead of Inkline's own style")
+        else:   # the Flatpak, AppImage and .deb bring their own Qt, without the desktop's style plugins
+            self.act_desktop.setEnabled(False)
+            self.act_desktop.setToolTip("This copy of Inkline brings its own Qt, which can't load your desktop's style. "
+                                        "The Arch package and the .run installer use your system's Qt and can.")
+        v.setToolTipsVisible(True)
         h = mb.addMenu("&Help")
         act(h, "&What's new", lambda: self.show_whats_new())
         act(h, "&About Inkline", self._about)
@@ -646,6 +658,17 @@ class Window(QMainWindow):
             for a, b in ((self.act_pdf, sb.pdf_btn), (self.act_png, sb.png_btn), (self.act_svg, sb.svg_btn)):
                 a.setEnabled(b.isEnabled())
                 a.setToolTip(b.toolTip())
+
+    def _toggle_desktop_style(self, on):
+        theme.use_desktop(QApplication.instance(), on)
+        self.preview.page.update()
+        if self.remember:
+            err = config.write("preferences.json", {**config.read("preferences.json"), "desktop_style": bool(on)},
+                               "Preferences")
+            if err:
+                self._msg(err)
+        self._msg(f"Using your desktop's style ({theme.desktop_style_name().capitalize()})." if on else
+                  "Using Inkline's own style.")
 
     def _toggle_test_page(self):
         self.state.update(testpage=not self.state.settings.testpage)

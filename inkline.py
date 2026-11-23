@@ -7,6 +7,7 @@ everything with Qt and Python.
     python3 inkline.py                     the app
     python3 inkline.py FILE.inkline        the app, with that project open
     python3 inkline.py --selftest DIR      headless check: writes every kind of output into DIR
+    python3 inkline.py --version           prints the version
 """
 
 import os
@@ -32,6 +33,17 @@ def startup_project(args):
 
 
 def main():
+    if sys.stdout is None:   # the Windows app has no console: messages (the self-test's) go nowhere, not to a crash
+        sys.stdout = sys.stderr = open(os.devnull, "w", encoding="utf-8")
+    if len(sys.argv) > 1 and sys.argv[1] == "--version":   # what this copy is, and that it finds its own files
+        print(f"Inkline {app_version()}")
+        return
+    if os.name == "nt":      # its own taskbar button and icon on Windows, not Python's
+        try:
+            import ctypes
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Gshoe2006.Inkline")
+        except (AttributeError, OSError):
+            pass
     from PySide6.QtGui import QGuiApplication, QIcon
     from PySide6.QtWidgets import QApplication
 
@@ -44,8 +56,10 @@ def main():
     if len(sys.argv) > 2 and sys.argv[1] == "--selftest":
         from inkapp import selftest
         sys.exit(selftest.main(sys.argv[2]))
-    from inkapp import theme
+    from inkapp import config, theme
     from inkapp.window import Window
+    theme.remember_desktop(app)   # the desktop's own look, for View → Use my desktop's style
+    theme.DESKTOP["on"] = bool(theme.desktop_style_name()) and config.read("preferences.json").get("desktop_style") is True
     theme.apply(app)
     win = Window(app_version())
     win.show()

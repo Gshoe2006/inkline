@@ -187,13 +187,47 @@ QMenu::item:selected {{ background: {t.accent}; color: {t.accent_ink}; }}
 """
 
 
+# The desktop's own look, as Qt found it before Inkline styled anything (remember_desktop), and whether to use it
+# instead of Inkline's (View → Use my desktop's style). Only a copy of Inkline that runs on the system's Qt can
+# load the desktop's style (Breeze, Union...); the Flatpak, AppImage and .deb bring their own Qt, which has
+# only its plain Fusion style.
+DESKTOP = {"style": None, "palette": None, "on": False}
+PLAIN = {"fusion", "windows"}   # Qt's own styles: what a copy without the desktop's style plugins finds
+
+
+def remember_desktop(app):
+    """Note the style and colours Qt chose from the desktop, before apply() replaces them."""
+    if DESKTOP["style"] is None:
+        DESKTOP["style"] = app.style().name()
+        DESKTOP["palette"] = QPalette(app.palette())
+
+
+def desktop_style_name():
+    """The desktop's style, as Qt names it ("breeze"), or "" when this copy of Inkline can't load one."""
+    name = (DESKTOP["style"] or "").lower()
+    return "" if name in PLAIN else name
+
+
 def apply(app, dark=None):
-    """Style the whole application; returns the tokens used (the preview draws its light table with them)."""
+    """Style the whole application; returns the tokens used (the preview draws its light table with them).
+    With the desktop's style on, the widgets keep the desktop's look and colours; the preview's paper and table
+    still come from the tokens."""
     t = tokens(dark)
+    if DESKTOP["on"] and DESKTOP["style"]:
+        app.setStyleSheet("")
+        app.setStyle(DESKTOP["style"])
+        app.setPalette(DESKTOP["palette"] if DESKTOP["palette"] is not None else app.style().standardPalette())
+        return t
     app.setStyle("Fusion")
     app.setPalette(palette(t))
     app.setStyleSheet(stylesheet(t))
     return t
+
+
+def use_desktop(app, on):
+    """Switch between Inkline's look and the desktop's style."""
+    DESKTOP["on"] = bool(on)
+    return apply(app)
 
 
 def follow_system(app, changed=None):
