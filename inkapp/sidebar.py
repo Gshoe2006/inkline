@@ -11,7 +11,7 @@ from PySide6.QtGui import QIntValidator, QKeySequence, QPixmap, QShortcut
 from PySide6.QtWidgets import (QAbstractItemView, QFrame, QHBoxLayout, QLabel, QListWidget, QListWidgetItem,
                                QProgressBar, QScrollArea, QTabBar, QVBoxLayout, QWidget)
 
-from inkengine import book, cbn, photo
+from inkengine import ages, book, cbn, photo
 from inkengine.page import PAGE_KEYS, has_answer
 from inkengine.patterns import NAMES, crossword, maths, maze, name, spot, trace, words
 
@@ -226,6 +226,9 @@ class Sidebar(QFrame):
         self.design_note = sec.add(Hint())   # which booklet page the section edits, when it's built page by page
         self.gen = self._combo("gen", GEN_OPTIONS)
         sec.add(OptionRow("Pattern", self.gen))
+        self.age = self._combo("age", list(ages.AGES.items()))
+        sec.add(OptionRow("Age", self.age))
+        self.age_hint = sec.add(Hint("Sets complexity, line weight and options to suit. Change any of them after."))
         self.words_opts = SubOptions()
         self.ws_theme = self._combo("ws_theme", list(words.THEME_NAMES.items()))
         self.words_opts.add(OptionRow("Words from", self.ws_theme))
@@ -856,6 +859,7 @@ class Sidebar(QFrame):
         listing = s.booklet and bool(s.page_list)   # built page by page: Design edits the selected page
         mix_book = s.booklet and s.mix and not listing
         self.words_opts.setVisible(s.gen == "words")
+        self.age_hint.setVisible(s.age != "any")
         self.maths_opts.setVisible(s.gen == "maths")
         self.cross_opts.setVisible(s.gen == "crossword")
         self.cross_words_row.setVisible(s.cross_theme == "custom")

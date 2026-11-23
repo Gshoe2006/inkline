@@ -51,7 +51,7 @@ def _choices():
         STYLES = None
     return {"gen": set(NAMES), "paper": set(PAPER), "orient": {"portrait", "landscape"}, "maze_shape": set(maze.SHAPE_NAMES),
             "spot_base": set(spot.BASES), "ws_theme": set(words.THEME_NAMES) | {"custom"}, "name_bg": set(name.BACKGROUNDS),
-            "maths_kind": set(maths.KINDS), "trace_source": set(trace.SOURCES), "cross_theme": set(crossword.THEME_NAMES),
+            "age": {"any", "4-6", "7-9", "10+"}, "maths_kind": set(maths.KINDS), "trace_source": set(trace.SOURCES), "cross_theme": set(crossword.THEME_NAMES),
             "grid": set(poster.GRIDS), "mode": {"make", "convert"}, "fit": {"contain", "cover"},
             **({"style": set(STYLES)} if STYLES else {})}
 
@@ -75,6 +75,7 @@ class Settings:
     gen: str = "maze"
     seed: int = 20261117
     complexity: int = 5          # 1..10
+    age: str = "any"             # ages.AGES: a starting point for complexity and options (any, 4-6, 7-9, 10+)
     weight: int = 4              # line weight 1..10
     frame: bool = False          # border around the design
     title: str = ""

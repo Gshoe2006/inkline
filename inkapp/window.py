@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QAbstractSlider, QAbstractSpin
                                QUndoView, QVBoxLayout, QWidget)
 from PySide6.QtGui import QPdfWriter
 
-from inkengine import book, photo
+from inkengine import ages, book, photo
 from inkengine.page import PAGE_KEYS, Settings, clean_page, design_box, geometry, single_page
 from inkengine.patterns import NAMES
 
@@ -42,7 +42,7 @@ STEP_NAMES = {"gen": "Pattern", "complexity": "Complexity", "weight": "Line weig
               "page_nums": "Page numbers", "key": "Answer pages", "maze_shape": "Maze shape", "maze_word": "Word or name", "spot_base": "Picture",
               "ws_theme": "Words from", "ws_words": "Your words", "name_text": "Name or word", "name_bg": "Around the letters",
               "maths_kind": "Sums", "trace_source": "Trace", "trace_text": "Words to trace",
-              "cbn_maths": "Colour by maths", "cross_theme": "Crossword words", "cross_words": "Crossword words and clues",
+              "cbn_maths": "Colour by maths", "age": "Age", "cross_theme": "Crossword words", "cross_words": "Crossword words and clues",
               "mode": "Mode", "style": "Style", "brightness": "Brightness", "contrast": "Contrast", "threshold": "Threshold",
               "dot": "Dot size", "fit": "Placement", "invert": "Invert", "pnono_size": "Squares across",
               "pnono_answer": "Show the answer", "pcbn_colours": "Colours", "photobook": "Photo book", "pcover": "Cover page",
@@ -363,8 +363,18 @@ class Window(QMainWindow):
             st.page = 0
         elif key == "cover" and st.book_page is not None:
             self._show_book_page()
-        if st.book_page is not None and key in PAGE_KEYS and key != "seed":
-            st.write_page(**{key: getattr(st.settings, key)})   # the Design section edits the selected page
+        more = {}
+        if key == "age":   # an age: complexity and options to suit (one step with the age itself)
+            more = ages.for_age(st.settings)
+        elif key == "gen" and s.age != "any":   # another pattern at the age chosen: its complexity for that age
+            more = ages.for_pattern(st.settings)
+        if more:
+            st.update(**more)
+            self.sidebar.load()
+            self._step_name = STEP_NAMES.get(key, key)   # "Undo Age", not "Undo Changes"
+        if st.book_page is not None and (key in PAGE_KEYS or more) and key != "seed":
+            # the Design section edits the selected page
+            st.write_page(**{k: getattr(st.settings, k) for k in [key, *more] if k in PAGE_KEYS})
             self.sidebar.fill_pages()
         elif st.listing and key in BOOKLET_LOOK:
             self.sidebar.refresh_thumbs()
