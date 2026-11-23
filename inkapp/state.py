@@ -18,6 +18,8 @@ BUILTIN_PRESETS = {
     "Dot-to-dot booklet with answers": {"mode": "make", "gen": "dots", "booklet": True, "pages": 8, "ramp": True, "mix": False, "cover": True, "pageNums": True, "key": True, "poster": False, "weight": 4},
     "Spot the difference booklet with answers": {"mode": "make", "gen": "spot", "spotBase": "mandala", "booklet": True, "pages": 8, "ramp": True, "mix": False, "cover": True, "pageNums": True, "key": True, "poster": False},
     "Kakuro booklet with answers": {"mode": "make", "gen": "kakuro", "booklet": True, "pages": 8, "ramp": True, "mix": False, "cover": True, "pageNums": True, "key": True, "poster": False},
+    # a week of worksheets for the age chosen (pack.week builds its pages when it's applied)
+    "Worksheet pack: a week, with answers": {"pack": True},
     "Newspaper halftone photo": {"mode": "convert", "style": "halftone", "dot": 3, "contrast": 120, "brightness": 0, "invert": False},
     "Engraved photo": {"mode": "convert", "style": "engrave", "dot": 2, "contrast": 110, "brightness": 0, "invert": False},
     "Colour-by-number mandala": {"mode": "make", "gen": "mandala", "cbn": True, "cbnColours": 6, "complexity": 3, "weight": 5, "frame": False, "booklet": False, "poster": False},

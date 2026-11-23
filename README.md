@@ -6,13 +6,15 @@ A desktop app for Linux and Windows that converts photos to, or generates, black
 - **Convert a photo:** Floyd–Steinberg, Atkinson and ordered dithering, halftone dots, engraving lines and stippling dots (both also save as SVG), solid black & white, a line drawing (colouring page), colour by number (regions of similar colour, each numbered, with a key naming the crayon to use; also saves as SVG), or a nonogram puzzle that reveals the photo (always solvable by logic alone), with rotate, zoom and pan to crop.
 - **Photo books:** turn several photos into one colouring-book PDF, one page each with its own crop, plus an optional cover, title, name line and page numbers.
 - **Fold-and-staple books:** booklets and photo books can print two half-size pages per side, double-sided, so the sheets fold and staple into a real little book in page order.
+- **Worksheet packs:** *Presets → Worksheet pack: a week, with answers* makes a booklet of five worksheets, one for each school day (a maths drill, handwriting, a crossword, a word search and a maze), set for the age chosen under *Age* and sharing one theme, with a cover, name line and answer pages. With *Paper → Copies* or *Names* it makes a pack for every child, and the answers can go in one teacher's book.
 - **Booklets:** turn any pattern (or every pattern but name pages, mixed) into a multi-page PDF with a cover, a title and name line, page numbers, difficulty that ramps up page by page, a *New design for this page* button to swap any single page (answers follow), and answer pages for mazes, dot-to-dots, sudoku, word search, nonograms, spot the difference and kakuro. Or build a booklet page by page: *Edit pages one by one* lists its pages, each with a small picture and its own pattern, options and complexity (so each word search page can have its own words, and each name page its own name), to add, drag into order, duplicate (with a new design) or remove.
 - **Projects:** *File → Save project* (Ctrl+S) keeps everything you're making in one `.inkline` file, with the photos inside it, so it opens again later or on another computer even if the original pictures have moved. *File → Open project…* (Ctrl+Shift+O) and *Open recent project* bring it back; the window title shows the project's name and whether it has unsaved changes. Installed from a package, project files get their own icon in your file manager and open in Inkline with a double-click; `python3 inkline.py book.inkline` does the same from a terminal. If Inkline closes unexpectedly, the next start offers to bring back the work you hadn't saved: while there's unsaved work, a copy is kept in the settings folder at most once a minute.
-- **Presets:** twenty built-in starting points (start fresh, colouring page, name page, maze worksheet, maze booklet, name maze, word search booklet, sudoku booklet, nonogram booklet, dot-to-dot booklet, spot the difference booklet, kakuro booklet, colour-by-number mandala, halftone photo, engraved photo, stippled photo, colour-by-number photo, photo nonogram, photo colouring page, wall poster) plus your own saved settings.
+- **Presets:** twenty-one built-in starting points (start fresh, a week's worksheet pack, colouring page, name page, maze worksheet, maze booklet, name maze, word search booklet, sudoku booklet, nonogram booklet, dot-to-dot booklet, spot the difference booklet, kakuro booklet, colour-by-number mandala, halftone photo, engraved photo, stippled photo, colour-by-number photo, photo nonogram, photo colouring page, wall poster) plus your own saved settings.
 - **Picks up where you left off:** settings and the current design are restored on the next start (*Presets → Start fresh* resets them). Shortcuts: Ctrl+P print, Ctrl+S save project, Ctrl+Shift+S save project as, Ctrl+E save PDF, Ctrl+Shift+E save PNG, Ctrl+O open image, Ctrl+Shift+O open project, Ctrl+N new design, Ctrl+Shift+N more designs (six to choose from), Ctrl+Z undo, Ctrl+Shift+Z redo, Ctrl+H undo history, ←/→ booklet pages. Recently opened photos are under *File → Open recent image*.
 - **Printer test page:** true-size squares and rulers, edge-margin marks, every dither style and dot size, and every line weight, to check your printer at a glance.
 - **Print-ready output:** Letter or A4 at 150/300 dpi, with Print, Save PNG and Save PDF at true paper size. Booklets and photo books can print or save only some pages (*Paper → Print or save only*, e.g. `3-5, 8, cover`). The preview hatches the edge your printer can't reach and warns if the design runs into it.
 - **Posters:** print any design or photo big across 2×1 up to 4×4 sheets, with overlap strips, trim marks and sheet labels (A1, A2…) for assembly.
+- **English, Spanish and French:** Inkline uses your system's language, or choose one under *View → Language*. The window and everything printed are translated; word searches, crosswords and handwriting sheets use words and an alphabet in that language.
 - **SVG export:** generated designs save as true vector lines at real paper size, for Inkscape, Cricut/Silhouette cutting machines and laser cutters.
 
 ## Install
@@ -115,6 +117,34 @@ python packaging/windows/build.py         # dist/Inkline/ and dist/inkline-<vers
 
 - `inkline-<version>-<rel>-any.pkg.tar.zst` — Arch / CachyOS / Manjaro package: `sudo pacman -U dist/inkline-*.pkg.tar.zst`
 - `inkline-<version>.run` — universal installer for any distro: `sh dist/inkline-*.run` (`--system`, `--uninstall`, `--help`)
+
+## Translations
+
+Inkline is in English, Spanish (`es`) and French (`fr`). Each translation is `inkengine/locale/<code>.json`: the
+English text as written in the code, and its translation. Word search themes, crossword words and clues, and the
+default handwriting words are written in each language in `inkengine/patterns/words.py`, `crossword.py` and
+`trace.py`.
+
+**Check a translation.** The Spanish and French were written without a native speaker's review, so corrections are
+very welcome. Open a [translation fix](https://github.com/Gshoe2006/inkline/issues/new?template=translation.yml)
+issue for a single string, or check the lot in a spreadsheet:
+
+```sh
+python3 packaging/translation_sheet.py fr      # writes inkline-fr-review.csv: English, French, Better wording, Comment
+```
+
+**Add a language.**
+
+1. Copy `es.json` to `<code>.json` and translate each value. Keep every `{placeholder}`, and keep one `&` before a
+   letter in menu items (letters must differ within a menu).
+2. Add the language to `LANGUAGES` in `inkengine/i18n.py`. If its alphabet has letters of its own (Spanish Ñ), add
+   them to `KEEP_LETTERS` and `ALPHABETS`.
+3. Add its word lists to `THEMES_BY_LANGUAGE` in `words.py` and `crossword.py`, and to `DEFAULT_WORDS` in
+   `trace.py`.
+4. Add two sample words to `SAMPLES` in `tests/test_i18n.py`, then run it. It checks the file covers every string,
+   and drives the window through every pattern and mode in the new language, failing on anything left in English.
+
+`python3 packaging/i18n_strings.py <code>` lists strings a translation is missing.
 
 ## Project layout
 

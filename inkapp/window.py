@@ -21,11 +21,11 @@ from PySide6.QtWidgets import (QAbstractItemView, QAbstractSlider, QAbstractSpin
                                QUndoView, QVBoxLayout, QWidget)
 from PySide6.QtGui import QPdfWriter
 
-from inkengine import ages, book, photo
+from inkengine import ages, book, pack, photo
 from inkengine import i18n
 from inkengine.i18n import tr
 from inkengine.page import PAGE_KEYS, Settings, clean_page, design_box, geometry, single_page
-from inkengine.patterns import NAMES
+from inkengine.patterns import NAMES, crossword
 
 from . import config, jobs, project, recovery, theme, whatsnew
 from .preview import Preview
@@ -185,7 +185,8 @@ class Window(QMainWindow):
 
         self.renderer = Renderer()
         self.renderer.finished.connect(self._rendered)
-        self.renderer.failed.connect(lambda _n, _why: self._msg(tr("The preview couldn't be drawn. Try another setting, or start fresh from Presets.")))
+        self.renderer.failed.connect(self._render_failed)
+        self.shown = 0   # the last preview request whose result reached the window (tests wait for it)
         self.renderer.busy.connect(lambda on: None if on or not self.renderer.idle else self.preview.set_busy(""))
         self.renderer.converting.connect(lambda: self.preview.set_busy(tr("converting photo…")))
         self.worker = Renderer()        # saving and printing
@@ -1202,7 +1203,17 @@ class Window(QMainWindow):
                      copy=st.copy, class_set=self.sidebar.class_set_view())
         self.renderer.submit(lambda: render_view(snap))
 
+    def _render_failed(self, n, _why):
+        self.shown = max(self.shown, n)
+        self._msg(tr("The preview couldn't be drawn. Try another setting, or start fresh from Presets."))
+
+    @property
+    def preview_settled(self):
+        """Every preview asked for has been drawn and shown: nothing scheduled, drawing or on its way."""
+        return not self._render_timer.isActive() and self.renderer.idle and self.shown == self.renderer.latest
+
     def _rendered(self, n, r):
+        self.shown = max(self.shown, n)
         if n != self.renderer.latest:
             return
         self.state.page = r.view.index
@@ -1246,7 +1257,11 @@ class Window(QMainWindow):
         if p is None:
             return
         self._step_name = tr("“{name}”").format(name=tr(name) if group == "b" else name)   # Edit → Undo “Maze booklet with answers”
-        self.state.apply_preset(p)
+        if p.get("pack"):   # a worksheet pack: its pages are made for the age (and theme) chosen now
+            self.state.update(**pack.week(self.state.settings, [new_seed() for _ in pack.DAYS]))
+            self.state.page = self.state.book_sel = 0
+        else:
+            self.state.apply_preset(p)
         self.state.mirror()
         self.sidebar.only_pages.clear()
         self.sidebar.load()
@@ -1254,7 +1269,13 @@ class Window(QMainWindow):
         if self.state.settings.mode == "convert" and not self.state.photos:
             self.state.photos = [sample_photo()]
             self.sidebar.fill_photos()
-        self._msg(tr("Applied “{name}”.").format(name=tr(name)))
+        s = self.state.settings
+        if p.get("pack"):
+            self._msg(tr("A week of worksheets for {age}, about {theme}. For another age, choose it under Age; for another "
+                         "theme, choose it on the crossword or word search page. Then choose this preset again.").format(
+                age=tr(ages.AGES[s.age]).lower(), theme=tr(crossword.THEME_NAMES[s.cross_theme]).lower()))
+        else:
+            self._msg(tr("Applied “{name}”.").format(name=tr(name)))
         self.schedule()
         self.remember_soon()
 
