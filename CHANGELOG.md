@@ -6,6 +6,64 @@ To release a new version, add a section headed `## <version>` (the same text as 
 pull request that bumps `VERSION`. When it merges, `.github/workflows/release.yml` builds the packages
 and publishes a GitHub Release with that section as its notes.
 
+## 5.4.0 - 2026-11-24
+
+Inkline 5.4 speaks Portuguese and German, adds seasonal themes, fractions, number lines, times grids and symmetry, and opens long booklets faster.
+
+### What's new
+
+- **Inkline in Portuguese and German.** Choose **Português** (Brazil) or **Deutsch** under **View → Language**, or Inkline uses it when your system does. Everything in the window and on printed pages is translated, word searches and crosswords use words in that language (German grids write Ä as AE and ß as SS, as German crosswords do), and joined-up handwriting follows Brazil's or Germany's school style. Brazil, Portugal and Germany are also choices under **Handwriting → Style**. Corrections to the translations are welcome.
+- **Seasonal themes.** Word searches, crosswords and worksheet packs have **Autumn**, **Halloween**, **Winter**, **Spring** and **Summer** themes, in every language.
+- **Fractions, number lines and times grids.** **Pattern → Fractions, number lines and times grids**, with a **Worksheet** choice:
+  - **Fractions of shapes:** circles, bars and squares cut into equal parts, to say what fraction is shaded, and at higher complexity to shade a fraction;
+  - **Number lines:** marks to fill in, from counting in ones up to negative numbers and tenths;
+  - **Times grid:** a multiplication square, from 5 × 5 to 12 × 12, with answers to fill in.
+
+  Each has an answer page.
+- **Symmetry.** **Pattern → Symmetry** shows half a picture of shaded squares and a mirror line, for the child to shade the other half. From complexity 7 there are two mirror lines, and one quarter to complete into four.
+
+### Fixed
+
+- **Long booklets open faster.** The page list now draws the pictures of the pages you can see first and the rest as you scroll, so a 40-page booklet is ready in about half the time.
+- **The sidebar keeps its width** in every language with wider desktop fonts. Before, a label beside a button could push it wider.
+
+### Upgrading
+
+Nothing changes in what Inkline needs (the joined-up handwriting fonts come with it). Your presets, settings, projects, recent files and printer carry over.
+
+**Windows**
+Run `inkline-5.4.0-windows-setup.exe`.
+
+**Debian / Ubuntu / Linux Mint / Pop!_OS**
+```sh
+sudo apt install ./inkline_5.4.0-1_amd64.deb
+```
+
+**Arch / CachyOS / Manjaro**
+```sh
+sudo pacman -U inkline-5.4.0-1-any.pkg.tar.zst
+```
+
+**Any distro, nothing installed**
+```sh
+chmod +x inkline-5.4.0-x86_64.AppImage && ./inkline-5.4.0-x86_64.AppImage
+```
+
+**Any other distro**
+```sh
+sh inkline-5.4.0.run            # or --system for every user
+```
+
+**Flatpak**
+```sh
+flatpak install --user inkline-5.4.0.flatpak     # if a .flatpak file is attached to this release
+sh packaging/flatpak/build.sh                    # or build it from a copy of the source
+```
+
+### Found a problem?
+
+Please open an issue saying what you did, what you expected, and what happened. Include your system (distro, or Windows version), and the printer if it's about printing.
+
 ## 5.3.0 - 2026-11-23
 
 Inkline 5.3 writes joined-up handwriting the way your country's schools teach it, and makes its SVGs look right everywhere.
