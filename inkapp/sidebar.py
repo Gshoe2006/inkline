@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QFrame, QHBoxLayout, QLabel, Q
 from inkengine import ages, book, cbn, pack, photo
 from inkengine.i18n import tr
 from inkengine.page import PAGE_KEYS, PANELS, SHEETS, has_answer, sheet_gens
-from inkengine.patterns import NAMES, clock, crossword, maths, maze, money, name, spot, trace, words
+from inkengine.patterns import NAMES, clock, crossword, fractions, maths, maze, money, name, spot, trace, words
 
 from . import jobs, theme, thumbs
 from .jobs import MAX_COPIES
@@ -29,11 +29,14 @@ GEN_OPTIONS = [("mandala", "Mandala (colouring page)"), ("maze", "Maze"), ("truc
                ("trace", "Handwriting (letters and words to trace)"), ("crossword", "Crossword"),
                ("clock", "Telling the time (clock faces)"),
                ("scramble", "Unscramble (mixed-up words)"),
-               ("spelltest", "Spelling test (lines to write words read aloud)")]
+               ("spelltest", "Spelling test (lines to write words read aloud)"),
+               ("fractions", "Fractions, number lines and times grids"),
+               ("symmetry", "Symmetry (shade the mirror half)")]
 GRID_OPTIONS = [("2x2", "2 × 2"), ("3x3", "3 × 3"), ("4x4", "4 × 4"), ("2x1", "2 across × 1"), ("3x2", "3 across × 2"),
                 ("1x2", "1 across × 2"), ("2x3", "2 across × 3")]
 CBN_PATTERN_NOTE = "Repeated spaces share a number, and spaces side by side get different colours."
 MAX_PHOTOS = 60
+THUMB_MARGIN = 3      # page pictures drawn beyond the rows that can be seen, so a short scroll finds them ready
 MAX_BOOK_PAGES = 40   # design pages in a booklet built page by page, as the quick booklet's slider
 MARGINS = [(0.25, "¼ in"), (0.5, "½ in"), (0.75, "¾ in"), (1.0, "1 in")]   # Paper → Margin
 
@@ -272,6 +275,9 @@ class Sidebar(QFrame):
         self.money = self._combo("money", list(money.CURRENCIES.items()))
         self.money_row = self.maths_opts.add(OptionRow("Money", self.money))
         self.maths_opts.add(Hint("Complexity sets how big the numbers get and how many sums there are."))
+        self.frac_opts = SubOptions()
+        self.frac_kind = self._combo("frac_kind", list(fractions.KINDS.items()))
+        self.frac_opts.add(OptionRow("Worksheet", self.frac_kind))
         self.clock_opts = SubOptions()
         self.clock_task = self._combo("clock_task", list(clock.TASKS.items()))
         self.clock_opts.add(OptionRow("Clocks", self.clock_task))
@@ -293,7 +299,7 @@ class Sidebar(QFrame):
         self.cross_words_row = self.cross_opts.add(OptionRow("Your words and clues", self.cross_words))
         self.cross_words_hint = self.cross_opts.add(Hint("Each as word: clue, separated by ; (a word without a clue gets ?)."))
         self.cross_note = self.cross_opts.add(Hint())
-        sec.add(self.words_opts, self.maze_opts, self.name_opts, self.spot_opts, self.maths_opts, self.clock_opts,
+        sec.add(self.words_opts, self.maze_opts, self.name_opts, self.spot_opts, self.maths_opts, self.frac_opts, self.clock_opts,
                 self.trace_opts, self.cross_opts)
         sec.add(self._slider("complexity", "Complexity", 1, 10, lambda v: f"{v} / 10"))
         sec.add(self._slider("weight", "Line weight", 1, 10, lambda v: f"{v / 150 * 25.4:.2f} mm"))
@@ -350,6 +356,7 @@ class Sidebar(QFrame):
         self.page_count_row = self.book_opts.add(_row(self.page_count, self.page_add, stretch_first=True))
         self.page_list = _PageList()
         self.page_list.moved.connect(lambda i, j: self.book_page_moved.emit(i, j - i))
+        self.page_list.verticalScrollBar().valueChanged.connect(self._request_visible_thumbs)
         # with the page list focused, the selected page: copy, remove, duplicate, move (as its row's buttons do)
         keys = ((QKeySequence.StandardKey.Copy, self.pages_copy),
                 (QKeySequence(Qt.Key.Key_Delete), lambda: self._page_key("remove")),
@@ -887,7 +894,26 @@ class Sidebar(QFrame):
             label.setFixedSize(w + 2, h + 2)   # the page and its 1 px edge: at most the 36 px slot
             img = self.thumbs.get(k)
             label.setPixmap(QPixmap.fromImage(img) if img is not None else QPixmap())
-        self.thumbs.request(s, designs[:len(rows)])
+        self._designs = designs[:len(rows)]
+        self._request_visible_thumbs()
+
+    def _request_visible_thumbs(self, *_args):
+        """Draw the pictures of the rows that can be seen (and a few either side), nearest the selected page first:
+        a long booklet doesn't draw forty pictures at once when it opens; scrolling draws the rest."""
+        designs = getattr(self, "_designs", [])
+        if not designs or not self.state.listing:
+            return
+        lst, n = self.page_list, len(designs)
+        top = lst.indexAt(QPoint(4, 2)).row()
+        bottom = lst.indexAt(QPoint(4, lst.viewport().height() - 2)).row()
+        sel = max(0, min(n - 1, self.state.book_sel))
+        if top < 0:   # not laid out yet: around the selected page
+            top, bottom = sel - 3, sel + 3
+        elif bottom < 0:
+            bottom = n - 1
+        lo, hi = max(0, top - THUMB_MARGIN), min(n - 1, bottom + THUMB_MARGIN)
+        order = sorted(range(lo, hi + 1), key=lambda i: (not top <= i <= bottom, abs(i - sel)))
+        self.thumbs.request(self.state.settings, [designs[i] for i in order])
 
     def _thumb_ready(self, k):
         rows = getattr(self, "_thumb_rows", [])
@@ -918,6 +944,7 @@ class Sidebar(QFrame):
         self._loading = was
         self.maths_opts.setVisible(s.gen == "maths")
         self.clock_opts.setVisible(s.gen == "clock")
+        self.frac_opts.setVisible(s.gen == "fractions")
         self.money_row.setVisible(s.maths_kind == "money")
         self.pack_words_row.setVisible(s.pack_theme == "spelling")
         spelling = s.pack_theme == "spelling"
@@ -1136,6 +1163,8 @@ def _page_detail(gen, p):
         return p.get("name_text", "").strip()
     if gen == "maths":
         return tr(maths.KINDS.get(p.get("maths_kind", "add"), ""))
+    if gen == "fractions":
+        return tr(fractions.KINDS.get(p.get("frac_kind", "fractions"), ""))
     if gen == "clock":
         return tr(clock.TASKS.get(p.get("clock_task", "read"), ""))
     if gen == "trace":

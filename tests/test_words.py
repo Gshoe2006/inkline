@@ -30,7 +30,8 @@ def test_matches_javascript(k):
 
 
 def test_recordings_cover_every_theme_and_all_eight_directions():
-    assert {k["theme"] for k in CASES} == set(words.THEME_NAMES)
+    themes_2x = {"animals", "ocean", "space", "food", "weather", "sports", "custom"}   # 2.x's (the seasons came later)
+    assert {k["theme"] for k in CASES} == themes_2x and themes_2x <= set(words.THEME_NAMES)
     assert len(words.level(max(k["c"] for k in CASES))["dirs"]) == 8
 
 

@@ -21,12 +21,14 @@ LETTERS = {"print": "Print letters", "joined": "Joined-up (cursive)"}
 # joined-up styles (inkengine/fonts, Playwrite): "auto" is the school style of Inkline's language
 HANDS = {"auto": "Your language's school style", "gb": "England", "us-trad": "United States (traditional cursive)",
          "us-modern": "United States (modern cursive)", "au": "Australia (New South Wales)", "nz": "New Zealand",
-         "ie": "Ireland", "ca": "Canada", "es": "Spain", "mx": "Mexico", "fr": "France"}
+         "ie": "Ireland", "ca": "Canada", "es": "Spain", "mx": "Mexico", "fr": "France", "br": "Brazil",
+         "pt": "Portugal", "de": "Germany"}
 UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 LOWER = UPPER.lower()
 DIGITS = "0123456789"
 DEFAULT_WORDS = {"en": ["cat", "dog", "sun", "tree"], "es": ["gato", "perro", "sol", "árbol"],
-                 "fr": ["chat", "chien", "soleil", "arbre"]}   # Your own words, empty
+                 "fr": ["chat", "chien", "soleil", "arbre"], "pt": ["gato", "bola", "sol", "árvore"],
+                 "de": ["Katze", "Hund", "Sonne", "Baum"]}   # Your own words, empty
 
 
 def rows_for(c):

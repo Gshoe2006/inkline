@@ -503,3 +503,27 @@ def test_keys_stay_in_the_page_list(win):
     field.setCursorPosition(0)
     QTest.keyClick(field, Qt.Key.Key_Delete)
     assert field.text() == "bc" and len(win.state.settings.page_list) == 6
+
+
+def test_a_long_booklet_draws_only_the_pictures_that_can_be_seen(win):
+    """Forty pages don't draw forty pictures when the list fills: the rows in view (and a few more), then the
+    rest as the list scrolls."""
+    _booklet(win)
+    _fill(win, 40)
+    sb = win.sidebar
+    settle(win)
+    end = time.time() + 20
+    while not sb.thumbs.idle and time.time() < end:
+        QApplication.processEvents()
+        time.sleep(0.01)
+    drawn = len(sb.thumbs._cache)
+    assert 0 < drawn <= 15
+    bar = sb.page_list.verticalScrollBar()
+    assert bar.maximum() > 0
+    bar.setValue(bar.maximum())
+    last = sb._thumb_rows[-1]
+    end = time.time() + 20   # until the last row's picture has arrived (it reaches the list after the drawing)
+    while last.pixmap().isNull() and time.time() < end:
+        QApplication.processEvents()
+        time.sleep(0.01)
+    assert len(sb.thumbs._cache) > drawn and not last.pixmap().isNull()   # scrolled to the end: drawn too

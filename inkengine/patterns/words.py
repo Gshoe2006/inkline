@@ -24,6 +24,16 @@ THEMES = {
     "food": "apple bread cheese pizza pasta soup salad banana grape mango carrot rice honey cookie muffin peach lemon toast butter pear plum",
     "weather": "rain snow wind cloud storm sunny thunder fog hail frost rainbow breeze mist sleet heat chilly drizzle tornado",
     "sports": "soccer tennis golf hockey rugby cycling skating skiing rowing boxing karate surfing archery baseball cricket diving judo running",
+    "autumn": "leaf acorn conker pumpkin harvest apple squirrel hedgehog mushroom rake wind orange brown scarf "
+              "boots school pencil satchel berry chestnut hay owl misty puddle",
+    "halloween": "pumpkin ghost bat witch broom cat costume mask candy sweets spider web moon owl lantern cauldron "
+                 "potion wizard skeleton monster spooky party treat night hat",
+    "winter": "snow ice cold scarf mitten hat coat sledge jumper glove frost fire cocoa boots igloo skate penguin "
+              "icicle present star candle blanket holly robin december",
+    "spring": "flower tulip daffodil lamb chick nest egg bunny rain puddle blossom bee butterfly seed bud garden "
+              "grass lily bird duckling umbrella frog sprout april",
+    "summer": "sun beach sand bucket spade shell wave swim cone lolly picnic holiday hat goggles kite camping tent "
+              "boat island seaside lemonade watermelon flipflops shorts july",
 }
 # The same themes in Spanish, used when Inkline is in Spanish (words keep Ñ; other accents come off, as Spanish
 # word searches print them)
@@ -40,6 +50,16 @@ THEMES_ES = {
                "llovizna tornado",
     "sports": "futbol tenis golf hockey rugby ciclismo patinaje esqui remo boxeo karate surf tiro beisbol criquet "
               "buceo judo carrera",
+    "autumn": "hoja bellota castaña calabaza cosecha manzana ardilla erizo seta rastrillo viento naranja marron "
+              "bufanda botas colegio lapiz mochila uva nuez paja buho niebla charco",
+    "halloween": "calabaza fantasma murcielago bruja escoba gato disfraz mascara caramelo araña linterna luna buho "
+                 "farol caldero pocion mago esqueleto monstruo fiesta noche sombrero vela dulce",
+    "winter": "nieve hielo frio bufanda guantes gorro abrigo trineo muñeco copo escarcha fuego chocolate botas iglu "
+              "patines pingüino carambano regalo estrella vela manta chimenea diciembre",
+    "spring": "flor tulipan margarita cordero pollito nido huevo conejo lluvia charco abeja mariposa semilla jardin "
+              "hierba arcoiris pajaro patito paraguas rana brote abril primavera",
+    "summer": "sol playa arena cubo pala concha ola nadar helado picnic vacaciones gorra gafas cometa tienda barco "
+              "isla castillo limonada sandia chanclas piscina julio toalla",
 }
 THEMES_FR = {
     "animals": "chat chien cheval tigre zèbre lapin singe girafe lion ours souris mouton chèvre canard grenouille "
@@ -54,10 +74,69 @@ THEMES_FR = {
                "bruine tornade éclair tempête",
     "sports": "football tennis golf hockey rugby vélo patinage ski aviron boxe karaté surf judo natation course "
               "basket danse escrime voile plongée",
+    "autumn": "feuille gland marron citrouille récolte pomme écureuil hérisson champignon râteau vent orange "
+              "écharpe bottes école crayon cartable mûre noisette châtaigne hibou brouillard flaque raisin",
+    "halloween": "citrouille fantôme chouette sorcière balai chat déguisement masque bonbon araignée toile lune hibou "
+                 "lanterne chaudron potion sorcier squelette monstre fête nuit chapeau bougie",
+    "winter": "neige glace froid écharpe moufle bonnet manteau luge bonhomme flocon givre feu chocolat bottes igloo "
+              "patins pingouin glaçon cadeau étoile bougie couverture sapin décembre",
+    "spring": "fleur tulipe jonquille agneau poussin nid oeuf lapin pluie flaque abeille papillon graine bourgeon "
+              "potager herbe pâquerette oiseau caneton averse grenouille avril cerisier",
+    "summer": "soleil plage sable seau pelle coquillage vague nager glace maillot vacances chapeau lunettes parasol "
+              "camping tente bateau île château limonade pastèque tongs piscine juillet serviette",
 }
-THEMES_BY_LANGUAGE = {"es": THEMES_ES, "fr": THEMES_FR}
+THEMES_PT = {
+    "animals": "gato cachorro cavalo tigre zebra coelho macaco girafa leão urso rato ovelha cabra pato sapo coruja "
+               "águia panda coala lontra camelo tartaruga cobra lobo raposa onça jacaré",
+    "ocean": "onda concha caranguejo baleia tubarão coral polvo golfinho foca maré areia recife lula alga lagosta "
+             "âncora barco pérola sal marisco peixe praia navio ilha",
+    "space": "estrela lua planeta cometa foguete órbita galáxia saturno marte vênus terra júpiter asteroide "
+             "nebulosa sol meteoro cratera astronauta telescópio satélite céu universo",
+    "food": "maçã pão queijo pizza macarrão sopa salada banana uva manga cenoura arroz feijão mel biscoito bolo "
+            "pêssego limão torrada manteiga pera ameixa abacaxi milho ovo leite",
+    "weather": "chuva neve vento nuvem tempestade sol trovão neblina granizo geada brisa garoa calor frio tornado "
+               "relâmpago raio orvalho nublado poça furacão",
+    "sports": "futebol tênis golfe hóquei rúgbi ciclismo patinação esqui remo boxe caratê surfe beisebol natação "
+              "judô corrida vôlei basquete handebol skate ginástica",
+    "autumn": "outono folha vento abóbora maçã colheita galho árvore castanha cogumelo amarelo laranja marrom "
+              "rastelo esquilo noz milho espantalho cachecol casaco chuva bota uva pinha",
+    "halloween": "bruxa fantasma abóbora morcego vassoura caldeirão aranha teia gato máscara fantasia doce bala "
+                 "travessura caveira esqueleto múmia vampiro lua coruja castelo vela poção chapéu lanterna noite",
+    "winter": "inverno neve frio gelo floco trenó cachecol luva gorro casaco lareira chocolate sopa pinguim urso "
+              "esqui patins geada nevasca bota cobertor iglu pijama",
+    "spring": "primavera flor borboleta abelha jardim semente broto ninho passarinho chuva grama folha sol pétala "
+              "rosa margarida joaninha minhoca coelho girassol tulipa piquenique lagarta verde",
+    "summer": "verão praia sol mar areia sorvete piscina férias chapéu óculos calor toalha balde concha onda "
+              "castelo bermuda chinelo picolé melancia coco pipa barco suco",
+}
+THEMES_DE = {
+    "animals": "katze hund pferd tiger zebra hase affe giraffe löwe bär maus schaf ziege ente frosch eule adler "
+               "panda koala otter kamel nilpferd schlange igel wolf fuchs pinguin",
+    "ocean": "welle muschel krebs wal hai koralle krake delfin robbe ebbe flut sand riff tintenfisch alge seestern "
+             "qualle hummer anker boot perle salz insel strand",
+    "space": "stern mond planet komet rakete galaxie saturn mars venus erde jupiter asteroid nebel sonne meteor "
+             "krater astronaut teleskop weltall raumschiff satellit",
+    "food": "apfel brot käse pizza nudeln suppe salat banane traube mango karotte reis honig keks kuchen pfirsich "
+            "zitrone butter birne pflaume ananas milch",
+    "weather": "regen schnee wind wolke sturm sonnig donner nebel hagel frost regenbogen brise tau hitze kälte "
+               "nieselregen tornado blitz gewitter",
+    "sports": "fußball tennis golf hockey rugby radfahren eislauf ski rudern boxen karate surfen judo schwimmen "
+              "laufen basketball tanzen turnen segeln reiten",
+    "autumn": "herbst blatt laub kastanie eichel pilz drachen apfel kürbis igel wald nebel regen wind ernte nuss "
+              "baum stiefel schal laterne",
+    "halloween": "kürbis hexe geist gespenst besen kessel spinne fledermaus kerze maske mond eule katze vampir monster "
+                 "grusel kostüm süßes schloss zauber nacht skelett",
+    "winter": "schnee eis frost schlitten schal mütze handschuh flocke kälte kamin ofen tee pinguin eisbär "
+              "schneemann iglu eiszapfen ski stern winter decke kakao",
+    "spring": "frühling blume tulpe knospe blüte vogel nest ei küken lamm hase biene regen sonne garten gras wiese "
+              "marienkäfer raupe ostern samen",
+    "summer": "sommer sonne strand meer sand eis urlaub hitze badehose welle muschel zelt picknick schwimmen "
+              "sonnenhut ferien melone erdbeere grillen boot",
+}
+THEMES_BY_LANGUAGE = {"es": THEMES_ES, "fr": THEMES_FR, "pt": THEMES_PT, "de": THEMES_DE}
 THEME_NAMES = {"animals": "Animals", "ocean": "Ocean", "space": "Space", "food": "Food", "weather": "Weather",
-               "sports": "Sports", "custom": "Your own list"}
+               "sports": "Sports", "autumn": "Autumn", "halloween": "Halloween", "winter": "Winter", "spring": "Spring",
+               "summer": "Summer", "custom": "Your own list"}
 DIRS = [(0, 1), (1, 0), (1, 1), (-1, 1), (0, -1), (-1, 0), (-1, -1), (1, -1)]   # E, S, SE, NE, then the backwards ones
 
 

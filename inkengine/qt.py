@@ -34,13 +34,14 @@ def ensure_app():
 
 
 # Joined-up handwriting fonts shipped with Inkline (inkengine/fonts, SIL Open Font License): Playwrite, made for
-# teaching children to write, in ten countries' school styles. Registered with Qt the first time one is asked for.
+# teaching children to write, in thirteen countries' school styles. Registered with Qt the first time one is asked for.
 FONTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts")
 HAND_FONTS = {"gb": "PlaywriteGBJ-Regular.ttf", "us-trad": "PlaywriteUSTrad-Regular.ttf",
               "us-modern": "PlaywriteUSModern-Regular.ttf", "au": "PlaywriteAUNSW-Regular.ttf", "nz": "PlaywriteNZ-Regular.ttf",
               "ie": "PlaywriteIE-Regular.ttf", "ca": "PlaywriteCA-Regular.ttf", "es": "PlaywriteES-Regular.ttf",
-              "mx": "PlaywriteMX-Regular.ttf", "fr": "PlaywriteFRTrad-Regular.ttf"}
-LANGUAGE_HANDS = {"en": "gb", "es": "es", "fr": "fr"}   # "auto": the school style of Inkline's language
+              "mx": "PlaywriteMX-Regular.ttf", "fr": "PlaywriteFRTrad-Regular.ttf", "br": "PlaywriteBR-Regular.ttf",
+              "pt": "PlaywritePT-Regular.ttf", "de": "PlaywriteDEVA-Regular.ttf"}
+LANGUAGE_HANDS = {"en": "gb", "es": "es", "fr": "fr", "pt": "br", "de": "de"}   # "auto": the school style of Inkline's language
 _registered = {}
 
 
