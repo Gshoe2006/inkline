@@ -16,7 +16,8 @@ sys.path.insert(0, os.path.join(ROOT, "packaging"))
 
 TRANSLATED = [code for code in i18n.LANGUAGES if code != "en"]
 # a few words each window shows in its language: the File menu, and Copies
-SAMPLES = {"es": ("&Archivo", "Copias"), "fr": ("&Fichier", "Exemplaires")}
+SAMPLES = {"es": ("&Archivo", "Copias"), "fr": ("&Fichier", "Exemplaires"), "pt": ("&Arquivo", "Cópias"),
+           "de": ("&Datei", "Exemplare")}
 
 
 @pytest.fixture
@@ -34,7 +35,7 @@ def language(request):
 
 
 def test_every_language_has_a_file_and_samples():
-    assert TRANSLATED == ["es", "fr"]
+    assert TRANSLATED == ["es", "fr", "pt", "de"]
     for code in TRANSLATED:
         assert os.path.isfile(os.path.join(ROOT, "inkengine", "locale", f"{code}.json")) and code in SAMPLES
 
@@ -54,7 +55,8 @@ def test_each_file_covers_every_string_with_the_same_placeholders(code):
 def test_choosing_a_language():
     assert i18n.system_language("es_ES") == i18n.system_language("es-MX") == "es"
     assert i18n.system_language("fr_FR") == i18n.system_language("fr-CA") == "fr"
-    assert i18n.system_language("de_DE") == i18n.system_language("") == "en"
+    assert i18n.system_language("pt_BR") == "pt" and i18n.system_language("de_AT") == "de"
+    assert i18n.system_language("it_IT") == i18n.system_language("") == "en"
     i18n.set_language("xx")
     assert i18n.LANG == "en" and i18n.tr("Name") == "Name"
     i18n.set_language("es")
@@ -81,7 +83,7 @@ def _walk_states(w):
         st = w.state
         sb.sync(render.view(State(st.settings, st.photos, st.sel, st.page, copy=st.copy, class_set=sb.class_set_view())))
     for gen in ("mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "name", "words", "nonogram",
-                "spot", "kakuro", "maths", "trace", "crossword", "clock", "scramble", "spelltest"):
+                "spot", "kakuro", "maths", "trace", "crossword", "clock", "scramble", "spelltest", "fractions", "symmetry"):
         go(gen=gen)
     go(gen="maze", maze_shape="word")
     go(gen="words", ws_theme="custom", ws_words="sol, luna")
@@ -93,6 +95,8 @@ def _walk_states(w):
     go(gen="trace", trace_style="joined")
     go(trace_hand="us-trad")
     go(gen="maths", maths_kind="money")
+    for kind in ("fractions", "numberline", "timesgrid"):
+        go(gen="fractions", frac_kind=kind)
     go(gen="maths", maths_kind="divide")
     go(maths_kind="missing")
     go(gen="scramble", ws_theme="custom", ws_words="sol, luna")
@@ -142,7 +146,8 @@ def _walk_states(w):
 
 def test_the_window_in_each_language_asks_for_nothing_untranslated(language, tmp_path, monkeypatch):
     monkeypatch.setenv("INKLINE_CONFIG_DIR", str(tmp_path))
-    QApplication.instance() or QApplication([])
+    from inkapp import theme
+    theme.apply(QApplication.instance() or QApplication([]))   # Inkline's own look, as the app has (its 14 px text)
     from inkapp.window import Window
     w = Window("5.0.0", remember=False)
     w.show()
@@ -161,7 +166,8 @@ def test_the_window_in_each_language_asks_for_nothing_untranslated(language, tmp
                   Settings(gen="mandala", dpi=36, poster=True, grid="2x2", overlap=0.5),
                   Settings(gen="maze", dpi=36, booklet=True, pages=3, key=True, cover=True),
                   Settings(gen="clock", dpi=36, clock_task="mixed"), Settings(gen="scramble", dpi=36),
-                  Settings(gen="spelltest", dpi=36)):
+                  Settings(gen="spelltest", dpi=36), Settings(gen="symmetry", dpi=36, complexity=8),
+                  Settings(gen="fractions", dpi=36, complexity=7), Settings(gen="fractions", frac_kind="numberline", dpi=36)):
             j = jobs.job(State(s), copies=2, answers=True)
             for i in range(j.count):
                 j.draw(RecordingCanvas(), i)
@@ -261,7 +267,7 @@ def test_view_language_remembers_the_choice(tmp_path, monkeypatch):
     w = Window("5.0.0", remember=False)
     w.show()
     try:
-        assert set(w.lang_actions) == {"en", "es", "fr"} and w.lang_actions["en"].isChecked()
+        assert set(w.lang_actions) == {"en", "es", "fr", "pt", "de"} and w.lang_actions["en"].isChecked()
         assert w.lang_actions["es"].text() == "Español" and w.lang_actions["fr"].text() == "Français"
         w.lang_actions["es"].trigger()
         assert config.read("preferences.json")["language"] == "es"

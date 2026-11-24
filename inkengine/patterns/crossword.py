@@ -56,6 +56,38 @@ THEMES = {
               "into a pool head first; running: Moving fast on your feet; swimming: Moving through water; goal: "
               "Score one to win; ball: Round, and you kick or throw it; team: Players who play together; medal: A "
               "prize for winning",
+    "autumn": "leaf: Falls from trees in autumn; acorn: An oak tree grows from it; conker: A shiny brown nut on a "
+              "string; pumpkin: A big orange vegetable; harvest: When farmers gather their crops; apple: You can "
+              "pick it from a tree; squirrel: Hides nuts for winter; hedgehog: Prickly, and sleeps all winter; "
+              "mushroom: Grows in the woods after rain; rake: Sweeps up fallen leaves; wind: Blows the leaves "
+              "around; scarf: Keeps your neck warm; boots: Wear them to splash in puddles; school: Where you go to "
+              "learn; pencil: You write and draw with it; satchel: A bag for school books",
+    "halloween": "pumpkin: Carve a face in it; ghost: Says boo and is all white; bat: Flies at night and hangs upside "
+                 "down; witch: Rides a broom; broom: A witch flies on it; costume: You dress up in it; mask: Covers "
+                 "your face; sweets: You get them when you trick or treat; spider: Has eight legs; web: A spider spins "
+                 "it; moon: Shines big and round at night; owl: Hoots in the dark; lantern: A light you carry; "
+                 "cauldron: A big pot for a witch's potion; wizard: Waves a magic wand; skeleton: All the bones in "
+                 "your body; party: Fun with friends and games",
+    "winter": "snow: White and falls from the sky; ice: Frozen water; cold: How you feel without a coat; scarf: "
+              "Wrap it round your neck; mitten: Keeps your hand warm; coat: Put it on before going out; sledge: "
+              "Slide down a snowy hill on it; snowman: Has a carrot for a nose; snowflake: No two are the same; "
+              "frost: Makes windows sparkle; cocoa: A hot chocolate drink; igloo: A house made of snow; skate: "
+              "Glide on the ice; penguin: A bird that cannot fly; icicle: Hangs from the roof like a pointy spike; "
+              "present: A gift wrapped in paper; star: Shines on the top of a tree; candle: Its little flame gives "
+              "light; blanket: Snuggle under it to keep warm",
+    "spring": "flower: Grows from a seed and smells nice; tulip: A cup-shaped flower; daffodil: A yellow spring "
+              "flower; lamb: A baby sheep; chick: A baby hen; nest: Birds lay eggs in it; egg: Hunt for chocolate "
+              "ones at Easter; bunny: A rabbit with long ears; rain: Helps the plants grow; puddle: Splash in it "
+              "with your boots; blossom: Pink flowers on trees; bee: Buzzes from flower to flower; butterfly: Has "
+              "bright colourful wings; seed: Plant it to grow a flower; garden: Where flowers and vegetables grow; "
+              "rainbow: Colours in the sky after rain; duckling: A baby duck",
+    "summer": "sun: Shines hot in the sky; beach: Sand by the sea; sand: Build castles with it; bucket: Fill it "
+              "with sand or water; spade: Dig in the sand with it; shell: Find it on the seashore; wave: The sea "
+              "rolls in with it; swim: Move through water; picnic: A meal outside on a blanket; holiday: Time off "
+              "from school; sunglasses: Protect your eyes from the sun; kite: Flies high on a string; tent: Sleep "
+              "in it when camping; island: Land with water all around; lemonade: A cold lemon drink; watermelon: A "
+              "big green fruit, red inside; shorts: Short trousers for hot days; sunhat: Keeps the sun off your "
+              "head",
 }
 THEMES_ES = {
     "animals": "gato: Dice miau; perro: Ladra y mueve la cola; vaca: Nos da leche; caballo: Puedes montar en él; "
@@ -99,6 +131,39 @@ THEMES_ES = {
               "judo: Un arte marcial con cinturones de colores; carrera: Gana quien llega primero; natacion: Nadar "
               "en la piscina; gol: Lo celebras en el fútbol; balon: Lo pateas o lo lanzas; equipo: Jugadores que "
               "juegan juntos",
+    "autumn": "hoja: Cae de los árboles en otoño; bellota: De ella crece un roble; castaña: Se come asada en otoño; "
+              "calabaza: Una verdura grande y naranja; cosecha: Cuando se recoge lo sembrado; manzana: Se coge de "
+              "un árbol; ardilla: Guarda nueces para el invierno; erizo: Tiene púas y duerme en invierno; seta: "
+              "Sale en el bosque después de llover; rastrillo: Sirve para juntar las hojas; viento: Hace volar las "
+              "hojas; bufanda: Te abriga el cuello; botas: Para saltar en los charcos; colegio: Donde vas a "
+              "aprender; lapiz: Con él escribes y dibujas; mochila: Llevas los libros en ella",
+    "halloween": "calabaza: Le haces una cara y una vela dentro; fantasma: Es blanco y dice bu; murcielago: Vuela de "
+                 "noche y duerme boca abajo; bruja: Vuela en una escoba; escoba: Una bruja vuela en ella; disfraz: Te "
+                 "lo pones para parecer otro; mascara: Te tapa la cara; caramelo: Un dulce que te dan; araña: Tiene "
+                 "ocho patas; telaraña: La teje una araña; luna: Brilla redonda de noche; buho: Ulula en la oscuridad; "
+                 "caldero: Una olla grande de bruja; mago: Tiene una varita mágica; esqueleto: Todos los huesos del "
+                 "cuerpo; fiesta: Juegos y diversión con amigos",
+    "winter": "nieve: Blanca, cae del cielo; hielo: Agua congelada; frio: Lo sientes sin abrigo; bufanda: Te la "
+              "enrollas al cuello; guantes: Te abrigan las manos; abrigo: Te lo pones para salir; trineo: Con él "
+              "bajas por la nieve; muñeco: El de nieve tiene nariz de zanahoria; copo: Uno pequeño de nieve; "
+              "escarcha: Hace brillar la hierba en invierno; chocolate: Se bebe caliente en taza; iglu: Una casa de "
+              "nieve; patines: Con ellos te deslizas por el hielo; pingüino: Un pájaro que no vuela; regalo: Viene "
+              "envuelto en papel; estrella: Brilla en lo alto del árbol; vela: Su llamita da luz; manta: Te tapas "
+              "con ella para no tener frío",
+    "spring": "flor: Crece de una semilla y huele bien; tulipan: Una flor con forma de copa; margarita: Una flor "
+              "blanca con el centro amarillo; cordero: El hijo de la oveja; pollito: El hijo de la gallina; nido: "
+              "Los pájaros ponen huevos en él; huevo: En Pascua los buscas de chocolate; conejo: Tiene orejas "
+              "largas y salta; lluvia: Ayuda a crecer a las plantas; charco: Saltas en él con botas; abeja: Zumba "
+              "de flor en flor; mariposa: Tiene alas de colores; semilla: La plantas para que crezca una flor; "
+              "jardin: Allí crecen las flores; arcoiris: Colores en el cielo después de llover; patito: El hijo de "
+              "la pata; nube: Trae la lluvia",
+    "summer": "sol: Calienta mucho en el cielo; playa: Arena junto al mar; arena: Con ella haces castillos; cubo: "
+              "Lo llenas de arena o de agua; pala: Con ella cavas en la arena; concha: La encuentras en la orilla; "
+              "ola: El mar la trae a la playa; nadar: Moverse en el agua; helado: Frío y dulce, en cucurucho; "
+              "vacaciones: Días sin colegio; gafas: Las de sol protegen tus ojos; cometa: Vuela alto con una "
+              "cuerda; tienda: Duermes en ella de acampada; isla: Tierra con agua alrededor; limonada: Una bebida "
+              "fría de limón; sandia: Fruta grande, verde por fuera y roja por dentro; piscina: Te bañas en ella; "
+              "toalla: Te secas con ella",
 }
 THEMES_FR = {
     "animals": "chat: Il fait miaou; chien: Il aboie et remue la queue; vache: Elle nous donne du lait; cheval: On "
@@ -145,10 +210,189 @@ THEMES_FR = {
               "couleur; natation: Nager dans la piscine; course: Le plus rapide gagne; basket: On lance le ballon "
               "dans un panier; escrime: On se bat avec une épée; voile: Le vent pousse le bateau grâce à elle; "
               "plongée: Nager sous l'eau; but: On en marque au football",
+    "autumn": "feuille: Elle tombe des arbres en automne; gland: Un chêne pousse à partir de lui; marron: Il est "
+              "brillant et tombe du marronnier; citrouille: Un gros légume orange; récolte: Quand on ramasse ce qui "
+              "a poussé; pomme: On la cueille dans un arbre; écureuil: Il cache des noisettes pour l'hiver; "
+              "hérisson: Il a des piquants et dort tout l'hiver; champignon: Il pousse dans les bois après la "
+              "pluie; râteau: Il ramasse les feuilles mortes; vent: Il fait voler les feuilles; écharpe: Elle te "
+              "tient le cou au chaud; bottes: Pour sauter dans les flaques; école: On y va pour apprendre; crayon: "
+              "On écrit et on dessine avec; cartable: Le sac pour l'école",
+    "halloween": "citrouille: On y creuse un visage; fantôme: Il est tout blanc et fait bouh; sorcière: Elle vole sur "
+                 "un balai; balai: Une sorcière vole dessus; costume: On le met pour se déguiser; masque: Il cache ton "
+                 "visage; bonbon: On en reçoit en frappant aux portes; araignée: Elle a huit pattes; toile: L'araignée "
+                 "la tisse; lune: Elle brille ronde la nuit; hibou: Il hulule dans le noir; lanterne: Une lumière "
+                 "qu'on porte; chaudron: La grosse marmite de la sorcière; sorcier: Il a une baguette magique; "
+                 "squelette: Tous les os du corps; fête: Des jeux et des amis; chat: Le noir est l'ami de la sorcière",
+    "winter": "neige: Elle tombe blanche du ciel; glace: De l'eau gelée; froid: On le sent sans manteau; écharpe: "
+              "On l'enroule autour du cou; moufle: Elle garde ta main au chaud; bonnet: Il te couvre la tête; "
+              "manteau: On le met avant de sortir; luge: On glisse dessus dans la neige; bonhomme: Celui de neige a "
+              "une carotte pour nez; flocon: Un petit morceau de neige; givre: Il fait briller les vitres; "
+              "chocolat: On le boit chaud; igloo: Une maison de neige; pingouin: Un oiseau noir et blanc; glaçon: "
+              "Il pend du toit, tout pointu; cadeau: Il est emballé dans du papier; étoile: Elle brille en haut du "
+              "sapin; bougie: Sa petite flamme éclaire; couverture: On se blottit dessous",
+    "spring": "fleur: Elle pousse d'une graine et sent bon; tulipe: Une fleur en forme de coupe; jonquille: Une "
+              "fleur jaune du printemps; agneau: Le bébé du mouton; poussin: Le bébé de la poule; nid: Les oiseaux "
+              "y pondent leurs oeufs; oeuf: On le cherche en chocolat à Pâques; lapin: Il a de longues oreilles; "
+              "pluie: Elle aide les plantes à pousser; flaque: On saute dedans avec ses bottes; abeille: Elle "
+              "butine les fleurs; papillon: Il a de jolies ailes colorées; graine: On la plante pour avoir une "
+              "fleur; bourgeon: Il deviendra une feuille ou une fleur; jardin: Les fleurs y poussent; oiseau: Il "
+              "chante dans les arbres; caneton: Le bébé du canard",
+    "summer": "soleil: Il brille fort dans le ciel; plage: Du sable au bord de la mer; sable: On en fait des "
+              "châteaux; seau: On le remplit de sable ou d'eau; pelle: On creuse le sable avec; coquillage: On le "
+              "ramasse au bord de l'eau; vague: La mer la pousse sur la plage; nager: Avancer dans l'eau; glace: "
+              "Froide et sucrée, dans un cornet; vacances: Pas d'école pendant ces jours; lunettes: Celles de "
+              "soleil protègent tes yeux; tente: On dort dedans en camping; île: De la terre entourée d'eau; "
+              "limonade: Une boisson fraîche qui pétille; pastèque: Un gros fruit vert, rouge dedans; piscine: On "
+              "s'y baigne; serviette: On s'essuie avec; chapeau: Il protège ta tête du soleil",
 }
-THEMES_BY_LANGUAGE = {"es": THEMES_ES, "fr": THEMES_FR}
+THEMES_PT = {
+    "animals": "gato: Faz miau; cachorro: Late e abana o rabo; vaca: Dá leite para nós; cavalo: Dá para andar "
+               "montado nele; ovelha: Sua lã vira blusa; pato: Faz quá-quá; sapo: Verde e pula; coruja: Pia à noite; "
+               "leão: O rei da selva; tigre: Um gatão com listras; zebra: Um cavalo com listras; macaco: Pula de "
+               "galho em galho; coelho: Tem orelhas compridas e pula; rato: Pequeno e gosta de queijo; elefante: Tem "
+               "uma tromba; girafa: Tem o pescoço muito comprido; cobra: Comprida e sem pernas; urso: Grande, peludo "
+               "e gosta de mel; peixe: Nada e tem nadadeiras; abelha: Faz mel",
+    "food": "maçã: Uma fruta vermelha ou verde; banana: Uma fruta comprida e amarela; pão: Com ele se faz "
+            "torrada; queijo: Os ratos adoram; ovo: A galinha bota; leite: Uma bebida branca da vaca; pizza: "
+            "Redonda e com cobertura; cenoura: Um legume laranja; sopa: Tomada quente no prato fundo; bolo: Tem "
+            "velas no aniversário; mel: As abelhas fazem; arroz: Grãozinhos brancos do almoço; feijão: Vai junto "
+            "com o arroz no prato; pera: Uma fruta com formato de sino; limão: Uma fruta azeda; uva: Pequena e "
+            "cresce em cachos; ervilha: Uma bolinha verde; geleia: Passa no pão; macarrão: O espaguete é um tipo; "
+            "milho: Vira pipoca",
+    "space": "sol: A estrela mais perto de nós; lua: Brilha à noite; estrela: Pisca no céu; terra: O planeta onde "
+             "vivemos; marte: O planeta vermelho; foguete: Voa para o espaço; cometa: Tem uma cauda comprida; "
+             "órbita: O caminho em volta de um planeta; saturno: O planeta com anéis; planeta: A Terra é um; "
+             "astronauta: Viaja para o espaço; telescópio: Serve para olhar as estrelas; galáxia: Bilhões de "
+             "estrelas juntas; nave: Leva os astronautas; satélite: Gira em volta de um planeta; cratera: Um "
+             "buraco redondo na Lua",
+    "ocean": "onda: Quebra na praia; concha: Dá para achar na praia; caranguejo: Anda de lado e tem garras; "
+             "baleia: O maior animal do mar; tubarão: Um peixe de dentes afiados; coral: Forma recifes coloridos; "
+             "polvo: Tem oito braços; golfinho: Um animal do mar esperto que pula; foca: Bate as nadadeiras; maré: "
+             "O mar sobe e desce com ela; areia: Dá para fazer castelos com ela; lula: Solta tinta; lagosta: "
+             "Parece um caranguejo grande de rabo comprido; âncora: Segura o barco no lugar; barco: Flutua na "
+             "água; pérola: Uma bolinha brilhante dentro da ostra; sal: Deixa a água do mar com gosto estranho; "
+             "praia: Lugar com areia perto do mar",
+    "weather": "chuva: Água que cai das nuvens; neve: Branca e gelada, boa para fazer bonecos; vento: Leva a pipa lá "
+               "para cima; nuvem: Branca e fofinha no céu; tempestade: Tempo ruim com trovões; trovão: Um barulhão "
+               "na tempestade; neblina: Não deixa ver longe; granizo: Bolinhas de gelo caindo do céu; geada: Deixa a "
+               "grama branca nas manhãs frias; brisa: Um vento fraquinho; calor: Você sente num dia quente de verão; "
+               "tornado: Um vento que gira muito rápido; garoa: Chuva bem fininha; poça: Pule nela depois da chuva; "
+               "relâmpago: Um clarão na tempestade; frio: Pede casaco e cobertor; sol: Brilha num dia bonito",
+    "sports": "futebol: Chute a bola no gol; tênis: Bata na bola por cima da rede com uma raquete; golfe: Coloque "
+              "uma bolinha num buraco; hóquei: Jogado com um taco; rúgbi: Jogado com uma bola oval; patinação: "
+              "Deslizar no gelo; esqui: Descer montanhas de neve deslizando; remo: Mover o barco com a força dos "
+              "braços; boxe: Luta com luvas grandes; surfe: Andar nas ondas em uma prancha; beisebol: Bata na bola "
+              "com um taco e corra pelas bases; natação: Mover-se dentro da água; corrida: Ir bem rápido com os "
+              "pés; vôlei: Passe a bola por cima da rede com as mãos; basquete: Jogue a bola na cesta; gol: Faça um "
+              "para ganhar; bola: Redonda, você chuta ou joga; time: Jogadores que jogam juntos; medalha: Prêmio "
+              "para quem vence; judô: Luta com faixa e quimono",
+    "autumn": "folha: Cai da árvore no outono; abóbora: Grande e laranja; colheita: Quando se recolhe o que "
+              "plantou; maçã: Fruta colhida no outono; esquilo: Guarda nozes para o inverno; noz: O esquilo adora; "
+              "vento: Faz as folhas voarem; galho: Parte da árvore que segura as folhas; árvore: Tem tronco e "
+              "galhos; cogumelo: Nasce no chão úmido da floresta; espantalho: Assusta os passarinhos na plantação; "
+              "casaco: Vestimos quando esfria; chuva: Água que cai das nuvens; marrom: A cor das folhas secas; "
+              "vassoura: Varre as folhas do quintal; milho: Tem espiga e grãos amarelos; outono: Estação em que as "
+              "folhas caem; bota: Calçado para pisar na lama; cachecol: Esquenta o pescoço",
+    "halloween": "bruxa: Voa numa vassoura; fantasma: Lençol branco que diz buu; abóbora: Vira lanterna com cara "
+                 "assustadora; morcego: Voa à noite e dorme de cabeça para baixo; vassoura: A bruxa voa nela; "
+                 "caldeirão: Panela grande da bruxa; aranha: Tem oito patas e faz teia; teia: A aranha fica nela; "
+                 "doce: As crianças pedem de porta em porta; fantasia: Roupa para se disfarçar; máscara: Cobre o "
+                 "rosto; esqueleto: Feito só de ossos; múmia: Toda enrolada em faixas; vampiro: Tem dentes pontudos e "
+                 "capa preta; lua: Brilha na noite escura; coruja: Pia à noite; poção: Bebida mágica da bruxa; chapéu: "
+                 "O da bruxa é pontudo; gato: O da bruxa é preto",
+    "winter": "neve: Branca e gelada; gelo: Água bem congelada; frio: Pede casaco e cobertor; floco: Cada pedacinho "
+              "de neve; trenó: Desliza na neve; cachecol: Esquenta o pescoço; luva: Esquenta as mãos; gorro: "
+              "Esquenta a cabeça; casaco: Roupa grossa para o frio; lareira: Fogo que esquenta a casa; chocolate: "
+              "Quente, é bom no frio; pinguim: Ave que não voa e vive no gelo; esqui: Para deslizar na neve; "
+              "patins: Para deslizar no gelo; iglu: Casa feita de gelo; inverno: A estação mais fria; cobertor: "
+              "Esquenta a gente na cama; sopa: Tomada quente no prato fundo; pijama: Roupa de dormir",
+    "spring": "flor: Cresce no jardim e cheira bem; borboleta: Inseto de asas coloridas; abelha: Visita as flores e "
+              "faz mel; jardim: Lugar com plantas e flores; semente: Plantada, vira uma planta; broto: Planta bem "
+              "novinha; ninho: Casa do passarinho; pássaro: Tem penas e canta; grama: Verde e cobre o chão; pétala: "
+              "Parte colorida da flor; joaninha: Vermelha com bolinhas pretas; minhoca: Mora debaixo da terra; "
+              "girassol: Flor amarela que segue o sol; tulipa: Flor em forma de copo; lagarta: Vira borboleta; "
+              "primavera: A estação das flores; coelho: Tem orelhas compridas e pula; chuva: Ajuda as plantas a "
+              "crescer; regador: Usado para molhar as plantas",
+    "summer": "praia: Lugar com areia e mar; sol: Brilha forte no verão; mar: Água salgada com ondas; areia: Dá "
+              "para fazer castelos com ela; sorvete: Gelado e doce; piscina: Lugar para nadar; férias: Dias sem "
+              "aula; chapéu: Protege a cabeça do sol; óculos: Protegem os olhos do sol; calor: Faz a gente suar; "
+              "toalha: Seca o corpo depois do banho; balde: Para carregar água e areia; onda: Quebra na praia; "
+              "chinelo: Calçado de praia; picolé: Sorvete no palito; melancia: Verde por fora e vermelha por "
+              "dentro; coco: Tem água dentro; pipa: Voa alto com o vento; verão: A estação mais quente",
+}
+THEMES_DE = {
+    "animals": "Katze: Sagt miau; Hund: Bellt und wedelt mit dem Schwanz; Kuh: Gibt uns Milch; Pferd: Darauf kann "
+               "man reiten; Schaf: Aus seiner Wolle macht man Pullis; Ente: Sagt quak; Frosch: Grün und hüpft; Eule: "
+               "Ruft nachts uhu; Löwe: König der Tiere; Tiger: Große Katze mit Streifen; Zebra: Ein Pferd mit "
+               "Streifen; Affe: Schwingt durch die Bäume; Hase: Hat lange Ohren und hoppelt; Maus: Klein und mag "
+               "Käse; Elefant: Hat einen Rüssel; Giraffe: Hat einen sehr langen Hals; Schlange: Lang und ohne Beine; "
+               "Bär: Groß, pelzig und mag Honig; Fisch: Schwimmt und hat Flossen; Biene: Macht Honig",
+    "food": "Apfel: Eine rote oder grüne Frucht; Banane: Eine lange gelbe Frucht; Brot: Daraus macht man Toast; "
+            "Käse: Mäuse lieben ihn; Butter: Kommt aufs Brot; Milch: Ein weißes Getränk von der Kuh; Pizza: Rund "
+            "und mit Belag; Karotte: Ein oranges Gemüse; Suppe: Isst man heiß aus dem Teller; Kuchen: Hat Kerzen "
+            "am Geburtstag; Honig: Bienen machen ihn; Reis: Kleine weiße Körner; Birne: Eine Frucht wie eine "
+            "Glühbirne; Zitrone: Eine saure gelbe Frucht; Traube: Klein und wächst in Büscheln; Erbsen: Kleine "
+            "grüne Kugeln; Marmelade: Kommt aufs Brötchen; Nudeln: Spaghetti sind welche",
+    "space": "Sonne: Unser nächster Stern; Mond: Leuchtet in der Nacht; Stern: Funkelt am Himmel; Erde: Der "
+             "Planet, auf dem wir leben; Mars: Der rote Planet; Rakete: Fliegt ins Weltall; Komet: Hat einen "
+             "langen Schweif; Alien: Ein Besucher aus dem All; Saturn: Der Planet mit Ringen; Planet: Die Erde ist "
+             "einer; Astronaut: Reist ins Weltall; Teleskop: Damit schaut man zu den Sternen; Galaxie: Milliarden "
+             "von Sternen; Krater: Ein Loch auf dem Mond; Satellit: Kreist um die Erde",
+    "ocean": "Welle: Rollt an den Strand; Muschel: Findest du am Strand; Krebs: Läuft seitwärts und hat Scheren; "
+             "Wal: Das größte Tier im Meer; Hai: Ein Fisch mit scharfen Zähnen; Koralle: Daraus sind bunte Riffe; "
+             "Krake: Hat acht Arme; Delfin: Ein kluges Meerestier, das springt; Robbe: Klatscht mit den Flossen; "
+             "Sand: Daraus baust du Burgen; Seestern: Sieht aus wie ein Stern; Qualle: Wabbelig und kann brennen; "
+             "Hummer: Wie ein großer Krebs mit langem Schwanz; Anker: Hält das Schiff fest; Boot: Schwimmt auf dem "
+             "Wasser; Perle: Glänzt in einer Muschel; Salz: Macht Meerwasser komisch im Geschmack; Ebbe: Dann ist "
+             "das Meer weit weg",
+    "weather": "Regen: Wasser, das aus Wolken fällt; Schnee: Weiß und kalt, gut für Schneemänner; Wind: Lässt "
+               "Drachen steigen; Wolke: Weiß und flauschig am Himmel; Sturm: Sehr starker Wind; Sonnig: Wenn die "
+               "Sonne scheint; Donner: Ein lauter Knall beim Gewitter; Nebel: Dann sieht man nicht weit; Hagel: "
+               "Kleine Eiskugeln fallen herab; Frost: Macht das Gras an kalten Morgen weiß; Regenbogen: Sieben "
+               "Farben am Himmel; Brise: Ein sanfter Wind; Hitze: Spürst du an heißen Sommertagen; Tornado: Ein "
+               "Wind, der sich schnell dreht; Schirm: Hält dich im Regen trocken; Pfütze: Da springst du nach dem "
+               "Regen hinein; Blitz: Ein heller Strahl beim Gewitter",
+    "sports": "Fußball: Schieß den Ball ins Tor; Tennis: Schlag den Ball mit dem Schläger übers Netz; Golf: Schlag "
+              "einen kleinen Ball ins Loch; Hockey: Man spielt mit einem Schläger; Rugby: Man spielt mit einem "
+              "eiförmigen Ball; Eislauf: Gleiten auf dem Eis; Ski: Damit fährst du den Berg hinab; Rudern: Ein Boot "
+              "mit Rudern bewegen; Boxen: Kämpfen mit dicken Handschuhen; Surfen: Auf Wellen reiten; Turnen: Rolle "
+              "und Handstand; Reiten: Sport auf dem Pferd; Tauchen: Unter Wasser schwimmen; Laufen: Schnell auf den "
+              "Füßen sein; Schwimmen: Sich im Wasser bewegen; Tor: Triff es, um zu gewinnen; Ball: Rund, du kickst "
+              "oder wirfst ihn; Team: Spieler, die zusammen spielen; Medaille: Ein Preis für den Sieg",
+    "autumn": "Blatt: Wird im Herbst bunt und fällt; Kastanie: Braun und glänzend in einer stacheligen Schale; "
+              "Eichel: Die Frucht der Eiche; Pilz: Wächst im Wald und hat einen Hut; Drachen: Lässt du im Wind "
+              "steigen; Kürbis: Groß, rund und orange; Igel: Hat Stacheln und sucht ein Laubnest; Nebel: Morgens "
+              "grau und dicht; Ernte: Dann holt man das Obst vom Feld; Nuss: Hat eine harte Schale; Apfel: Hängt "
+              "reif am Baum; Wind: Weht die Blätter weg; Regen: Macht Pfützen; Laterne: Leuchtet beim Martinsumzug; "
+              "Stiefel: Damit springst du in Pfützen; Schal: Wärmt deinen Hals",
+    "halloween": "Kürbis: Wird ausgehöhlt und leuchtet; Hexe: Fliegt auf einem Besen; Geist: Weiß und sagt huh; Besen: "
+                 "Damit fegt man oder fliegt; Kessel: Darin braut die Hexe; Spinne: Hat acht Beine; Fledermaus: Fliegt "
+                 "nachts und hängt kopfüber; Kerze: Gibt Licht mit einer Flamme; Maske: Versteckt dein Gesicht; Mond: "
+                 "Leuchtet hell in der Nacht; Eule: Ruft nachts uhu; Katze: Oft schwarz bei Hexen; Vampir: Hat spitze "
+                 "Zähne; Monster: Ein Ungeheuer; Kostüm: Verkleidung für das Fest; Skelett: Nur Knochen; Nacht: Dann "
+                 "ist es dunkel; Zauber: Hexen sprechen ihn",
+    "winter": "Schnee: Weiße Flocken fallen vom Himmel; Eis: Gefrorenes Wasser; Schlitten: Damit fährst du den Hang "
+              "hinab; Schal: Wärmt deinen Hals; Mütze: Wärmt deinen Kopf; Flocke: Ein Stück Schnee; Kamin: Darin "
+              "brennt ein Feuer; Tee: Ein heißes Getränk; Pinguin: Ein Vogel, der nicht fliegt; Eisbär: Ein weißer "
+              "Bär am Nordpol; Iglu: Ein Haus aus Schnee; Eiszapfen: Hängt spitz vom Dach; Ski: Damit gleitest du "
+              "über Schnee; Kakao: Heiße Schokolade zum Trinken; Decke: Hält dich warm im Bett; Frost: Macht die "
+              "Fenster weiß; Stiefel: Warme Schuhe für den Schnee",
+    "spring": "Blume: Blüht bunt im Garten; Tulpe: Eine Blume mit Kelch; Knospe: Daraus wird eine Blüte; Vogel: "
+              "Singt und baut ein Nest; Nest: Darin liegen Vogeleier; Küken: Ein kleines gelbes Huhn; Lamm: Ein "
+              "junges Schaf; Hase: Bringt die Ostereier; Biene: Summt von Blüte zu Blüte; Regen: Lässt die Pflanzen "
+              "wachsen; Sonne: Wärmt die Erde; Garten: Dort wachsen Blumen; Gras: Grün auf der Wiese; Wiese: Eine "
+              "Fläche voller Gras; Ostern: Fest mit bunten Eiern; Samen: Daraus wächst eine Pflanze",
+    "summer": "Sonne: Scheint heiß am Himmel; Strand: Dort liegt Sand am Meer; Meer: Viel salziges Wasser; Sand: "
+              "Daraus baust du Burgen; Eis: Kalt und süß in der Waffel; Urlaub: Freie Zeit zum Reisen; Hitze: Dann "
+              "schwitzt du; Welle: Rollt an den Strand; Muschel: Findest du am Strand; Zelt: Darin schläft man beim "
+              "Camping; Picknick: Essen auf einer Decke im Freien; Ferien: Keine Schule; Melone: Grün außen und rot "
+              "innen; Erdbeere: Eine rote Beere; Grillen: Würstchen über Glut braten; Boot: Schwimmt auf dem "
+              "Wasser; Badehose: Ziehst du zum Schwimmen an",
+}
+THEMES_BY_LANGUAGE = {"es": THEMES_ES, "fr": THEMES_FR, "pt": THEMES_PT, "de": THEMES_DE}
 THEME_NAMES = {"animals": "Animals", "food": "Food", "space": "Space", "ocean": "Ocean", "weather": "Weather",
-               "sports": "Sports", "custom": "Your own words and clues"}
+               "sports": "Sports", "autumn": "Autumn", "halloween": "Halloween", "winter": "Winter", "spring": "Spring",
+               "summer": "Summer", "custom": "Your own words and clues"}
 MAX_WORD = 15
 MAX_OWN = 30    # your own words used, at most
 

@@ -14,9 +14,11 @@ import os
 import re
 import unicodedata
 
-LANGUAGES = {"en": "English", "es": "Español", "fr": "Français"}
+LANGUAGES = {"en": "English", "es": "Español", "fr": "Français", "pt": "Português", "de": "Deutsch"}
 # letters a language's word puzzles keep as they are (others lose their accents: É → E); its alphabet for tracing
 KEEP_LETTERS = {"es": "Ñ"}
+# letters a language's word puzzles write as two (German grids write Ä as AE, as German crosswords do)
+SPELL_OUT = {"de": {"Ä": "AE", "Ö": "OE", "Ü": "UE"}}
 ALPHABETS = {"es": "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ"}
 HERE = os.path.dirname(os.path.abspath(__file__))
 LANG = "en"
@@ -65,6 +67,8 @@ def grid_letters(word):
     the language's own letters kept (Spanish NIÑO), anything else left out."""
     keep = KEEP_LETTERS.get(LANG, "")
     w = unicodedata.normalize("NFC", (word or "").upper()).replace("Œ", "OE").replace("Æ", "AE").replace("ß", "SS")
+    for letter, two in SPELL_OUT.get(LANG, {}).items():
+        w = w.replace(letter, two)
     out = "".join(ch if ch in keep else unicodedata.normalize("NFKD", ch).encode("ascii", "ignore").decode("ascii")
                   for ch in w)
     return re.sub(f"[^A-Z{keep}]", "", out)

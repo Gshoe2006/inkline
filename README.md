@@ -7,7 +7,7 @@ A desktop app for Linux and Windows that converts photos to, or generates, black
 - **Photo books:** turn several photos into one colouring-book PDF, one page each with its own crop, plus an optional cover, title, name line and page numbers.
 - **Fold-and-staple books:** booklets and photo books can print two half-size pages per side, double-sided, so the sheets fold and staple into a real little book in page order.
 - **Worksheet packs:** *Booklet → Worksheet pack* makes a booklet of five worksheets, one for each school day, set for the age chosen under *Age*, with a cover, name line and answer pages. On a theme (animals, food, space, ocean, weather or sports) it's a maths drill, handwriting, a crossword, a word search and a maze; on this week's spelling words it's a maths drill and the words four ways: traced, in a crossword whose clues are the words' letters mixed up, in a word search and to unscramble. With *Paper → Copies* or *Names* it makes a pack for every child, and the answers can go in one teacher's book.
-- **Classroom worksheets:** maths drills (adding, taking away, times tables, number bonds, sharing, missing numbers), telling the time (clock faces to read, or to draw the hands on), handwriting to trace, crosswords, and unscramble sheets, each with an answer page.
+- **Classroom worksheets:** maths drills (adding, taking away, times tables, number bonds, sharing, missing numbers, money), fractions of shapes, number lines and times grids, telling the time (clock faces to read, or to draw the hands on), symmetry (shade the mirror half), handwriting to trace, crosswords, unscramble sheets and spelling tests, each with an answer page. Word searches, crosswords and worksheet packs have seasonal themes (autumn, Halloween, winter, spring, summer) as well as animals, food, space, ocean, weather and sports.
 - **Booklets:** turn any pattern (or every pattern but name pages, mixed) into a multi-page PDF with a cover, a title and name line, page numbers, difficulty that ramps up page by page, a *New design for this page* button to swap any single page (answers follow), and answer pages for mazes, dot-to-dots, sudoku, word search, nonograms, spot the difference and kakuro. Or build a booklet page by page: *Edit pages one by one* lists its pages, each with a small picture and its own pattern, options and complexity (so each word search page can have its own words, and each name page its own name), to add, drag into order, duplicate (with a new design) or remove.
 - **Projects:** *File → Save project* (Ctrl+S) keeps everything you're making in one `.inkline` file, with the photos inside it, so it opens again later or on another computer even if the original pictures have moved. *File → Open project…* (Ctrl+Shift+O) and *Open recent project* bring it back; the window title shows the project's name and whether it has unsaved changes. Installed from a package, project files get their own icon in your file manager and open in Inkline with a double-click; `python3 inkline.py book.inkline` does the same from a terminal. If Inkline closes unexpectedly, the next start offers to bring back the work you hadn't saved: while there's unsaved work, a copy is kept in the settings folder at most once a minute.
 - **Presets:** twenty-one built-in starting points (start fresh, a week's worksheet pack, colouring page, name page, maze worksheet, maze booklet, name maze, word search booklet, sudoku booklet, nonogram booklet, dot-to-dot booklet, spot the difference booklet, kakuro booklet, colour-by-number mandala, halftone photo, engraved photo, stippled photo, colour-by-number photo, photo nonogram, photo colouring page, wall poster) plus your own saved settings.
@@ -15,7 +15,7 @@ A desktop app for Linux and Windows that converts photos to, or generates, black
 - **Printer test page:** true-size squares and rulers, edge-margin marks, every dither style and dot size, and every line weight, to check your printer at a glance.
 - **Print-ready output:** Letter or A4 at 150/300 dpi, with Print, Save PNG and Save PDF at true paper size. Booklets and photo books can print or save only some pages (*Paper → Print or save only*, e.g. `3-5, 8, cover`). The preview hatches the edge your printer can't reach and warns if the design runs into it.
 - **Posters:** print any design or photo big across 2×1 up to 4×4 sheets, with overlap strips, trim marks and sheet labels (A1, A2…) for assembly.
-- **English, Spanish and French:** Inkline uses your system's language, or choose one under *View → Language*. The window and everything printed are translated; word searches, crosswords and handwriting sheets use words and an alphabet in that language.
+- **English, Spanish, French, Portuguese and German:** Inkline uses your system's language, or choose one under *View → Language*. The window and everything printed are translated; word searches, crosswords and handwriting sheets use words and an alphabet in that language.
 - **SVG export:** generated designs save as true vector lines at real paper size, for Inkscape, Cricut/Silhouette cutting machines and laser cutters.
 
 ## Install
@@ -121,12 +121,12 @@ python packaging/windows/build.py         # dist/Inkline/ and dist/inkline-<vers
 
 ## Translations
 
-Inkline is in English, Spanish (`es`) and French (`fr`). Each translation is `inkengine/locale/<code>.json`: the
+Inkline is in English, Spanish (`es`), French (`fr`), Brazilian Portuguese (`pt`) and German (`de`). Each translation is `inkengine/locale/<code>.json`: the
 English text as written in the code, and its translation. Word search themes, crossword words and clues, and the
 default handwriting words are written in each language in `inkengine/patterns/words.py`, `crossword.py` and
 `trace.py`.
 
-**Check a translation.** The Spanish and French were written without a native speaker's review, so corrections are
+**Check a translation.** The translations were written without a native speaker's review, so corrections are
 very welcome. Open a [translation fix](https://github.com/Gshoe2006/inkline/issues/new?template=translation.yml)
 issue for a single string, or check the lot in a spreadsheet:
 
@@ -198,4 +198,4 @@ requested by the user or the person installing or operating it.
 
 Inkline is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version (GPL-3.0-or-later). See [LICENSE](LICENSE).
 
-The joined-up handwriting fonts in `inkengine/fonts` are Playwrite GB J, US Trad, US Modern, AU NSW, NZ, IE, CA, ES, MX and FR Trad (copyright 2023 The Playwrite Project Authors), under the SIL Open Font License 1.1; see [inkengine/fonts/OFL.txt](inkengine/fonts/OFL.txt).
+The joined-up handwriting fonts in `inkengine/fonts` are Playwrite GB J, US Trad, US Modern, AU NSW, NZ, IE, CA, ES, MX, FR Trad, BR, PT and DE VA (copyright 2023 The Playwrite Project Authors), under the SIL Open Font License 1.1; see [inkengine/fonts/OFL.txt](inkengine/fonts/OFL.txt).
