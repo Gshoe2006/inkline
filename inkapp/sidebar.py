@@ -1237,6 +1237,8 @@ def _row(first, second, stretch_first=False):
     lay = QHBoxLayout(w)
     lay.setContentsMargins(0, 0, 0, 0)
     lay.setSpacing(theme.PAIR_GAP)
+    if isinstance(first, QLabel):   # a label beside a button wraps rather than widening the sidebar (a longer
+        first.setWordWrap(True)     # language, or a desktop font wider than Inkline's)
     lay.addWidget(first, 1)
     lay.addWidget(second, 0)
     return w

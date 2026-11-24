@@ -146,7 +146,8 @@ def _walk_states(w):
 
 def test_the_window_in_each_language_asks_for_nothing_untranslated(language, tmp_path, monkeypatch):
     monkeypatch.setenv("INKLINE_CONFIG_DIR", str(tmp_path))
-    QApplication.instance() or QApplication([])
+    from inkapp import theme
+    theme.apply(QApplication.instance() or QApplication([]))   # Inkline's own look, as the app has (its 14 px text)
     from inkapp.window import Window
     w = Window("5.0.0", remember=False)
     w.show()
