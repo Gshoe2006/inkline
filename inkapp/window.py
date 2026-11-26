@@ -27,7 +27,7 @@ from inkengine.i18n import tr
 from inkengine.page import PAGE_KEYS, Settings, clean_page, design_box, geometry, single_page
 from inkengine.patterns import NAMES
 
-from . import config, jobs, project, recovery, theme, whatsnew
+from . import config, jobs, project, recovery, theme, update_ui, whatsnew
 from .preview import Preview
 from .render import PREVIEW_DPI, Renderer, render_view, view
 from .sample import sample_photo
@@ -213,6 +213,7 @@ class Window(QMainWindow):
         self._restoring = False
 
         self._wire()
+        self.updates = update_ui.Updates(self, version)
         self._menus()
         QApplication.instance().installEventFilter(self)
         theme.follow_system(QApplication.instance(), self.preview.page.update)
@@ -351,6 +352,10 @@ class Window(QMainWindow):
         v.setToolTipsVisible(True)
         h = mb.addMenu(tr("&Help"))
         act(h, "&What's new", lambda: self.show_whats_new())
+        act(h, "Check for &updates…", lambda: self.updates.check(asked=True))
+        self.act_updates_auto = act(h, "Check for updates au&tomatically", self.updates.set_automatic)
+        self.act_updates_auto.setCheckable(True)
+        self.act_updates_auto.setChecked(self.remember and config.read("preferences.json").get("update_check") is True)
         act(h, "&About Inkline", self._about)
 
     # --- state changes -------------------------------------------------------------------------------

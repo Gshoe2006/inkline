@@ -38,6 +38,7 @@ mkdir -p "$APP" "$R/usr/lib/inkline/vendor" "$R/usr/bin" "$R/DEBIAN"
 
 # the app, as the Arch package installs it
 (cd "$SRC" && cp -r inkengine inkapp "$APP/" && cp inkline.py inkline.svg VERSION CHANGELOG.md "$APP/")
+echo deb > "$APP/install-kind"   # Help → Check for updates: how to install a newer one
 find "$APP" -name __pycache__ -prune -exec rm -rf {} +
 install -Dm644 "$SRC/inkline.desktop" "$R/usr/share/applications/inkline.desktop"
 install -Dm644 "$SRC/inkline-mime.xml" "$R/usr/share/mime/packages/inkline.xml"

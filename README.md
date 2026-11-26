@@ -36,6 +36,22 @@ The Windows installer isn't signed yet, so Windows SmartScreen may warn that it'
 
 The `.deb` brings its own PySide6 (Debian and Ubuntu don't package a new enough one) and uses the system's Python and numpy. The AppImage brings everything, Python included; for it to appear in your app menu and open `.inkline` projects with a double-click, use an AppImage manager such as Gear Lever or AppImageLauncher.
 
+## Updates
+
+The first time Inkline starts, it asks whether to check for updates. If you say yes, it asks GitHub for the latest release at most once a day, and when there's a newer version it says so: **Update now**, **What's new**, **Later** or **Skip this version**. **Help → Check for updates…** checks at any time, and **Help → Check for updates automatically** turns the daily check on or off.
+
+**Update now** downloads the package for how you installed Inkline, checks it against the SHA-256 digest GitHub lists for the release (a file that doesn't match is deleted, not installed), and installs it:
+
+| Installed from | Updating |
+| --- | --- |
+| Windows installer | Runs the new installer, which closes Inkline and starts the new version |
+| AppImage | Puts the new AppImage in place of the old one, then offers to restart |
+| `.run` (for you) | Runs the new `.run`, then offers to restart |
+| `.deb`, Arch package, `.run --system` | Asks for an administrator password (through `pkexec`), installs, then offers to restart. Without `pkexec`, it downloads the package and shows the command to install it |
+| Flatpak, or run from source | Says there's an update and opens the release page |
+
+The request sends nothing about you or your work: GitHub sees an ordinary web request, with the user agent `Inkline-update-check`.
+
 ## Flatpak
 
 One package for any distro, with PySide6 and numpy inside (about 300 MB with the shared freedesktop runtime). With `flatpak` and `flatpak-builder` installed, build and install it from a copy of the repository:
@@ -193,7 +209,8 @@ Every installer is built from this repository's source by the release workflow
 How it's set up: [docs/code-signing.md](docs/code-signing.md).
 
 **Privacy:** this program will not transfer any information to other networked systems unless specifically
-requested by the user or the person installing or operating it.
+requested by the user or the person installing or operating it. The only network request it makes on its own is the daily
+update check, and only after the person using it says yes to it ([Updates](#updates)).
 
 ## Licence
 
