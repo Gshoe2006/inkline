@@ -6,6 +6,53 @@ To release a new version, add a section headed `## <version>` (the same text as 
 pull request that bumps `VERSION`. When it merges, `.github/workflows/release.yml` builds the packages
 and publishes a GitHub Release with that section as its notes.
 
+## 5.7.0 - 2026-11-26
+
+Inkline 5.7 adds bingo cards, a different one for every child, and shows what's new in an update before you install it.
+
+### What's new
+
+- **Bingo cards.** **Pattern → Bingo cards** makes a card to mark as things are called: numbers (1–20, 1–40, or the classic 1–75 under B I N G O with a free square), words (any word theme, sight words, or your own list) or sums, where the card has the answers and the caller reads out the sums. Complexity sets the card, from 3 × 3 to 5 × 5. With **Paper → Copies** or **Names**, every child gets a different card, and **Answer pages** adds one caller's sheet for the whole class, with everything that can be called in boxes to tick off or cut out.
+- **What's new before updating.** When Inkline offers an update, **What's new** now shows that version's notes in Inkline, then asks again whether to update.
+- **Steadier updates.** Every package is now checked, before it's published, to say correctly how it was installed, so **Update now** always installs a newer version the right way.
+
+### Upgrading
+
+Nothing changes in what Inkline needs. Your presets, settings, projects, recent files and printer carry over. If you have 5.6, Inkline offers this update itself (**Help → Check for updates…**); from 5.5 or earlier, install it as below.
+
+**Windows**
+Run `inkline-5.7.0-windows-setup.exe`.
+
+**Debian / Ubuntu / Linux Mint / Pop!_OS**
+```sh
+sudo apt install ./inkline_5.7.0-1_amd64.deb
+```
+
+**Arch / CachyOS / Manjaro**
+```sh
+sudo pacman -U inkline-5.7.0-1-any.pkg.tar.zst
+```
+
+**Any distro, nothing installed**
+```sh
+chmod +x inkline-5.7.0-x86_64.AppImage && ./inkline-5.7.0-x86_64.AppImage
+```
+
+**Any other distro**
+```sh
+sh inkline-5.7.0.run            # or --system for every user
+```
+
+**Flatpak**
+```sh
+flatpak install --user inkline-5.7.0.flatpak     # if a .flatpak file is attached to this release
+sh packaging/flatpak/build.sh                    # or build it from a copy of the source
+```
+
+### Found a problem?
+
+Please open an issue saying what you did, what you expected, and what happened. Include your system (distro, or Windows version), and the printer if it's about printing.
+
 ## 5.6.0 - 2026-11-26
 
 Inkline 5.6 can update itself: it tells you when there's a new version, and downloads and installs it when you say so.
