@@ -6,6 +6,52 @@ To release a new version, add a section headed `## <version>` (the same text as 
 pull request that bumps `VERSION`. When it merges, `.github/workflows/release.yml` builds the packages
 and publishes a GitHub Release with that section as its notes.
 
+## 5.8.0 - 2026-11-26
+
+Inkline 5.8 adds a Settings window, and can check for updates while it's closed.
+
+### What's new
+
+- **Settings.** **Edit → Settings…** (Ctrl+,) keeps what Inkline starts with in one place: the printer **Print** starts with; the paper size, orientation, margin and resolution new projects begin with (**Use for this design** puts them on the one open now); what **Ctrl+E** saves (PDF, PNG or SVG); when to check for updates; and the language.
+- **Updates while Inkline is closed.** **Help → Check for updates automatically** now offers **Never**, **When Inkline starts**, **At login**, **Every day** or **Every week**. The last three check even while Inkline isn't open, and a notification's **Show the update** button opens the update box; a version found while Inkline was closed is offered when you next open it. It's set up for you alone, with no administrator password (a systemd user timer on Linux, a scheduled task on Windows); a Flatpak checks only while it's open.
+
+### Upgrading
+
+Nothing changes in what Inkline needs. Your presets, settings, projects, recent files and printer carry over. If you have 5.6 or 5.7, Inkline offers this update itself (**Help → Check for updates…**); from 5.5 or earlier, install it as below.
+
+**Windows**
+Run `inkline-5.8.0-windows-setup.exe`.
+
+**Debian / Ubuntu / Linux Mint / Pop!_OS**
+```sh
+sudo apt install ./inkline_5.8.0-1_amd64.deb
+```
+
+**Arch / CachyOS / Manjaro**
+```sh
+sudo pacman -U inkline-5.8.0-1-any.pkg.tar.zst
+```
+
+**Any distro, nothing installed**
+```sh
+chmod +x inkline-5.8.0-x86_64.AppImage && ./inkline-5.8.0-x86_64.AppImage
+```
+
+**Any other distro**
+```sh
+sh inkline-5.8.0.run            # or --system for every user
+```
+
+**Flatpak**
+```sh
+flatpak install --user inkline-5.8.0.flatpak     # if a .flatpak file is attached to this release
+sh packaging/flatpak/build.sh                    # or build it from a copy of the source
+```
+
+### Found a problem?
+
+Please open an issue saying what you did, what you expected, and what happened. Include your system (distro, or Windows version), and the printer if it's about printing.
+
 ## 5.7.0 - 2026-11-26
 
 Inkline 5.7 adds bingo cards, a different one for every child, and shows what's new in an update before you install it.
