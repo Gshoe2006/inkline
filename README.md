@@ -244,16 +244,24 @@ For a packaging-only change, bump `pkgrel` in `packaging/arch/PKGBUILD`, run `pa
 
 Free code signing provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org).
 
-This covers the Windows installer (`inkline-<version>-windows-setup.exe`). It's signed from the first release
-after SignPath Foundation accepts Inkline; until then the installer is unsigned, and Windows SmartScreen may
-say it's from an unknown publisher.
+**Today the Windows installer and the macOS app are unsigned.** Windows SmartScreen may say the installer is from
+an unknown publisher, and macOS asks before opening the app the first time (see [Install](#install)). The release
+workflow signs them as soon as signing is set up for the repository, and until then says in each run that it
+built them unsigned:
+
+- **Windows** (`inkline-<version>-windows-setup.exe`, and `Inkline.exe` in it and in the portable zip): signed
+  through SignPath Foundation from the first release after it accepts Inkline (only the installer), or with Azure
+  Trusted Signing or a code signing certificate if one of those is set up instead.
+- **macOS** (the `.dmg` disk images and `Inkline.app` in them): signed with an Apple Developer ID and notarized by
+  Apple once a Developer ID certificate is set up. Until then the app is signed ad hoc only.
 
 - Committers and reviewers: [Gshoe2006](https://github.com/Gshoe2006)
 - Approvers: [Gshoe2006](https://github.com/Gshoe2006)
 
-Every installer is built from this repository's source by the release workflow
-(`.github/workflows/release.yml`) on GitHub's own runners, and each release is approved for signing by hand.
-How it's set up: [docs/code-signing.md](docs/code-signing.md).
+Every installer and disk image is built from this repository's source by the release workflow
+(`.github/workflows/release.yml`) on GitHub's own runners. Releases signed through SignPath are each approved for
+signing by hand. The options, their costs, the secrets each one needs and how to check a signed file:
+[docs/code-signing.md](docs/code-signing.md).
 
 **Privacy:** this program will not transfer any information to other networked systems unless specifically
 requested by the user or the person installing or operating it. The only network request it makes on its own is the daily

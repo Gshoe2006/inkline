@@ -1,6 +1,11 @@
 # After each release: what each app store needs for it (winget, Homebrew, AUR, Flathub), written by
 # packaging/stores/make_manifests.py with the release's own checksums, kept as the run's "store-manifests" download.
-# Nothing is submitted: docs/publishing.md says where each goes. "Run workflow" writes them for the latest release.
+# Nothing is submitted to a store: docs/publishing.md and packaging/stores/*/README.md say where each goes.
+# "Run workflow" writes them for the latest release.
+#
+# One thing can be automatic: with a TAP_TOKEN secret (a token that may push to the Homebrew tap,
+# Gshoe2006/homebrew-inkline, or the repository named by the HOMEBREW_TAP variable), the homebrew-tap job puts the
+# new cask in the tap. Without it, that job says so and does nothing (packaging/stores/homebrew/README.md).
 name: Store manifests
 
 on:
@@ -16,6 +21,9 @@ jobs:
   manifests:
     if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-24.04
+    env:
+      # the cask only needs its "how to open an unsigned app" note until the disk image is notarized (docs/code-signing.md)
+      MACOS_NOTARIZED: ${{ secrets.MACOS_CERT_P12 != '' && (secrets.APPLE_APP_PASSWORD != '' || secrets.APPLE_API_KEY_P8 != '') }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -25,7 +33,9 @@ jobs:
       - name: Write them
         run: |
           V=$(tr -d '[:space:]' < VERSION)
-          python3 packaging/stores/make_manifests.py "$V" --commit "$(git rev-list -n 1 "$V")" --out store-manifests
+          EXTRA=""
+          [ "$MACOS_NOTARIZED" = true ] && EXTRA="--macos-notarized"
+          python3 packaging/stores/make_manifests.py "$V" --commit "$(git rev-list -n 1 "$V")" --out store-manifests $EXTRA
           {
             echo "### Store manifests for Inkline $V"
             echo
@@ -38,3 +48,45 @@ jobs:
           path: store-manifests/
           if-no-files-found: error
           retention-days: 30
+
+  homebrew-tap:
+    needs: manifests
+    runs-on: ubuntu-24.04
+    env:
+      HAVE_TAP_TOKEN: ${{ secrets.TAP_TOKEN != '' }}
+      TAP: ${{ vars.HOMEBREW_TAP || 'Gshoe2006/homebrew-inkline' }}
+    steps:
+      - name: Is there a tap token?
+        if: env.HAVE_TAP_TOKEN != 'true'
+        run: echo "::notice::No TAP_TOKEN secret, so the Homebrew tap wasn't updated (see packaging/stores/homebrew/README.md)."
+
+      - uses: actions/download-artifact@v8
+        if: env.HAVE_TAP_TOKEN == 'true'
+        with:
+          name: store-manifests
+          path: store-manifests
+
+      - uses: actions/checkout@v7
+        if: env.HAVE_TAP_TOKEN == 'true'
+        with:
+          repository: ${{ env.TAP }}
+          token: ${{ secrets.TAP_TOKEN }}
+          path: tap
+
+      - name: Put the new cask in the tap
+        if: env.HAVE_TAP_TOKEN == 'true'
+        working-directory: tap
+        run: |
+          mkdir -p Casks
+          cp ../store-manifests/homebrew/inkline.rb Casks/inkline.rb
+          git add Casks/inkline.rb
+          if git diff --cached --quiet; then
+            echo "::notice::$TAP already has this cask."
+            exit 0
+          fi
+          V=$(sed -n 's/^  version "\(.*\)"$/\1/p' Casks/inkline.rb)
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "inkline $V"
+          git push
+          echo "::notice::Updated $TAP to Inkline $V."

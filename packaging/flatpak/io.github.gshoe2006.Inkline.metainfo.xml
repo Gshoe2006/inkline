@@ -2,7 +2,7 @@
 <component type="desktop-application">
   <id>io.github.gshoe2006.Inkline</id>
   <name>Inkline</name>
-  <summary>Make black and white pages for printing</summary>
+  <summary>Make black and white pages to print</summary>
   <developer id="io.github.gshoe2006">
     <name>Gshoe2006</name>
   </developer>
