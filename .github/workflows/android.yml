@@ -50,6 +50,16 @@ jobs:
           ln -s "$ANDROID_HOME/cmdline-tools/latest/bin" "$ANDROID_HOME/tools/bin"
           ln -s "$ANDROID_HOME/cmdline-tools/latest/lib" "$ANDROID_HOME/tools/lib"
 
+      # Gradle fetches the Android build plugin's libraries from Maven Central, which rate-limits shared runners
+      # (HTTP 429): kept between runs, they're fetched once
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ matrix.arch }}-p4a-58d21141
+          restore-keys: gradle-${{ runner.os }}-
+
       - name: Fetch Qt's PySide6 6.12.0 Android wheels
         run: |
           mkdir -p wheels
