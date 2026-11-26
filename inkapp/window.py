@@ -258,7 +258,7 @@ class Window(QMainWindow):
         sb.changed.connect(self._changed)
         sb.cancel_btn.clicked.connect(self.cancel_job)
         esc = QShortcut(QKeySequence(Qt.Key.Key_Escape), self)
-        esc.activated.connect(self.cancel_job)
+        esc.activated.connect(self._escape)
         sb.mode_changed.connect(self._set_mode)
         sb.reroll.connect(self.new_design)
         sb.more_designs.connect(self.more_designs)
@@ -381,6 +381,7 @@ class Window(QMainWindow):
         v.setToolTipsVisible(True)
         h = mb.addMenu(tr("&Help"))
         act(h, "&What's new", lambda: self.show_whats_new())
+        act(h, "T&our of the window", lambda: self.show_tour())
         act(h, "Check for &updates…", lambda: self.updates.check(asked=True))
         self.updates.add_menu(h.addMenu(tr("Check for updates au&tomatically")))
         act(h, "&About Inkline", self._about)
@@ -1658,6 +1659,14 @@ class Window(QMainWindow):
             QTimer.singleShot(0, lambda: bar.setValue(i + 1))
         self.worker.submit(lambda: ("job", jobs.run(j, device, progress, cancel.is_set), done, failed))
 
+    def _escape(self):
+        """Esc: closes the tour if it's showing, else cancels a print or save."""
+        t = getattr(self, "_tour", None)
+        if t is not None and t.isVisible():
+            t.finish()
+            return
+        self.cancel_job()
+
     def cancel_job(self):
         """Cancel (or Esc): stop the print or save after the page being drawn."""
         # only a job with a Cancel button: a single page is done in a moment (and a PNG or SVG save can't stop)
@@ -1739,6 +1748,23 @@ class Window(QMainWindow):
         self._history_view.show()
         self._history_view.raise_()
         self._history_view.activateWindow()
+
+    def show_tour(self, first=False):
+        """The window's tour; the first time, finishing or skipping it is remembered."""
+        from . import tour
+        if getattr(self, "_tour", None) is not None and self._tour.isVisible():
+            return self._tour
+        self._tour = tour.Tour(self, done=(tour.mark_seen if first and self.remember else None))
+        self._tour.start()
+        return self._tour
+
+    def offer_tour(self):
+        """At start: the tour, the first time 6.0 opens."""
+        from . import tour
+        if tour.due(self.remember):
+            self.show_tour(first=True)
+            return True
+        return False
 
     def offer_whats_new(self):
         """At start: the first time after an update, what's changed since the version used last."""

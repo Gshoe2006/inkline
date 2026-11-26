@@ -175,6 +175,9 @@ QToolButton#foldHead {{ background: transparent; border: 0; color: {t.muted}; fo
   letter-spacing: 1px; padding: 2px 0; text-align: left; }}
 QToolButton#foldHead:hover {{ color: {t.ink}; }}
 QToolButton#foldHead:focus {{ color: {t.accent}; text-decoration: underline; }}
+QFrame#tourCard {{ background: {t.panel}; border: 1px solid {t.accent}; border-radius: 10px; }}
+QFrame#tourOutline {{ background: transparent; border: 3px solid {t.accent}; border-radius: 10px; }}
+QLabel#tourTitle {{ font-family: {head}; font-size: 16px; font-weight: 700; }}
 QFrame#popupPanel {{ background: {t.panel}; border: 1px solid {t.line}; border-radius: 8px; }}
 QToolButton#toolbarMenu {{ font-size: 13px; font-weight: 600; background: {t.field}; border: 1px solid {t.line};
   border-radius: 6px; padding: 7px 9px; }}
