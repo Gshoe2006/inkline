@@ -34,6 +34,14 @@ THEMES = {
               "grass lily bird duckling umbrella frog sprout april",
     "summer": "sun beach sand bucket spade shell wave swim cone lolly picnic holiday hat goggles kite camping tent "
               "boat island seaside lemonade watermelon flipflops shorts july",
+    "sight1": "and big blue can come down find for funny help jump little look make not one play run said see the "
+              "two where yellow you all are black brown but did eat four good have like must now out please",
+    "sight2": "after again could every fly from give going had has her him how just know live may once open over "
+              "put some stop take thank walk always around because been before best both buy call does fast first "
+              "found sleep",
+    "sight3": "about better bring carry clean cut done draw drink eight fall far full grow hold hot hurt keep kind "
+              "laugh light long much myself never only own pick seven shall show six small start ten today together "
+              "try warm",
 }
 # The same themes in Spanish, used when Inkline is in Spanish (words keep Ñ; other accents come off, as Spanish
 # word searches print them)
@@ -60,6 +68,12 @@ THEMES_ES = {
               "hierba arcoiris pajaro patito paraguas rana brote abril primavera",
     "summer": "sol playa arena cubo pala concha ola nadar helado picnic vacaciones gorra gafas cometa tienda barco "
               "isla castillo limonada sandia chanclas piscina julio toalla",
+    "sight1": "las casa mamá papá sol mesa pato oso ama mira come dame sube baja amigo niño niña gato perro agua "
+              "luna leche pelota rojo azul hola mano dedo pie",
+    "sight2": "que con por para pero más muy está son tiene hay como cuando donde aquí allí hoy ayer bien mal "
+              "grande chico bonito nuevo todo mucho poco otro hacer decir ver dar",
+    "sight3": "también siempre nunca después antes entonces porque mientras durante contra sobre entre hacia desde "
+              "hasta mismo cada cosa tiempo mundo vida año día parte persona lugar momento trabajo escuela juntos",
 }
 THEMES_FR = {
     "animals": "chat chien cheval tigre zèbre lapin singe girafe lion ours souris mouton chèvre canard grenouille "
@@ -84,6 +98,12 @@ THEMES_FR = {
               "potager herbe pâquerette oiseau caneton averse grenouille avril cerisier",
     "summer": "soleil plage sable seau pelle coquillage vague nager glace maillot vacances chapeau lunettes parasol "
               "camping tente bateau île château limonade pastèque tongs piscine juillet serviette",
+    "sight1": "les des moi toi lui elle papa maman chat chien maison école ami jouer voir dans sur avec pour qui "
+              "non oui petit grand rouge bleu jaune vert bébé lit",
+    "sight2": "que pas mais plus très tout bien aussi alors comme être avoir faire dire aller venir prendre donner "
+              "veut peut fait sont avait était nous vous ils elles leur cette",
+    "sight3": "toujours jamais souvent encore déjà depuis pendant parce quand pourquoi beaucoup peu chaque autre "
+              "même quelque chose temps monde matin année enfant famille travail ensemble devant derrière",
 }
 THEMES_PT = {
     "animals": "gato cachorro cavalo tigre zebra coelho macaco girafa leão urso rato ovelha cabra pato sapo coruja "
@@ -108,6 +128,12 @@ THEMES_PT = {
               "rosa margarida joaninha minhoca coelho girassol tulipa piquenique lagarta verde",
     "summer": "verão praia sol mar areia sorvete piscina férias chapéu óculos calor toalha balde concha onda "
               "castelo bermuda chinelo picolé melancia coco pipa barco suco",
+    "sight1": "uma casa mamãe papai sol bola pato gato cão vovó vovô dedo mão água leite azul vermelho amarelo "
+              "menino menina amigo olha come dia lua rua sim não",
+    "sight2": "que com por para mas mais muito está são tem logo quando onde aqui ali hoje bem grande feliz bonito "
+              "novo todo pouco outro fazer dizer ver dar",
+    "sight3": "também sempre nunca depois antes então porque enquanto durante contra sobre entre desde até mesmo "
+              "cada coisa tempo mundo vida ano parte pessoa lugar momento trabalho escola juntos",
 }
 THEMES_DE = {
     "animals": "katze hund pferd tiger zebra hase affe giraffe löwe bär maus schaf ziege ente frosch eule adler "
@@ -132,11 +158,19 @@ THEMES_DE = {
               "marienkäfer raupe ostern samen",
     "summer": "sommer sonne strand meer sand eis urlaub hitze badehose welle muschel zelt picknick schwimmen "
               "sonnenhut ferien melone erdbeere grillen boot",
+    "sight1": "und ich bin ist eine die der das mit auf wir ihr sie Mama Papa Oma Opa Ball Katze Haus rot blau gelb "
+              "grün nein",
+    "sight2": "nicht auch noch nur sehr gut hat haben sein kann will muss geht kommt macht sagt sieht spielt heute "
+              "dann wenn weil aber oder alle viel klein groß neu",
+    "sight3": "immer wieder schon vielleicht zusammen manchmal zuerst später gestern morgen danach weiter bitte "
+              "danke wirklich natürlich jeder etwas nichts warum welche Schule Freund Kinder Mutter Vater Wasser "
+              "Stadt",
 }
 THEMES_BY_LANGUAGE = {"es": THEMES_ES, "fr": THEMES_FR, "pt": THEMES_PT, "de": THEMES_DE}
 THEME_NAMES = {"animals": "Animals", "ocean": "Ocean", "space": "Space", "food": "Food", "weather": "Weather",
                "sports": "Sports", "autumn": "Autumn", "halloween": "Halloween", "winter": "Winter", "spring": "Spring",
-               "summer": "Summer", "custom": "Your own list"}
+               "summer": "Summer", "sight1": "Sight words: first", "sight2": "Sight words: next",
+               "sight3": "Sight words: harder", "custom": "Your own list"}
 DIRS = [(0, 1), (1, 0), (1, 1), (-1, 1), (0, -1), (-1, 0), (-1, -1), (1, -1)]   # E, S, SE, NE, then the backwards ones
 
 

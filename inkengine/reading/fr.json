@@ -1,0 +1,1172 @@
+[
+ {
+  "level": 1,
+  "title": "Théo et le cerf-volant",
+  "text": "Théo a un cerf-volant rouge. Il a une longue queue bleue. Samedi, Théo va au parc avec Mamie. Le vent souffle fort. Théo court vite et le cerf-volant monte, monte, monte. Il vole au-dessus des arbres. Mamie tape dans ses mains. Théo sourit. Faire voler son cerf-volant, c'est ce qu'il préfère.",
+  "questions": [
+   {
+    "q": "De quelle couleur est le cerf-volant ?",
+    "choices": [
+     "Bleu",
+     "Rouge",
+     "Vert"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Qui va au parc avec Théo ?",
+    "choices": [
+     "Mamie",
+     "Papa",
+     "Son copain"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Que fait Mamie ?",
+    "choices": [
+     "Elle court",
+     "Elle chante",
+     "Elle tape dans ses mains"
+    ],
+    "answer": 2
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Un matin de neige",
+  "text": "Léa regarde par la fenêtre. Tout est blanc ! Il y a de la neige sur l'herbe et sur les voitures. Léa met son manteau, son bonnet et ses bottes bien chaudes. Elle sort avec son frère. Ils font un grand bonhomme de neige. Il a une carotte pour le nez et deux cailloux pour les yeux. Puis ils rentrent boire du lait chaud.",
+  "questions": [
+   {
+    "q": "Qu'y a-t-il sur l'herbe ?",
+    "choices": [
+     "De la pluie",
+     "Des feuilles",
+     "De la neige"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Qu'est-ce qui fait le nez du bonhomme de neige ?",
+    "choices": [
+     "Une carotte",
+     "Un caillou",
+     "Un bâton"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Que boivent-ils à l'intérieur ?",
+    "choices": [
+     "Du jus d'orange",
+     "Du lait chaud",
+     "De l'eau"
+    ],
+    "answer": 1
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Ma nouvelle boîte à goûter",
+  "text": "Hugo a une nouvelle boîte à goûter. Elle est verte avec des étoiles jaunes. Aujourd'hui, Hugo a un sandwich au fromage, une pomme et des bâtonnets de carotte. À midi, il s'assoit à côté de son amie Chloé. Chloé a oublié sa pomme. Hugo coupe sa pomme en deux et donne une moitié à Chloé. Chloé dit merci. Partager les rend heureux tous les deux.",
+  "questions": [
+   {
+    "q": "Qu'y a-t-il sur la boîte à goûter ?",
+    "choices": [
+     "Des étoiles jaunes",
+     "Des pois rouges",
+     "Des poissons bleus"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Qu'est-ce que Chloé a oublié ?",
+    "choices": [
+     "Son sandwich",
+     "Sa boisson",
+     "Sa pomme"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Que donne Hugo à Chloé ?",
+    "choices": [
+     "Un bâtonnet de carotte",
+     "La moitié de sa pomme",
+     "Son sandwich"
+    ],
+    "answer": 1
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "La petite cane",
+  "text": "Une petite cane vit près de la mare. Tous les matins, elle nage avec sa maman. Elle aime barboter dans l'eau. Un jour, elle voit une grenouille sur un nénuphar. La grenouille saute dans la mare. Plouf ! La petite cane fait coin-coin et part à la nage le dire à sa maman. Puis elle fait une sieste au soleil.",
+  "questions": [
+   {
+    "q": "Où vit la petite cane ?",
+    "choices": [
+     "Dans une grange",
+     "Près de la mare",
+     "Dans un arbre"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Que voit la petite cane sur un nénuphar ?",
+    "choices": [
+     "Une grenouille",
+     "Un poisson",
+     "Un oiseau"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Que fait-elle à la fin ?",
+    "choices": [
+     "Elle mange du pain",
+     "Elle s'envole",
+     "Elle fait une sieste"
+    ],
+    "answer": 2
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "On plante une graine",
+  "text": "Léo et sa maman plantent une graine de tournesol. Ils mettent de la terre dans un pot. Léo enfonce la graine dans la terre avec son doigt. Maman lui donne un peu d'eau. Ils posent le pot sur le rebord de la fenêtre, au soleil. Chaque jour, Léo regarde le pot. Au bout d'une semaine, une toute petite pousse verte sort. Léo est très content.",
+  "questions": [
+   {
+    "q": "Quelle graine plantent-ils ?",
+    "choices": [
+     "Une graine de haricot",
+     "Une graine de citrouille",
+     "Une graine de tournesol"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Où posent-ils le pot ?",
+    "choices": [
+     "Sur le rebord de la fenêtre",
+     "Sous le lit",
+     "Dans la cabane du jardin"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Quand la pousse verte sort-elle ?",
+    "choices": [
+     "Le lendemain",
+     "Au bout d'une semaine",
+     "Au bout d'un an"
+    ],
+    "answer": 1
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "À la bibliothèque",
+  "text": "Mardi, la classe de CP va à la bibliothèque. À la bibliothèque, c'est calme. Il y a beaucoup de livres sur les étagères. Nora trouve un livre sur les dinosaures. Louis trouve un livre sur les trains. Madame Colin, la bibliothécaire, les aide à emprunter leurs livres. Ils peuvent les garder deux semaines. Nora veut lire son livre avant de dormir.",
+  "questions": [
+   {
+    "q": "Quel jour la classe va-t-elle à la bibliothèque ?",
+    "choices": [
+     "Lundi",
+     "Mardi",
+     "Vendredi"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "De quoi parle le livre de Louis ?",
+    "choices": [
+     "Des trains",
+     "Des dinosaures",
+     "Des chats"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Combien de temps peuvent-ils garder les livres ?",
+    "choices": [
+     "Un jour",
+     "Deux semaines",
+     "Un mois"
+    ],
+    "answer": 1
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Un jour de pluie",
+  "text": "Il pleut. Zoé ne peut pas jouer dehors. Elle est un peu triste. Puis Papa a une idée. Ils construisent une cabane avec une couverture et deux chaises. Zoé apporte sa lampe de poche et son nounours. Dans la cabane, Papa lit une histoire. Zoé écoute la pluie sur la fenêtre. Maintenant, elle aime les jours de pluie.",
+  "questions": [
+   {
+    "q": "Pourquoi Zoé ne peut-elle pas jouer dehors ?",
+    "choices": [
+     "Il fait nuit",
+     "Il pleut",
+     "Il fait trop chaud"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Que construisent-ils ?",
+    "choices": [
+     "Une cabane",
+     "Un bateau",
+     "Une tour"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Que pense Zoé des jours de pluie à la fin ?",
+    "choices": [
+     "Elle en a peur",
+     "Elle s'y ennuie",
+     "Elle les aime"
+    ],
+    "answer": 2
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "La journée du sport",
+  "text": "Aujourd'hui, c'est la journée du sport à l'école. Le soleil brille. Amir fait la course de l'œuf dans la cuillère. Il marche très prudemment. L'œuf tremble, mais il ne tombe pas. Amir arrive deuxième ! Ensuite, c'est la course en sac. Tout le monde saute et rit. À la fin, tous les enfants reçoivent un autocollant. Amir colle son autocollant sur son tee-shirt.",
+  "questions": [
+   {
+    "q": "À quelle course Amir participe-t-il d'abord ?",
+    "choices": [
+     "La course en sac",
+     "La course de l'œuf dans la cuillère",
+     "La course à pied"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "À quelle place Amir arrive-t-il ?",
+    "choices": [
+     "Deuxième",
+     "Premier",
+     "Dernier"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Que reçoivent tous les enfants à la fin ?",
+    "choices": [
+     "Une médaille",
+     "Un gâteau",
+     "Un autocollant"
+    ],
+    "answer": 2
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Les crêpes de Papi",
+  "text": "Lili et Papi font des crêpes. Ils mélangent la farine, les œufs et le lait dans un grand saladier. Papi fait chauffer la poêle. Il verse la pâte. Quand la crêpe est prête, il la fait sauter très haut en l'air. Lili rigole. Elle met du citron et du sucre sur sa crêpe. Papi aime la sienne avec de la confiture. Ils mangent tout.",
+  "questions": [
+   {
+    "q": "Qui fait des crêpes avec Lili ?",
+    "choices": [
+     "Papi",
+     "Maman",
+     "Sa maîtresse"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Que met Lili sur sa crêpe ?",
+    "choices": [
+     "De la confiture",
+     "Du chocolat",
+     "Du citron et du sucre"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Que fait Papi avec la crêpe ?",
+    "choices": [
+     "Il la fait tomber",
+     "Il la fait sauter en l'air",
+     "Il la donne au chien"
+    ],
+    "answer": 1
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Regarder la Lune",
+  "text": "Le soir, Jules regarde le ciel. Il voit la Lune. Ce soir, elle est grosse et ronde. Jules voit aussi plein de petites étoiles. Maman lui dit que la Lune change de forme selon les nuits. Parfois, elle est fine comme un sourire. Jules fait au revoir à la Lune avec la main et va se coucher.",
+  "questions": [
+   {
+    "q": "Comment est la Lune ce soir ?",
+    "choices": [
+     "Grosse et ronde",
+     "Fine comme un sourire",
+     "Rouge et petite"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Que voit encore Jules dans le ciel ?",
+    "choices": [
+     "Des nuages et de la pluie",
+     "Un arc-en-ciel",
+     "De petites étoiles"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Que fait Jules à la fin ?",
+    "choices": [
+     "Il lit un livre",
+     "Il fait au revoir à la Lune",
+     "Il prend un goûter"
+    ],
+    "answer": 1
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Le livre perdu",
+  "text": "Lucas adorait son livre de bibliothèque sur les volcans. Il l'avait lu trois fois. Vendredi, il devait le rendre, mais il ne le trouvait nulle part. Il chercha sous son lit et dans son cartable. Il chercha même dans la salle de bains. Lucas commença à s'inquiéter. Qu'allait dire M. Patel, le bibliothécaire ?\n\nAlors sa petite sœur, Ada, entra avec le livre dans les mains. Elle l'avait pris pour regarder les images de la lave brûlante. Lucas éclata de rire, soulagé. Il rapporta le livre à la bibliothèque juste à temps. M. Patel sourit et lui parla d'un nouveau livre sur les tremblements de terre. Lucas l'emprunta tout de suite, et cette fois, il le rangea sur son étagère.",
+  "questions": [
+   {
+    "q": "De quoi parlait le livre de bibliothèque de Lucas ?",
+    "choices": [
+     "Des tremblements de terre",
+     "Des volcans",
+     "Des rivières"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Qui avait le livre ?",
+    "choices": [
+     "Sa sœur Ada",
+     "Son papa",
+     "M. Patel"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Où Lucas a-t-il rangé le nouveau livre ?",
+    "choices": [
+     "Sous son lit",
+     "Dans son cartable",
+     "Sur son étagère"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Pourquoi Lucas a-t-il commencé à s'inquiéter ?",
+    "answer": "Il ne trouvait pas le livre et devait le rendre."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Les feuilles d'automne",
+  "text": "En automne, les arbres de la rue des Noisetiers changent de couleur. Les feuilles vertes deviennent jaunes, orange et rouges. C'est parce que les jours raccourcissent et refroidissent, et que les arbres se préparent à se reposer pendant l'hiver. Bientôt, les feuilles commencent à tomber, et le trottoir se couvre d'un tapis qui craque.\n\nPriya et son ami Tom adorent l'automne. Après l'école, ils ramassent les plus belles feuilles qu'ils trouvent. Ils en choisissent des grandes, des petites et des feuilles aux bords pointus. À la maison, Priya les colle sur une feuille de papier pour faire le portrait d'un renard. Tom se fabrique une couronne très colorée avec les siennes. Ils cherchent aussi des marrons sous le marronnier. L'automne est leur saison préférée.",
+  "questions": [
+   {
+    "q": "De quelles couleurs deviennent les feuilles ?",
+    "choices": [
+     "Bleu, violet et rose",
+     "Jaune, orange et rouge",
+     "Noir et blanc"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Que fait Tom avec ses feuilles ?",
+    "choices": [
+     "Une couronne",
+     "Le portrait d'un renard",
+     "Un marque-page"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Où cherchent-ils des marrons ?",
+    "choices": [
+     "Dans la cour de récré",
+     "Dans la mare du parc",
+     "Sous le marronnier"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Pourquoi les feuilles changent-elles de couleur ?",
+    "answer": "Les jours raccourcissent et refroidissent."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Le jardin de l'école",
+  "text": "La classe de CE2 avait un petit jardin derrière la salle de classe. Au printemps, les élèves plantèrent des pommes de terre, des petits pois et de la salade. Chaque enfant avait une mission. Jamal s'occupait de l'arrosage. Sofia arrachait les mauvaises herbes. Gabriel comptait les escargots et les déposait doucement près de la haie.\n\nUne semaine, il fit très chaud et très sec. Les feuilles de salade commencèrent à pendre. Jamal le remarqua et demanda s'il pouvait arroser le jardin deux fois par jour. Mme Okafor accepta. Bientôt, les plantes se redressèrent. À l'été, la classe avait fait pousser assez de légumes pour préparer une grande salade. Ils la partagèrent avec la classe d'à côté. Tout le monde trouva qu'elle était meilleure que n'importe quelle salade du magasin, parce qu'ils l'avaient cultivée eux-mêmes.",
+  "questions": [
+   {
+    "q": "Quelle était la mission de Jamal ?",
+    "choices": [
+     "Arracher les mauvaises herbes",
+     "Arroser",
+     "Compter les escargots"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Que faisait Gabriel avec les escargots ?",
+    "choices": [
+     "Il les déposait près de la haie",
+     "Il les mettait dans un bocal",
+     "Il leur donnait de la salade"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Avec qui la classe a-t-elle partagé la salade ?",
+    "choices": [
+     "Avec les parents",
+     "Avec la directrice",
+     "Avec la classe d'à côté"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Qu'est-ce que Jamal a remarqué quand il faisait chaud ?",
+    "answer": "Les feuilles de salade pendaient."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Le gâteau d'anniversaire de Mamie",
+  "text": "C'étaient les soixante-dix ans de Mamie Rose, et Nathan voulait lui faire un gâteau. Papa l'aida à lire la recette. Ils pesèrent le beurre, le sucre et la farine, et Nathan cassa les œufs très délicatement. Un tout petit bout de coquille tomba dedans, et Papa l'aida à le repêcher.\n\nPendant la cuisson, la cuisine sentait bon le sucre et la chaleur. Quand le gâteau eut refroidi, Nathan étala un glaçage rose dessus et ajouta sept bougies, une pour chaque dizaine d'années. À la fête, tout le monde chanta. Mamie Rose souffla les bougies d'un seul coup. Elle dit que c'était le meilleur gâteau qu'elle avait jamais goûté. Nathan se sentit fier et demanda s'ils pourraient refaire un gâteau ensemble la semaine suivante.",
+  "questions": [
+   {
+    "q": "Quel âge avait Mamie Rose ?",
+    "choices": [
+     "Soixante ans",
+     "Soixante-dix ans",
+     "Sept ans"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "De quelle couleur était le glaçage ?",
+    "choices": [
+     "Rose",
+     "Blanc",
+     "Jaune"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Qui a aidé Nathan à lire la recette ?",
+    "choices": [
+     "Mamie Rose",
+     "Sa sœur",
+     "Papa"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Pourquoi Nathan a-t-il mis sept bougies sur le gâteau ?",
+    "answer": "Une bougie pour chaque dizaine d'années."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Une journée à la mer",
+  "text": "La famille Hassan partit en voiture à la mer un dimanche ensoleillé. Layla sentait l'air salé avant même de voir la mer. Sur la plage, elle construisit un château de sable avec son petit frère. Ils le décorèrent avec des coquillages et un drapeau en algues.\n\nPlus tard, Layla alla explorer les rochers avec Maman. Elles trouvèrent un petit crabe caché sous une pierre et des anémones de mer qui ressemblaient à de la gelée rouge. Maman lui rappela de bien regarder et de tout remettre à sa place. À midi, une mouette effrontée essaya d'attraper le sandwich de Papa, mais il le tint bien fort. Avant de rentrer, ils barbotèrent tous dans les vagues fraîches. Layla s'endormit dans la voiture en rêvant de crabes.",
+  "questions": [
+   {
+    "q": "Avec quoi ont-ils fait le drapeau du château ?",
+    "choices": [
+     "Un bâton",
+     "Une feuille",
+     "Des algues"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "À quoi ressemblaient les anémones de mer ?",
+    "choices": [
+     "À de la gelée rouge",
+     "À des cailloux verts",
+     "À de petites étoiles"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Qu'est-ce que la mouette a essayé d'attraper ?",
+    "choices": [
+     "La glace de Layla",
+     "Le sandwich de Papa",
+     "Un coquillage"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Que Maman a-t-elle rappelé à Layla dans les rochers ?",
+    "answer": "De bien regarder et de tout remettre à sa place."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "La fête des lanternes",
+  "text": "Chaque hiver, la ville de Beaumoulin organise une fête des lanternes. Pendant des semaines, les familles fabriquent des lanternes en papier, en bâtonnets et en ficelle. Cette année, Chen a fait une lanterne en forme de poisson, avec des écailles orange et une queue toute bouclée. Son amie Inès a fait une étoile d'un jaune éclatant.\n\nLe soir de la fête, tout le monde s'est réuni sur la place. On a allumé les lanternes avec de petites lumières sans danger à l'intérieur. Puis le défilé a commencé. Des centaines de lanternes lumineuses avançaient lentement dans les rues sombres comme une rivière de lumière. Une fanfare jouait du tambour et de la flûte. Chen tenait son poisson bien haut pour qu'il ait l'air de nager. Ensuite, il y avait de la soupe chaude pour tout le monde à la mairie.",
+  "questions": [
+   {
+    "q": "Quelle forme avait la lanterne de Chen ?",
+    "choices": [
+     "Une étoile",
+     "Un poisson",
+     "Une lune"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Quand a lieu la fête des lanternes ?",
+    "choices": [
+     "Chaque hiver",
+     "Chaque été",
+     "Chaque printemps"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Qu'est-ce que tout le monde a eu ensuite ?",
+    "choices": [
+     "De la glace",
+     "Du chocolat chaud",
+     "De la soupe chaude"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "À quoi ressemblait le défilé ?",
+    "answer": "À une rivière de lumière."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Le match de foot",
+  "text": "L'équipe de foot de Maya, les Renards Verts, avait un grand match samedi matin. Maya était gardienne de but. Avant le match, elle avait des papillons dans le ventre. Son entraîneur, M. Daniel, lui dit de respirer profondément trois fois et de bien regarder le ballon.\n\nL'autre équipe, les Hiboux Bleus, était très rapide. En première mi-temps, ils marquèrent un but. Maya était déçue, mais ses coéquipières lui tapèrent dans la main en disant : « Continue ! » En deuxième mi-temps, Maya fit deux arrêts géniaux, en plongeant à gauche puis à droite. Ensuite, son amie Lina marqua pour les Renards. Le match se termina par un match nul, un but partout. Maya était contente, car elle avait fait de son mieux.",
+  "questions": [
+   {
+    "q": "À quel poste jouait Maya ?",
+    "choices": [
+     "Attaquante",
+     "Défenseuse",
+     "Gardienne de but"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Comment s'appelait l'autre équipe ?",
+    "choices": [
+     "Les Hiboux Bleus",
+     "Les Faucons Rouges",
+     "Les Renards Verts"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Qui a marqué pour les Renards Verts ?",
+    "choices": [
+     "Maya",
+     "Lina",
+     "M. Daniel"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Qu'est-ce que l'entraîneur a dit à Maya ?",
+    "answer": "De respirer profondément trois fois et de regarder le ballon."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Un hérisson dans le jardin",
+  "text": "Un soir, Enzo aperçut quelque chose de petit et de piquant près de la clôture du jardin. C'était un hérisson ! Il fouillait dans les feuilles en reniflant, à la recherche de scarabées et de vers à manger. Enzo resta immobile pour ne pas lui faire peur.\n\nLe lendemain, Enzo et sa maman lurent des choses sur les hérissons. Ils apprirent que les hérissons sortent la nuit et parcourent de longues distances pour trouver à manger. Ils apprirent aussi que les hérissons ont besoin de trous dans les clôtures pour passer d'un jardin à l'autre. Alors la maman d'Enzo découpa un petit trou en bas de la clôture. Enzo posa une assiette creuse remplie d'eau. Quelques nuits plus tard, le hérisson revint. Cette fois, Enzo le vit passer par le nouveau trou dans le jardin des voisins.",
+  "questions": [
+   {
+    "q": "Que mange le hérisson ?",
+    "choices": [
+     "Du pain et du lait",
+     "Des scarabées et des vers",
+     "Des graines et des noix"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Quand les hérissons sortent-ils ?",
+    "choices": [
+     "La nuit",
+     "À midi",
+     "Seulement l'été"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Qu'est-ce qu'Enzo a posé dehors ?",
+    "choices": [
+     "Une boîte de feuilles",
+     "Du fromage",
+     "Une assiette creuse remplie d'eau"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Pourquoi la maman d'Enzo a-t-elle fait un trou dans la clôture ?",
+    "answer": "Pour que les hérissons passent d'un jardin à l'autre."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "L'orage",
+  "text": "L'après-midi, le ciel devint gris foncé. De grosses gouttes de pluie se mirent à tomber, puis il y eut un éclair très lumineux. Manon compta lentement, un, deux, trois, quatre, jusqu'à ce qu'elle entende le grondement du tonnerre. Son grand frère Sami lui expliqua que la lumière va plus vite que le son : c'est pour ça qu'on voit l'éclair avant d'entendre le tonnerre.\n\n« Plus le nombre est grand, plus l'orage est loin », dit Sami. Ils regardèrent par la fenêtre et comptèrent après chaque éclair. D'abord quatre, puis six, puis neuf. Manon était contente, car cela voulait dire que l'orage s'éloignait. Bientôt, la pluie s'arrêta et le soleil revint. Un arc-en-ciel traversa le ciel au-dessus des toits.",
+  "questions": [
+   {
+    "q": "De quelle couleur le ciel est-il devenu ?",
+    "choices": [
+     "Gris foncé",
+     "Rose vif",
+     "Bleu pâle"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Qui a expliqué l'éclair et le tonnerre ?",
+    "choices": [
+     "La maman de Manon",
+     "La maîtresse de Manon",
+     "Sami, le frère de Manon"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Qu'est-ce qui est apparu après l'orage ?",
+    "choices": [
+     "De la neige",
+     "Un arc-en-ciel",
+     "Du brouillard"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Comment Manon a-t-elle su que l'orage s'éloignait ?",
+    "answer": "Les nombres qu'elle comptait devenaient plus grands."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "On construit un nichoir",
+  "text": "Tante Jo arriva avec un sac de planches, des clous et un petit marteau. « Aujourd'hui, on construit un nichoir », dit-elle à Noah. D'abord, ils mesurèrent les morceaux et Tante Jo les scia à la bonne taille. Puis Noah l'aida à les clouer, en tenant le marteau près du bout comme elle le lui avait montré.\n\nIls firent un trou rond à l'avant, juste assez grand pour un petit oiseau. Tante Jo expliqua que le trou ne devait pas être trop grand, pour que les gros oiseaux ne puissent pas entrer. Noah peignit le nichoir en vert pâle. Ils le fixèrent en haut du mur de la cabane, loin des chats. Quelques semaines plus tard, Noah vit une minuscule mésange bleue entrer avec le bec plein de mousse.",
+  "questions": [
+   {
+    "q": "De quelle couleur Noah a-t-il peint le nichoir ?",
+    "choices": [
+     "Vert pâle",
+     "Rouge vif",
+     "Marron foncé"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Où ont-ils fixé le nichoir ?",
+    "choices": [
+     "Sur un poteau de clôture",
+     "Dans une haie",
+     "En haut du mur de la cabane"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Que transportait la mésange bleue ?",
+    "choices": [
+     "Un ver",
+     "Le bec plein de mousse",
+     "Une brindille"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Pourquoi le trou ne devait-il pas être trop grand ?",
+    "answer": "Pour que les gros oiseaux ne puissent pas entrer."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "Les manchots de la banquise",
+  "text": "Les manchots empereurs vivent en Antarctique, l'un des endroits les plus froids de la Terre. En hiver, la température peut descendre en dessous de moins quarante degrés, et des vents violents balaient la glace. Pourtant, ces oiseaux étonnants ont trouvé des façons astucieuses de survivre.\n\nLes manchots empereurs ont d'épaisses couches de graisse et des plumes très serrées qui empêchent le froid et l'eau de passer. Quand le temps est le plus mauvais, des centaines de manchots se serrent les uns contre les autres en un grand groupe. Ils se relaient au centre, où il fait le plus chaud, et sur le bord, où il fait le plus froid. Ainsi, chacun a la chance de se réchauffer.\n\nLes papas manchots ont un rôle très important. Après avoir pondu un seul œuf, la maman le passe au papa et marche jusqu'à la mer pour se nourrir. Le papa garde l'œuf en équilibre sur ses pattes et le couvre d'un pli de peau bien chaud appelé poche incubatrice. Il s'en occupe pendant environ deux mois sans rien manger. Quand le poussin éclot, la maman revient avec de la nourriture dans l'estomac pour le nourrir. Les manchots ne savent pas voler, mais ce sont d'excellents nageurs qui plongent profond pour attraper des poissons et des calmars.",
+  "questions": [
+   {
+    "q": "Où vivent les manchots empereurs ?",
+    "choices": [
+     "En Arctique",
+     "En Antarctique",
+     "En Australie",
+     "En Islande"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Qui s'occupe de l'œuf pendant que la maman se nourrit ?",
+    "choices": [
+     "Les grands-parents",
+     "Les autres poussins",
+     "Le papa",
+     "Personne"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Qu'est-ce que la poche incubatrice ?",
+    "choices": [
+     "Un pli de peau bien chaud",
+     "Un nid fait de cailloux",
+     "Un trou dans la glace",
+     "Une sorte de plume"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Pourquoi les manchots se relaient-ils au centre du groupe ?",
+    "answer": "Pour que chacun ait la chance de se réchauffer."
+   },
+   {
+    "q": "Combien de temps le papa s'occupe-t-il de l'œuf ?",
+    "answer": "Environ deux mois."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "L'énigme de l'horloge",
+  "text": "Le grand-oncle d'Alice, Émile, avait un atelier rempli d'horloges qui faisaient tic-tac. Il y avait de grandes horloges, de toutes petites, et une en forme de phare. Chaque été, Alice venait chez lui et l'aidait à les réparer.\n\nUn matin, l'oncle Émile avait l'air perplexe. L'horloge-phare s'était arrêtée et il ne comprenait pas pourquoi. Il l'avait remontée, huilée et avait vérifié chaque ressort. Alice proposa son aide. Elle alla chercher la loupe et regarda à l'intérieur. Parmi les rouages dorés, elle remarqua quelque chose de bizarre : un seul grain de riz, coincé entre deux minuscules dents.\n\n« Voilà l'explication ! » s'exclama l'oncle Émile en riant. Il se souvint qu'il avait déjeuné sur l'établi la veille. Avec une pince fine, Alice retira le grain. Avec un petit clic, les rouages se remirent à tourner, et la petite lumière en haut du phare recommença à clignoter.\n\nL'oncle Émile était ravi. Il fixa une nouvelle règle pour l'atelier : pas de nourriture sur l'établi. Puis il offrit à Alice sa propre pince et un petit carnet. Sur la première page, il écrivit : Alice, Détective en chef des horloges. Alice décida qu'elle garderait ce carnet pour toujours.",
+  "questions": [
+   {
+    "q": "Quelle forme avait l'horloge qui s'était arrêtée ?",
+    "choices": [
+     "Une maison",
+     "Un phare",
+     "Un bateau",
+     "Un arbre"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Qu'est-ce qui était coincé dans l'horloge ?",
+    "choices": [
+     "Un grain de riz",
+     "Une petite vis",
+     "Un bout de ficelle",
+     "Une miette de pain"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Quelle nouvelle règle l'oncle Émile a-t-il fixée ?",
+    "choices": [
+     "Pas de course dans l'atelier",
+     "Pas de visites le soir",
+     "Pas de nourriture sur l'établi",
+     "Pas touche aux horloges"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Comment le riz est-il arrivé dans l'horloge ?",
+    "answer": "L'oncle Émile avait déjeuné sur l'établi."
+   },
+   {
+    "q": "Qu'est-ce que l'oncle Émile a offert à Alice ?",
+    "answer": "Une pince et un petit carnet."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "Comment les abeilles font le miel",
+  "text": "Les abeilles sont de tout petits insectes, mais elles comptent parmi les plus grandes travailleuses de la nature. Une seule ruche peut abriter des dizaines de milliers d'abeilles, et chacune a un travail à faire.\n\nLes abeilles qui récoltent la nourriture s'appellent les butineuses. Elles volent de fleur en fleur et aspirent un liquide sucré appelé nectar avec leur longue langue, qui fonctionne comme une paille. Elles le stockent dans un estomac spécial, différent de celui qui leur sert à se nourrir. En visitant les fleurs, le pollen se colle à leur corps duveteux et est transporté jusqu'à la fleur suivante. Cela aide les plantes à produire des graines et des fruits : c'est pour cela que les abeilles sont si importantes pour les agriculteurs.\n\nDe retour à la ruche, les butineuses donnent le nectar à d'autres abeilles, qui le mâchent et le déposent dans des alvéoles de cire. Le nectar contient encore trop d'eau pour être du miel. Alors les abeilles l'éventent avec leurs ailes, ce qui fait sécher une partie de l'eau. Peu à peu, le nectar devient un miel épais et collant. Enfin, les abeilles ferment chaque alvéole avec un couvercle de cire pour garder le miel frais. Les abeilles mangent ce miel pendant l'hiver, quand il n'y a plus de fleurs à visiter.",
+  "questions": [
+   {
+    "q": "Quel est le liquide sucré que les abeilles récoltent dans les fleurs ?",
+    "choices": [
+     "Le pollen",
+     "La cire",
+     "La sève",
+     "Le nectar"
+    ],
+    "answer": 3
+   },
+   {
+    "q": "Comment s'appellent les abeilles qui récoltent la nourriture ?",
+    "choices": [
+     "Les butineuses",
+     "Les bâtisseuses",
+     "Les gardiennes",
+     "Les ventileuses"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Comment les abeilles rendent-elles le nectar moins liquide ?",
+    "choices": [
+     "Elles ajoutent du pollen",
+     "Elles l'éventent avec leurs ailes",
+     "Elles le laissent au soleil",
+     "Elles le mélangent avec de la cire"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Pourquoi les abeilles sont-elles importantes pour les agriculteurs ?",
+    "answer": "Elles transportent le pollen et aident les plantes à faire des graines et des fruits."
+   },
+   {
+    "q": "Quand les abeilles mangent-elles le miel ?",
+    "answer": "En hiver, quand il n'y a plus de fleurs."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "Le grand phare",
+  "text": "Il y a longtemps, les marins n'avaient ni cartes sur écran ni radio pour les prévenir du danger. La nuit, il était très difficile de voir les rochers cachés sous les vagues. Pour protéger les bateaux, on construisit des phares le long des côtes rocheuses.\n\nUn phare est une haute tour avec une lumière puissante au sommet. Autrefois, la lumière venait de bougies ou de lampes à huile. Plus tard, des inventeurs astucieux ajoutèrent de grandes lentilles de verre. Ces lentilles courbaient la lumière pour en faire un faisceau puissant, visible à des kilomètres en mer. Chaque phare clignotait selon son propre rythme, pour que les marins sachent lequel ils voyaient et puissent savoir où ils se trouvaient.\n\nLes gardiens de phare vivaient dans la tour ou juste à côté. Leur travail était de garder la lampe allumée toute la nuit, toutes les nuits. Ils taillaient les mèches, polissaient le verre et remontaient le mécanisme qui faisait tourner la lumière. Par temps de brouillard, quand on voyait mal la lumière, ils faisaient retentir une grosse corne de brume. C'était souvent un métier solitaire, surtout dans les phares construits sur de minuscules îles.\n\nAujourd'hui, la plupart des phares fonctionnent tout seuls, avec des lampes électriques et des ordinateurs. Pourtant, beaucoup se dressent encore fièrement sur la côte, et certains sont devenus des musées que l'on peut visiter.",
+  "questions": [
+   {
+    "q": "Pourquoi a-t-on construit des phares ?",
+    "choices": [
+     "Pour stocker du poisson",
+     "Pour protéger les bateaux",
+     "Pour observer la météo",
+     "Pour loger les marins"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Que faisaient les lentilles de verre à la lumière ?",
+    "choices": [
+     "Elles changeaient sa couleur",
+     "Elles la rendaient plus douce",
+     "Elles en faisaient un faisceau puissant",
+     "Elles la faisaient clignoter plus vite"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Qu'utilisaient les gardiens par temps de brouillard ?",
+    "choices": [
+     "Une grosse corne de brume",
+     "Une plus grosse bougie",
+     "Un drapeau",
+     "Une cloche sur un bateau"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Pourquoi chaque phare clignotait-il selon son propre rythme ?",
+    "answer": "Pour que les marins sachent quel phare c'était."
+   },
+   {
+    "q": "Pourquoi ce métier était-il souvent solitaire ?",
+    "answer": "Certains phares étaient sur de minuscules îles."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "Voyage vers Mars",
+  "text": "On appelle souvent Mars la planète rouge. Sa couleur vient d'une poussière rouillée qui recouvre ses roches et son sol. Mars est la quatrième planète à partir du Soleil, et elle est plus petite que la Terre : environ deux fois moins large.\n\nUne journée sur Mars dure à peine plus qu'une journée sur Terre, mais une année est beaucoup plus longue. Mars met presque deux années terrestres pour faire le tour du Soleil. Il y fait aussi beaucoup plus froid que sur Terre, car elle est plus loin du Soleil et n'a qu'une très fine couche d'air. Tu ne pourrais pas respirer sur Mars sans combinaison spéciale.\n\nMars possède le plus haut volcan du système solaire, appelé Olympus Mons. Il est environ trois fois plus haut que la plus haute montagne de la Terre. Mars a aussi deux petites lunes, Phobos et Deimos.\n\nLes scientifiques ont envoyé des robots appelés rovers pour explorer Mars. Ces rovers sont comme de petites voitures pilotées depuis la Terre. Ils roulent lentement sur le sol, prennent des photos et analysent des roches. Ils ont trouvé des indices montrant qu'il y a très longtemps, il y avait des rivières et des lacs sur Mars. Les scientifiques espèrent qu'un jour, des astronautes iront là-bas aussi, même si le voyage durerait de nombreux mois.",
+  "questions": [
+   {
+    "q": "Pourquoi Mars est-elle rouge ?",
+    "choices": [
+     "Il y fait très chaud",
+     "Elle est couverte de poussière rouillée",
+     "Elle a des océans rouges",
+     "Elle reflète le Soleil"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Combien de lunes Mars a-t-elle ?",
+    "choices": [
+     "Aucune",
+     "Une",
+     "Trois",
+     "Deux"
+    ],
+    "answer": 3
+   },
+   {
+    "q": "Qu'est-ce qu'Olympus Mons ?",
+    "choices": [
+     "Un volcan",
+     "Un rover",
+     "Une lune",
+     "Un lac"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Pourquoi fait-il plus froid sur Mars que sur Terre ?",
+    "answer": "Elle est plus loin du Soleil et a peu d'air."
+   },
+   {
+    "q": "De quoi les rovers ont-ils trouvé des indices ?",
+    "answer": "De rivières et de lacs il y a très longtemps."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "Le festin de minuit",
+  "text": "Pendant la classe verte au centre de plein air, Kemi, Dev et Juliette partageaient un chalet en bois dans la forêt. Le deuxième soir, Dev chuchota un plan : « On fait un festin de minuit ! » Ils avaient mis de côté des biscuits, trois pommes et un sachet de raisins secs.\n\nIls réglèrent une alarme sur la montre de Juliette et la glissèrent sous son oreiller. À minuit, elle sonna doucement. Les trois amis allèrent sur la pointe des pieds au milieu du chalet et allumèrent une lampe de poche. Au moment où Kemi ouvrait les biscuits, ils entendirent des pas dehors. Leur cœur battait fort. La porte s'ouvrit en grinçant, et Mme Leroy, leur maîtresse, entra en robe de chambre.\n\nLes enfants se figèrent. Mais au lieu de se fâcher, Mme Leroy sourit. Elle dit qu'elle avait entendu la sonnerie et qu'elle venait vérifier que tout allait bien. Puis elle s'assit et leur raconta qu'à leur âge, elle avait fait exactement la même chose pendant sa propre classe verte. Elle les laissa finir un biscuit chacun, puis les renvoya au lit.\n\nLe lendemain matin, au petit déjeuner, Mme Leroy leur fit un clin d'œil. Kemi se dit que c'était la meilleure sortie de sa vie.",
+  "questions": [
+   {
+    "q": "Où dormaient les enfants ?",
+    "choices": [
+     "Sous une tente",
+     "À l'hôtel",
+     "Dans un chalet en bois",
+     "Chez un ami"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Qu'avaient-ils pour le festin ?",
+    "choices": [
+     "Des chips et du gâteau",
+     "Des biscuits, des pommes et des raisins secs",
+     "Des sandwichs et du jus",
+     "Des bonbons et du pop-corn"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Comment se sont-ils réveillés à minuit ?",
+    "choices": [
+     "Avec une alarme sur la montre de Juliette",
+     "Un coq a chanté",
+     "Mme Leroy les a réveillés",
+     "Dev est resté éveillé"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Pourquoi Mme Leroy est-elle venue au chalet ?",
+    "answer": "Elle a entendu la sonnerie et est venue vérifier."
+   },
+   {
+    "q": "Comment sait-on que Mme Leroy n'était pas fâchée ?",
+    "answer": "Elle a souri et leur a laissé manger un biscuit."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "Les premières bicyclettes",
+  "text": "Aujourd'hui, il y a des vélos partout, mais il a fallu longtemps pour qu'ils deviennent les machines que nous connaissons. L'un des tout premiers a été inventé il y a environ deux cents ans. Il était en bois et avait deux roues, mais pas de pédales. On s'asseyait dessus et on avançait en poussant avec les pieds, un peu comme sur une trottinette. On l'appelait la machine à courir.\n\nPlus tard, des inventeurs ajoutèrent des pédales sur la roue avant. C'était bien plus rapide, mais il y avait un problème : chaque tour de pédales ne faisait tourner la roue qu'une fois. Pour aller plus vite, les fabricants construisirent des vélos avec une énorme roue avant et une toute petite roue arrière. En anglais, on les appelait penny-farthing, d'après une grosse pièce et une petite pièce. Les cyclistes étaient assis très haut, et les chutes étaient fréquentes.\n\nLe grand changement vint avec la chaîne. Une chaîne reliait les pédales à la roue arrière, si bien que les deux roues pouvaient avoir la même taille. Ces vélos étaient plus sûrs : on les appela bicyclettes de sécurité. On ajouta aussi des pneus en caoutchouc remplis d'air, qui rendaient le trajet beaucoup moins cahoteux. Bientôt, toutes sortes de gens se mirent au vélo et purent voyager plus loin et moins cher que jamais.",
+  "questions": [
+   {
+    "q": "Qu'est-ce que les premières bicyclettes n'avaient pas ?",
+    "choices": [
+     "De roues",
+     "De selle",
+     "De pédales",
+     "De cadre"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "D'où vient le nom penny-farthing ?",
+    "choices": [
+     "Du nom de l'inventeur",
+     "D'une grosse pièce et d'une petite pièce",
+     "De la ville où on le fabriquait",
+     "Du bruit qu'il faisait"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Qu'est-ce qui reliait les pédales à la roue arrière sur les bicyclettes de sécurité ?",
+    "choices": [
+     "Une chaîne",
+     "Une corde",
+     "Un ressort",
+     "Une courroie en cuir"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Pourquoi les fabricants faisaient-ils des roues avant si énormes ?",
+    "answer": "Pour aller plus vite, car un tour de pédales faisait un tour de roue."
+   },
+   {
+    "q": "Qu'est-ce qui a rendu le trajet moins cahoteux ?",
+    "answer": "Les pneus en caoutchouc remplis d'air."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "La vie dans un récif de corail",
+  "text": "On trouve des récifs de corail dans les mers chaudes et peu profondes du monde entier. Au premier coup d'œil, le corail peut ressembler à des rochers ou à des plantes colorés, mais il est en réalité formé de millions de minuscules animaux appelés polypes. Chaque polype construit un squelette dur autour de lui. Pendant des centaines d'années, ces squelettes s'empilent et forment un récif.\n\nLes récifs ne couvrent qu'une toute petite partie du fond de l'océan, mais ils abritent environ un quart de toutes les espèces marines. Des poissons aux couleurs vives filent entre les coraux. Des tortues de mer passent en glissant, et des pieuvres se cachent dans les fentes. Certains poissons, comme le poisson-clown, vivent parmi les bras urticants des anémones de mer. L'anémone protège le poisson-clown, et le poisson-clown aide à garder l'anémone propre.\n\nLes polypes ont aussi des aides qui vivent à l'intérieur d'eux : de minuscules êtres vivants, un peu comme des plantes, qui utilisent la lumière du soleil pour fabriquer de la nourriture. Ils la partagent avec le corail et lui donnent une grande partie de sa couleur. C'est pourquoi les récifs poussent dans une eau claire et peu profonde, où la lumière du soleil peut les atteindre.\n\nPartout dans le monde, beaucoup de gens travaillent à protéger les récifs en gardant la mer propre et en faisant pousser du nouveau corail dans des pépinières spéciales.",
+  "questions": [
+   {
+    "q": "De quoi le corail est-il formé ?",
+    "choices": [
+     "De rochers colorés",
+     "De plantes marines",
+     "De minuscules animaux appelés polypes",
+     "De sable"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Quel poisson vit parmi les bras des anémones de mer ?",
+    "choices": [
+     "Le poisson-clown",
+     "Le requin",
+     "La pieuvre",
+     "La tortue"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Environ quelle part des espèces marines vit dans les récifs ?",
+    "choices": [
+     "Presque aucune",
+     "Un quart",
+     "La moitié",
+     "Toutes"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Pourquoi les récifs poussent-ils dans une eau claire et peu profonde ?",
+    "answer": "La lumière du soleil y atteint les aides du corail."
+   },
+   {
+    "q": "Comment le poisson-clown et l'anémone s'entraident-ils ?",
+    "answer": "L'anémone le protège et le poisson-clown la nettoie."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "La station météo de l'école",
+  "text": "Quand la nouvelle station météo est arrivée à l'école des Ormes, la classe de CM2 a été chargée de s'en occuper. Elle était installée sur un poteau dans un coin du terrain de sport et comportait plusieurs instruments. Un pluviomètre recueillait la pluie, un thermomètre mesurait la température et un petit appareil à coupelles qui tournent, appelé anémomètre, mesurait la vitesse du vent.\n\nChaque matin à neuf heures, deux élèves sortaient noter les mesures dans un cahier. Tariq et Clara formaient le premier binôme. Ils comprirent vite qu'il fallait relever les mesures à la même heure chaque jour pour pouvoir les comparer équitablement. À la fin du mois, la classe avait fait un graphique montrant comment le temps avait changé.\n\nUn vendredi, Clara remarqua que la température avait beaucoup baissé pendant la nuit et que le vent venait maintenant du nord. Elle se souvint, grâce aux leçons, qu'un vent du nord apporte souvent de l'air plus froid. Elle proposa que l'école prévienne tout le monde d'apporter des manteaux chauds lundi. La directrice fut d'accord et l'écrivit dans le journal de l'école. Lundi, la cour était couverte d'une légère gelée, et tous les enfants arrivèrent bien emmitouflés. Clara et Tariq se sentirent comme de vrais prévisionnistes météo.",
+  "questions": [
+   {
+    "q": "Que mesure un anémomètre ?",
+    "choices": [
+     "La pluie",
+     "La température",
+     "Le soleil",
+     "La vitesse du vent"
+    ],
+    "answer": 3
+   },
+   {
+    "q": "À quelle heure relevait-on les mesures chaque jour ?",
+    "choices": [
+     "À neuf heures",
+     "À midi",
+     "Après l'école",
+     "À minuit"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Qu'y avait-il dans la cour lundi ?",
+    "choices": [
+     "Des flaques",
+     "Une légère gelée",
+     "Beaucoup de neige",
+     "Des feuilles mortes"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Pourquoi relevait-on les mesures à la même heure chaque jour ?",
+    "answer": "Pour pouvoir les comparer équitablement."
+   },
+   {
+    "q": "Comment Clara a-t-elle deviné qu'il ferait plus froid ?",
+    "answer": "La température a baissé et le vent venait du nord."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "Le chameau du désert",
+  "text": "Les déserts comptent parmi les endroits les plus difficiles à vivre sur Terre. Il y pleut très peu, les journées peuvent être brûlantes et les nuits étonnamment froides. Pourtant, les chameaux sont parfaitement adaptés à la vie sur ces terres sèches.\n\nBeaucoup de gens pensent que le chameau garde de l'eau dans sa bosse, mais c'est faux. En réalité, la bosse est remplie de graisse. Quand la nourriture est rare, le corps du chameau peut utiliser cette graisse pour avoir de l'énergie. Un chameau qui n'a pas mangé depuis longtemps peut avoir une bosse molle et tombante.\n\nLes chameaux peuvent passer de nombreux jours sans boire. Quand ils trouvent de l'eau, ils peuvent en boire une énorme quantité très vite, parfois plus de cent litres en quelques minutes. Leur corps sait aussi très bien économiser l'eau, si bien qu'ils en perdent très peu.\n\nLes chameaux ont d'autres atouts astucieux. Ils ont deux rangées de longs cils pour empêcher le sable d'entrer dans leurs yeux, et ils peuvent fermer leurs narines pendant les tempêtes de sable. Leurs larges pieds rembourrés s'étalent sur le sable mou et les empêchent de s'enfoncer. Depuis des milliers d'années, les humains comptent sur les chameaux pour transporter de lourdes charges à travers le désert : c'est pour cela qu'on les appelle parfois les vaisseaux du désert.",
+  "questions": [
+   {
+    "q": "Qu'y a-t-il dans la bosse d'un chameau ?",
+    "choices": [
+     "De l'eau",
+     "De la graisse",
+     "De l'air",
+     "Du lait"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Comment les chameaux empêchent-ils le sable d'entrer dans leurs yeux ?",
+    "choices": [
+     "Ils les cachent sous leurs poils",
+     "Ils les gardent fermés toute la journée",
+     "Ils ont deux rangées de longs cils",
+     "Ils marchent à reculons"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Combien un chameau peut-il boire en quelques minutes ?",
+    "choices": [
+     "Plus de cent litres",
+     "Environ un litre",
+     "Un petit verre",
+     "Dix litres"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Pourquoi la bosse d'un chameau peut-elle sembler tombante ?",
+    "answer": "Il a utilisé sa graisse parce qu'il n'a pas mangé."
+   },
+   {
+    "q": "Comment les pieds du chameau l'aident-ils sur le sable ?",
+    "answer": "Ses larges pieds rembourrés l'empêchent de s'enfoncer."
+   }
+  ]
+ }
+]
