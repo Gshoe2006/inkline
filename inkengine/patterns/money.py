@@ -20,15 +20,15 @@ COINS = {"GBP": (1, 2, 5, 10, 20, 50, 100, 200), "EUR": (1, 2, 5, 10, 20, 50, 10
 
 
 def currency(choice):
-    """The currency for a setting: auto is the euro in Spanish and French, the pound otherwise."""
+    """The currency for a setting: auto is the euro in Spanish, French, Italian and Dutch, the pound otherwise."""
     if choice in COINS:
         return choice
-    return "EUR" if i18n.LANG in ("es", "fr") else "GBP"
+    return "EUR" if i18n.LANG in ("es", "fr", "it", "nl") else "GBP"
 
 
 def fmt(cents, cur):
     """An amount written as it's written where the money is used."""
-    comma = cur == "EUR" and i18n.LANG in ("es", "fr")
+    comma = cur == "EUR" and i18n.LANG in ("es", "fr", "it", "nl")
     units, rest = divmod(cents, 100)
     if comma:
         return f"{units},{rest:02d} €"

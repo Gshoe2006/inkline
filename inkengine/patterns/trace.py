@@ -22,13 +22,14 @@ LETTERS = {"print": "Print letters", "joined": "Joined-up (cursive)"}
 HANDS = {"auto": "Your language's school style", "gb": "England", "us-trad": "United States (traditional cursive)",
          "us-modern": "United States (modern cursive)", "au": "Australia (New South Wales)", "nz": "New Zealand",
          "ie": "Ireland", "ca": "Canada", "es": "Spain", "mx": "Mexico", "fr": "France", "br": "Brazil",
-         "pt": "Portugal", "de": "Germany"}
+         "pt": "Portugal", "de": "Germany", "it": "Italy", "nl": "Netherlands"}
 UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 LOWER = UPPER.lower()
 DIGITS = "0123456789"
 DEFAULT_WORDS = {"en": ["cat", "dog", "sun", "tree"], "es": ["gato", "perro", "sol", "árbol"],
                  "fr": ["chat", "chien", "soleil", "arbre"], "pt": ["gato", "bola", "sol", "árvore"],
-                 "de": ["Katze", "Hund", "Sonne", "Baum"]}   # Your own words, empty
+                 "de": ["Katze", "Hund", "Sonne", "Baum"], "it": ["gatto", "cane", "sole", "albero"],
+                 "nl": ["kat", "hond", "zon", "boom"]}   # Your own words, empty
 
 
 def rows_for(c):

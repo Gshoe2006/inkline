@@ -40,8 +40,9 @@ HAND_FONTS = {"gb": "PlaywriteGBJ-Regular.ttf", "us-trad": "PlaywriteUSTrad-Regu
               "us-modern": "PlaywriteUSModern-Regular.ttf", "au": "PlaywriteAUNSW-Regular.ttf", "nz": "PlaywriteNZ-Regular.ttf",
               "ie": "PlaywriteIE-Regular.ttf", "ca": "PlaywriteCA-Regular.ttf", "es": "PlaywriteES-Regular.ttf",
               "mx": "PlaywriteMX-Regular.ttf", "fr": "PlaywriteFRTrad-Regular.ttf", "br": "PlaywriteBR-Regular.ttf",
-              "pt": "PlaywritePT-Regular.ttf", "de": "PlaywriteDEVA-Regular.ttf"}
-LANGUAGE_HANDS = {"en": "gb", "es": "es", "fr": "fr", "pt": "br", "de": "de"}   # "auto": the school style of Inkline's language
+              "pt": "PlaywritePT-Regular.ttf", "de": "PlaywriteDEVA-Regular.ttf", "it": "PlaywriteITModerna-Regular.ttf",
+              "nl": "PlaywriteNL-Regular.ttf"}
+LANGUAGE_HANDS = {"en": "gb", "es": "es", "fr": "fr", "pt": "br", "de": "de", "it": "it", "nl": "nl"}   # "auto": the school style of Inkline's language
 _registered = {}
 
 
