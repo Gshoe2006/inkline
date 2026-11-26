@@ -9,6 +9,7 @@ import tempfile
 
 JAVA_CLASS = "io.github.gshoe2006.inkline.PdfPrint"
 ACTIVITY = "org.kivy.android.PythonActivity"   # python-for-android's activity, which the APK starts
+QT_NATIVE = "org.qtproject.qt.android.QtNative"   # Qt's own: its activity(), if the one above isn't set
 
 
 def available(platform=None):
@@ -34,7 +35,9 @@ def print_pdf(path, name, duplex=False, autoclass=None):
     try:
         if autoclass is None:
             from jnius import autoclass
-        activity = autoclass(ACTIVITY).mActivity
+        activity = getattr(autoclass(ACTIVITY), "mActivity", None)
+        if activity is None:
+            activity = autoclass(QT_NATIVE).activity()
         autoclass(JAVA_CLASS).start(activity, path, name, bool(duplex))
     except Exception as e:   # noqa: BLE001 — pyjnius raises its own Java exceptions
         print(f"inkline: Android's print dialog didn't open: {e!r}")

@@ -145,3 +145,13 @@ def test_the_trim_drops_plugins_of_unused_kinds_and_what_only_they_load(tmp_path
     ns["inkline_prune"](str(pyside), str(libs))
     left = sorted(p.name for p in libs.iterdir())
     assert left == ["libplugins_platforms_qtforandroid_x86_64.so"]   # (stand-in files load nothing)
+
+
+def test_pyjnius_gets_its_jni_environment_from_qt():
+    recipe = open(os.path.join(ROOT, "packaging", "android", "pyjnius_recipe.py"), encoding="utf-8").read()
+    assert "_ZN17QtAndroidPrivate6javaVMEv" in recipe and "AttachCurrentThread" in recipe   # Qt's Java VM
+    assert 'PYJNIUS_ANDROID_LIBMAIN"] = f"Qt6Core_{arch.arch}"' in recipe and '"PySide6"' in recipe
+    deploy = open(os.path.join(ROOT, "packaging", "android", "deploy.py"), encoding="utf-8").read()
+    assert '"pyjnius_recipe.py"' in deploy
+    src = open(os.path.join(ROOT, "inkapp", "android_print.py"), encoding="utf-8").read()
+    assert "org.qtproject.qt.android.QtNative" in src   # Qt's activity, if python-for-android's isn't set

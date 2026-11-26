@@ -9,7 +9,9 @@ P4A_RELEASE_KEYSTORE, P4A_RELEASE_KEYSTORE_PASSWD, P4A_RELEASE_KEYALIAS and P4A_
 - numpy (a python-for-android recipe): the tool asks buildozer only for Python, shiboken6 and PySide6
 - A trimmed PySide6: prune.py, appended to the PySide6 recipe the tool writes, removes the Qt modules and libraries
   Inkline doesn't use (the wheel has them all)
-- Print: pyjnius, and the Java class (java/…/PdfPrint.java) that hands a PDF to Android's print service
+- Print: pyjnius, and the Java class (java/…/PdfPrint.java) that hands a PDF to Android's print service; pyjnius
+  built to get its JNI environment from Qt (pyjnius_recipe.py, a local recipe: python-for-android builds it for
+  the webview bootstrap's glue, which the Qt bootstrap doesn't have)
 - Inkline's data files (translations and reading passages as .json, fonts, the icon, VERSION, LICENSE): buildozer
   packs only the file types it's told
 - its Android identity: io.github.gshoe2006.inkline, called Inkline, at Inkline's version
@@ -17,12 +19,14 @@ P4A_RELEASE_KEYSTORE, P4A_RELEASE_KEYSTORE_PASSWD, P4A_RELEASE_KEYALIAS and P4A_
 
 import os
 import runpy
+import shutil
 import sys
 
 import PySide6
 
 SCRIPTS = os.path.join(os.path.dirname(PySide6.__file__), "scripts")
-JAVA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "java")   # Print's Java side
+HERE = os.path.dirname(os.path.abspath(__file__))
+JAVA = os.path.join(HERE, "java")   # Print's Java side
 
 
 def trim(recipe):
@@ -52,6 +56,9 @@ def main(argv):
     def inkline_config(self, spec_file, pysidedeploy_config):
         original(self, spec_file, pysidedeploy_config)
         trim(os.path.join(str(pysidedeploy_config.recipe_dir), "PySide6", "__init__.py"))
+        jnius = os.path.join(str(pysidedeploy_config.recipe_dir), "pyjnius")
+        os.makedirs(jnius, exist_ok=True)
+        shutil.copyfile(os.path.join(HERE, "pyjnius_recipe.py"), os.path.join(jnius, "__init__.py"))
         self.set_value("app", "requirements", "python3,shiboken6,PySide6,numpy,pyjnius")
         self.set_value("app", "android.add_src", JAVA, raise_warning=False)
         exts = self.get_value("app", "source.include_exts", ignore_fail=True) or "py"
