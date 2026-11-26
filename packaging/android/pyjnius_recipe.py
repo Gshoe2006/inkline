@@ -1,8 +1,8 @@
 # Inkline's pyjnius for python-for-android's Qt bootstrap (packaging/android/deploy.py writes this as the local
 # "pyjnius" recipe). python-for-android builds pyjnius to get its JNI environment from the webview bootstrap's glue
 # (WebView_AndroidGetJNIEnv), which the Qt bootstrap doesn't have: "import jnius" then fails ("cannot locate symbol").
-# Here pyjnius asks Qt instead, for the Java VM Qt keeps (QtAndroidPrivate::javaVM(), exported by libQt6Core), and
-# links against Qt's core library.
+# Here pyjnius asks Qt instead, for the Java VM Qt keeps (QtAndroidPrivate::javaVM(), exported by libQt6Core), found
+# at run time in Qt's core library, which is loaded before Python starts.
 import os
 
 import pythonforandroid.recipes.pyjnius as upstream
@@ -13,13 +13,27 @@ QT_JNIENV = '''# Inkline: on python-for-android's Qt bootstrap, the JNI environm
 cdef extern from *:
     """
     #include <jni.h>
-    JavaVM *_ZN17QtAndroidPrivate6javaVMEv(void);  /* QtAndroidPrivate::javaVM(), in libQt6Core */
+    #include <dlfcn.h>
+    /* QtAndroidPrivate::javaVM(), looked up in Qt's core library (loaded by the time Python runs) rather than
+       linked: the APK names it libQt6Core_<abi>.so */
+    static JavaVM *inkline_qt_javavm(void) {
+        static const char *names[] = {"libQt6Core_arm64-v8a.so", "libQt6Core_x86_64.so",
+                                      "libQt6Core_armeabi-v7a.so", "libQt6Core_x86.so", NULL};
+        for (int i = 0; names[i]; i++) {
+            void *qt = dlopen(names[i], RTLD_NOW);
+            if (qt) {
+                JavaVM *(*java_vm)(void) = (JavaVM *(*)(void)) dlsym(qt, "_ZN17QtAndroidPrivate6javaVMEv");
+                if (java_vm) return java_vm();
+            }
+        }
+        return NULL;
+    }
     """
-    JavaVM *_ZN17QtAndroidPrivate6javaVMEv()
+    JavaVM *inkline_qt_javavm()
 
 
 cdef JNIEnv *get_platform_jnienv() except NULL:
-    cdef JavaVM *vm = _ZN17QtAndroidPrivate6javaVMEv()
+    cdef JavaVM *vm = inkline_qt_javavm()
     cdef JNIEnv *env = NULL
     if vm == NULL:
         raise Exception("Qt hasn't set up its Java VM")
@@ -30,7 +44,7 @@ cdef JNIEnv *get_platform_jnienv() except NULL:
 
 
 class InklinePyjniusRecipe(PyjniusRecipe):
-    depends = list(PyjniusRecipe.depends) + ["PySide6"]   # libQt6Core in the libs folder, to link against
+    depends = list(PyjniusRecipe.depends) + ["PySide6"]
 
     def get_recipe_dir(self):
         return os.path.dirname(upstream.__file__)   # its patches
@@ -41,11 +55,5 @@ class InklinePyjniusRecipe(PyjniusRecipe):
         info(f"Inkline: pyjnius gets its JNI environment from Qt ({pxi})")
         with open(pxi, "w", encoding="utf-8") as f:
             f.write(QT_JNIENV)
-
-    def get_recipe_env(self, arch, **kwargs):
-        env = super().get_recipe_env(arch, **kwargs)
-        env["PYJNIUS_ANDROID_LIBMAIN"] = f"Qt6Core_{arch.arch}"   # the library pyjnius links (env.py, patched)
-        return env
-
 
 recipe = InklinePyjniusRecipe()
