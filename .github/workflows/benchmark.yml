@@ -1,0 +1,121 @@
+# Times Inkline on each kind of machine it ships for: `inkline.py --benchmark` (start-up, every pattern as a Letter
+# page at 300 dpi, PDFs, photo styles, a 30-page booklet). Each machine keeps its numbers as an artifact
+# benchmark-<os>; the summary job puts them side by side in one table on the run's page.
+#
+# The rust job is a trial for 8.0: it builds the optional Rust module (rust/inkline_fast) and runs the benchmark
+# without and then with it on the same machine. The module isn't in any release package.
+# Android isn't timed here: see docs/performance.md for doing it by hand.
+name: Benchmark
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["inkengine/**", "rust/inkline_fast/**"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: benchmark-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  benchmark:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install system libraries for Qt
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libegl1 libgl1 libopengl0 libxkbcommon0 libfontconfig1 libdbus-1-3 fonts-dejavu-core
+
+      - name: Install PySide6 and numpy (the versions the packages ship)
+        run: python -m pip install --disable-pip-version-check PySide6-Essentials==6.12.0 shiboken6==6.12.0 numpy==2.3.5
+
+      - name: Run the benchmark
+        env:
+          INKLINE_CONFIG_DIR: ${{ runner.temp }}/inkline-config
+        run: python inkline.py --benchmark benchmark-${{ matrix.os }}.json --runs 3
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: benchmark-${{ matrix.os }}
+          path: benchmark-${{ matrix.os }}.json
+          retention-days: 30
+
+  rust:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install system libraries for Qt
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libegl1 libgl1 libopengl0 libxkbcommon0 libfontconfig1 libdbus-1-3 fonts-dejavu-core
+
+      - name: Install PySide6, numpy, pytest and maturin
+        run: python -m pip install --disable-pip-version-check PySide6-Essentials==6.12.0 shiboken6==6.12.0 numpy==2.3.5 pytest maturin
+
+      - name: Benchmark without the Rust module
+        env:
+          INKLINE_CONFIG_DIR: ${{ runner.temp }}/inkline-config
+        run: python inkline.py --benchmark benchmark-rust-off.json --runs 3 --no-startup
+
+      - name: Build and install the Rust module (the runner has a Rust toolchain)
+        run: |
+          cargo --version
+          (cd rust/inkline_fast && maturin build --release --out ../../wheels)
+          python -m pip install --disable-pip-version-check wheels/inkline_fast-*.whl
+          python -c "import inkline_fast; print('inkline_fast', inkline_fast.__file__)"
+
+      - name: Same output with and without it
+        run: python -m pytest -q tests/test_inkline_fast.py tests/test_noise_patterns.py tests/test_photo.py
+
+      - name: Benchmark with the Rust module
+        env:
+          INKLINE_CONFIG_DIR: ${{ runner.temp }}/inkline-config
+        run: python inkline.py --benchmark benchmark-rust-on.json --runs 3 --no-startup
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: benchmark-rust-trial
+          path: benchmark-rust-*.json
+          retention-days: 30
+
+  summary:
+    needs: [benchmark, rust]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: benchmark-*
+          path: results
+
+      - name: One table for all machines
+        run: python3 packaging/benchmark_summary.py results >> "$GITHUB_STEP_SUMMARY"
