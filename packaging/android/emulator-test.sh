@@ -16,7 +16,12 @@ echo "starting Inkline"
 adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null
 sleep 60
 adb exec-out screencap -p > "$OUT/window.png"
-adb shell pidof "$PKG" >/dev/null && echo "Inkline is running after a minute" || echo "Inkline isn't running after a minute"
+if adb shell pidof "$PKG" >/dev/null; then
+  echo "Inkline is running after a minute"
+else
+  echo "Inkline isn't running after a minute; what it said:"
+  adb logcat -d | grep -iE "python|inkline|AndroidRuntime|FATAL|has died|dlopen|cannot locate|Qt|libc " | grep -v ImeTracker | tail -60
+fi
 adb shell am force-stop "$PKG"
 
 echo "running the self-test"
