@@ -101,6 +101,8 @@ python3 packaging/check_selftest.py /tmp/inkline-test
 
 The self-test opens the window, then writes every pattern, the photo styles, the printer test page, a booklet (plain and folded), two posters and a photo book through the app's own save code, and exits non-zero if anything fails. The unit tests (`python3 -m pip install pytest && QT_QPA_PLATFORM=offscreen python3 -m pytest -q tests`) check the engine against recordings of what Inkline 2.5 drew. GitHub runs both commands on every pull request (`.github/workflows/selftest.yml`) and keeps the rendered files for 7 days.
 
+
+[docs/manual-tests.md](docs/manual-tests.md) lists what CI can't check (a real desktop, notifications, the update timer, a printer), to run on a release candidate; `inkline --check-updates --demo` shows the update notification at once.
 ## Command line
 
 Everything the window makes can also be made from the command line, with the same engine:

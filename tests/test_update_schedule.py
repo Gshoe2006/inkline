@@ -317,3 +317,20 @@ def test_an_offered_version_is_forgotten_once_current(win, monkeypatch):
     monkeypatch.setattr(win, "_msg", msgs.append)
     win.updates._found({**REL, "version": "5.7.0"}, True)
     assert not config.read("preferences.json").get("update_found")
+
+
+def test_the_demo_notification(monkeypatch):
+    assert update_check.demo_version("5.8.0") == "5.8.1" and update_check.demo_version("dev") == "99.0.0"
+    shown, opened, fetched = [], [], []
+    monkeypatch.setattr(update_check, "notify_linux", lambda *a: shown.append(a) or True)
+    monkeypatch.setattr(update_check, "notify_windows", lambda *a: shown.append(a) or True)
+    monkeypatch.setattr(update_check, "open_update", lambda: opened.append(True))
+    monkeypatch.setattr(update_check, "find", lambda *a: fetched.append(a))
+    assert update_check.main("5.8.0", demo=True) == 0
+    assert "5.8.1" in shown[0][0] and opened == [True] and fetched == []   # nothing fetched or remembered
+
+
+def test_the_manual_tests_cover_what_ci_cant():
+    text = open(os.path.join(ROOT, "docs", "manual-tests.md"), encoding="utf-8").read()
+    for must in ("--check-updates --demo", "list-timers inkline-update.timer", "Task Scheduler", "tour", "High contrast"):
+        assert must in text, must

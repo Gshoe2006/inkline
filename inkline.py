@@ -10,6 +10,7 @@ everything with Qt and Python.
     python3 inkline.py --version           prints the version
     python3 inkline.py --check-updates     no window: looks for a new version and says so in a notification
                                            (what Help → Check for updates automatically runs while Inkline is closed)
+    python3 inkline.py --check-updates --demo   the notification at once, for a made-up next version (to see it)
     python3 inkline.py --update            the app, with its update box open (that notification's button)
 """
 
@@ -72,7 +73,7 @@ def main():
             app.installTranslator(qt_words)
     if "--check-updates" in sys.argv[1:]:
         from inkapp import update_check
-        sys.exit(update_check.main(app_version()))
+        sys.exit(update_check.main(app_version(), demo="--demo" in sys.argv[1:]))
     from inkapp.window import Window
     theme.remember_desktop(app)   # the desktop's own look, for View → Use my desktop's style
     prefs = config.read("preferences.json")

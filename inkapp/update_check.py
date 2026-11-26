@@ -128,8 +128,22 @@ def open_update(kind=None):
     subprocess.Popen(cmd, close_fds=True, **kw)
 
 
-def main(version):
-    """The whole check: returns 0 (nothing to say is not a failure)."""
+def demo_version(version):
+    """A version just after this one, for --demo: "5.8.0" → "5.8.1" ("dev" → "99.0.0")."""
+    v = updater.parse_version(version)
+    return f"{v[0]}.{v[1]}.{v[2] + 1}" if v else "99.0.0"
+
+
+def main(version, demo=False):
+    """The whole check: returns 0 (nothing to say is not a failure). With demo, the notification is shown at once
+    for a made-up next version, whatever the settings and with nothing fetched or remembered (to see how it looks
+    on a desktop; docs/manual-tests.md)."""
+    if demo:
+        title, body, button = texts(demo_version(version), version)
+        pressed = notify_windows(title, body) if sys.platform == "win32" else notify_linux(title, body, button)
+        if pressed:
+            open_update()
+        return 0
     release = find(version, config.read("preferences.json"))
     remember_found(release)
     if not release:
