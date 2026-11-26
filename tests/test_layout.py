@@ -207,3 +207,35 @@ def test_the_rail_labels_fit(make_win, lang):
                 assert b.fontMetrics().horizontalAdvance(b.text()) + 12 <= b.width(), (lang, font, key, b.text())
     finally:
         i18n.set_language("en")
+
+
+def test_all_patterns_by_kind_and_search(make_win):
+    from inkengine.patterns import GENERATORS
+    from inkapp.sidebar import GEN_OPTIONS
+    w = make_win()
+    grouped = [g for _k, gens in layout.GROUPS for g in gens]
+    assert sorted(grouped) == sorted(GENERATORS)             # every pattern, each once
+    d = layout.show_all_patterns(w, __import__("inkengine.patterns", fromlist=["x"]).NAMES, dict(GEN_OPTIONS),
+                                 "maze", w.sidebar.gen.set_value)
+    grid = d.grid
+    assert set(grid.buttons) == set(GENERATORS) and grid.buttons["maze"].isChecked()
+    assert grid.filter("maze") == 1 and grid.buttons["maze"].isVisibleTo(grid)
+    assert grid.filter("colour") >= 2 and not grid.empty.isVisibleTo(grid)
+    assert grid.filter("zzzz") == 0 and grid.empty.isVisibleTo(grid)
+    assert grid.filter("") == len(GENERATORS)
+    grid.buttons["bingo"].click()
+    assert w.state.settings.gen == "bingo" and d.result() == d.DialogCode.Accepted
+    spin(3)
+    assert sum(not b.icon().isNull() for b in grid.buttons.values()) > 0   # pictures arrive
+
+
+def test_searching_in_another_language():
+    from inkengine import i18n
+    try:
+        i18n.set_language("es")
+        names = {"maze": "Maze"}
+        assert layout.matches("maze", "laberinto", names, {}) and layout.matches("maze", "maze", names, {})
+        assert layout.matches("maze", "LABERÍNTO", names, {})   # accents and capitals don't matter
+        assert not layout.matches("maze", "sudoku", names, {})
+    finally:
+        i18n.set_language("en")

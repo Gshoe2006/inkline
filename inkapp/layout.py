@@ -217,3 +217,145 @@ class Popup(QToolButton):
 
     def close(self):
         self.frame.hide()
+
+
+# --- every pattern, as pictures ------------------------------------------------------------------------------------
+GROUP_NAMES = {"art": "Colouring and art", "puzzles": "Puzzles", "maths": "Maths", "literacy": "Reading and writing",
+               "classroom": "Classroom"}
+GROUPS = [("art", ["mandala", "truchet", "contour", "flow", "name", "symmetry"]),
+          ("puzzles", ["maze", "dots", "words", "crossword", "sudoku", "kakuro", "nonogram", "spot", "scramble"]),
+          ("maths", ["maths", "clock", "fractions"]),
+          ("literacy", ["trace", "spelltest", "reading"]),
+          ("classroom", ["bingo", "reward", "ruled"])]
+
+
+def _plain(text):
+    """Lower case without accents, to search "maze" in "Laberinto" or "Mosaïque" alike."""
+    import unicodedata
+    return "".join(c for c in unicodedata.normalize("NFD", text.lower()) if unicodedata.category(c) != "Mn")
+
+
+def matches(gen, query, names, descriptions, group=""):
+    """Whether a pattern answers a search: its name, its description or its kind, in this language or in English."""
+    q = _plain(query.strip())
+    if not q:
+        return True
+    texts = [names.get(gen, gen), descriptions.get(gen, ""), gen, group]
+    return any(q in _plain(t) or q in _plain(tr(t)) for t in texts if t)
+
+
+class AllPatterns(QWidget):
+    """Every pattern as a picture, by kind, with a search box: picked(gen) when one is clicked. Pictures are drawn
+    off the UI thread (thumbs.Thumbnails) and come in as they're ready."""
+    picked = Signal(str)
+
+    def __init__(self, names, descriptions, current=None):
+        from PySide6.QtWidgets import QLabel, QLineEdit, QScrollArea
+        from dataclasses import replace
+        from inkengine.page import Settings, single_page
+        from . import thumbs
+        super().__init__()
+        self.names, self.descriptions = names, descriptions
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(theme.SECTION_GAP)
+        self.search = QLineEdit()
+        self.search.setPlaceholderText(tr("Search patterns, e.g. maze, maths, colouring"))
+        self.search.setAccessibleName(tr("Search patterns"))
+        self.search.setClearButtonEnabled(True)
+        outer.addWidget(self.search)
+        scroll = QScrollArea()
+        scroll.setObjectName("sidebarScroll")
+        scroll.setWidgetResizable(True)
+        body = QWidget()
+        lay = QVBoxLayout(body)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(theme.SECTION_GAP)
+        self.buttons, self.headings, self._keys = {}, [], {}
+        self.thumbs = thumbs.Thumbnails(thumbs.Look(h=80, dpi=16, thicken=1.6, darken=1.6))
+        self.thumbs.ready.connect(self._ready)
+        base = Settings(seed=20261117)
+        specs = []
+        for group, gens in GROUPS:
+            head = QLabel(tr(GROUP_NAMES[group]).upper())
+            head.setProperty("role", "legend")
+            lay.addWidget(head)
+            grid_w = QWidget()
+            grid = QGridLayout(grid_w)
+            grid.setContentsMargins(0, 0, 0, 0)
+            grid.setSpacing(theme.PAIR_GAP)
+            for i, gen in enumerate(g for g in gens if g in names):
+                b = QToolButton()
+                b.setObjectName("galleryItem")
+                b.setCheckable(True)
+                b.setChecked(gen == current)
+                b.setCursor(Qt.CursorShape.PointingHandCursor)
+                b.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
+                b.setIconSize(QSize(80, 80))
+                b.setMinimumSize(112, 120)
+                b.setText(tr(names[gen]))
+                b.setToolTip(tr(descriptions.get(gen, names[gen])))
+                b.setAccessibleName(tr(names[gen]))
+                b.clicked.connect(lambda _c=False, g=gen: self.picked.emit(g))
+                grid.addWidget(b, i // 4, i % 4)
+                self.buttons[gen] = b
+                spec = single_page(replace(base, gen=gen))
+                self._keys[thumbs.key(base, spec)] = gen
+                specs.append(spec)
+            lay.addWidget(grid_w)
+            self.headings.append((head, grid_w, gens))
+        lay.addStretch(1)
+        self.empty = QLabel(tr("No pattern matches. Try another word."))
+        self.empty.setProperty("role", "hint")
+        self.empty.hide()
+        lay.addWidget(self.empty)
+        scroll.setWidget(body)
+        outer.addWidget(scroll, 1)
+        self.search.textChanged.connect(self.filter)
+        self.thumbs.request(base, specs)
+
+    def filter(self, query):
+        shown = 0
+        for (head, grid_w, gens), (group, _g) in zip(self.headings, GROUPS):
+            any_here = False
+            for g in gens:
+                b = self.buttons.get(g)
+                if b is None:
+                    continue
+                ok = matches(g, query, self.names, self.descriptions, GROUP_NAMES[group])
+                b.setVisible(ok)
+                any_here = any_here or ok
+                shown += ok
+            head.setVisible(any_here)
+            grid_w.setVisible(any_here)
+        self.empty.setVisible(shown == 0)
+        return shown
+
+    def _ready(self, k):
+        gen = self._keys.get(k)
+        img = self.thumbs.get(k)
+        if gen in self.buttons and img is not None:
+            self.buttons[gen].setIcon(QIcon(QPixmap.fromImage(img)))
+
+
+def show_all_patterns(parent, names, descriptions, current, chosen):
+    """The All patterns window: choosing one calls chosen(gen) and closes it."""
+    from PySide6.QtWidgets import QDialog
+    from .widgets import button
+    d = QDialog(parent)
+    d.setWindowTitle(tr("All patterns"))
+    d.setObjectName("allPatterns")
+    lay = QVBoxLayout(d)
+    lay.setContentsMargins(theme.PAD_X, theme.PAD_X, theme.PAD_X, theme.PAD_X)
+    grid = AllPatterns(names, descriptions, current)
+    grid.picked.connect(lambda g: (chosen(g), d.accept()))
+    lay.addWidget(grid, 1)
+    close = button("Close")
+    close.setAutoDefault(False)
+    close.clicked.connect(d.reject)
+    lay.addWidget(close, 0, Qt.AlignmentFlag.AlignRight)
+    d.resize(560, 640)
+    d.finished.connect(lambda _r: grid.thumbs.cancel())
+    d.grid = grid
+    grid.search.setFocus()
+    return d

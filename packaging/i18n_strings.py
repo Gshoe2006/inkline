@@ -25,7 +25,7 @@ HELPERS = {"label": ([0], []), "button": ([0, 2], ["tip"]), "check": ([0], []), 
 # module-level tables whose texts are shown: their values (dicts), or each tuple's second item (lists of pairs)
 TABLES = {"NAMES", "THEME_NAMES", "KINDS", "TASKS", "CURRENCIES", "LETTERS", "HANDS", "SOURCES", "AGES", "SHEETS", "STYLE_NAMES", "BACKGROUNDS", "SHAPE_NAMES",
           "BASES", "STEP_NAMES", "GEN_OPTIONS", "GRID_OPTIONS", "MARGINS", "PATTERN_COLOURS", "CRAYONS",
-          "BUILTIN_PRESETS", "RAIL", "SCHEDULES", "FORMATS", "PRINTER_DEFAULT", "INSTRUCTIONS", "CBN_PATTERN_NOTE", "IMAGE_FILTER", "FILTER", "MESSAGES"}
+          "BUILTIN_PRESETS", "RAIL", "GROUP_NAMES", "SCHEDULES", "FORMATS", "PRINTER_DEFAULT", "INSTRUCTIONS", "CBN_PATTERN_NOTE", "IMAGE_FILTER", "FILTER", "MESSAGES"}
 
 
 def _name(func):

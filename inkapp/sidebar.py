@@ -315,6 +315,13 @@ class Sidebar(QFrame):
         if specs:
             self.gallery_thumbs.request(base, specs)
 
+    def open_all_patterns(self):
+        """Every pattern as a picture: choosing one uses it, as the Pattern list does."""
+        from .layout import show_all_patterns
+        d = show_all_patterns(self, NAMES, dict(GEN_OPTIONS), self.state.settings.gen, self.gen.set_value)
+        self._all_patterns = d
+        d.exec()
+
     def _gallery_ready(self, k):
         if k in self._gallery_keys:
             self.gallery.set_picture(self._gallery_keys[k], self.gallery_thumbs.get(k))
@@ -354,6 +361,9 @@ class Sidebar(QFrame):
         self._gallery_keys = {}
         self._gallery_asked = set()
         mk.addWidget(self.gallery)
+        self.all_patterns_btn = button("All patterns…", "mini", "Every pattern as a picture, by kind, with a search box")
+        self.all_patterns_btn.clicked.connect(self.open_all_patterns)
+        mk.addWidget(_tools(self.all_patterns_btn))
         sec = Section("Design")
         self.design_note = sec.add(Hint())   # which booklet page the section edits, when it's built page by page
         self.gen = self._combo("gen", GEN_OPTIONS)
