@@ -6,6 +6,54 @@ To release a new version, add a section headed `## <version>` (the same text as 
 pull request that bumps `VERSION`. When it merges, `.github/workflows/release.yml` builds the packages
 and publishes a GitHub Release with that section as its notes.
 
+## 5.5.0 - 2026-11-26
+
+Inkline 5.5 adds reading comprehension, sight words, graph and lined paper, and reward charts and certificates.
+
+### What's new
+
+- **Reading comprehension.** **Pattern → Reading comprehension** prints a short original passage for the age with questions about it: multiple choice for ages 5–7, then written answers too, with a "why" question for ages 9–11. Complexity picks the level. The answer page ticks the right answers and writes a model answer on the lines. There are 30 passages in each of Inkline's five languages.
+- **Sight words.** Word searches, unscramble sheets and spelling tests can use the most common words children learn to read, in three stages (**Sight words: first**, **next** and **harder**), in every language. Choose a stage under **Booklet → Worksheet pack** for a week of twelve of its words: traced, in a crossword, a word search, an unscramble sheet and a spelling test.
+- **Graph and lined paper.** **Pattern → Graph and lined paper** fills the page with squared paper, a dot grid, isometric dots, lined paper, handwriting lines or music staves. Complexity sets the spacing, from an inch apart down to 5 mm.
+- **Reward charts and certificates.** **Pattern → Reward charts and certificates** makes a sticker chart (10 to 40 stickers to a star) or a "Well done!" certificate, with what it's for. With **Paper → Names**, each child gets their own with their name on it.
+
+### Upgrading
+
+Nothing changes in what Inkline needs (the joined-up handwriting fonts come with it). Your presets, settings, projects, recent files and printer carry over.
+
+**Windows**
+Run `inkline-5.5.0-windows-setup.exe`.
+
+**Debian / Ubuntu / Linux Mint / Pop!_OS**
+```sh
+sudo apt install ./inkline_5.5.0-1_amd64.deb
+```
+
+**Arch / CachyOS / Manjaro**
+```sh
+sudo pacman -U inkline-5.5.0-1-any.pkg.tar.zst
+```
+
+**Any distro, nothing installed**
+```sh
+chmod +x inkline-5.5.0-x86_64.AppImage && ./inkline-5.5.0-x86_64.AppImage
+```
+
+**Any other distro**
+```sh
+sh inkline-5.5.0.run            # or --system for every user
+```
+
+**Flatpak**
+```sh
+flatpak install --user inkline-5.5.0.flatpak     # if a .flatpak file is attached to this release
+sh packaging/flatpak/build.sh                    # or build it from a copy of the source
+```
+
+### Found a problem?
+
+Please open an issue saying what you did, what you expected, and what happened. Include your system (distro, or Windows version), and the printer if it's about printing.
+
 ## 5.4.0 - 2026-11-24
 
 Inkline 5.4 speaks Portuguese and German, adds seasonal themes, fractions, number lines, times grids and symmetry, and opens long booklets faster.
