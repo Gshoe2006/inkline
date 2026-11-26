@@ -29,10 +29,12 @@ def test_the_font_and_its_spacing():
 def test_wider_text_measures_wider():
     from inkengine.qt import make_font
     from PySide6.QtGui import QFontMetricsF
+    from inkengine.qt import easy_family
     text = "The afternoon sky turned dark grey"
-    plain = QFontMetricsF(make_font(30)).horizontalAdvance(text)
+    same_font = make_font(30, family=easy_family())          # Atkinson Hyperlegible without the extra spacing
+    plain = QFontMetricsF(same_font).horizontalAdvance(text)
     easy = QFontMetricsF(make_font(30, easy=True)).horizontalAdvance(text)
-    assert easy > plain                                      # the page lays it out with the room it needs
+    assert easy > plain * 1.05                               # spaced wider; measured so, so pages lay it out with room
 
 
 def test_draw_page_paints_cream_and_sets_the_canvas():
