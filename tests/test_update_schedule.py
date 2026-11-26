@@ -404,5 +404,5 @@ def test_macos_notification():
 
 def test_the_release_builds_and_checks_macos():
     flow = open(os.path.join(ROOT, ".github", "workflows", "release.yml"), encoding="utf-8").read()
-    assert "packaging/macos/build.py" in flow and "--install-kind macos" in flow and "runs-on: macos-14" in flow
+    assert "packaging/macos/build.py" in flow and "--install-kind macos" in flow and "runs-on: macos-15" in flow
     assert '= 7 ||' in flow and "name: macos\n" in flow
