@@ -19,7 +19,7 @@ the bundle has the one ABI of the wheels given.
 - Inkline's data files (translations and reading passages as .json, fonts, the icon, VERSION, LICENSE): buildozer
   packs only the file types it's told
 - its Android identity: io.github.gshoe2006.inkline, called Inkline, at Inkline's version, with the versionCode
-  build.py works out (it must rise with every release, and differs by ABI), Inkline's icon (an adaptive one), and
+  build.py works out (it must rise with every release, and differs by ABI), Inkline's icon, and
   the API levels Google Play asks for (target ANDROID_API; MIN_API is Qt 6.12's minimum)
 """
 
@@ -61,9 +61,9 @@ def inkline_settings(version, numeric_version, icons=None, exts="py", api=ANDROI
         ("android.debug_artifact", "apk"),
     ]
     if icons:
-        out += [("icon.filename", icons["icon"]),
-                ("icon.adaptive_foreground.filename", icons["foreground"]),
-                ("icon.adaptive_background.filename", icons["background"])]
+        # The plain icon only: python-for-android's Qt bootstrap has no res/mipmap-anydpi-v26 folder, so asking for
+        # an adaptive one stops the build (FileNotFoundError on icon.xml)
+        out += [("icon.filename", icons["icon"])]
     return out
 
 

@@ -7,8 +7,8 @@ The listing's graphics:
 - feature-graphic.png: 1024×500, no alpha (Play refuses one with transparency): the name on the left, a mandala
   and a maze from inkengine on the right
 
-build.py also uses app_icons() for the launcher icon in the APK: an adaptive icon (foreground and background
-layers, which Android masks into the device's shape) and a plain one.
+build.py also uses app_icons() for the launcher icon in the APK: the plain one (python-for-android's Qt bootstrap
+can't take an adaptive icon; the foreground and background layers are still drawn, for Play's icon).
 """
 
 import os

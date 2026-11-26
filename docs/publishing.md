@@ -90,7 +90,8 @@ release, next to the APKs. Everything for the listing is in the repository or th
 - **versionCode** `1 000 000 000 + XYYZZ × 10 + ABI` from VERSION X.Y.Z (6.1.0 on arm64: 1000601001; x86_64 ends
   in 2), from `version_code()` in `packaging/android/build.py`. It rises with every release as long as the minor
   and patch numbers stay under 100, and it's above what earlier APKs had, so they update in place.
-- **Icon:** an adaptive launcher icon drawn from `inkline.svg` at build time (the page on the dark background).
+- **Icon:** the launcher icon drawn from `inkline.svg` at build time (the rounded dark square; python-for-android's Qt
+  bootstrap can't take an adaptive icon, so launchers that mask icons show it inside their shape).
 
 ### Before the first submission
 

@@ -203,7 +203,8 @@ def test_deploy_sets_play_api_levels_the_version_code_icons_and_apk_or_aab():
     assert s["android.numeric_version"] == "1000601001" and s["version"] == "6.1.0"
     assert s["android.release_artifact"] == "apk" and s["android.debug_artifact"] == "apk"   # buildozer's default: aab
     assert s["source.include_exts"] == "py,png,qml,json,ttf,svg,md,txt"
-    assert s["icon.adaptive_foreground.filename"] == "/i/icon_fg.png" and s["icon.filename"] == "/i/icon.png"
+    assert s["icon.filename"] == "/i/icon.png"
+    assert not any(k.startswith("icon.adaptive") for k in s)   # the Qt bootstrap can't take an adaptive icon
     assert s["package.domain"] + "." + s["package.name"] == "io.github.gshoe2006.inkline" and s["title"] == "Inkline"
     assert "icon.filename" not in dict(deploy.inkline_settings("6.1.0", 1, None))
     assert dict(deploy.inkline_settings("6.1.0", 1, api="36"))["android.api"] == "36"
