@@ -1,0 +1,3 @@
+# the top-level .gitignore leaves out src/ (makepkg's); this src/ is the crate's
+!src/
+target/

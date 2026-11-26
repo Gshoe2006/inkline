@@ -8,6 +8,8 @@ everything with Qt and Python.
     python3 inkline.py FILE.inkline        the app, with that project open
     python3 inkline.py --selftest DIR      headless check: writes every kind of output into DIR
     python3 inkline.py --version           prints the version
+    python3 inkline.py --benchmark [OUT.json] [--runs N]   no window: times start-up, every pattern, photo styles and a
+                                           booklet; prints a table, slowest first (docs/performance.md)
     python3 inkline.py --check-updates     no window: looks for a new version and says so in a notification
                                            (what Help → Check for updates automatically runs while Inkline is closed)
     python3 inkline.py --check-updates --demo   the notification at once, for a made-up next version (to see it)
@@ -42,6 +44,9 @@ def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--version":   # what this copy is, and that it finds its own files
         print(f"Inkline {app_version()}")
         return
+    if len(sys.argv) > 1 and sys.argv[1] == "--benchmark":   # before anything imports Qt, so start-up is timed fresh
+        from inkapp import benchmark
+        sys.exit(benchmark.main(sys.argv[2:]))
     if os.name == "nt":      # its own taskbar button and icon on Windows, not Python's
         try:
             import ctypes

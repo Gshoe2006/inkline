@@ -19,6 +19,8 @@ resamples a little differently from Chromium's, so a whole photo can differ from
 
 Dithers spread each pixel's error to the next, so they run pixel by pixel in plain Python: about
 1.6 s for a Letter page at 300 dpi and the default dot size. Previews draw at screen resolution.
+When the optional Rust module inkline_fast is installed (rust/inkline_fast, a trial), it runs that loop
+instead, with exactly the same result.
 """
 
 import itertools
@@ -35,6 +37,11 @@ from .box import Box
 from .patterns import nonogram
 from .qt import ensure_app
 from .i18n import tr
+
+try:   # optional: the same dither loop in Rust (rust/inkline_fast); the Python below gives the same bytes
+    import inkline_fast
+except ImportError:
+    inkline_fast = None
 
 STYLES = ["fs", "atkinson", "bayer", "halftone", "engrave", "stipple", "cbn", "nono", "threshold", "line"]
 STYLE_NAMES = {"fs": "Dither: smooth (Floyd–Steinberg)", "atkinson": "Dither: crisp (Atkinson)",
@@ -247,6 +254,10 @@ def despeckle(img, w, h, min_size):
 
 
 def _error_diffusion(lum, mask, ww, wh, t, atkinson):
+    if inkline_fast is not None:
+        return bytearray(inkline_fast.error_diffusion(np.ascontiguousarray(lum, np.float32).ravel(),
+                                                      np.ascontiguousarray(mask, np.uint8).ravel(),
+                                                      ww, wh, float(t), bool(atkinson)))
     L = array("f", lum.tobytes())   # 32-bit floats, rounding on every update as a Float32Array does
     out = bytearray(b"\xff") * (ww * wh)
     for y in range(wh):
