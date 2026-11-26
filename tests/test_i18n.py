@@ -84,7 +84,7 @@ def _walk_states(w):
         sb.sync(render.view(State(st.settings, st.photos, st.sel, st.page, copy=st.copy, class_set=sb.class_set_view())))
     for gen in ("mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "name", "words", "nonogram",
                 "spot", "kakuro", "maths", "trace", "crossword", "clock", "scramble", "spelltest", "fractions", "symmetry",
-                "ruled", "reward", "reading"):
+                "ruled", "reward", "reading", "bingo"):
         go(gen=gen)
     go(gen="maze", maze_shape="word")
     go(gen="words", ws_theme="custom", ws_words="sol, luna")
@@ -99,6 +99,9 @@ def _walk_states(w):
     for kind in ("squared", "staff", "handwriting"):
         go(gen="ruled", ruled_kind=kind)
     go(gen="reward", reward_kind="certificate", reward_text="x")
+    for kind in ("numbers", "words", "sums"):
+        go(gen="bingo", bingo_kind=kind)
+    go(bingo_kind="words", bingo_theme="custom", bingo_words="sol luna")
     go(gen="words", ws_theme="sight2")
     go(pack_theme="sight1")
     for kind in ("fractions", "numberline", "timesgrid"):
@@ -175,7 +178,9 @@ def test_the_window_in_each_language_asks_for_nothing_untranslated(language, tmp
                   Settings(gen="spelltest", dpi=36), Settings(gen="symmetry", dpi=36, complexity=8),
                   Settings(gen="fractions", dpi=36, complexity=7), Settings(gen="reward", dpi=36),
                   Settings(gen="reward", reward_kind="certificate", dpi=36), Settings(gen="reading", dpi=36, complexity=9),
-                  Settings(gen="reading", dpi=36, complexity=2), Settings(gen="fractions", frac_kind="numberline", dpi=36)):
+                  Settings(gen="reading", dpi=36, complexity=2), Settings(gen="fractions", frac_kind="numberline", dpi=36),
+                  Settings(gen="bingo", dpi=36, complexity=9), Settings(gen="bingo", bingo_kind="words", dpi=36),
+                  Settings(gen="bingo", bingo_kind="sums", dpi=36, complexity=5)):
             j = jobs.job(State(s), copies=2, answers=True)
             for i in range(j.count):
                 j.draw(RecordingCanvas(), i)

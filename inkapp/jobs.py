@@ -19,7 +19,7 @@ from inkengine.testpage import draw_test_page
 from inkengine.i18n import tr
 
 from .classset import (MAX_COPIES, ClassSet, copies_have_answers, copies_vary, copy_labels, copy_seed,  # noqa: F401
-                       copy_settings, named_pages, parse_names)
+                       copy_settings, named_pages, parse_names, always_vary)
 from .render import shown_copy, view
 
 PAPER_IDS = {"letter": QPageSize.PageSizeId.Letter, "a4": QPageSize.PageSizeId.A4}
@@ -188,7 +188,7 @@ def job(state, only="", copies=1, vary=False, answers=False, names=(), answer_bo
     copies = len(names) if names else max(1, min(MAX_COPIES, int(copies or 1)))
     if copies == 1 and not names:
         return Job(base_name(state), "page", 1, s.orient, g, lambda ctx, i: draw_page(ctx, g, spec, s))
-    vary = vary and copies_vary(s)[0]   # a photo has one look, a plain name page one design: their copies are alike
+    vary = (vary or always_vary(s)) and copies_vary(s)[0]   # a photo has one look, a plain name page one design: their copies are alike
     name = f"{base_name(state)}-{copies}{'-designs' if vary else '-copies'}{'-named' if names else ''}"
     answers = answers and copies_have_answers(s)
     labels = copy_labels(names) if names else [tr("Copy {n}").format(n=i + 1) for i in range(copies)]
@@ -204,6 +204,8 @@ def job(state, only="", copies=1, vary=False, answers=False, names=(), answer_bo
     designs = [replace(copy_spec(i), stamp="" if names else labels[i],
                        key_label=labels[i] if vary else tr("Every copy")) for i in range(copies)]
     solved = designs if vary else designs[:1]
+    if s.gen == "bingo":   # every card is called from one caller's sheet
+        solved = [replace(designs[0], key_label=tr("Caller's sheet for every card"))]
     if PANELS.get(s.sheet, 1) > 1:   # a sheet of several designs: an answer for each puzzle on it
         solved = [p for d in solved for p in panel_specs(g, d, s) if has_answer(p.gen, s)]
     keys = [PageSpec(kind="answers", header=True, title=tr("Answers"), items=solved[k:k + 4])
@@ -220,7 +222,7 @@ def _booklets(state, only, copies, vary, names, answer_book=False):
     each headed with its child's name (or "Booklet 3", which that booklet's cover then says too)."""
     s = state.settings
     copies = len(names) if names else max(1, min(MAX_COPIES, int(copies or 1)))
-    vary = vary and s.mode == "make"
+    vary = (vary or always_vary(s)) and s.mode == "make"
 
     def whose(i):
         return names[i] if names else tr("Booklet {n}").format(n=i + 1) if answer_book else ""

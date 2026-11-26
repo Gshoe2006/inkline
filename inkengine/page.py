@@ -40,19 +40,19 @@ def _coerce(v, kind):
 RANGES = {"seed": (0, 4294967295), "complexity": (1, 10), "weight": (1, 10), "margin": (0, 2), "dpi": (36, 1200),
           "pages": (2, 40), "overlap": (0, 1), "brightness": (-100, 100), "contrast": (20, 300), "threshold": (1, 254),
           "dot": (1, 8), "pnono_size": (10, 30), "pcbn_colours": (4, 16), "cbn_colours": (3, 12)}
-LENGTHS = {"title": 80, "pack_words": 600, "reward_text": 60, "maze_word": 12, "ws_words": 300, "name_text": 40, "trace_text": 300, "cross_words": 2000, "panel_gens": 200}
+LENGTHS = {"title": 80, "pack_words": 600, "reward_text": 60, "bingo_words": 600, "maze_word": 12, "ws_words": 300, "name_text": 40, "trace_text": 300, "cross_words": 2000, "panel_gens": 200}
 
 
 def _choices():
     from . import pack, poster
-    from .patterns import clock, crossword, fractions, maths, money, reward, ruled, name, spot, trace, words
+    from .patterns import bingo, clock, crossword, fractions, maths, money, reward, ruled, name, spot, trace, words
     try:
         from .photo import STYLES
     except ImportError:      # the engine without Qt: no photo styles to check against
         STYLES = None
     return {"gen": set(NAMES), "paper": set(PAPER), "orient": {"portrait", "landscape"}, "maze_shape": set(maze.SHAPE_NAMES),
             "spot_base": set(spot.BASES), "ws_theme": set(words.THEME_NAMES) | {"custom"}, "name_bg": set(name.BACKGROUNDS),
-            "age": {"any", "4-6", "7-9", "10+"}, "sheet": set(SHEETS), "maths_kind": set(maths.KINDS), "clock_task": set(clock.TASKS), "frac_kind": set(fractions.KINDS), "ruled_kind": set(ruled.KINDS), "reward_kind": set(reward.KINDS), "money": set(money.CURRENCIES), "pack_theme": set(pack.THEME_NAMES), "trace_source": set(trace.SOURCES), "trace_style": set(trace.LETTERS), "trace_hand": set(trace.HANDS), "cross_theme": set(crossword.THEME_NAMES),
+            "age": {"any", "4-6", "7-9", "10+"}, "sheet": set(SHEETS), "maths_kind": set(maths.KINDS), "clock_task": set(clock.TASKS), "frac_kind": set(fractions.KINDS), "ruled_kind": set(ruled.KINDS), "reward_kind": set(reward.KINDS), "bingo_kind": set(bingo.KINDS), "bingo_theme": set(words.THEME_NAMES) | {"custom"}, "money": set(money.CURRENCIES), "pack_theme": set(pack.THEME_NAMES), "trace_source": set(trace.SOURCES), "trace_style": set(trace.LETTERS), "trace_hand": set(trace.HANDS), "cross_theme": set(crossword.THEME_NAMES),
             "grid": set(poster.GRIDS), "mode": {"make", "convert"}, "fit": {"contain", "cover"},
             **({"style": set(STYLES)} if STYLES else {})}
 
@@ -99,6 +99,9 @@ class Settings:
     ruled_kind: str = "squared"  # graph and lined paper: patterns.ruled.KINDS
     reward_kind: str = "chart"   # rewards: patterns.reward.KINDS (sticker chart, certificate)
     reward_text: str = ""        # rewards: what it's for ("reading every day")
+    bingo_kind: str = "numbers"  # bingo: patterns.bingo.KINDS (numbers, words, sums)
+    bingo_theme: str = "animals" # bingo words: a word search theme (patterns.words.THEME_NAMES), or "custom"
+    bingo_words: str = ""        # bingo words: your own list, for bingo_theme "custom"
     frac_kind: str = "fractions" # fractions and number lines: patterns.fractions.KINDS
     clock_task: str = "read"     # telling the time: patterns.clock.TASKS (read, draw, mixed)
     trace_style: str = "print"   # handwriting: patterns.trace.LETTERS (print, or joined-up in the language's school style)
@@ -171,7 +174,7 @@ class Settings:
 
 # What each page of a booklet built page by page keeps for itself; the rest is the booklet's.
 PAGE_KEYS = ("gen", "seed", "complexity", "cbn", "cbn_colours", "cbn_maths", "maze_shape", "maze_word", "ws_theme", "ws_words",
-             "name_text", "name_bg", "spot_base", "maths_kind", "money", "frac_kind", "ruled_kind", "reward_kind", "reward_text", "clock_task", "trace_source", "trace_style", "trace_hand", "trace_text",
+             "name_text", "name_bg", "spot_base", "maths_kind", "money", "frac_kind", "ruled_kind", "reward_kind", "reward_text", "bingo_kind", "bingo_theme", "bingo_words", "clock_task", "trace_source", "trace_style", "trace_hand", "trace_text",
              "cross_theme", "cross_words")
 
 

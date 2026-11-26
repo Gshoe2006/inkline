@@ -40,6 +40,19 @@ def copies_vary(s):
     return True, ""
 
 
+DIFFERENT_EVERY_COPY = {"bingo"}   # patterns whose copies are no use alike: bingo cards
+
+
+def always_vary(s):
+    """Whether copies get their own designs whatever "each its own design" says: bingo, where alike cards would
+    all win at once."""
+    if s.mode != "make":
+        return False
+    gens = {s.gen} | {p.get("gen") for p in (s.page_list or [])} if s.booklet else {s.gen}
+    from inkengine.page import sheet_gens
+    return bool((gens | set(sheet_gens(s))) & DIFFERENT_EVERY_COPY)
+
+
 def copies_have_answers(s):
     """Whether copies of this single page can have answer pages: a puzzle (or colour by number) made up, or a
     sheet of several designs with one among them."""

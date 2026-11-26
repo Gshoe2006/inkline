@@ -15,7 +15,7 @@ import sys
 import xml.etree.ElementTree as ET
 
 PATTERNS = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "words", "nonogram", "spot", "kakuro", "maths",
-            "trace", "crossword", "clock", "scramble", "spelltest", "fractions", "symmetry", "ruled", "reward", "reading", "mazeshape", "name", "cbnpattern", "nonophoto"]
+            "trace", "crossword", "clock", "scramble", "spelltest", "fractions", "symmetry", "ruled", "reward", "reading", "bingo", "mazeshape", "name", "cbnpattern", "nonophoto"]
 PAGE_PX = (2550, 3300)                     # Letter at 300 dpi
 PDF_PAGES = {**{n: 1 for n in PATTERNS + ["convert", "engrave", "stipple", "cbn", "testpage"]},
              "booklet": 9,                 # cover + 6 mazes + 2 answer pages
@@ -83,7 +83,7 @@ def main(d, install_kind=None):
             texts = sum(1 for _ in root.iter("{http://www.w3.org/2000/svg}text"))
             shapes = sum(1 for tag in ("rect", "circle", "line") for _ in root.iter("{http://www.w3.org/2000/svg}" + tag))
             # a crossword is a few dozen squares and its clues; a spelling test, numbered lines to write on
-            need = {"crossword": 40, "spelltest": 20, "ruled": 20, "reward": 20, "reading": 30}.get(n, 60)
+            need = {"crossword": 40, "spelltest": 20, "ruled": 20, "reward": 20, "reading": 30, "bingo": 20}.get(n, 60)
             if commands + texts + shapes < need:
                 problems.append(f"{n}.svg draws only {commands} path segments, {shapes} shapes and {texts} labels; "
                                 "expected a full design")
