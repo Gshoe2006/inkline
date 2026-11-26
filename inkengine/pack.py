@@ -24,7 +24,7 @@ DAYS = ("maths", "trace", "crossword", "words", "maze")
 SPELLING_DAYS = ("trace", "crossword", "words", "scramble", "spelltest")
 # what a day can be, when the teacher chooses the week's sheets (Booklet → Worksheet pack → the days)
 DAY_CHOICES = ("maths", "early", "trace", "crossword", "words", "maze", "clock", "scramble", "spelltest", "fractions",
-               "symmetry", "reading", "bingo", "dots", "sudoku", "kakuro")
+               "symmetry", "reading", "bingo", "logic", "cryptogram", "ladder", "dots", "sudoku", "kakuro")
 THEMES = tuple(t for t in crossword.THEME_NAMES if t != "custom")   # themes the crossword and word search share
 SIGHT = ("sight1", "sight2", "sight3")   # sight words: a week of them, picked from the word search's lists
 THEME_NAMES = {**{t: crossword.THEME_NAMES[t] for t in THEMES}, **{t: words.THEME_NAMES[t] for t in SIGHT},

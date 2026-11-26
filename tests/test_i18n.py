@@ -85,8 +85,13 @@ def _walk_states(w):
         sb.sync(render.view(State(st.settings, st.photos, st.sel, st.page, copy=st.copy, class_set=sb.class_set_view())))
     for gen in ("mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "name", "words", "nonogram",
                 "spot", "kakuro", "maths", "trace", "crossword", "clock", "scramble", "spelltest", "fractions", "symmetry",
-                "ruled", "reward", "reading", "bingo", "early"):
+                "ruled", "reward", "reading", "bingo", "early", "logic", "cryptogram", "ladder", "calendar"):
         go(gen=gen)
+    go(gen="cryptogram", crypto_code="symbols", crypto_source="custom", crypto_text="")
+    go(crypto_text="Hola")
+    go(gen="ladder", ladder_kind="marked")
+    go(gen="calendar", cal_kind="week", cal_art="none", cal_start="sun")
+    go(cal_kind="month", cal_month=2, cal_year=2028)
     go(gen="maze", maze_shape="word")
     go(gen="words", ws_theme="custom", ws_words="sol, luna")
     go(gen="trace", trace_source="words")
@@ -150,7 +155,7 @@ def _walk_states(w):
     w.add_photos([Photo(img, name="a.png"), Photo(img.copy(), name="b.png")], False)
     w._move_photo(0, 1)
     w.history.undo()
-    for style in ("fs", "atkinson", "bayer", "halftone", "engrave", "stipple", "cbn", "nono", "threshold", "line"):
+    for style in ("fs", "atkinson", "bayer", "halftone", "engrave", "stipple", "cbn", "nono", "threshold", "line", "dots"):
         go(style=style)
     go(mode="make")
     w.offer_whats_new() if False else None
@@ -185,7 +190,11 @@ def test_the_window_in_each_language_asks_for_nothing_untranslated(language, tmp
                   Settings(gen="bingo", dpi=36, complexity=9), Settings(gen="bingo", bingo_kind="words", dpi=36),
                   Settings(gen="bingo", bingo_kind="sums", dpi=36, complexity=5),
                   *[Settings(gen="early", early_kind=k, dpi=36, complexity=c) for k in ("tenframe", "bonds", "placevalue",
-                                                                                         "counting") for c in (2, 9)]):
+                                                                                         "counting") for c in (2, 9)],
+                  *[Settings(gen=g, dpi=36, complexity=c) for g in ("logic", "cryptogram", "ladder") for c in (2, 6, 9)],
+                  Settings(gen="cryptogram", crypto_code="symbols", dpi=36), Settings(gen="ladder", ladder_kind="marked", dpi=36),
+                  Settings(gen="calendar", dpi=36), Settings(gen="calendar", cal_kind="week", cal_art="flow", dpi=36),
+                  Settings(gen="calendar", cal_month=5, cal_year=2027, orient="landscape", dpi=36)):
             j = jobs.job(State(s), copies=2, answers=True)
             for i in range(j.count):
                 j.draw(RecordingCanvas(), i)

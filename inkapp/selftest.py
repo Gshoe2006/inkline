@@ -23,7 +23,8 @@ from .state import State
 
 SEED = 20261117
 PATTERNS = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "words", "nonogram", "spot", "kakuro",
-            "maths", "trace", "crossword", "clock", "scramble", "spelltest", "fractions", "symmetry", "ruled", "reward", "reading", "bingo", "early"]
+            "maths", "trace", "crossword", "clock", "scramble", "spelltest", "fractions", "symmetry", "ruled", "reward", "reading", "bingo", "early",
+            "logic", "cryptogram", "ladder", "calendar"]
 
 
 def _pdf(path, state):
@@ -82,6 +83,7 @@ def run(window, outdir, app):
     for style in ("engrave", "stipple", "cbn"):
         step(style, lambda style=style: page(style, replace(photo_s, style=style), sample))
     step("nonophoto", lambda: page("nonophoto", replace(photo_s, style="nono"), sample))
+    step("dotsphoto", lambda: page("dotsphoto", replace(photo_s, style="dots"), sample))
 
     def testpage():
         s = replace(base, testpage=True)
