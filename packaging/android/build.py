@@ -36,8 +36,7 @@ if os.path.exists(os.path.join(PRIVATE, "inkline-selftest")):   # CI: the self-t
     out = os.path.join(PRIVATE, "selftest")
     os.makedirs(out, exist_ok=True)
     sys.stdout = sys.stderr = open(os.path.join(out, "selftest.log"), "w", encoding="utf-8", buffering=1)
-    sys.argv = [sys.argv[0], "--selftest", out]
-    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    sys.argv = [sys.argv[0], "--selftest", out]   # on Android's own display: the APK has no "offscreen" plugin
 import inkline  # noqa: E402
 
 inkline.main()
