@@ -116,7 +116,7 @@ def main(argv=None):
                  invert=a.invert, pnono_size=a.squares, pnono_answer=a.solved, pdots_n=max(20, min(150, a.dots)),
                  pdots_answer=a.solved, crypto_code=a.code, crypto_source="custom" if a.sentence else "sayings",
                  crypto_text=a.sentence[:cryptogram.MAX_TEXT], ladder_kind="marked" if a.mark_changes else "plain",
-                 cal_kind=a.planner, cal_month=a.month, cal_year=a.year if a.year in planner.YEARS else 0,
+                 cal_kind=a.planner, cal_month=a.month, cal_year=a.year if planner.FIRST_YEAR <= a.year <= planner.LAST_YEAR else 0,
                  cal_start=a.week_start, cal_art=a.art,
                  pcbn_colours=max(4, min(16, a.crayons)), cbn=bool(a.cbn), cbn_colours=max(3, min(12, a.cbn or 6)),
                  pcover=not a.no_cover, ppage_nums=not a.no_page_numbers)

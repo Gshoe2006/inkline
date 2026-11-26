@@ -31,6 +31,23 @@ def _page_seed(s, key, default):
 WORKSHEETS = {"maths", "trace", "clock", "scramble", "spelltest", "fractions", "symmetry", "reading"}   # a booklet with these among other kinds is a set of worksheets
 
 
+def calendar_months(s, n):
+    """A month calendar's booklet: [(year, month)] for its n pages, a month each from the one chosen (a twelve-page
+    booklet is a year); [] for anything else."""
+    if s.gen != "calendar" or getattr(s, "cal_kind", "month") != "month" or not n:
+        return []
+    from .patterns import planner
+    year, month = planner.month_shown(s)
+    return [planner.month_after(year, month, i) for i in range(n)]
+
+
+def _calendar_title(months):
+    """The cover of a booklet of months: "January 2027 – December 2027"."""
+    from .patterns import planner
+    first, last = planner.title(*months[0]), planner.title(*months[-1])
+    return first if len(months) == 1 else f"{first} – {last}"
+
+
 def book_pages(s):
     """Every page of the booklet, in order."""
     n, c, title, mix, ramp = s.pages, s.complexity, s.title.strip(), s.mix, s.ramp
@@ -42,16 +59,19 @@ def book_pages(s):
         designs.append(PageSpec(kind="design", idx=i, gen=gen, seed=int(p.get("seed", s.seed)) & 0xFFFFFFFF,
                                 c=max(1, min(10, int(p.get("complexity", c)))), title=title, name=s.name_line,
                                 label=f"{tr(NAMES[gen])} {i + 1}", opts=opts))
+    months = calendar_months(s, 0 if s.page_list or mix else n)
     for i in range(0 if s.page_list else n):
         gen = GENS[i % len(GENS)] if mix else s.gen
         cx = js_round(1 + (max(c, 2) - 1) * i / (n - 1)) if ramp and n > 1 else c
         # each page's seed comes from the booklet seed, unless that one page was swapped
         seed = _page_seed(s, i, (s.seed + i * 7919) & 0xFFFFFFFF)
+        opts = {"cal_month": months[i][1], "cal_year": months[i][0]} if months else {}   # a calendar: the next month
         designs.append(PageSpec(kind="design", idx=i, gen=gen, seed=seed, c=cx, title=title, name=s.name_line,
-                                label=f"{tr(NAMES[gen])} {i + 1}"))
+                                label=f"{tr(NAMES[gen])} {i + 1}", opts=opts))
     if s.cover:
         kinds = {d.gen for d in designs}
-        cover_title = title or (tr("Worksheets") if len(kinds) > 1 and kinds & WORKSHEETS else
+        cover_title = title or (_calendar_title(months) if months else
+                                tr("Worksheets") if len(kinds) > 1 and kinds & WORKSHEETS else
                                 tr("Colouring & puzzle book") if mix or len(kinds) > 1 else
                                 tr("{pattern} book").format(pattern=tr(NAMES[designs[0].gen])))
         pages.append(PageSpec(kind="cover", title=cover_title, designs=designs,

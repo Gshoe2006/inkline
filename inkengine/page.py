@@ -41,7 +41,7 @@ def _coerce(v, kind):
 RANGES = {"seed": (0, 4294967295), "complexity": (1, 10), "weight": (1, 10), "margin": (0, 2), "dpi": (36, 1200),
           "pages": (2, 40), "overlap": (0, 1), "brightness": (-100, 100), "contrast": (20, 300), "threshold": (1, 254),
           "dot": (1, 8), "pnono_size": (10, 30), "pcbn_colours": (4, 16), "cbn_colours": (3, 12),
-          "cal_month": (0, 12), "cal_year": (0, 2040), "pdots_n": (20, 150)}
+          "cal_month": (0, 12), "cal_year": (0, 2100), "pdots_n": (20, 150)}
 LENGTHS = {"title": 80, "pack_words": 600, "pack_days": 200, "reward_text": 60, "bingo_words": 600, "crypto_text": 120, "maze_word": 12, "ws_words": 300, "name_text": 40, "trace_text": 300, "cross_words": 2000, "panel_gens": 200}
 
 
@@ -542,8 +542,10 @@ def draw_page(ctx, g, spec, s, keep=False):
         art = Box(b.x + b.w * 0.12, b.y + b.h * 0.26, b.w * 0.76, b.h * 0.66)
         ctx.line_width = lw
         first = spec.designs[0].gen
-        # a puzzle would give away a page's answer (and handwriting is no picture), so their books get a mandala
-        draw_design(ctx, g, art, "mandala" if first in HAS_ANSWER or first == "trace" else first, spec.art_seed, 6, s, lw)
+        # a puzzle would give away a page's answer (and handwriting or a calendar is no picture), so their books get a
+        # mandala
+        draw_design(ctx, g, art, "mandala" if first in HAS_ANSWER or first in ("trace", "calendar") else first,
+                    spec.art_seed, 6, s, lw)
         return None
     if spec.kind == "blank":   # padding in a fold-and-staple book
         return None

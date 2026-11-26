@@ -36,10 +36,20 @@ def _blur(img, sigma):
     return sum(a[i:i + h, :] * k[i] for i in range(2 * r + 1))
 
 
-def _patches(on):
-    """Each 4-connected patch of True pixels: a list of (size, how many of its pixels are on the edge, how many of the
-    picture's four sides it touches, label), and the label image."""
+def frame(mask, w, h):
+    """The photo's own rectangle in the work image, (x0, y0, x1, y1): fitted inside the page, a photo leaves empty
+    space round it, and its edges are where the picture stops, not the work image's."""
+    ys, xs = np.nonzero(mask.reshape(h, w))
+    if not len(xs):
+        return 0, 0, w - 1, h - 1
+    return int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max())
+
+
+def _patches(on, box=None):
+    """Each 4-connected patch of True pixels: a list of (size, how many of its pixels are on the edge of box (the
+    photo's rectangle, x0, y0, x1, y1), how many of its four sides it touches, label), and the label image."""
     h, w = on.shape
+    x0, y0, x1, y1 = box or (0, 0, w - 1, h - 1)
     label = np.zeros((h, w), np.int32)
     flat_on = on.reshape(-1)
     flat = label.reshape(-1)
@@ -55,9 +65,9 @@ def _patches(on):
             i = todo.popleft()
             size += 1
             y, x = divmod(int(i), w)
-            if x == 0 or y == 0 or x == w - 1 or y == h - 1:
+            if x <= x0 or y <= y0 or x >= x1 or y >= y1:
                 edge += 1
-                sides.update(k for k, on_side in enumerate((x == 0, y == 0, x == w - 1, y == h - 1)) if on_side)
+                sides.update(k for k, on_side in enumerate((x <= x0, y <= y0, x >= x1, y >= y1)) if on_side)
             for j, ok in ((i - 1, x > 0), (i + 1, x < w - 1), (i - w, y > 0), (i + w, y < h - 1)):
                 if ok and flat_on[j] and not flat[j]:
                     flat[j] = n
@@ -71,17 +81,18 @@ def subject(lum, mask, w, h, t, inv=False):
     tone = _blur(lum.reshape(h, w).astype(np.float64), 1.0)
     inside = mask.reshape(h, w).astype(bool)
     on = ((tone > t) if inv else (tone < t)) & inside
-    border, area = 2 * (w + h), int(inside.sum())
+    box = frame(mask, w, h)
+    border, area = 2 * (box[2] - box[0] + box[3] - box[1] + 2), int(inside.sum())
     best, best_score = None, 0.0
     # the dark patches, and the light ones too (a light subject on a dark background), which count for a bit less
     for weight, side in ((1.0, on), (0.9, ~on & inside)):
-        patches, label = _patches(side)
+        patches, label = _patches(side, box)
         for size, edge, sides, n in patches:
             if size > area * 0.6 and edge > border * 0.2:   # most of the picture, round its edges: the background
                 continue
-            # a patch that runs along much of the edge, or right across the picture, is more likely background (or
-            # ground, or sky) too: it counts for less
-            score = size * weight * (0.15 if edge > border * 0.2 else 0.3 if sides >= 2 else 0.7 if sides else 1.0)
+            # a patch that runs along the picture's edges is more likely background (or ground, or sky): the more it
+            # does, the less it counts, so a shape that stands clear of the edges wins when there's one
+            score = size * weight * (0.1 if edge > border * 0.2 else 0.15 if sides >= 2 else 0.3 if sides else 1.0)
             if score > best_score and size >= max(12, w * h // 2000):
                 best, best_score = label == n, score
     if best is None:
@@ -229,6 +240,19 @@ def simplify(loop, n):
     return pts
 
 
+def roomy_start(pts):
+    """Dot 1 (with its ring), the last dot and dot 2 crowd each other where the outline starts at a sharp corner: the
+    dots either side of dot 1 that are closer than the usual spacing are left out, so its ring and numbers have room."""
+    if len(pts) < 8:
+        return pts
+    step = sum(math.dist(p, q) for p, q in zip(pts, pts[1:] + pts[:1])) / len(pts)
+    while len(pts) > 8 and math.dist(pts[0], pts[1]) < step * 0.9:
+        pts = pts[:1] + pts[2:]
+    while len(pts) > 8 and math.dist(pts[0], pts[-1]) < step * 0.9:
+        pts = pts[:-1]
+    return pts
+
+
 def clockwise_from_top(pts):
     """Clockwise on the page (y down) and starting from the top-most point, as the dot-to-dot pattern numbers."""
     area = sum(p[0] * q[1] - q[0] * p[1] for p, q in zip(pts, pts[1:] + pts[:1]))
@@ -248,7 +272,29 @@ def outline(lum, mask, w, h, t, inv, n):
     if not loops:
         return []
     loop = max(loops, key=_length)
-    return clockwise_from_top(simplify(loop, n))
+    # where the shape runs along the picture's edge, that's the photo's frame, not an outline: no dots there (the
+    # line joins straight across)
+    x0, y0, x1, y1 = frame(mask, w, h)
+    m = 2.5
+    kept = [p for p in loop if x0 + m < p[0] < x1 - m and y0 + m < p[1] < y1 - m]
+    if len(kept) < max(8, len(loop) // 5):
+        return []
+    return roomy_start(clockwise_from_top(spaced(simplify(kept, n))))
+
+
+def spaced(pts):
+    """Dots too close to the one before (under half the usual spacing) are left out, so no two sit on top of each
+    other and their numbers have room."""
+    if len(pts) < 4:
+        return pts
+    step = sum(math.dist(p, q) for p, q in zip(pts, pts[1:] + pts[:1])) / len(pts)
+    out = [pts[0]]
+    for p in pts[1:]:
+        if math.dist(p, out[-1]) >= step * 0.5:
+            out.append(p)
+    while len(out) > 3 and math.dist(out[-1], out[0]) < step * 0.5:   # nor the last on top of the first
+        out.pop()
+    return out
 
 
 def place(pts, box, share=0.84):

@@ -431,7 +431,7 @@ def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, solve=False, **_opts)
     ctx.save()
     ctx.fill_style = ctx.stroke_style = "#000"
     side = box.w > box.h * 1.15   # landscape: the grid on the left, the clues on the right
-    fs = min(dpi * 0.2, box.h / 22)
+    fs = min(dpi * (0.26 if n == 3 else 0.22 if n == 4 else 0.2), box.h / 22)   # bigger for the youngest
     top = box.y
     if not solve:
         ctx.set_font(fs * 0.9, 400)
@@ -441,7 +441,13 @@ def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, solve=False, **_opts)
             ctx.fill_text(line, box.x, top)
         top += fs * 0.8
     h = box.y + box.h - top
-    gw, gh = (box.w * 0.5, h) if side else (box.w, h * (0.5 if not solve else 0.7))
+    if side:
+        gw, gh = box.w * 0.5, h
+    elif solve:
+        gw, gh = box.w, h * 0.7
+    else:   # the grid takes what the clues leave (a few short clues leave plenty), between half and 78% of the page
+        need = len(_clue_lines(ctx, p, box.w, fs)) * fs * 1.4 + fs * 2
+        gw, gh = box.w, min(h * 0.78, max(h * 0.5, h - need))
     size = _grid_size(ctx, p, gw, gh)
     used_w, used_h = size[1] + 2 * n * size[0], size[2] + 2 * n * size[0]
     gx = box.x if side else box.x + (box.w - used_w) / 2

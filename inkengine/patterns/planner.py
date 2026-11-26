@@ -7,7 +7,10 @@ calendar module. Weeks start on Monday, or on Sunday for English on Letter paper
 Brazilian calendars do), unless Week starts on says otherwise. Month and day names are in the current language.
 
 The picture is one of the colouring patterns (a mandala, woven tiles, flow lines or contours) drawn with this page's
-seed and complexity. There's nothing to solve, so no answer page.
+seed. It takes about a third of the page, so it's drawn at about a third of the page's complexity: a picture that small
+at full detail would be too dense to colour. There's nothing to solve, so no answer page.
+
+In a booklet, each page is the next month (a twelve-page booklet is a year): book.py gives each page its month.
 """
 
 import calendar
@@ -24,14 +27,29 @@ MONTHS = ("January", "February", "March", "April", "May", "June", "July", "Augus
           "November", "December")
 WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
 SHORT_DAYS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
-YEARS = range(2025, 2041)
+FIRST_YEAR, LAST_YEAR = 1900, 2100   # a year outside these (0 among them) means "the next one"
 AUTO_DATES = {"month": "Next month", "year": "The next one"}
 MONTH_CHOICES = [(0, AUTO_DATES["month"])] + list(enumerate(MONTHS, 1))   # the sidebar's Month and Year
-YEAR_CHOICES = [(0, AUTO_DATES["year"])] + [(y, str(y)) for y in YEARS]
 
 
 def today():
     return datetime.date.today()
+
+
+def year_choices(now=None, keep=0):
+    """The sidebar's years: "The next one", then this year and the ten after it, and keep (a year saved in a project
+    or preset) if it isn't among them."""
+    this = (now or today()).year
+    years = list(range(this, this + 11))
+    if FIRST_YEAR <= keep <= LAST_YEAR and keep not in years:
+        years = sorted(years + [keep])
+    return [(0, AUTO_DATES["year"])] + [(y, str(y)) for y in years]
+
+
+def month_after(year, month, k):
+    """The month k months after (year, month), as (year, month)."""
+    n = year * 12 + month - 1 + k
+    return n // 12, n % 12 + 1
 
 
 def month_shown(settings, now=None):
@@ -41,7 +59,7 @@ def month_shown(settings, now=None):
     y = int(getattr(settings, "cal_year", 0) or 0)
     if not 1 <= m <= 12:   # next month
         return (now.year + 1, 1) if now.month == 12 else (now.year, now.month + 1)
-    if y in YEARS:
+    if FIRST_YEAR <= y <= LAST_YEAR:
         return y, m
     return (now.year, m) if m >= now.month else (now.year + 1, m)
 
@@ -78,6 +96,12 @@ def _art(ctx, box, rnd, c, settings, lw, dpi, seed, art):
     ctx.line_width = lw
     GENERATORS[art](ctx, box, rnd, c, settings, lw=lw, seed=seed, dpi=dpi)
     ctx.restore()
+
+
+def art_complexity(c):
+    """The picture's complexity for the page's: about a third (1 to 3), as it's drawn so much smaller than a whole
+    page: at a whole page's detail it would be too dense to colour."""
+    return max(1, round(c * 0.3))
 
 
 def _fit_text(ctx, text, w, fs, weight):
@@ -147,8 +171,9 @@ def _week(ctx, box, settings, lw, dpi):
     ctx.stroke()
     top = box.y + head
     across = box.w > box.h * 1.15   # landscape: the days side by side, lines down each
-    out = {"first": first, "days": names}
+    out = {"first": first, "days": names, "lines": []}
     gap = dpi * 0.08
+    spacing = dpi * 0.3   # about the lines of a school exercise book
     for k, nm in enumerate(names):
         if across:
             w = (box.w - gap * 6) / 7
@@ -159,21 +184,29 @@ def _week(ctx, box, settings, lw, dpi):
             x, y = box.x, top + k * (h + gap)
         ctx.line_width = max(1.5, lw * 1.0)
         ctx.stroke_rect(x, y, w, h)
-        size = min(dpi * 0.18, h * 0.22, w * 0.16)
+        size = min(dpi * 0.18, w * 0.16) if across else min(dpi * 0.18, h * 0.3)
+        pad = size * 0.5
         ctx.text_align, ctx.text_baseline = "left", "top"
-        _fit_text(ctx, nm, w - size, size, 700)
-        ctx.fill_text(nm, x + size * 0.5, y + size * 0.4)
-        line_gap = dpi * 0.3
+        if across:   # the day's name across the top, the lines under it
+            _fit_text(ctx, nm, w - size, size, 700)
+            ctx.fill_text(nm, x + pad, y + pad * 0.8)
+            lx0, lx1, ly0 = x + pad, x + w - pad, y + size * 1.6
+        else:        # the day's name on the left, the lines filling the rest of the box
+            label_w = min(w * 0.22, dpi * 1.4)
+            _fit_text(ctx, nm, label_w - pad, size, 700)
+            ctx.fill_text(nm, x + pad, y + pad * 0.8)
+            lx0, lx1, ly0 = x + label_w, x + w - pad, y
+        count = max(1, round((y + h - ly0) / spacing))
+        step = (y + h - ly0) / (count + 0.35)   # evenly down the whole box, the last just above its bottom
         ctx.line_width = max(1.0, lw * 0.4)
         ctx.stroke_style = "#888"
         ctx.begin_path()
-        ly = y + size * 1.6 + line_gap
-        while ly < y + h - line_gap * 0.4:
-            ctx.move_to(x + size * 0.5, ly)
-            ctx.line_to(x + w - size * 0.5, ly)
-            ly += line_gap
+        for n in range(1, count + 1):
+            ctx.move_to(lx0, ly0 + n * step)
+            ctx.line_to(lx1, ly0 + n * step)
         ctx.stroke()
         ctx.stroke_style = "#000"
+        out["lines"].append(count)
     return out
 
 
@@ -182,18 +215,19 @@ def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, seed=0, **_opts):
     art = getattr(settings, "cal_art", "mandala")
     ctx.save()
     ctx.fill_style = ctx.stroke_style = "#000"
-    body = box
+    body, art_box = box, None
     if art in BACKGROUNDS and art != "none":
-        share = 0.36 if box.h >= box.w else 0.3
+        share = (0.36 if box.h >= box.w else 0.3) * (0.75 if kind == "week" else 1)
         ah = box.h * share
         from ..box import Box
         side = min(box.w, ah)
         art_box = Box(box.x + (box.w - side * (1.6 if art != "mandala" else 1)) / 2, box.y,
                       side * (1.6 if art != "mandala" else 1), ah) if box.w >= side * 1.6 else Box(box.x, box.y, box.w, ah)
-        _art(ctx, art_box, rnd, c, settings, lw, dpi, seed, art)
+        # a smaller picture: less detail, and its lines a little finer, so it stays open enough to colour
+        _art(ctx, art_box, rnd, art_complexity(c), settings, lw * 0.8, dpi, seed, art)
         gap = dpi * 0.15
         body = Box(box.x, box.y + ah + gap, box.w, box.h - ah - gap)
     out = _week(ctx, body, settings, lw, dpi) if kind == "week" else _month(ctx, body, settings, lw, dpi)
     ctx.restore()
-    out["kind"] = kind
+    out["kind"], out["art_box"] = kind, art_box
     return out
