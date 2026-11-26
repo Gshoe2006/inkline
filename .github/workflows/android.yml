@@ -44,6 +44,11 @@ jobs:
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$NDK_VERSION" "platforms;android-35" \
             "build-tools;35.0.0" "platform-tools" > /dev/null
+          # buildozer and python-for-android look for sdkmanager in the old place, <sdk>/tools/bin
+          rm -rf "$ANDROID_HOME/tools"
+          mkdir -p "$ANDROID_HOME/tools"
+          ln -s "$ANDROID_HOME/cmdline-tools/latest/bin" "$ANDROID_HOME/tools/bin"
+          ln -s "$ANDROID_HOME/cmdline-tools/latest/lib" "$ANDROID_HOME/tools/lib"
 
       - name: Fetch Qt's PySide6 6.12.0 Android wheels
         run: |
