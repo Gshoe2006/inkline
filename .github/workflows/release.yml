@@ -42,7 +42,7 @@ jobs:
       build: ${{ steps.version.outputs.build }}
       publish: ${{ steps.version.outputs.publish }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Is this a new version?
         id: version
@@ -96,7 +96,7 @@ jobs:
       - name: Install build tools
         run: pacman -Syu --noconfirm --needed git python
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Build the .run installer and the Arch package
         run: |
@@ -111,7 +111,7 @@ jobs:
           test -f "dist/inkline-$V.run"
           ls dist/inkline-"$V"-*.pkg.tar.zst
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: run-and-arch
           path: |
@@ -128,7 +128,7 @@ jobs:
     runs-on: ubuntu-26.04
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install Flatpak tools
         run: |
@@ -140,7 +140,7 @@ jobs:
           sh packaging/flatpak/build.sh --bundle
           test -f "dist/inkline-${{ needs.check.outputs.version }}.flatpak"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: flatpak
           path: dist/inkline-*.flatpak
@@ -153,7 +153,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Build the .deb
         run: |
@@ -167,7 +167,7 @@ jobs:
           QT_QPA_PLATFORM=offscreen inkline --selftest deb-selftest
           python3 packaging/check_selftest.py deb-selftest
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: deb
           path: dist/inkline_*.deb
@@ -181,7 +181,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Build the AppImage
         run: |
@@ -197,7 +197,7 @@ jobs:
             "./dist/inkline-${{ needs.check.outputs.version }}-x86_64.AppImage" --selftest appimage-selftest
           python3 packaging/check_selftest.py appimage-selftest
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: appimage
           path: dist/inkline-*.AppImage
@@ -210,9 +210,9 @@ jobs:
     runs-on: windows-2022
     timeout-minutes: 90   # signing waits for someone to approve the release in SignPath (see docs/code-signing.md)
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -249,7 +249,7 @@ jobs:
       - name: Keep the unsigned installer for signing
         id: unsigned
         if: needs.check.outputs.publish == 'true' && vars.SIGNPATH_ORGANIZATION_ID != ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: windows-unsigned
           path: dist/inkline-*-windows-setup.exe
@@ -280,14 +280,14 @@ jobs:
           if ($sig.Status -ne "Valid") { exit 1 }
           Copy-Item "signed/$name" "dist/$name" -Force
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: windows
           path: dist/inkline-*-windows-setup.exe
           if-no-files-found: error
           retention-days: 7
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: windows-selftest
           path: windows-selftest/
@@ -300,8 +300,8 @@ jobs:
     if: needs.check.outputs.build == 'true'
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           name: windows-selftest
           path: windows-selftest
@@ -318,26 +318,26 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # only the packages: the self-test's sample outputs are artifacts of this run too, and aren't for the release
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: run-and-arch
           path: dist
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: flatpak
           path: dist
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: deb
           path: dist
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: appimage
           path: dist
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: windows
           path: dist
