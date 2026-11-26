@@ -109,8 +109,8 @@ Version: $VERSION-$REL
 Architecture: $ARCH
 Maintainer: Inkline <Gshoe2006@users.noreply.github.com>
 Installed-Size: $SIZE
-Depends: python3 (>= 3.10), python3-numpy, libc6 (>= $GLIBC), libegl1, libgl1, libfontconfig1, libfreetype6, libxkbcommon0, libxkbcommon-x11-0, libdbus-1-3, libxcb-cursor0, libxcb-icccm4, libxcb-keysyms1, libxcb-shape0, libxcb-xkb1, libwayland-client0, libwayland-cursor0, libwayland-egl1
-Recommends: cups
+Depends: python3 (>= 3.10), python3-numpy, libc6 (>= $GLIBC), libegl1, libgl1, libfontconfig1, libfreetype6, libxkbcommon0, libxkbcommon-x11-0, libdbus-1-3, libxcb-cursor0, libxcb-icccm4, libxcb-keysyms1, libxcb-shape0, libxcb-xkb1, libwayland-client0, libwayland-cursor0, libwayland-egl1, libx11-6, libx11-xcb1, libxcb1, libxcb-image0, libxcb-randr0, libxcb-render0, libxcb-render-util0, libxcb-shm0, libxcb-sync1, libxcb-util1, libxcb-xfixes0, libdrm2, libglib2.0-0t64 | libglib2.0-0, libstdc++6, zlib1g, libzstd1
+Recommends: cups, libcups2t64 | libcups2
 Section: graphics
 Priority: optional
 Homepage: https://github.com/Gshoe2006/inkline
