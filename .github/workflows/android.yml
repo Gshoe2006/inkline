@@ -60,13 +60,14 @@ jobs:
             case "$name" in http*) url="$name" ;; *) url="$base$name" ;; esac
             echo "$pkg: $url"
             curl -fsSL -o "wheels/$(basename "$name")" "$url"
+            echo "WHEEL_$(echo "$pkg" | tr a-z A-Z)=$PWD/wheels/$(basename "$name")" >> "$GITHUB_ENV"
           done
           ls -l wheels
 
       - name: Build the APK
         run: |
           python packaging/android/build.py --arch ${{ matrix.arch }} \
-            --wheel-pyside wheels/PySide6-*.whl --wheel-shiboken wheels/shiboken6-*.whl \
+            --wheel-pyside "$WHEEL_PYSIDE6" --wheel-shiboken "$WHEEL_SHIBOKEN6" \
             --ndk "$ANDROID_HOME/ndk/$NDK_VERSION" --sdk "$ANDROID_HOME"
           ls -l dist
 
