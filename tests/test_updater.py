@@ -78,7 +78,7 @@ def test_asset_names_match_the_release_workflow():
     flow = open(os.path.join(root, ".github/workflows/release.yml"), encoding="utf-8").read()
     v = "${{ needs.check.outputs.version }}"
     m = "${{ matrix.arch }}"
-    assert updater.asset_name("windows", v) in flow and updater.asset_name("rpm", v, "x86_64") in flow
+    assert updater.asset_name("windows", v) in flow and f"inkline-{v}-1.${{{{ matrix.arch }}}}.rpm" in flow
     assert f"inkline-{v}-windows-portable.zip" in flow and f"inkline_{v}-1_{m}.deb" in flow
     assert f"inkline-{v}-{m}.AppImage" in flow and f"inkline_{v}_{m}.snap" in flow
     assert 'DMG="inkline-$V-macos.dmg"' in flow                  # the universal one, which the updater installs
@@ -93,7 +93,7 @@ def test_each_processor_gets_its_own_package():
     assert a("deb", "1.2.3", "x86_64") == "inkline_1.2.3-1_amd64.deb" and a("deb", "1.2.3", "arm64") == "inkline_1.2.3-1_arm64.deb"
     assert a("appimage", "1.2.3", "x86_64") == "inkline-1.2.3-x86_64.AppImage"
     assert a("appimage", "1.2.3", "arm64") == "inkline-1.2.3-aarch64.AppImage"
-    assert a("rpm", "1.2.3", "x86_64") == "inkline-1.2.3-1.x86_64.rpm" and a("rpm", "1.2.3", "arm64") is None
+    assert a("rpm", "1.2.3", "x86_64") == "inkline-1.2.3-1.x86_64.rpm" and a("rpm", "1.2.3", "arm64") == "inkline-1.2.3-1.aarch64.rpm"
     assert a("macos", "1.2.3", "arm64") == a("macos", "1.2.3", "x86_64") == "inkline-1.2.3-macos.dmg"   # universal
     assert a("windows-portable", "1.2.3") == "inkline-1.2.3-windows-portable.zip"
     assert updater.machine("aarch64") == updater.machine("arm64") == "arm64"

@@ -103,7 +103,7 @@ def asset_name(kind, version, arch=None):
             "appimage": f"inkline-{version}-{'aarch64' if arm else 'x86_64'}.AppImage",
             "run-user": f"inkline-{version}.run", "run-system": f"inkline-{version}.run",
             "deb": f"inkline_{version}-1_{'arm64' if arm else 'amd64'}.deb",
-            "rpm": None if arm else f"inkline-{version}-1.x86_64.rpm",   # x86-64 only, for now
+            "rpm": f"inkline-{version}-1.{'aarch64' if arm else 'x86_64'}.rpm",
             "arch": f"inkline-{version}-1-any.pkg.tar.zst"}.get(kind)
 
 

@@ -22,6 +22,15 @@ TOUR_TEXTS = {
     "sidebar": "On Print and Booklet, opening a section closes the others, so every page fits without scrolling.",
     "menu": "Edit → Settings (Ctrl+,) has printing defaults, what Ctrl+E saves, updates, the language and the themes."}
 STEPS = [(k, TOUR_TITLES[k], TOUR_TEXTS[k]) for k in TOUR_TITLES]
+# touch mode: the toolbar keeps fewer buttons, and the menus are in its Menu button
+TOUCH_TEXTS = {"toolbar": "Presets, New design, Save PDF and Print. The Menu button has the rest, and the menus.",
+               "menu": "Menu → Edit → Settings has printing defaults, what Save saves, updates, the language and the "
+                       "themes."}
+
+
+def step_text(name, touch=False):
+    """A step's words: in touch mode, the toolbar and menus as they are there."""
+    return TOUCH_TEXTS.get(name, TOUR_TEXTS[name]) if touch else TOUR_TEXTS[name]
 CARD_W = 320
 
 
@@ -83,7 +92,7 @@ class Tour(QFrame):
         name, title, text = STEPS[self.i]
         self.count.setText(tr("{i} of {n}").format(i=self.i + 1, n=len(STEPS)).upper())
         self.title.setText(tr(title))
-        self.text.setText(tr(text))
+        self.text.setText(tr(step_text(name, theme.TOUCH["on"])))
         self.back.setEnabled(self.i > 0)
         self.next.setText(tr("Done") if self.i == len(STEPS) - 1 else tr("Next"))
         self.place()

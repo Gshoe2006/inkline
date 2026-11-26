@@ -5,14 +5,14 @@ Release:        @REL@
 Summary:        Black & white images for printing
 License:        GPL-3.0-or-later
 URL:            https://github.com/Gshoe2006/inkline
-BuildArch:      x86_64
+BuildArch:      @ARCH@
 
 # PySide6 and Qt are inside the package (/usr/lib/inkline/vendor): don't offer their libraries to the system, or
 # ask for them; ask for what they need, by file, which Fedora and openSUSE both resolve
 AutoReqProv:    no
 Requires:       python3 >= 3.10
 Requires:       python3-numpy
-Requires:       libc.so.6(GLIBC_2.34)(64bit)
+Requires:       libc.so.6(GLIBC_@GLIBC@)(64bit)
 Requires:       libEGL.so.1()(64bit)
 Requires:       libGL.so.1()(64bit)
 Requires:       libfontconfig.so.1()(64bit)

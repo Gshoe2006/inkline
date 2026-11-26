@@ -35,13 +35,13 @@ Each [release](https://github.com/Gshoe2006/inkline/releases) has a package for 
 | Any distro, sandboxed | `inkline-<version>.flatpak` | `flatpak install --user inkline-<version>.flatpak` |
 | Ubuntu and other distros with Snap | `inkline_<version>_amd64.snap` | `sudo snap install --dangerous ./inkline_<version>_amd64.snap` |
 | Any distro, your own Python | `inkline-<version>.run` | `sh inkline-<version>.run` |
-| Raspberry Pi 4 or 5, ARM laptops (64-bit) | `inkline_<version>-1_arm64.deb`, `inkline-<version>-aarch64.AppImage` or `inkline_<version>_arm64.snap` | As above |
+| Raspberry Pi 4 or 5, ARM laptops (64-bit) | `inkline_<version>-1_arm64.deb`, `inkline-<version>-1.aarch64.rpm`, `inkline-<version>-aarch64.AppImage` or `inkline_<version>_arm64.snap` | As above |
 | Windows 10 or 11 (64-bit) | `inkline-<version>-windows-setup.exe` | Run it; no administrator needed |
 | Windows, without installing | `inkline-<version>-windows-portable.zip` | Unzip it anywhere (a USB stick too) and run `Inkline\Inkline.exe` |
 | macOS 14 (Sonoma) or later, any Mac | `inkline-<version>-macos.dmg` | Open it and drag Inkline to Applications |
 | …only Apple silicon, or only Intel (smaller) | `inkline-<version>-macos-arm64.dmg`, `inkline-<version>-macos-intel.dmg` | The same |
 
-The ARM64 packages need a system from 2024 or later (glibc 2.39: Ubuntu 24.04, Debian 13, Raspberry Pi OS 13 "trixie" or newer), as PySide6's ARM64 build does. The `.rpm` is for x86-64.
+The ARM64 packages need a system from 2024 or later (glibc 2.39: Ubuntu 24.04, Debian 13, Raspberry Pi OS 13 "trixie" or newer), as PySide6's ARM64 build does.
 
 The `.snap` file isn't from the Snap Store yet, so it's installed with `--dangerous` (not checked by the Store) and doesn't update by itself: Inkline says when there's a new one. The portable `.zip` keeps your settings in your user profile, like the installed app; to update it, Help → Check for updates downloads the new `.zip` for you to unzip in place of the old folder.
 
@@ -162,7 +162,7 @@ The Debian package and the AppImage have scripts of their own (both download wha
 ```sh
 sh packaging/debian/build-deb.sh          # dist/inkline_<version>-1_amd64.deb (needs dpkg-deb); add arm64 for ARM64
 sh packaging/appimage/build-appimage.sh   # dist/inkline-<version>-x86_64.AppImage, or -aarch64 on ARM64 (needs uv)
-sh packaging/rpm/build-rpm.sh             # dist/inkline-<version>-1.x86_64.rpm (needs rpmbuild)
+sh packaging/rpm/build-rpm.sh             # dist/inkline-<version>-1.<arch>.rpm, for this machine (needs rpmbuild)
 snapcraft                                 # inkline_<version>_<arch>.snap, from snap/snapcraft.yaml (needs LXD)
 ```
 

@@ -38,21 +38,21 @@ def test_the_appimage_runs_on_its_own_python_and_declares_its_file_type():
         assert os.access(os.path.join(ROOT, "packaging", *script), os.X_OK)
 
 
-def test_every_release_has_all_fifteen_packages():
+def test_every_release_has_all_sixteen_packages():
     wf = _read(".github", "workflows", "release.yml")
     assert "sh packaging/debian/build-deb.sh ${{ matrix.arch }}" in wf and "sh packaging/appimage/build-appimage.sh" in wf
-    assert "sh packaging/rpm/build-rpm.sh" in wf and "snapcore/action-build@v1" in wf
+    assert "sh packaging/rpm/build-rpm.sh ${{ matrix.arch }}" in wf and "{ arch: aarch64, runner: ubuntu-24.04-arm }" in wf and "snapcore/action-build@v1" in wf
     assert "python packaging/windows/build.py" in wf and '"$PY" packaging/macos/build.py --arch ${{ matrix.arch }}' in wf
     needs = ("needs: [check, selftest, run-and-arch, flatpak, deb, appimage, rpm, rpm-opensuse, snap, windows, "
              "windows-check, macos, macos-check]")
     assert wf.count(needs) == 2                                              # the release, and a test build's summary
-    for name in ("run-and-arch", "flatpak", "deb-${{ matrix.arch }}", "appimage-${{ matrix.arch }}", "rpm",
+    for name in ("run-and-arch", "flatpak", "deb-${{ matrix.arch }}", "appimage-${{ matrix.arch }}", "rpm-${{ matrix.arch }}",
                  "snap-${{ matrix.arch }}", "windows", "macos-${{ matrix.arch }}"):
         assert f"name: pkg-{name}\n" in wf, name                           # each kept for the release (pkg-*)
     for arch, runner in (("arm64", "ubuntu-24.04-arm"), ("aarch64", "ubuntu-24.04-arm"), ("intel", "macos-15-intel"),
                          ("universal", "macos-15"), ("arm64", "macos-15")):
         assert f"{{ arch: {arch}, runner: {runner} }}" in wf, (arch, runner)
-    assert "pattern: pkg-*" in wf and 'test "$(ls dist | wc -l)" = 15' in wf
+    assert "pattern: pkg-*" in wf and 'test "$(ls dist | wc -l)" = 16' in wf
     assert 'check_selftest.py "selftest/macos-$d" --install-kind macos' in wf and "arm64 intel universal rosetta" in wf
     assert "check_selftest.py windows-selftest/portable --install-kind windows-portable" in wf
     assert "check_selftest.py rpm-selftest --install-kind rpm" in wf and "container: opensuse/tumbleweed" in wf

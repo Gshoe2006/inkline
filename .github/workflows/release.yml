@@ -3,9 +3,9 @@
 #   1. check    VERSION is a new version, and CHANGELOG.md has notes for it
 #   2. selftest the same self-test every pull request runs (selftest.yml)
 #   3. build    the .run installer and the Arch package (in Arch Linux), the .flatpak, the Debian/Ubuntu .deb and
-#               the AppImage (each for x86-64 and ARM64), the Fedora/openSUSE .rpm, the .snap (x86-64 and ARM64),
+#               the AppImage (each for x86-64 and ARM64), the Fedora/openSUSE .rpm (x86-64 and ARM64), the .snap (x86-64 and ARM64),
 #               the Windows installer and portable .zip, and the macOS disk images (universal, Apple silicon, Intel)
-#   4. release  tags the commit, publishes "Inkline <version>" with those notes and the fifteen files,
+#   4. release  tags the commit, publishes "Inkline <version>" with those notes and the sixteen files,
 #               then tells the app portal (Gshoe2006/Apps) to show it straight away
 #
 # Nothing is published unless every step passes. To release: in one pull request, bump VERSION and
@@ -13,7 +13,7 @@
 # releases the current VERSION if that hasn't happened yet (for example after fixing a failed build).
 #
 # Tick "Test build only" under Run workflow to do everything but publish: the notes check, the
-# self-test and all fifteen builds, with the packages kept for 7 days under the run's Artifacts.
+# self-test and all sixteen builds, with the packages kept for 7 days under the run's Artifacts.
 # Releases are only ever published from main.
 name: Release
 
@@ -231,7 +231,12 @@ jobs:
   rpm:
     needs: check
     if: needs.check.outputs.build == 'true'
-    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        include:
+          - { arch: x86_64, runner: ubuntu-24.04 }
+          - { arch: aarch64, runner: ubuntu-24.04-arm }   # PySide6's ARM64 build needs glibc 2.39 (Fedora 40+)
+    runs-on: ${{ matrix.runner }}
     container: fedora:latest
     timeout-minutes: 20
     steps:
@@ -242,18 +247,18 @@ jobs:
 
       - name: Build the .rpm
         run: |
-          sh packaging/rpm/build-rpm.sh
-          test -f "dist/inkline-${{ needs.check.outputs.version }}-1.x86_64.rpm"
+          sh packaging/rpm/build-rpm.sh ${{ matrix.arch }}
+          test -f "dist/inkline-${{ needs.check.outputs.version }}-1.${{ matrix.arch }}.rpm"
 
       - name: Install it on Fedora and run the self-test with it
         run: |
-          dnf install -y "./dist/inkline-${{ needs.check.outputs.version }}-1.x86_64.rpm"
+          dnf install -y "./dist/inkline-${{ needs.check.outputs.version }}-1.${{ matrix.arch }}.rpm"
           QT_QPA_PLATFORM=offscreen inkline --selftest rpm-selftest
           python3 packaging/check_selftest.py rpm-selftest --install-kind rpm
 
       - uses: actions/upload-artifact@v7
         with:
-          name: pkg-rpm
+          name: pkg-rpm-${{ matrix.arch }}
           path: dist/inkline-*.rpm
           if-no-files-found: error
           retention-days: 7
@@ -273,7 +278,7 @@ jobs:
 
       - uses: actions/download-artifact@v8
         with:
-          name: pkg-rpm
+          name: pkg-rpm-x86_64
           path: dist
 
       - name: Install it on openSUSE and run the self-test with it
@@ -582,7 +587,7 @@ jobs:
           printf '\n## Code signing policy\n\nSee [Code signing policy](%s/%s/blob/main/README.md#code-signing-policy).\n' \
             "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" >> notes.md
           ls -l dist
-          test "$(ls dist | wc -l)" = 15 || { echo "::error::Expected the 15 packages in dist, found: $(ls dist)"; exit 1; }
+          test "$(ls dist | wc -l)" = 16 || { echo "::error::Expected the 16 packages in dist, found: $(ls dist)"; exit 1; }
           gh release create "$V" dist/* \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
@@ -607,6 +612,6 @@ jobs:
           {
             echo "### Test build of Inkline ${{ needs.check.outputs.version }} passed"
             echo
-            echo "Nothing was published. The self-test passed, and all 15 packages built and passed their own"
+            echo "Nothing was published. The self-test passed, and all 16 packages built and passed their own"
             echo "checks. Download them under **Artifacts** below (pkg-*, kept for 7 days)."
           } >> "$GITHUB_STEP_SUMMARY"

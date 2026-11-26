@@ -406,4 +406,4 @@ def test_the_release_builds_and_checks_macos():
     flow = open(os.path.join(ROOT, ".github", "workflows", "release.yml"), encoding="utf-8").read()
     assert "packaging/macos/build.py --arch" in flow and "--install-kind macos" in flow
     assert "runner: macos-15 }" in flow and "runner: macos-15-intel }" in flow and "arch -x86_64" in flow
-    assert '= 15 ||' in flow and "name: pkg-macos-${{ matrix.arch }}\n" in flow
+    assert '= 16 ||' in flow and "name: pkg-macos-${{ matrix.arch }}\n" in flow
