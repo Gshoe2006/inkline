@@ -79,6 +79,10 @@ Start Inkline from the package you're testing, not from the source checkout, unl
       Mopria plugin) prints them in grey, a fold-and-staple booklet double-sided.
 - [ ] **Speed:** a 10-page booklet and a photo conversion finish in reasonable time on an older phone.
 - [ ] **Update:** with an older APK installed, Check for updates offers the release page.
+- [ ] **Icon:** the home screen and app drawer show Inkline's page on its dark background, whole, in the
+      launcher's shape (circle, squircle or rounded square), not the Python or Qt logo.
+- [ ] **Google Play** (a closed test's opt-in link): Inkline installs from Play and starts as the APK does; a newer
+      bundle uploaded to the track arrives as a Play update.
 
 ## Printing
 

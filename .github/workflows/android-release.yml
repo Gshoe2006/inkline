@@ -1,14 +1,17 @@
 # Adds signed Android APKs to a release, once the Release workflow has published it (a release made with that
-# workflow's token starts no workflow itself, but finishing a workflow run does). Kept apart from the Release
-# workflow so a slow or rate-limited Android build never holds up the other packages.
+# workflow's token starts no workflow itself, but finishing a workflow run does), and the Android App Bundle for
+# Google Play (inkline-<version>-android.aab, arm64: the Qt bootstrap builds one ABI per bundle; see
+# docs/publishing.md). Kept apart from the Release workflow so a slow or rate-limited Android build never holds up
+# the other packages.
 #
 # Signing needs the release key, as four repository secrets (docs/android-signing.md says how to make it):
 #   ANDROID_KEYSTORE           the keystore file, base64 encoded
 #   ANDROID_KEYSTORE_PASSWORD  its password
 #   ANDROID_KEY_ALIAS          the key's alias in it
 #   ANDROID_KEY_PASSWORD       the key's password
-# Without them, nothing is built and the run says so. "Run workflow" on the Actions tab adds the APKs to the latest
-# release (for example after the secrets are first added).
+# The same key is the upload key for Play App Signing. Without the secrets, nothing is built and the run says so.
+# "Run workflow" on the Actions tab adds the APKs and the bundle to the latest release (for example after the
+# secrets are first added).
 name: Android release
 
 on:
@@ -77,7 +80,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends git zip unzip autoconf automake libtool pkg-config \
-            zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev build-essential lld ccache libltdl-dev libtool-bin
+            zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev build-essential lld ccache libltdl-dev libtool-bin \
+            libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3   # Qt, offscreen: build.py draws the icons
           python -m pip install --upgrade pip
           python -m pip install PySide6-Essentials==6.12.0 shiboken6==6.12.0 jinja2 pkginfo tqdm packaging==24.1
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
@@ -92,7 +96,7 @@ jobs:
         if: env.HAVE_KEY == 'true'
         run: sh packaging/android/fetch-wheels.sh ${{ matrix.arch }} wheels >> "$GITHUB_ENV"
 
-      - name: Build and sign the APK
+      - name: Build and sign the APK (and, for arm64, the Play bundle)
         if: env.HAVE_KEY == 'true'
         env:
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE }}
@@ -102,18 +106,33 @@ jobs:
         run: |
           printf '%s' "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/inkline.keystore"
           export P4A_RELEASE_KEYSTORE="$RUNNER_TEMP/inkline.keystore"
-          python packaging/android/build.py --release --arch ${{ matrix.arch }} \
-            --wheel-pyside "$WHEEL_PYSIDE6" --wheel-shiboken "$WHEEL_SHIBOKEN6" \
+          python packaging/android/build.py --release ${{ matrix.arch == 'aarch64' && '--aab' || '' }} \
+            --arch ${{ matrix.arch }} --wheel-pyside "$WHEEL_PYSIDE6" --wheel-shiboken "$WHEEL_SHIBOKEN6" \
             --ndk "$ANDROID_HOME/ndk/$NDK_VERSION" --sdk "$ANDROID_HOME"
           rm -f "$P4A_RELEASE_KEYSTORE"
-          APK="dist/inkline-${{ steps.release.outputs.version }}-android-${{ matrix.arch }}.apk"
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$APK"
 
-      - name: Add it to the release
+      - name: Check the signatures and 16 KB page alignment
+        if: env.HAVE_KEY == 'true'
+        run: |
+          V=${{ steps.release.outputs.version }}
+          APK="dist/inkline-$V-android-${{ matrix.arch }}.apk"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 -v 4 "$APK" | tail -3
+          python3 packaging/android/check_16kb.py "$APK"
+          if [ "${{ matrix.arch }}" = aarch64 ]; then
+            AAB="dist/inkline-$V-android.aab"
+            SIGNED=$(jarsigner -verify "$AAB")
+            echo "$SIGNED" | tail -3
+            case "$SIGNED" in *"jar verified"*) ;; *) echo "::error::$AAB isn't signed"; exit 1 ;; esac
+            python3 packaging/android/check_16kb.py "$AAB"
+          fi
+
+      - name: Add them to the release
         if: env.HAVE_KEY == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release upload "${{ steps.release.outputs.version }}" \
-            "dist/inkline-${{ steps.release.outputs.version }}-android-${{ matrix.arch }}.apk" \
-            --repo "$GITHUB_REPOSITORY" --clobber
+          V=${{ steps.release.outputs.version }}
+          FILES="dist/inkline-$V-android-${{ matrix.arch }}.apk"
+          if [ "${{ matrix.arch }}" = aarch64 ]; then FILES="$FILES dist/inkline-$V-android.aab"; fi
+          gh release upload "$V" $FILES --repo "$GITHUB_REPOSITORY" --clobber
