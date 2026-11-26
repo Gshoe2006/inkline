@@ -85,6 +85,7 @@ class Sidebar(QFrame):
         self.state = state
         self.setObjectName("sidebar")
         self.setFixedWidth(theme.SIDEBAR_WIDTH)
+        self.least = theme.SIDEBAR_WIDTH   # the narrowest it gets (wider on a tablet: the window's _fit_tablet)
         self._loading = False
         self.thumbs = thumbs.Thumbnails()   # the booklet page list's pictures
         self.thumbs.ready.connect(self._thumb_ready)
@@ -145,7 +146,7 @@ class Sidebar(QFrame):
         bar = sc.verticalScrollBar().sizeHint().width()
         # the widest page decides, so the sidebar (and the preview) keep their width from page to page
         need = max(c.minimumSizeHint().width() for c in self._columns.values()) + bar + 2 * sc.frameWidth()
-        w = max(theme.SIDEBAR_WIDTH, min(theme.MAX_SIDEBAR_WIDTH, need))
+        w = max(self.least, min(theme.MAX_SIDEBAR_WIDTH, need))
         if w != self.width() or self.minimumWidth() != w:
             self.setFixedWidth(w)
 
@@ -681,7 +682,12 @@ class Sidebar(QFrame):
         self.pbook_opts.add(_row(self.photo_count, add, stretch_first=True))
         self.photo_list = QListWidget()
         self.photo_list.setObjectName("photoList")
+        self.photo_list.setAccessibleName(tr("Photo book"))
         self.photo_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        # with the photo list focused, the selected photo: remove, move (as its row's buttons do; the page list's keys)
+        for key, d in ((QKeySequence(Qt.Key.Key_Delete), 0), (QKeySequence("Alt+Up"), -1), (QKeySequence("Alt+Down"), 1)):
+            QShortcut(key, self.photo_list, context=Qt.ShortcutContext.WidgetShortcut).activated.connect(
+                lambda d=d: self._photo_key(d))
         self.photo_list.currentRowChanged.connect(lambda i: None if self._loading or i < 0 else self.photo_selected.emit(i))
         self.pbook_opts.add(self.photo_list)
         self.pbook_opts.add(self._check("pcover", "Cover page"))
@@ -1028,17 +1034,19 @@ class Sidebar(QFrame):
             nm = _Elided(f"{i + 1}. {ph.name}")
             nm.setObjectName("photoName")
             rl.addWidget(nm, 1)
-            for txt, tip, fn, off in (("↑", "Move up", lambda _c=False, i=i: self.photo_moved.emit(i, -1), i == 0),
-                                      ("↓", "Move down", lambda _c=False, i=i: self.photo_moved.emit(i, 1), i == len(st.photos) - 1),
-                                      ("✕", "Remove", lambda _c=False, i=i: self.photo_removed.emit(i), len(st.photos) < 2)):
-                b = button(txt, "mini", tip)
+            for txt, tip, key, fn, off in (
+                    ("↑", "Move up", "Alt+↑", lambda _c=False, i=i: self.photo_moved.emit(i, -1), i == 0),
+                    ("↓", "Move down", "Alt+↓", lambda _c=False, i=i: self.photo_moved.emit(i, 1), i == len(st.photos) - 1),
+                    ("✕", "Remove", "Delete", lambda _c=False, i=i: self.photo_removed.emit(i), len(st.photos) < 2)):
+                b = button(txt, "mini")
+                b.setToolTip(f"{tr(tip)} ({key})")   # as the page list's
                 b.setAccessibleName(tr(tip))
                 b.setEnabled(not off)
                 b.clicked.connect(fn)
+                b.clicked.connect(lambda _c=False: self.photo_list.setFocus())   # the keys work straight after
                 rl.addWidget(b)
             lst.setItemWidget(item, row)
-        # as tall as its photos, up to 260 px (2.x's list), then it scrolls
-        lst.setFixedHeight(min(260, max(1, len(st.photos)) * (row_h + 4) + 4))
+        _fit_rows(lst, row_h, 260)   # as tall as its photos, up to 260 px (2.x's list), then it scrolls
         lst.setCurrentRow(st.sel)
         n = len(st.photos)
         self.photo_count.setText(tr("1 photo") if n == 1 else tr("{n} photos").format(n=n))
@@ -1114,7 +1122,7 @@ class Sidebar(QFrame):
                 btns.addWidget(b)
             btns.addStretch(1)
             lst.setItemWidget(item, row)
-        lst.setFixedHeight(min(220, max(1, len(pl)) * (row_h + 4) + 4))   # room under it for Change this page
+        _fit_rows(lst, row_h, 220)   # room under it for Change this page
         lst.setCurrentRow(st.book_sel if pl else -1)
         self.refresh_thumbs()
         n = len(pl)
@@ -1139,6 +1147,18 @@ class Sidebar(QFrame):
         elif what == "remove" and len(pl) > 1:
             self.book_page_removed.emit(i)
         self.page_list.setFocus()   # the list is filled again: keep the keys working on the page that moved
+
+    def _photo_key(self, d):
+        """A photo-list shortcut on the selected photo: remove it (d = 0) or move it up or down (where its row's
+        button would)."""
+        n, i = len(self.state.photos), self.photo_list.currentRow()
+        if not 0 <= i < n:
+            return
+        if d == 0 and n > 1:
+            self.photo_removed.emit(i)
+        elif d and 0 <= i + d < n:
+            self.photo_moved.emit(i, d)
+        self.photo_list.setFocus()
 
     def show_selected_page(self):
         """Highlight the page being edited, without filling the list again (a drag may be starting on it)."""
@@ -1543,6 +1563,15 @@ class _Elided(QLabel):
 
 DAY_NAMES = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
 SPELLING_USUAL = pack.SPELLING_DAYS
+
+
+def _fit_rows(lst, row_h, most):
+    """A list's rows row_h tall, or as tall as their buttons need (a finger's, on a touch screen), and the list as
+    tall as its rows, up to most."""
+    h = max([row_h] + [lst.itemWidget(lst.item(i)).sizeHint().height() for i in range(lst.count())])
+    for i in range(lst.count()):
+        lst.item(i).setSizeHint(QSize(0, h))
+    lst.setFixedHeight(min(most, max(1, lst.count()) * (h + 4) + 4 + 2 * lst.frameWidth()))
 
 
 def _bottom(widget):

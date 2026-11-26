@@ -19,6 +19,30 @@ Start Inkline from the package you're testing, not from the source checkout, unl
       back; Create also brings the controls back.
 - [ ] **HiDPI:** at 150% or 200% scaling nothing is cut off (rail labels, toolbar buttons, the tour card).
 
+- [ ] **Zoom:** Ctrl+wheel over the preview zooms where the pointer is; dragging moves round the zoomed page;
+      a double click shows the whole page. View → Zoom in, Zoom out and Whole page (Ctrl++, Ctrl+-, Ctrl+0) do the
+      same. On a trackpad (macOS, or Wayland), pinching zooms. With a photo open, the plain wheel still zooms the photo.
+
+## Accessibility
+
+- [ ] **Keyboard only:** with the mouse unplugged, Tab from the rail through Create's options to the toolbar and
+      the preview: every stop is outlined. Choose a pattern in the gallery with the arrow keys and Enter; open All
+      patterns…, type "maze", press Down and Enter. Build a booklet page by page and, in its page list, move a page
+      with Alt+↑ / Alt+↓, duplicate it with Ctrl+D and remove it with Delete. Print with Ctrl+P.
+- [ ] **Orca (Linux):** turn it on (Super+Alt+S) and Tab round the window: the rail says "Create, push button" (and
+      its Ctrl+1 tooltip), each list says its label and its value ("Pattern, Mandala"), each slider its label and
+      value, the page list's buttons "Move up", "Move down", "Duplicate with a new design", "Remove". The preview
+      says "Page preview" and the page shown ("Page 2 of 5: Maze") after you turn a booklet's page.
+- [ ] **NVDA (Windows) and VoiceOver (macOS):** the same walk; check the Menu button ("Menu"), Presets, and the
+      Settings dialog (each list read with its label).
+- [ ] **TalkBack (Android):** swipe through the bottom bar, the options and the toolbar: each is read by name;
+      double-tap activates. Pinch the preview to zoom, drag to move round, double-tap to fit.
+- [ ] **High contrast:** Edit → Settings → Appearance → turn on High contrast and choose it: the focus outline,
+      the selected rail entry and the page list's selection are all clearly visible. On Windows, with a contrast
+      theme on, Inkline (in its own theme) is still readable, and its High contrast theme matches it well enough.
+- [ ] **Larger text:** at 150% display scaling (or with the touch-screen layout), nothing in the rail, toolbar
+      or Settings is cut off.
+
 ## Themes
 
 - [ ] Edit → Settings → Appearance: turn on High contrast, Warm paper and Slate; choose each, and View → Theme
@@ -72,6 +96,11 @@ Start Inkline from the package you're testing, not from the source checkout, unl
       a minute or less, in the one-column layout on a phone, the rail layout on a tablet held sideways.
 - [ ] **Touch:** every button, list and slider is easy to hit with a finger; the bottom bar switches pages; Preview
       shows the page; turning the tablet switches layouts without losing what you'd typed.
+- [ ] **Tablet sideways** (about 1024×600 to 1366×1024): the rail, the options and the preview side by side; the
+      page as tall as the preview; nothing cut off in the toolbar or the booklet's page list; More designs… in the
+      toolbar on the wider tablets.
+- [ ] **Pinch:** two fingers zoom the preview round where they are, one finger then drags the zoomed page, a double
+      tap shows the whole page; with a photo open and not zoomed, one finger still moves the photo.
 - [ ] **Menu:** the Menu button opens File, Edit, View, Help; on a phone it has Presets too.
 - [ ] **Files:** Open image picks a photo from the gallery or Files; Save PDF and Save PNG save where you choose, and
       the file opens in another app.
