@@ -190,6 +190,20 @@ class Preview(QWidget):
             for text, bold in runs:
                 lay.addWidget(label_as(text.replace(" ", "\u00a0"), "infoBold" if bold else "info"))
             self._bar.insertWidget(i, box)
+        self._fit_info()
+
+    def _fit_info(self):
+        """The facts that fit the bar's width, in order (a phone shows the first ones rather than cut them off)."""
+        room = self.width() - 18 * 2
+        for i in range(self._bar.count() - 1):
+            box = self._bar.itemAt(i).widget()
+            need = box.sizeHint().width()
+            box.setVisible(need <= room)
+            room -= need + self._bar.spacing() if need <= room else room + 1
+
+    def resizeEvent(self, ev):
+        super().resizeEvent(ev)
+        self._fit_info()
 
     def set_drop(self, over):
         """A dashed outline round the light table while a file is dragged over the window (2.x's .stage.over)."""

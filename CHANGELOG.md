@@ -21,7 +21,7 @@ Inkline 6.0 has a new window: one place to pick a design, short pages instead of
 - **Choose the worksheet pack's days.** Each day of the **Worksheet pack** can be any of 16 sheets, not only the usual week.
 - **Easier to read.** **Print → Page text → Easier to read** sets the text in Atkinson Hyperlegible, spaced wider, for children who find reading hard; **Print → Paper → Cream paper** tints the page on screen and in PDFs (printing stays white).
 - **Italian and Dutch.** Inkline is now also in Italiano and Nederlands: the window, reading passages, word searches, crosswords, bingo, sight words and handwriting (with Italian and Dutch school handwriting), with euros and decimal commas.
-- **Inkline for macOS.** A disk image for Macs with Apple silicon (M1 and later, macOS 12 or newer). It updates itself like the other packages and can check for updates while it's closed.
+- **Inkline for macOS.** A disk image for Macs with Apple silicon (M1 and later, macOS 14 or newer). It updates itself like the other packages and can check for updates while it's closed.
 
 ### Upgrading
 

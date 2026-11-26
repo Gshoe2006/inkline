@@ -74,3 +74,9 @@ def test_the_tour_starts_where_the_gallery_is(make_win):
     t = w.show_tour()
     t.next.click()                                             # the gallery: on Create
     assert w.sidebar.page_key() == "make" and w.sidebar.gallery.isVisible()
+
+
+def test_touch_mode_describes_its_own_toolbar():
+    from inkapp import tour
+    assert "PNG" in tour.step_text("toolbar") and "PNG" not in tour.step_text("toolbar", touch=True)
+    assert "Menu" in tour.step_text("menu", touch=True) and tour.step_text("rail", touch=True) == tour.step_text("rail")

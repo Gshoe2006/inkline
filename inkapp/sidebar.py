@@ -77,6 +77,7 @@ class Sidebar(QFrame):
     print_ = Signal()
     save = Signal(str)            # png | pdf | svg
     mode_changed = Signal(str)
+    page_shown = Signal(str)      # a page of options was shown (the window's bottom bar marks it, in one column)
     synced = Signal()             # sync() ran: the window matches its menu actions to the footer buttons
 
     def __init__(self, state, version):
@@ -126,9 +127,20 @@ class Sidebar(QFrame):
         self.load()
         self._fit_later()   # once shown: the widgets' sizes are only right after the stylesheet has polished them
 
+    def set_full_width(self, on):
+        """In a phone-width window the options page takes the whole width (it takes turns with the preview)."""
+        self._full_width = bool(on)
+        if on:
+            self.setMinimumWidth(0)
+            self.setMaximumWidth(16777215)
+        else:
+            self.fit_width()
+
     def fit_width(self):
         """As wide as Inkline's sidebar, or wider when the controls shown need more (up to MAX_SIDEBAR_WIDTH)."""
         self._fit_pending = False
+        if getattr(self, "_full_width", False):
+            return
         sc = self._scroll
         bar = sc.verticalScrollBar().sizeHint().width()
         # the widest page decides, so the sidebar (and the preview) keep their width from page to page
@@ -140,7 +152,7 @@ class Sidebar(QFrame):
     def _fit_later(self):
         if not self._fit_pending:
             self._fit_pending = True
-            QTimer.singleShot(0, self.fit_width)
+            QTimer.singleShot(0, self, self.fit_width)   # not after the sidebar is gone (a closed window)
 
     def eventFilter(self, obj, ev):
         if obj in self._columns.values() and ev.type() == QEvent.Type.LayoutRequest:   # a part shown or hidden, a restyle
@@ -243,6 +255,7 @@ class Sidebar(QFrame):
             self._scroll, self._column = self._scrolls[key], self._columns[key]
             self._fit_later()
         self.rail.show_key(key)
+        self.page_shown.emit(key)
 
     def _rail_chosen(self, key):
         if key == "make" and not self.page_editor.isHidden():

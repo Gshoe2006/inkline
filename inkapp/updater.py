@@ -3,11 +3,20 @@ the package for how this copy was installed, checks it against the release's SHA
 
 How each copy updates (install_kind):
 - windows   (the installer's app; Python frozen by PyInstaller): run the new setup .exe, which closes Inkline.
+- windows-portable (the .zip, run from its folder): a running program can't replace its own files, so the new
+  .zip is downloaded and its folder opened, to unzip in place of this one.
+- macos     (Inkline.app): the universal disk image (Apple silicon and Intel), its app swapped in for this one.
 - appimage  ($APPIMAGE): put the new AppImage in place of this one and start it.
 - run-user  (the .run installer, for one person): run the new .run, then start Inkline again.
-- run-system, deb, arch (installed for everyone): the same with an administrator password, through pkexec; without
+- run-system, deb, rpm, arch (installed for everyone): the same with an administrator password, through pkexec; without
   pkexec, the file is downloaded and its folder opened, with the command to install it.
-- flatpak, source: say there's an update, and open the release page.
+- android (the APK): say there's an update, and open the release page for the new APK (an app can't install one
+  without a permission Inkline doesn't ask for)
+- flatpak, snap, source: say there's an update, and open the release page (Flatpak and Snap update the app
+  themselves).
+
+The .deb and the AppImage come for x86-64 and for ARM64 (Raspberry Pi 4 and 5, ARM laptops); each updates to the
+one for the processor it runs on.
 
 The packages say how they were installed in an "install-kind" file next to inkline.py. Nothing is sent but the
 request itself (GitHub sees an IP address, as for any web page); the check is made at most once a day, and only
@@ -17,6 +26,7 @@ if the person said yes to checking when Inkline first asked.
 import hashlib
 import json
 import os
+import platform as _platform
 import re
 import shutil
 import ssl
@@ -31,8 +41,9 @@ API = f"https://api.github.com/repos/{REPO}/releases/latest"
 PAGE = f"https://github.com/{REPO}/releases/latest"
 DAY = 24 * 3600
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-INSTALL_KINDS = ("windows", "macos", "appimage", "run-user", "run-system", "deb", "arch", "flatpak", "source")
-NEEDS_ADMIN = ("run-system", "deb", "arch")
+INSTALL_KINDS = ("windows", "windows-portable", "macos", "appimage", "run-user", "run-system", "deb", "rpm", "arch",
+                 "flatpak", "snap", "android", "source")
+NEEDS_ADMIN = ("run-system", "deb", "rpm", "arch")
 
 
 def install_kind(env=None, frozen=None, root=ROOT, platform=None):
@@ -40,14 +51,21 @@ def install_kind(env=None, frozen=None, root=ROOT, platform=None):
     env = os.environ if env is None else env
     frozen = getattr(sys, "frozen", False) if frozen is None else frozen
     platform = platform or sys.platform
-    if frozen and os.name == "nt" or frozen == "windows":
-        return "windows"
+    if platform == "android":
+        return "android"
+    if frozen and os.name == "nt" or frozen == "windows":   # the portable .zip has a "portable" file beside Inkline.exe
+        exe_dir = os.path.dirname(os.path.abspath(sys.executable))
+        return "windows-portable" if os.path.exists(os.path.join(exe_dir, "portable")) else "windows"
+    if frozen == "windows-portable":
+        return "windows-portable"
     if frozen and platform == "darwin" or frozen == "macos":   # Inkline.app, built by packaging/macos/build.py
         return "macos"
     if env.get("APPIMAGE"):
         return "appimage"
     if env.get("FLATPAK_ID") or os.path.exists("/.flatpak-info") and root.startswith("/app/"):
         return "flatpak"
+    if env.get("SNAP_NAME") == "inkline" or env.get("SNAP") and root.startswith(env["SNAP"]):
+        return "snap"
     try:
         with open(os.path.join(root, "install-kind"), encoding="utf-8") as f:
             kind = f.read().strip()
@@ -69,12 +87,24 @@ def newer(latest, current):
     return bool(a and b and a > b)
 
 
-def asset_name(kind, version):
-    """The release file for a kind of install, or None for those that don't update themselves."""
-    return {"windows": f"inkline-{version}-windows-setup.exe", "macos": f"inkline-{version}-macos.dmg",
-            "appimage": f"inkline-{version}-x86_64.AppImage",
+def machine(name=None):
+    """"arm64" on an ARM64 processor, else "x86_64" (what the Linux packages are built for)."""
+    name = (name if name is not None else _platform.machine()).lower()
+    return "arm64" if name in ("aarch64", "arm64", "armv8l", "armv8b") else "x86_64"
+
+
+def asset_name(kind, version, arch=None):
+    """The release file for a kind of install, or None for those that don't update themselves. arch is "x86_64" or
+    "arm64" (this processor's, by default): the .deb and AppImage come for both."""
+    arm = (arch or machine()) == "arm64"
+    return {"windows": f"inkline-{version}-windows-setup.exe",
+            "windows-portable": f"inkline-{version}-windows-portable.zip",
+            "macos": f"inkline-{version}-macos.dmg",   # universal: Apple silicon and Intel
+            "appimage": f"inkline-{version}-{'aarch64' if arm else 'x86_64'}.AppImage",
             "run-user": f"inkline-{version}.run", "run-system": f"inkline-{version}.run",
-            "deb": f"inkline_{version}-1_amd64.deb", "arch": f"inkline-{version}-1-any.pkg.tar.zst"}.get(kind)
+            "deb": f"inkline_{version}-1_{'arm64' if arm else 'amd64'}.deb",
+            "rpm": f"inkline-{version}-1.{'aarch64' if arm else 'x86_64'}.rpm",
+            "arch": f"inkline-{version}-1-any.pkg.tar.zst"}.get(kind)
 
 
 # where Linux distributions keep their certificate authorities: a Python with its own OpenSSL (the AppImage's) looks
@@ -170,6 +200,8 @@ def install_steps(kind, path, env=None):
     env = os.environ if env is None else env
     if kind == "windows":
         return [path, "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART"], "quit"
+    if kind == "windows-portable":
+        return None, "manual"
     if kind == "appimage":
         return None, "replace"
     if kind == "macos":   # the new Inkline.app from the disk image, in place of this one
@@ -184,6 +216,14 @@ def install_steps(kind, path, env=None):
     if kind == "deb":
         apt = shutil.which("apt", path=env.get("PATH")) or "apt"
         return [admin, apt, "install", "-y", path], "restart"
+    if kind == "rpm":   # Fedora's dnf, else openSUSE's zypper (the package isn't signed: it's checked by its SHA-256)
+        dnf = shutil.which("dnf", path=env.get("PATH"))
+        if dnf:
+            return [admin, dnf, "install", "-y", path], "restart"
+        zypper = shutil.which("zypper", path=env.get("PATH"))
+        if zypper:
+            return [admin, zypper, "--non-interactive", "install", "--allow-unsigned-rpm", path], "restart"
+        return None, "manual"
     if kind == "arch":
         pacman = shutil.which("pacman", path=env.get("PATH")) or "pacman"
         return [admin, pacman, "-U", "--noconfirm", path], "restart"
@@ -209,6 +249,7 @@ def app_bundle(env=None, executable=None):
 def manual_command(kind, path):
     """The command to type, where Inkline can't install for the person."""
     return {"deb": f"sudo apt install {path}", "arch": f"sudo pacman -U {path}",
+            "rpm": f"sudo dnf install {path}   (openSUSE: sudo zypper install --allow-unsigned-rpm {path})",
             "run-system": f"sudo sh {path} --system"}.get(kind, "")
 
 

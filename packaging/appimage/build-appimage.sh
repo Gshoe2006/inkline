@@ -1,6 +1,7 @@
 #!/bin/sh
-# Builds Inkline as an AppImage into ../../dist: inkline-<version>-x86_64.AppImage, one file that runs on most
-# Linux distributions without installing anything (chmod +x it, then run it).
+# Builds Inkline as an AppImage into ../../dist: inkline-<version>-<arch>.AppImage (x86_64, or aarch64 when built on
+# ARM64), one file that runs on most Linux distributions without installing anything (chmod +x it, then run it).
+# The aarch64 one needs glibc 2.39 or newer (PySide6's ARM64 build): Ubuntu 24.04, Debian 13, Raspberry Pi OS 13.
 #
 #   sh packaging/appimage/build-appimage.sh
 #
@@ -14,12 +15,14 @@ DIST="$SRC/dist"
 CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/inkline-build"
 PYTHON=3.12
 PINS="PySide6-Essentials==6.12.0 shiboken6==6.12.0 numpy==2.3.5"
-TOOL="$CACHE/appimagetool-x86_64.AppImage"
+ARCH=$(uname -m)
+case "$ARCH" in x86_64|aarch64) ;; arm64) ARCH=aarch64 ;; *) echo "build-appimage.sh: not for '$ARCH'"; exit 1 ;; esac
+TOOL="$CACHE/appimagetool-$ARCH.AppImage"
 
 command -v uv >/dev/null || { echo "build-appimage.sh: uv is needed: pip install uv"; exit 1; }
 mkdir -p "$CACHE" "$DIST"
 if [ ! -f "$TOOL" ]; then
-  curl -fsSL -o "$TOOL.part" https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+  curl -fsSL -o "$TOOL.part" https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-$ARCH.AppImage
   mv "$TOOL.part" "$TOOL"
   chmod 755 "$TOOL"
 fi
@@ -68,8 +71,8 @@ install -Dm644 "$SRC/packaging/flatpak/io.github.gshoe2006.Inkline.metainfo.xml"
   "$D/usr/share/metainfo/io.github.gshoe2006.Inkline.appdata.xml"
 install -Dm644 "$SRC/inkline-mime.xml" "$D/usr/share/mime/packages/io.github.gshoe2006.Inkline.xml"
 
-OUT="$DIST/inkline-$VERSION-x86_64.AppImage"
+OUT="$DIST/inkline-$VERSION-$ARCH.AppImage"
 # extract-and-run: appimagetool is itself an AppImage, and build machines (containers, CI) often lack FUSE
-APPIMAGE_EXTRACT_AND_RUN=1 ARCH=x86_64 "$TOOL" --no-appstream "$D" "$OUT" >"$B/tool.log" 2>&1 ||
+APPIMAGE_EXTRACT_AND_RUN=1 ARCH=$ARCH "$TOOL" --no-appstream "$D" "$OUT" >"$B/tool.log" 2>&1 ||
   { cat "$B/tool.log"; exit 1; }
 echo "built $OUT"

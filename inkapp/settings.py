@@ -100,6 +100,10 @@ class SettingsDialog(QDialog):
         self.desktop.setToolTip(window.act_desktop.toolTip())
         self.desktop.toggled.connect(lambda on: window.act_desktop.isChecked() != on and window.act_desktop.trigger())
         looks.add(self.desktop)
+        self.touch = check("Touch-screen layout", theme.TOUCH["on"])
+        self.touch.setEnabled(not theme.touch_forced())   # always on Android
+        self.touch.toggled.connect(lambda on: theme.TOUCH["on"] != on and window.set_touch(on))
+        looks.add(self.touch)
         looks.add(Hint("More themes to choose from:"))
         self.extra = {}
         for key in theme.EXTRA_THEMES:
@@ -123,8 +127,8 @@ class SettingsDialog(QDialog):
             if key in update_schedule.BACKGROUND and not can:
                 item = self.schedule.model().item(i)
                 item.setEnabled(False)
-                item.setToolTip(tr("Only while Inkline is open: a Flatpak can't check in the background.")
-                                if window.updates.kind == "flatpak" else tr("Only while Inkline is open, on this system."))
+                item.setToolTip(tr("Only while Inkline is open: a Flatpak or Snap can't check in the background.")
+                                if window.updates.kind in ("flatpak", "snap") else tr("Only while Inkline is open, on this system."))
         updates.add(OptionRow("Check for updates automatically", self.schedule))
         self.check_now = button("Check now", tip="Ask GitHub for the latest version now")
         self.check_now.setAutoDefault(False)

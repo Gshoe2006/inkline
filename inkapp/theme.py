@@ -61,6 +61,13 @@ SHADOW_BLUR = 30      # the page's shadow
 SHADOW_COLOUR = (0, 0, 0, 46)   # its colour: black at 18%, as 2.x's (rgb(0 0 0 / .18))
 PAPER_COLOUR = "#ffffff"   # pages are white paper in both themes (the preview's page, the page list's pictures)
 
+# Touch screens (Android, or Edit → Settings → Appearance): every control at least as tall as a rail button, and a
+# window narrower than ONE_COLUMN_WIDTH laid out in one column (the options page and the preview take turns): phones,
+# and tablets held upright; beside the rail and the options page a narrower window would leave the preview too little
+TOUCH_TARGET = 48          # px: the rail buttons' height, for every control
+ONE_COLUMN_WIDTH = 1000    # px: narrower than this, one column
+TOUCH = {"on": False}
+
 
 def _families(fams):
     return ", ".join(f'"{f}"' if " " in f else f for f in fams)
@@ -143,7 +150,57 @@ def _arrow(colour):
     return path.replace("\\", "/")
 
 
-def stylesheet(t):
+def touch_wanted(prefs, platform=None, env=None):
+    """Whether to lay Inkline out for a finger: always on Android, else as Settings (or INKLINE_TOUCH=1) says."""
+    return touch_forced(platform, env) or prefs.get("touch") is True
+
+
+def touch_forced(platform=None, env=None):
+    """Touch mode that Settings can't turn off: on Android, or with INKLINE_TOUCH=1."""
+    import os
+    import sys
+    env = os.environ if env is None else env
+    return (platform or sys.platform) == "android" or env.get("INKLINE_TOUCH") == "1"
+
+
+def stylesheet(t, touch=None):
+    touch = TOUCH["on"] if touch is None else touch
+    return _stylesheet(t) + (touch_rules(t) if touch else "")
+
+
+def touch_rules(t):
+    """Touch mode's additions: controls a finger can hit (TOUCH_TARGET tall), larger handles and boxes, and text one
+    step up the type sizes the stylesheet already uses (13 → 14, 14 → 16)."""
+    h = TOUCH_TARGET
+    return f"""
+* {{ font-size: 16px; }}
+QLabel[role="label"], QCheckBox, QComboBox, QLineEdit, QPushButton, QToolButton#toolbarMenu {{ font-size: 14px; }}
+QComboBox, QLineEdit, QPushButton, QToolButton#toolbarMenu, QToolButton#foldHead {{ min-height: {h - 2 * 10}px; }}
+QComboBox, QLineEdit, QPushButton, QToolButton#toolbarMenu {{ padding: 10px 10px; }}
+QPushButton:focus, QComboBox:focus, QLineEdit:focus, QToolButton#toolbarMenu:focus {{ padding: 9px 9px; }}
+QPushButton#newDesign {{ padding: 10px 14px; }}
+QPushButton#newDesign:focus {{ padding: 9px 13px; }}
+QPushButton[role="mini"] {{ font-size: 13px; padding: 10px 12px; }}
+QPushButton[role="mini"]:focus {{ padding: 9px 11px; }}
+QToolButton#foldHead {{ font-size: 12px; padding: 10px 0; }}
+QToolButton#railButton {{ font-size: 13px; min-height: {h}px; }}
+QToolButton#bottomButton {{ background: transparent; border: 0; border-top: 3px solid transparent; color: {t.muted};
+  font-size: 13px; font-weight: 600; min-height: {h}px; padding: 2px 4px; }}
+QToolButton#bottomButton:checked {{ border-top-color: {t.accent}; color: {t.accent}; }}
+QToolButton#bottomButton:hover {{ color: {t.ink}; }}
+QToolButton#bottomButton:focus {{ border: 2px solid {t.ink}; border-top-width: 3px; padding: 0 2px; }}
+QToolButton#bottomButton:disabled {{ color: {t.line}; }}
+QFrame#bottomBar {{ background: {t.panel}; border-top: 1px solid {t.line}; }}
+QCheckBox::indicator {{ width: 22px; height: 22px; }}
+QSlider {{ min-height: {h}px; }}
+QSlider::groove:horizontal {{ height: 6px; border-radius: 3px; }}
+QSlider::handle:horizontal {{ width: 24px; height: 24px; margin: -9px 0; border-radius: 12px; }}
+QScrollBar:vertical {{ width: 12px; }}
+QMenu::item {{ padding: 12px 24px; }}
+"""
+
+
+def _stylesheet(t):
     ui, head, mono = _families(FONT_UI), _families(FONT_HEAD), _families(FONT_MONO)
     return f"""
 * {{ font-family: {ui}; font-size: 14px; color: {t.ink}; }}
@@ -270,7 +327,7 @@ def apply(app, dark=None):
     With the desktop's style on, the widgets keep the desktop's look and colours; the preview's paper and table
     still come from the tokens."""
     t = tokens(dark)
-    if DESKTOP["on"] and DESKTOP["style"]:
+    if DESKTOP["on"] and DESKTOP["style"] and not TOUCH["on"]:   # touch sizes are Inkline's own stylesheet
         app.setStyleSheet("")
         app.setStyle(DESKTOP["style"])
         app.setPalette(DESKTOP["palette"] if DESKTOP["palette"] is not None else app.style().standardPalette())

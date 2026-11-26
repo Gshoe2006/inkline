@@ -315,3 +315,12 @@ def test_ctrl_1_to_5_choose_the_rail(make_win):
     QTest.keyClick(w, Qt.Key.Key_1, mod)
     spin()
     assert w.state.settings.mode == "make" and sb.page_key() == "make"
+
+
+def test_garbage_is_collected_on_the_ui_thread_only():
+    import gc
+    from inkapp import gcguard
+    from PySide6.QtWidgets import QApplication
+    app = QApplication.instance()
+    assert not gc.isenabled()                       # never by a worker thread allocating
+    assert app._inkline_gc_timer.isActive() and app._inkline_gc_timer.interval() == gcguard.EVERY_MS

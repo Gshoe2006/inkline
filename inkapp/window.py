@@ -18,7 +18,7 @@ from PySide6.QtGui import QAction, QGuiApplication, QImage, QKeySequence, QShort
 from PySide6.QtPrintSupport import QAbstractPrintDialog, QPrintDialog, QPrinter
 from PySide6.QtWidgets import (QAbstractItemView, QAbstractSlider, QAbstractSpinBox, QApplication, QComboBox, QDialog,
                                QFileDialog, QHBoxLayout, QInputDialog, QLineEdit, QMainWindow, QMenu, QMenuBar, QMessageBox,
-                               QUndoView, QVBoxLayout, QWidget)
+                               QStackedWidget, QUndoView, QVBoxLayout, QWidget)
 from PySide6.QtGui import QPdfWriter
 
 from inkengine import ages, book, pack, photo
@@ -27,7 +27,8 @@ from inkengine.i18n import tr
 from inkengine.page import PAGE_KEYS, Settings, clean_page, design_box, geometry, single_page
 from inkengine.patterns import NAMES
 
-from . import config, jobs, project, recovery, settings, theme, update_ui, whatsnew
+from . import android_print, config, jobs, project, recovery, settings, theme, update_ui, whatsnew
+from .layout import BottomBar, MenuButton
 from .preview import Preview
 from .render import PREVIEW_DPI, Renderer, render_view, view
 from .sample import sample_photo
@@ -234,6 +235,19 @@ class Window(QMainWindow):
         self.updates = update_ui.Updates(self, version)
         self._menus()
         self.apply_save_format()
+        # touch screens: the menus from a toolbar button, and in a phone-width window one column with a bottom bar
+        self.bottom = BottomBar()
+        self.bottom.setParent(self.centralWidget())   # hidden until one column: never a window of its own
+        self.bottom.hide()
+        self.bottom.chosen.connect(self._bottom_chosen)
+        self.menu_btn = MenuButton(self._top_menus)
+        self.menu_btn.presets.triggered.connect(lambda: self.sidebar.presets_btn.open(under=self.menu_btn))
+        self.sidebar.toolbar.layout().addWidget(self.menu_btn)
+        self.sidebar.page_shown.connect(self._page_shown)
+        self.sidebar.synced.connect(self._match_bottom)
+        self._narrow = False   # built wide, above
+        self.turns = None      # the options page and the preview, taking turns (phone width)
+        self.set_touch(theme.TOUCH["on"], save=False)
         # Ctrl+1 to Ctrl+5: the rail's Create, Photo, Booklet, Poster and Print, as clicking them does
         from .layout import RAIL
         for i, (key, _text) in enumerate(RAIL):
@@ -311,6 +325,7 @@ class Window(QMainWindow):
             return a
 
         f = mb.addMenu(tr("&File"))
+        self._top_menus = [f]   # File, Edit, View, Help: the toolbar's Menu button holds them on a touch screen
         act(f, "Ne&w project", self.new_project)
         act(f, "Open pro&ject…", lambda: self.open_project(), "Ctrl+Shift+O")
         self.recent_projects_menu = f.addMenu(tr("Open recen&t project"))
@@ -332,6 +347,7 @@ class Window(QMainWindow):
         f.addSeparator()
         act(f, "&Quit", self.close, "Ctrl+Q")
         e = mb.addMenu(tr("&Edit"))
+        self._top_menus.append(e)
         undo = self.history.createUndoAction(self, tr("&Undo"))
         undo.setShortcuts(QKeySequence.StandardKey.Undo)
         redo = self.history.createRedoAction(self, tr("&Redo"))
@@ -348,6 +364,7 @@ class Window(QMainWindow):
         e.addSeparator()
         act(e, "&Settings…", self.show_settings, "Ctrl+,")
         v = mb.addMenu(tr("&View"))
+        self._top_menus.append(v)
         act(v, "&New design", self.new_design, "Ctrl+N")
         act(v, "&More designs…", self.more_designs, "Ctrl+Shift+N")
         act(v, "Pre&vious page\t←", lambda: self.step_page(-1))
@@ -380,6 +397,7 @@ class Window(QMainWindow):
                                            "style. The Arch package and the .run installer use your system's Qt and can."))
         v.setToolTipsVisible(True)
         h = mb.addMenu(tr("&Help"))
+        self._top_menus.append(h)
         act(h, "&What's new", lambda: self.show_whats_new())
         act(h, "T&our of the window", lambda: self.show_tour())
         act(h, "Check for &updates…", lambda: self.updates.check(asked=True))
@@ -757,6 +775,120 @@ class Window(QMainWindow):
             b.click()
         else:   # Booklet with a photo: say why nothing happened
             self._msg(tr("A photo book is made on the Photo page (Ctrl+2)."))
+
+    # --- touch screens -------------------------------------------------------------------------------------
+    def set_touch(self, on, save=True):
+        """Larger controls for a finger, the menus in the toolbar, and one column below theme.ONE_COLUMN_WIDTH (Edit →
+        Settings → Appearance; always on Android)."""
+        theme.TOUCH["on"] = bool(on)
+        self.menuBar().setVisible(not on)
+        self.menu_btn.setVisible(bool(on))
+        self.sidebar.keys.setVisible(not on)   # the keyboard shortcuts: no keyboard
+        if on:
+            self.setMinimumSize(360, 480)   # the bottom bar's six entries
+        else:
+            self.setMinimumSize(900, 600)
+        theme.apply(QApplication.instance())
+        self.preview.page.update()
+        self._arrange(bool(on) and self.width() < theme.ONE_COLUMN_WIDTH)
+        self._fit_toolbar()
+        if save and self.remember:
+            err = config.write("preferences.json", {**config.read("preferences.json"), "touch": bool(on)}, "Preferences")
+            if err:
+                self._msg(err)
+
+    def resizeEvent(self, ev):
+        super().resizeEvent(ev)
+        if theme.TOUCH["on"]:
+            narrow = self.width() < theme.ONE_COLUMN_WIDTH
+            if narrow != self._narrow:
+                self._arrange(narrow)
+
+    def _arrange(self, narrow):
+        """Put the same rail, options, toolbar, preview and status line in the wide layout (rail | page | preview)
+        or, phone width, in one column: the toolbar, the page or the preview, the status line, the bottom bar."""
+        if narrow == self._narrow:   # laid out so already (the window is built wide)
+            return
+        sb = self.sidebar
+        focused = QApplication.focusWidget()   # moving the widgets hides them for a moment: keep the focus where it was
+        parts = (sb.rail, sb, sb.toolbar, self.preview, sb.statusbar, self.bottom)
+        central = QWidget()
+        central.setObjectName("central")
+        for w in parts:
+            w.setParent(central)   # out of the old layout (the old central goes, without them)
+        if narrow:
+            col = QVBoxLayout(central)
+            col.setContentsMargins(0, 0, 0, 0)
+            col.setSpacing(0)
+            self.turns = QStackedWidget()
+            self.turns.addWidget(sb)
+            self.turns.addWidget(self.preview)
+            col.addWidget(sb.toolbar)
+            col.addWidget(self.turns, 1)
+            col.addWidget(sb.statusbar)
+            col.addWidget(self.bottom)
+            sb.rail.hide()
+            self.bottom.show()
+        else:
+            lay = QHBoxLayout(central)
+            lay.setContentsMargins(0, 0, 0, 0)
+            lay.setSpacing(0)
+            lay.addWidget(sb.rail)
+            lay.addWidget(sb)
+            right = QVBoxLayout()
+            right.setContentsMargins(0, 0, 0, 0)
+            right.setSpacing(0)
+            right.addWidget(sb.toolbar)
+            right.addWidget(self.preview, 1)
+            right.addWidget(sb.statusbar)
+            lay.addLayout(right, 1)
+            self.turns = None
+            self.bottom.hide()
+            sb.rail.show()
+        for w in (sb, sb.toolbar, self.preview, sb.statusbar):
+            w.show()
+        sb.set_full_width(narrow)
+        self._narrow = narrow
+        self._fit_toolbar()
+        self.setCentralWidget(central)
+        self._page_shown(sb.page_key())
+        self._match_bottom()
+        if focused is not None and focused.isVisible():
+            focused.setFocus()
+
+    def _fit_toolbar(self):
+        """Touch-sized buttons don't all fit: the toolbar keeps what's used most, the rest being in the menus (the
+        brand; Save PNG and SVG and More designs in File and View; in one column, Save PDF too)."""
+        sb = self.sidebar
+        touch = theme.TOUCH["on"]
+        for w in (sb.brand, sb.png_btn, sb.svg_btn, sb.more_btn):
+            w.setVisible(not touch)
+        phone = touch and self._narrow
+        sb.pdf_btn.setVisible(not phone)
+        sb.presets_btn.setVisible(not phone)   # in the Menu button instead
+        self.menu_btn.presets.setVisible(phone)
+        m = 8 if touch and self._narrow else 14
+        sb.toolbar.layout().setContentsMargins(m, 8, m, 8)
+
+    def _bottom_chosen(self, key):
+        if key == "preview":
+            if self.turns is not None:
+                self.turns.setCurrentWidget(self.preview)
+            self.bottom.show_key("preview")
+            return
+        self.sidebar._rail_chosen(key)
+
+    def _page_shown(self, key):
+        """A page of options shown (the bottom bar, the Ctrl+1 to 5 keys, a field revealed): in one column, the page
+        rather than the preview."""
+        if self.turns is not None:
+            self.turns.setCurrentWidget(self.sidebar)
+        self.bottom.show_key(key)
+
+    def _match_bottom(self):
+        for key, b in self.sidebar.rail.buttons.items():
+            self.bottom.buttons[key].setEnabled(b.isEnabled())
+            self.bottom.buttons[key].setToolTip(b.toolTip())
 
     # --- themes ----------------------------------------------------------------------------------------
     def themes_offered(self):
@@ -1393,7 +1525,8 @@ class Window(QMainWindow):
     def _save_preset(self, name):
         if not name:
             self._msg(tr("Type a name for the preset first."))
-            self.sidebar.presets_btn.open()   # the panel the name is typed in
+            phone = self.sidebar.presets_btn.isHidden()   # in the Menu button, in one column
+            self.sidebar.presets_btn.open(under=self.menu_btn if phone else None)   # the panel the name is typed in
             self.sidebar.preset_name.setFocus()
             return
         if name in BUILTIN_PRESETS:
@@ -1556,6 +1689,8 @@ class Window(QMainWindow):
         j = self._job(snap)
         if j is None:
             return
+        if android_print.available():   # no Qt print dialog on Android: a PDF, for Android's own
+            return self._print_android(j, snap)
         printer = QPrinter(QPrinter.PrinterMode.HighResolution)
         printer.setPageLayout(jobs.page_layout(snap.settings, j.orient))
         printer.setFullPage(True)
@@ -1582,6 +1717,27 @@ class Window(QMainWindow):
             done = tr("Sent {what} to the printer.").format(what=sent) if j.count > 1 else tr("Sent to the printer.")
         self._start(j, printer, done, tr("The printer didn't accept the job. Check that it's connected."),
                     stopped=tr("Printing cancelled: nothing was sent to the printer."))
+
+    def _print_android(self, j, snap):
+        """Write the job as a PDF (as Save PDF does), then open Android's print dialog for it."""
+        path = android_print.job_path(j.name)
+        dev = QPdfWriter(path)
+        dev.setPageLayout(jobs.page_layout(snap.settings, j.orient))
+        dev.setResolution(j.geometry.dpi)
+        dev.setTitle(j.name)
+        dev.setCreator("Inkline")
+
+        def opened():
+            try:
+                android_print.print_pdf(path, j.name, duplex=j.duplex)
+            except OSError as e:
+                self._msg(tr("Android's print dialog didn't open ({why}). Save a PDF and print it from another app.").format(
+                    why=e))
+                return
+            self._msg(tr("Choose a printer in Android's print dialog."))
+        self._start(j, dev, tr("Opening Android's print dialog…"),
+                    tr("Couldn't write {path}. Check the folder permissions.").format(path=path),
+                    stopped=tr("Printing cancelled: nothing was sent to the printer."), path=path, then=opened)
 
     # --- Edit → Settings ------------------------------------------------------------------------------
     def show_settings(self):
@@ -1634,10 +1790,11 @@ class Window(QMainWindow):
                 self._msg(err)
         self._show_printer_edges()
 
-    def _start(self, j, device, done, failed, stopped="", path=None):
+    def _start(self, j, device, done, failed, stopped="", path=None, then=None):
         """Draw a print or PDF job on the worker. stopped: the status line if it's cancelled; path: the PDF being
-        written, deleted then."""
+        written, deleted then; then(): what to do once it's written (Android: open its print dialog)."""
         self._device = device   # kept alive while the worker draws on it
+        self._job_then = then
         self._cancel.clear()
         self._job_path, self._job_stopped = path, stopped or tr("Cancelled.")
         sb = self.sidebar
@@ -1696,6 +1853,9 @@ class Window(QMainWindow):
                     pass
             self._job_path = None
             self._busy(False, message)
+            then, self._job_then = getattr(self, "_job_then", None), None
+            if ok and then is not None:
+                then()
             return
         _k, data, name = r
         k, ext, filt = self._pending_save

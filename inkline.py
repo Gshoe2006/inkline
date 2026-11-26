@@ -54,6 +54,8 @@ def main():
     QApplication.setApplicationName("Inkline")
     QGuiApplication.setDesktopFileName(os.environ.get("FLATPAK_ID") or "inkline")   # a Flatpak names it by its app ID
     app = QApplication(sys.argv)
+    from inkapp import gcguard
+    gcguard.install(app)   # garbage collected on this thread only, never a worker's (Qt objects must die here)
     icon = os.path.join(HERE, "inkline.svg")
     if os.path.exists(icon):
         app.setWindowIcon(QIcon(icon))
@@ -79,9 +81,13 @@ def main():
     prefs = config.read("preferences.json")
     theme.DESKTOP["on"] = bool(theme.desktop_style_name()) and prefs.get("desktop_style") is True
     theme.restore(prefs)   # Edit → Settings → Appearance
+    theme.TOUCH["on"] = theme.touch_wanted(prefs)   # larger controls, menus in the toolbar: on Android, or as chosen
     theme.apply(app)
     win = Window(app_version())
     win.show()
+    if os.environ.get("INKLINE_PRINT_TEST") == "1":   # the Android build's CI check: Print, once the window is up
+        from PySide6.QtCore import QTimer               # (set before the first start's questions, which wait)
+        QTimer.singleShot(8000, win.print_)
     recovered = win.offer_recovery()   # work from a session that closed without saving, if there is any
     path = startup_project(sys.argv[1:])
     if not recovered and not path:

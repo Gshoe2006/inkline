@@ -50,6 +50,36 @@ Start Inkline from the package you're testing, not from the source checkout, unl
 - [ ] With an older version installed, Update now replaces /Applications/Inkline.app and Restart now opens the new one.
 - [ ] Printing through the macOS print dialog; Retina display: nothing blurry or cut off.
 
+## Other packages
+
+- [ ] **Intel Mac:** `inkline-<version>-macos-intel.dmg` and the universal `inkline-<version>-macos.dmg` both start
+      on an Intel Mac; the universal one on Apple silicon too.
+- [ ] **Fedora and openSUSE:** `sudo dnf install ./inkline-<version>-1.x86_64.rpm` (openSUSE: `sudo zypper install
+      --allow-unsigned-rpm …`): Inkline is in the app menu, opens `.inkline` files, and Update now asks for the
+      administrator password and installs the newer .rpm.
+- [ ] **Snap:** `sudo snap install --dangerous ./inkline_<version>_amd64.snap`: it starts, prints (the printer list
+      shows your printers), opens and saves files in your home folder and on a USB stick; Check for updates offers
+      only the release page, and Check for updates automatically offers only When Inkline starts.
+- [ ] **Raspberry Pi (4 or 5, Raspberry Pi OS 13):** the arm64 .deb installs with apt and starts; the aarch64
+      AppImage runs; Update now from an older arm64 .deb installs the arm64 one.
+- [ ] **Windows portable:** unzip `inkline-<version>-windows-portable.zip` on a USB stick and run
+      `Inkline\Inkline.exe` on a PC where it's never been installed: it starts, and Update now downloads the new .zip
+      and opens its folder.
+
+## Android (a phone and a tablet)
+
+- [ ] Install `inkline-<version>-android-aarch64.apk` (allow installs from this source when asked): Inkline starts in
+      a minute or less, in the one-column layout on a phone, the rail layout on a tablet held sideways.
+- [ ] **Touch:** every button, list and slider is easy to hit with a finger; the bottom bar switches pages; Preview
+      shows the page; turning the tablet switches layouts without losing what you'd typed.
+- [ ] **Menu:** the Menu button opens File, Edit, View, Help; on a phone it has Presets too.
+- [ ] **Files:** Open image picks a photo from the gallery or Files; Save PDF and Save PNG save where you choose, and
+      the file opens in another app.
+- [ ] **Print:** Print opens Android's print dialog; Save as PDF there writes the pages; a Wi-Fi printer (or the
+      Mopria plugin) prints them in grey, a fold-and-staple booklet double-sided.
+- [ ] **Speed:** a 10-page booklet and a photo conversion finish in reasonable time on an older phone.
+- [ ] **Update:** with an older APK installed, Check for updates offers the release page.
+
 ## Printing
 
 - [ ] Edit → Settings → Printer: choose a printer; File → Print… starts with it. Its dead edges show on the preview
