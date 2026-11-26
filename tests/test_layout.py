@@ -86,11 +86,14 @@ def test_the_gallery_picks_and_remembers_patterns(make_win):
     w = make_win(remember=True)
     sb = w.sidebar
     assert sb.gallery.gens == layout.GALLERY_START
-    sb.gallery.buttons[layout.GALLERY_START.index("bingo")].click()
+    i = layout.GALLERY_START.index("bingo")
+    sb.gallery.buttons[i].click()
     spin()
-    assert w.state.settings.gen == "bingo" and sb.gallery.buttons[0].text() == "Bingo"   # used last: first
-    assert sb.gallery.buttons[0].isChecked()
-    sb.gen.set_value("sudoku")                               # the Pattern list has the rest
+    assert w.state.settings.gen == "bingo" and sb.gallery.gens == layout.GALLERY_START   # nothing moves under the cursor
+    assert sb.gallery.buttons[i].isChecked()
+    sb.gallery.buttons[i].click()                            # clicked again: still the one chosen
+    assert sb.gallery.buttons[i].isChecked()
+    sb.gen.set_value("sudoku")                               # the Pattern list has the rest: a new one comes first
     spin()
     assert sb.gallery.gens[:2] == ["sudoku", "bingo"] and len(sb.gallery.gens) == layout.GALLERY
     assert config.read("preferences.json")["recent_patterns"][:2] == ["sudoku", "bingo"]
@@ -136,3 +139,65 @@ def test_the_toolbar_and_status_line(make_win):
     assert w.state.settings.seed != seed
     w._msg("Hello")
     assert sb.status.text() == "Hello"
+
+
+def test_arrow_keys_on_the_rail_dont_change_the_mode(make_win):
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    w = make_win()
+    b = w.sidebar.rail.buttons["make"]
+    b.setFocus()
+    for key in (Qt.Key.Key_Down, Qt.Key.Key_Right, Qt.Key.Key_Down):
+        QTest.keyClick(b, key)
+        spin(0.05)
+    assert w.state.settings.mode == "make" and w.sidebar.page_key() == "make"
+    w.sidebar.rail.buttons["make"].click()                   # clicking the one chosen keeps it chosen
+    assert w.sidebar.rail.buttons["make"].isChecked()
+
+
+def test_the_presets_panel_opens_for_a_name(make_win):
+    w = make_win()
+    sb = w.sidebar
+    assert not sb.presets_btn.frame.isVisible()
+    w._save_preset("")                                       # Save with no name: the panel opens at the name
+    spin()
+    assert sb.presets_btn.frame.isVisible() and sb.presets_btn.frame.isAncestorOf(sb.preset_name)
+    assert sb.preset_name.focusPolicy() != sb.preset_name.focusPolicy().NoFocus
+    focusable = [c for c in (sb.preset, sb.preset_del, sb.preset_name) if c.focusPolicy() & c.focusPolicy().TabFocus]
+    assert len(focusable) == 3                               # Tab reaches each control in the panel
+    sb.presets_btn.close()
+    assert not sb.presets_btn.frame.isVisible()
+
+
+def test_new_design_is_for_made_up_designs(make_win):
+    w = make_win()
+    sb = w.sidebar
+    assert sb.new_design.isEnabled() and sb.more_btn.isEnabled()
+    sb.rail.buttons["photo"].click()
+    spin()
+    assert not sb.new_design.isEnabled() and not sb.more_btn.isEnabled()
+
+
+def test_a_wrong_page_range_shows_the_field(make_win):
+    w = make_win()
+    sb = w.sidebar
+    w.state.update(booklet=True, pages=3)
+    sb.load()
+    w._changed("booklet")
+    sb.only_pages.setText("99")
+    sb.show_page("make")
+    sb.folds["copies"].set_open(True)
+    w.print_()
+    assert sb.page_key() == "print" and sb.folds["paper"].is_open()
+
+
+@pytest.mark.parametrize("lang", ["en", "es", "fr", "pt", "de"])
+def test_the_rail_labels_fit(make_win, lang):
+    from inkengine import i18n
+    try:
+        i18n.set_language(lang)
+        w = make_win()
+        for key, b in w.sidebar.rail.buttons.items():
+            assert b.fontMetrics().horizontalAdvance(b.text()) + 12 <= b.width(), (lang, key, b.text())
+    finally:
+        i18n.set_language("en")

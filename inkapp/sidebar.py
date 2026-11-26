@@ -9,7 +9,7 @@ Photo ("Convert a photo"), then Page text, Poster and Paper.
 from PySide6.QtCore import QEvent, QPoint, QSize, Qt, QTimer, Signal
 from PySide6.QtGui import QIntValidator, QKeySequence, QPixmap, QShortcut
 from PySide6.QtWidgets import (QStackedWidget, QAbstractItemView, QFrame, QHBoxLayout, QLabel, QListWidget, QListWidgetItem,
-                               QProgressBar, QScrollArea, QTabBar, QVBoxLayout, QWidget)
+                               QProgressBar, QScrollArea, QVBoxLayout, QWidget)
 
 from inkengine import ages, book, cbn, pack, photo
 from inkengine.i18n import tr
@@ -130,7 +130,8 @@ class Sidebar(QFrame):
         self._fit_pending = False
         sc = self._scroll
         bar = sc.verticalScrollBar().sizeHint().width()
-        need = max(self._column.minimumSizeHint().width() + bar + 2 * sc.frameWidth(), 0)
+        # the widest page decides, so the sidebar (and the preview) keep their width from page to page
+        need = max(c.minimumSizeHint().width() for c in self._columns.values()) + bar + 2 * sc.frameWidth()
         w = max(theme.SIDEBAR_WIDTH, min(theme.MAX_SIDEBAR_WIDTH, need))
         if w != self.width() or self.minimumWidth() != w:
             self.setFixedWidth(w)
@@ -225,6 +226,7 @@ class Sidebar(QFrame):
         lay.addWidget(self.progress_row)
         self.save_format = "pdf"   # what Ctrl+E saves (Edit → Settings; the window keeps it up to date)
         self.keys = keys = label("Ctrl+P print · Ctrl+E PDF · Ctrl+S save project · Ctrl+N new design · ← → pages", "keys")
+        keys.setWordWrap(True)   # a narrow window wraps it rather than being held wide
         lay.addWidget(keys)
         return f
 
@@ -292,6 +294,11 @@ class Sidebar(QFrame):
         from inkengine.page import Settings, single_page
         from inkengine.patterns import GENERATORS
         gens = recent_patterns(self.recent_gens, GENERATORS)
+        if s.gen in self.gallery.gens and set(self.gallery.gens) == set(gens):
+            gens = self.gallery.gens   # one of these picked: they keep their places, so nothing moves under the cursor
+        if gens == self.gallery.gens and all(not b.icon().isNull() for b in self.gallery.buttons[:len(gens)]):
+            self.gallery.show_gens(gens, s.gen)   # only which one is chosen changes
+            return
         self.gallery.show_gens(gens, s.gen)
         base = Settings(seed=20261117)
         specs = []
@@ -302,7 +309,8 @@ class Sidebar(QFrame):
             img = self.gallery_thumbs.get(k)
             if img is not None:
                 self.gallery.set_picture(g, img)
-            else:
+            elif k not in self._gallery_asked:   # once: it's being drawn
+                self._gallery_asked.add(k)
                 specs.append(spec)
         if specs:
             self.gallery_thumbs.request(base, specs)
@@ -330,7 +338,8 @@ class Sidebar(QFrame):
         self.preset_del.clicked.connect(lambda: self.preset_delete.emit(self.preset.value()[2:]))
         save.clicked.connect(lambda: self.preset_save.emit(self.preset_name.text().strip()))
         self.preset_name.returnPressed.connect(save.click)
-        self.presets_panel = sec   # in the toolbar's Presets panel
+        self.presets_panel = sec   # in the toolbar's Presets panel, whose button says Presets: no heading of its own
+        sec.findChild(QLabel).hide()
 
         # Make one up: Design
         self.make_panel = QWidget()
@@ -343,6 +352,7 @@ class Sidebar(QFrame):
         self.gallery_thumbs.ready.connect(self._gallery_ready)
         self.recent_gens = []      # the patterns used last, newest first (the window keeps them)
         self._gallery_keys = {}
+        self._gallery_asked = set()
         mk.addWidget(self.gallery)
         sec = Section("Design")
         self.design_note = sec.add(Hint())   # which booklet page the section edits, when it's built page by page
@@ -505,7 +515,7 @@ class Sidebar(QFrame):
         self.page_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.page_list.currentRowChanged.connect(lambda i: None if self._loading or i < 0 else self.book_page_selected.emit(i))
         self.book_opts.add(self.page_list)
-        self.page_list_hint = self.book_opts.add(Hint("Click a page to change it in Design above, or drag it to move it. "
+        self.page_list_hint = self.book_opts.add(Hint("Click a page, then change it under Create; or drag it to move it. "
                                                       "Line weight, border, title and paper apply to every page."))
         self.book_opts.add(self._check("cover", "Cover page"))
         self.book_opts.add(self._check("page_nums", "Page numbers"))
@@ -1069,6 +1079,8 @@ class Sidebar(QFrame):
         make = s.mode == "make"
         self.make_panel.setVisible(make)
         self.photo_panel.setVisible(not make)
+        for b in (self.new_design, self.more_btn):   # in the toolbar: designs are made up, not a photo's
+            b.setEnabled(make)
         self._match_page(s)
         if make:
             self._fill_gallery(s)

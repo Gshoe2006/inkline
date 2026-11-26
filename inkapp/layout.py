@@ -10,15 +10,14 @@
 
 from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtGui import QIcon, QPixmap
-from PySide6.QtWidgets import (QButtonGroup, QFrame, QGridLayout, QMenu, QToolButton, QVBoxLayout, QWidget,
-                               QWidgetAction)
+from PySide6.QtWidgets import QFrame, QGridLayout, QToolButton, QVBoxLayout, QWidget
 
 from inkengine.i18n import tr
 
 from . import theme
 
 RAIL = [("make", "Create"), ("photo", "Photo"), ("booklet", "Booklet"), ("poster", "Poster"), ("print", "Print")]
-RAIL_WIDTH = 92
+RAIL_WIDTH = 100
 GALLERY = 6                     # patterns shown as pictures
 GALLERY_START = ["mandala", "maze", "words", "maths", "crossword", "bingo"]   # before any have been used
 
@@ -34,7 +33,6 @@ class Rail(QFrame):
         lay = QVBoxLayout(self)
         lay.setContentsMargins(8, 12, 8, 12)
         lay.setSpacing(theme.PAIR_GAP)
-        self.group = QButtonGroup(self)
         self.buttons = {}
         for i, (key, text) in enumerate(RAIL):
             if i == 2:   # the modes, then what's made from them
@@ -45,22 +43,21 @@ class Rail(QFrame):
             b = QToolButton()
             b.setObjectName("railButton")
             b.setText(tr(text))
-            b.setCheckable(True)
-            b.setAutoExclusive(True)
+            b.setCheckable(True)   # not exclusive buttons: those switch on the arrow keys, changing the mode by accident
             b.setCursor(Qt.CursorShape.PointingHandCursor)
             b.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
             b.setFixedWidth(RAIL_WIDTH - 16)
             b.setMinimumHeight(48)
             b.clicked.connect(lambda _c=False, k=key: self.chosen.emit(k))
-            self.group.addButton(b)
             lay.addWidget(b)
             self.buttons[key] = b
         lay.addStretch(1)
 
     def show_key(self, key):
-        b = self.buttons.get(key)
-        if b is not None and not b.isChecked():
-            b.setChecked(True)
+        """Mark one as chosen (clicking the one already chosen keeps it so)."""
+        for k, b in self.buttons.items():
+            if b.isChecked() != (k == key):
+                b.setChecked(k == key)
 
 
 class Fold(QWidget):
@@ -158,6 +155,8 @@ class Gallery(QWidget):
 
     def _click(self, i):
         if i < len(self.gens):
+            for k, b in enumerate(self.buttons):   # the one clicked stays chosen, even clicked again
+                b.setChecked(k == i)
             self.picked.emit(self.gens[i])
 
 
@@ -171,22 +170,31 @@ def recent_patterns(used, known):
 
 
 class Popup(QToolButton):
-    """A toolbar button whose panel holds real controls (a widget), shown under it."""
+    """A toolbar button that opens a panel of real controls under it (Presets). The panel is a popup window of its
+    own, so Tab moves through its controls and Escape or a click outside closes it."""
 
     def __init__(self, text, panel):
         super().__init__()
-        self.setText(tr(text))
+        self.setText(tr(text) + "  ▾")
         self.setObjectName("toolbarMenu")
-        self.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        menu = QMenu(self)
-        holder = QWidget()
-        lay = QVBoxLayout(holder)
-        lay.setContentsMargins(theme.PAD_X // 2, theme.PAD_X // 2, theme.PAD_X // 2, theme.PAD_X // 2)
+        self.frame = QFrame(self, Qt.WindowType.Popup)
+        self.frame.setObjectName("popupPanel")
+        lay = QVBoxLayout(self.frame)
+        lay.setContentsMargins(theme.PAD_X // 2 + 4, theme.PAD_X // 2 + 4, theme.PAD_X // 2 + 4, theme.PAD_X // 2 + 4)
         lay.addWidget(panel)
-        holder.setMinimumWidth(300)
-        act = QWidgetAction(menu)
-        act.setDefaultWidget(holder)
-        menu.addAction(act)
-        self.setMenu(menu)
+        self.frame.setMinimumWidth(320)
         self.panel = panel
+        self.clicked.connect(self.open)
+
+    def open(self):
+        """Show the panel under the button, with the focus on its first control."""
+        self.frame.adjustSize()
+        self.frame.move(self.mapToGlobal(self.rect().bottomLeft()))
+        self.frame.show()
+        self.frame.raise_()
+        self.frame.activateWindow()
+        self.panel.focusNextChild() if self.panel.focusWidget() is None else None
+
+    def close(self):
+        self.frame.hide()

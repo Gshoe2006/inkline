@@ -1380,6 +1380,7 @@ class Window(QMainWindow):
     def _save_preset(self, name):
         if not name:
             self._msg(tr("Type a name for the preset first."))
+            self.sidebar.presets_btn.open()   # the panel the name is typed in
             self.sidebar.preset_name.setFocus()
             return
         if name in BUILTIN_PRESETS:
@@ -1401,6 +1402,7 @@ class Window(QMainWindow):
         names = self.sidebar.copies_names.text().strip()
         if not jobs.parse_names(names):
             self._msg(tr("Type or paste the names first, then save them as a list."))
+            self.sidebar.reveal(self.sidebar.copies_names)
             self.sidebar.copies_names.setFocus()
             return
         name, ok = QInputDialog.getText(self, tr("Save class list"), tr("Name for this list:"), text=chosen)
@@ -1528,6 +1530,7 @@ class Window(QMainWindow):
         except ValueError as why:
             self._msg(tr("{why} Fix the pages under Paper → Print or save only, or clear it to use every page.").format(
                 why=why))
+            self.sidebar.reveal(self.sidebar.only_pages)   # Print is in the toolbar: the field may be out of view
             self.sidebar.only_pages.setFocus()
             return None
 

@@ -164,23 +164,22 @@ QToolButton#railButton {{ background: transparent; border: 1px solid transparent
   font-size: 12px; font-weight: 600; padding: 4px; }}
 QToolButton#railButton:hover {{ border-color: {t.line}; color: {t.ink}; }}
 QToolButton#railButton:checked {{ background: {t.field}; border-color: {t.accent}; color: {t.accent}; }}
-QToolButton#railButton:focus {{ border: 2px dotted {t.accent}; }}
-QToolButton#railButton:disabled {{ color: {t.line}; }}
+QToolButton#railButton:focus {{ border: 2px solid {t.ink}; padding: 3px; }}
+QToolButton#railButton:disabled {{ color: {t.muted}; }}
 QToolButton#galleryItem {{ background: {t.field}; border: 1px solid {t.line}; border-radius: 8px; font-size: 11px;
   padding: 4px; }}
 QToolButton#galleryItem:hover {{ border-color: {t.accent}; }}
-QToolButton#galleryItem:checked {{ border: 2px solid {t.accent}; background: {t.panel}; }}
-QToolButton#galleryItem:focus {{ border: 2px solid {t.accent}; }}
+QToolButton#galleryItem:checked {{ border: 2px solid {t.accent}; background: {t.panel}; padding: 3px; }}
+QToolButton#galleryItem:focus {{ border: 2px solid {t.ink}; padding: 3px; }}
 QToolButton#foldHead {{ background: transparent; border: 0; color: {t.muted}; font-size: 11px; font-weight: 600;
   letter-spacing: 1px; padding: 2px 0; text-align: left; }}
 QToolButton#foldHead:hover {{ color: {t.ink}; }}
-QToolButton#foldHead:focus {{ color: {t.accent}; }}
+QToolButton#foldHead:focus {{ color: {t.accent}; text-decoration: underline; }}
+QFrame#popupPanel {{ background: {t.panel}; border: 1px solid {t.line}; border-radius: 8px; }}
 QToolButton#toolbarMenu {{ font-size: 13px; font-weight: 600; background: {t.field}; border: 1px solid {t.line};
-  border-radius: 6px; padding: 7px 22px 7px 9px; }}
+  border-radius: 6px; padding: 7px 9px; }}
 QToolButton#toolbarMenu:hover {{ border-color: {t.accent}; }}
-QToolButton#toolbarMenu:focus {{ border: 2px solid {t.accent}; padding: 6px 21px 6px 8px; }}
-QToolButton#toolbarMenu::menu-indicator {{ image: url("{_arrow(t.muted)}"); width: 10px; height: 6px;
-  subcontrol-origin: padding; subcontrol-position: center right; right: 8px; }}
+QToolButton#toolbarMenu:focus {{ border: 2px solid {t.accent}; padding: 6px 8px; }}
 QLabel#brandTag {{ color: {t.muted}; font-size: 12px; }}
 QLabel#brandVersion {{ color: {t.muted}; font-family: {mono}; font-size: 11px; }}
 
@@ -200,7 +199,6 @@ QPushButton:hover, QComboBox:hover {{ border-color: {t.accent}; }}
 QPushButton:focus, QComboBox:focus, QLineEdit:focus {{ border: 2px solid {t.accent}; padding: 6px 8px; }}
 QCheckBox:focus {{ border: 2px solid {t.accent}; border-radius: 4px; }}
 QSlider::handle:horizontal:focus {{ border: 2px solid {t.ink}; }}
-QTabBar#modeTabs:focus {{ border: 2px solid {t.accent}; }}
 QComboBox::drop-down {{ border: 0; width: 22px; }}
 QComboBox::down-arrow {{ image: url("{_arrow(t.muted)}"); width: 10px; height: 6px; margin-right: 8px; }}
 QPushButton:disabled {{ color: {t.muted}; border-color: {t.line}; }}
@@ -217,10 +215,6 @@ QSlider::handle:horizontal {{ background: {t.accent}; width: 14px; height: 14px;
 QProgressBar {{ background: {t.field}; border: 0; border-radius: 3px; max-height: 6px; }}
 QProgressBar::chunk {{ background: {t.accent}; border-radius: 3px; }}
 
-QTabBar#modeTabs {{ background: {t.field}; border: 1px solid {t.line}; border-radius: 8px; }}
-QTabBar#modeTabs::tab {{ background: transparent; color: {t.muted}; font-size: 13px; font-weight: 600; padding: 8px;
-  margin: 3px; border-radius: 6px; }}
-QTabBar#modeTabs::tab:selected {{ background: {t.panel}; color: {t.ink}; }}
 
 QListWidget#photoList, QListWidget#pageList {{ background: {t.panel}; border: 0; font-size: 12px; }}
 QListWidget#photoList::item, QListWidget#pageList::item {{ border: 1px solid {t.line}; border-radius: 6px; padding: 4px; margin-bottom: 4px; }}
