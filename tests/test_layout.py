@@ -288,3 +288,26 @@ def test_double_click_or_enter_changes_the_page(make_win):
     sb.back_to_pages()
     sb.page_list.itemDoubleClicked.emit(sb.page_list.item(0))
     assert not sb.page_editor.isHidden()
+
+
+def test_ctrl_1_to_5_choose_the_rail(make_win):
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    w = make_win()
+    sb = w.sidebar
+    assert sb.rail.buttons["print"].toolTip() == "Print (Ctrl+5)" and sb.rail.buttons["make"].toolTip() == "Create (Ctrl+1)"
+    mod = Qt.KeyboardModifier.ControlModifier
+    QTest.keyClick(w, Qt.Key.Key_5, mod)
+    assert sb.page_key() == "print"
+    QTest.keyClick(w, Qt.Key.Key_3, mod)
+    assert sb.page_key() == "booklet"
+    QTest.keyClick(w, Qt.Key.Key_2, mod)
+    spin()
+    assert w.state.settings.mode == "convert" and sb.page_key() == "photo"
+    msgs = []
+    w._msg = msgs.append
+    QTest.keyClick(w, Qt.Key.Key_3, mod)                     # no Booklet for a photo: it says where
+    assert sb.page_key() == "photo" and "Photo page" in msgs[-1]
+    QTest.keyClick(w, Qt.Key.Key_1, mod)
+    spin()
+    assert w.state.settings.mode == "make" and sb.page_key() == "make"

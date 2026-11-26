@@ -234,6 +234,11 @@ class Window(QMainWindow):
         self.updates = update_ui.Updates(self, version)
         self._menus()
         self.apply_save_format()
+        # Ctrl+1 to Ctrl+5: the rail's Create, Photo, Booklet, Poster and Print, as clicking them does
+        from .layout import RAIL
+        for i, (key, _text) in enumerate(RAIL):
+            sc = QShortcut(QKeySequence(f"Ctrl+{i + 1}"), self)
+            sc.activated.connect(lambda k=key: self._rail_key(k))
         QApplication.instance().installEventFilter(self)
         theme.follow_system(QApplication.instance(), self.preview.page.update)
         if self.state.settings.mode == "convert" and not self.state.photos:
@@ -744,6 +749,13 @@ class Window(QMainWindow):
             for a, b in ((self.act_pdf, sb.pdf_btn), (self.act_png, sb.png_btn), (self.act_svg, sb.svg_btn)):
                 a.setEnabled(b.isEnabled())
                 a.setToolTip(b.toolTip())
+
+    def _rail_key(self, key):
+        b = self.sidebar.rail.buttons[key]
+        if b.isEnabled():
+            b.click()
+        else:   # Booklet with a photo: say why nothing happened
+            self._msg(tr("A photo book is made on the Photo page (Ctrl+2)."))
 
     # --- themes ----------------------------------------------------------------------------------------
     def themes_offered(self):

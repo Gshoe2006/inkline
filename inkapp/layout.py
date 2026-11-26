@@ -43,6 +43,7 @@ class Rail(QFrame):
             b = QToolButton()
             b.setObjectName("railButton")
             b.setText(tr(text))
+            b.setToolTip(tr("{name} ({keys})").format(name=tr(text), keys=f"Ctrl+{i + 1}"))   # the window's shortcut
             b.setCheckable(True)   # not exclusive buttons: those switch on the arrow keys, changing the mode by accident
             b.setCursor(Qt.CursorShape.PointingHandCursor)
             b.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)

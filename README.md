@@ -39,7 +39,7 @@ The `.deb` brings its own PySide6 (Debian and Ubuntu don't package a new enough 
 
 ## The window
 
-Since 6.0 the options come a page at a time. The rail on the left chooses what you're working on: **Create** (a pattern made up for you, chosen from pictures of the patterns you used last, or from the full list) or **Photo** (converting one), then **Booklet**, **Poster** and **Print** (paper, page text, copies and names). Each page fits without scrolling, and its sections take turns: opening one closes the others. **Presets**, **New design**, **More designs…**, the PDF, PNG and SVG saves and **Print…** are in the toolbar over the preview, and what just happened shows under it.
+Since 6.0 the options come a page at a time. The rail on the left chooses what you're working on: **Create** (a pattern made up for you, chosen from pictures of the patterns you used last, or from the full list) or **Photo** (converting one), then **Booklet**, **Poster** and **Print** (paper, page text, copies and names). **Ctrl+1** to **Ctrl+5** choose them from the keyboard. Each page fits without scrolling, and its sections take turns: opening one closes the others. **All patterns…** shows every pattern as a picture, by kind, with a search box; and a booklet built page by page has its pages changed right on the Booklet page (double-click one, or **Change this page**). **Presets**, **New design**, **More designs…**, the PDF, PNG and SVG saves and **Print…** are in the toolbar over the preview, and what just happened shows under it.
 
 ## Settings
 
