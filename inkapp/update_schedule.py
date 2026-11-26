@@ -10,7 +10,7 @@ password), whichever way it was installed:
 - Flatpak: none (a sandbox can't set either up, and Flatpak updates come through Flathub); Inkline still checks
   when it starts.
 
-`--check-updates` (check.py) looks for a newer version and, if there is one, shows a desktop notification whose
+`--check-updates` (update_check.py) looks for a newer version and, if there is one, shows a desktop notification whose
 Update button opens Inkline's update box. Nothing is installed without the person.
 """
 

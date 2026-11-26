@@ -44,7 +44,7 @@ def remember_found(release):
 
 def texts(new, old):
     return (tr("Inkline {new} is available").format(new=new),
-            tr("You have {old}. Open Inkline to see what's new and update.").format(old=old), tr("Update now"))
+            tr("You have {old}. Open Inkline to see what's new and update.").format(old=old), tr("Show the update"))
 
 
 # --- Linux: the desktop's notification service ------------------------------------------------------------------

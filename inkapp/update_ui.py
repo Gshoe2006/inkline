@@ -26,6 +26,7 @@ class Updates(QObject):
     progress = Signal(int, int)
     downloaded = Signal(object, str)     # the downloaded file (None if cancelled), or what went wrong
     installed = Signal(bool, str)
+    scheduled = Signal(str, bool)        # what went wrong setting up the check while closed ("" if nothing), quietly
 
     def __init__(self, window, version, kind=None):
         super().__init__(window)
@@ -37,6 +38,7 @@ class Updates(QObject):
         self.failed.connect(self._failed)
         self.downloaded.connect(self._downloaded)
         self.installed.connect(self._installed)
+        self.scheduled.connect(self._scheduled)
         self._progress_dialog = None
         self.progress.connect(self._show_progress)
 
@@ -112,7 +114,8 @@ class Updates(QObject):
             a.setCheckable(True)
             if key in update_schedule.BACKGROUND and not can:
                 a.setEnabled(False)
-                a.setToolTip(tr("Only while Inkline is open: a Flatpak can't check in the background."))
+                a.setToolTip(tr("Only while Inkline is open: a Flatpak can't check in the background.")
+                             if self.kind == "flatpak" else tr("Only while Inkline is open, on this system."))
             a.triggered.connect(lambda _on=False, k=key: self.set_schedule(k))
             group.addAction(a)
             menu.addAction(a)
@@ -134,13 +137,19 @@ class Updates(QObject):
         self.show_schedule()
 
     def apply_schedule(self, key, quiet=False):
-        """Set up (or remove) the check while Inkline is closed; says if it couldn't."""
+        """Set up (or remove) the check while Inkline is closed, on a worker thread (systemctl or schtasks can
+        take a moment); says if it couldn't."""
         if not self.window.remember:
             return
-        err = update_schedule.apply(key, self.kind)
+        kind = self.kind
+        threading.Thread(target=lambda: self.scheduled.emit(update_schedule.apply(key, kind) or "", quiet),
+                         daemon=True).start()
+
+    def _scheduled(self, err, quiet):
         if err and not quiet:
             self.window._msg(tr("Couldn't set up checking while Inkline is closed ({why}). Inkline still checks when "
-                                "it starts.").format(why=err))
+                                "it starts; to try again, choose it again under Help → Check for updates "
+                                "automatically.").format(why=err))
 
     def set_automatic(self, on):   # kept for anything calling it: on is when Inkline starts
         self.set_schedule("start" if on else "off")

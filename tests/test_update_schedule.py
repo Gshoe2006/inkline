@@ -232,6 +232,15 @@ def test_the_command_line_check_runs(tmp_path):
     assert p.returncode == 0, p.stderr
 
 
+def wait_for(cond, timeout=5.0):
+    import time
+    end = time.time() + timeout
+    while time.time() < end and not cond():
+        QApplication.processEvents()
+        time.sleep(0.01)
+    return cond()
+
+
 # --- the Help menu ---------------------------------------------------------------------------------------------------
 @pytest.fixture
 def win(tmp_path, monkeypatch):
@@ -249,12 +258,13 @@ def test_choosing_when_to_check(win):
     acts = win.updates.schedule_actions
     acts["daily"].trigger()
     prefs = config.read("preferences.json")
-    assert prefs["update_check"] is True and prefs["update_schedule"] == "daily" and win.asked == ["daily"]
+    assert prefs["update_check"] is True and prefs["update_schedule"] == "daily"
+    assert wait_for(lambda: win.asked == ["daily"])               # set up off the window's thread
     assert acts["daily"].isChecked() and win.updates.schedule() == "daily"
     acts["start"].trigger()
-    assert win.asked[-1] == "start" and config.read("preferences.json")["update_schedule"] == "start"
+    assert wait_for(lambda: win.asked[-1] == "start") and config.read("preferences.json")["update_schedule"] == "start"
     acts["off"].trigger()
-    assert config.read("preferences.json")["update_check"] is False and win.asked[-1] is None
+    assert config.read("preferences.json")["update_check"] is False and wait_for(lambda: win.asked[-1] is None)
     assert win.updates.schedule() == "off" and acts["off"].isChecked()
 
 
@@ -269,12 +279,22 @@ def test_a_flatpak_only_checks_when_open(tmp_path, monkeypatch):
     assert "Flatpak" in acts["daily"].toolTip()
 
 
+def test_elsewhere_only_while_open(tmp_path, monkeypatch):
+    monkeypatch.setenv("INKLINE_CONFIG_DIR", str(tmp_path))
+    monkeypatch.setattr(update_schedule, "supported", lambda kind=None, platform=None: False)
+    from inkapp.window import Window
+    w = Window("5.7.0", remember=True)
+    w.updates.kind = "source"
+    acts = w.updates.schedule_actions
+    assert not acts["weekly"].isEnabled() and "Flatpak" not in acts["weekly"].toolTip()
+
+
 def test_a_failure_to_set_it_up_is_said(win, monkeypatch):
     monkeypatch.setattr(update_schedule, "apply", lambda *a, **k: "Failed to connect to bus")
     msgs = []
     monkeypatch.setattr(win, "_msg", msgs.append)
     win.updates.schedule_actions["weekly"].trigger()
-    assert any("Failed to connect to bus" in m and "still checks when it starts" in m for m in msgs)
+    assert wait_for(lambda: any("Failed to connect to bus" in m and "choose it again under Help" in m for m in msgs))
 
 
 def test_a_version_found_while_closed_is_offered_at_start(win, monkeypatch):
@@ -285,7 +305,7 @@ def test_a_version_found_while_closed_is_offered_at_start(win, monkeypatch):
     monkeypatch.setattr(win.updates, "check", lambda asked=True: checks.append(asked))
     win.updates.at_start()
     assert checks == [False]                      # not due, but found: checked (and offered) now
-    assert win.asked == ["daily"]                 # and the timer pointed at this copy again
+    assert wait_for(lambda: win.asked == ["daily"])   # and the timer pointed at this copy again
     config.write("preferences.json", {**config.read("preferences.json"), "update_found": "5.7.0"}, "Preferences")
     win.updates.at_start()
     assert checks == [False]                      # this version: nothing to offer
