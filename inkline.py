@@ -81,6 +81,7 @@ def main():
     prefs = config.read("preferences.json")
     theme.DESKTOP["on"] = bool(theme.desktop_style_name()) and prefs.get("desktop_style") is True
     theme.restore(prefs)   # Edit → Settings → Appearance
+    theme.TOUCH["on"] = theme.touch_wanted(prefs)   # larger controls, menus in the toolbar: on Android, or as chosen
     theme.apply(app)
     win = Window(app_version())
     win.show()

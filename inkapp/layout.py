@@ -6,11 +6,14 @@
   fits without scrolling.
 - Gallery: the patterns used last as pictures, to choose one by sight (the Pattern list under it has them all).
 - Popup: a toolbar button whose panel holds real controls (Presets).
+- Touch screens (theme.TOUCH): BottomBar, the rail's entries along the bottom of a phone-width window, with Preview
+  (the options page and the preview take turns there); MenuButton, the menu bar's menus in the toolbar, as Android
+  has no menu bar.
 """
 
 from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QIcon, QPixmap
-from PySide6.QtWidgets import QFrame, QGridLayout, QToolButton, QVBoxLayout, QWidget
+from PySide6.QtGui import QAction, QIcon, QPixmap
+from PySide6.QtWidgets import QFrame, QGridLayout, QHBoxLayout, QMenu, QToolButton, QVBoxLayout, QWidget
 
 from inkengine.i18n import tr
 
@@ -78,6 +81,55 @@ class Rail(QFrame):
         for k, b in self.buttons.items():
             if b.isChecked() != (k == key):
                 b.setChecked(k == key)
+
+
+class BottomBar(QFrame):
+    """The rail's entries along the bottom of a phone-width window, and Preview: chosen(key) when one is tapped
+    ("preview" for Preview). The one shown is marked as the rail marks it."""
+    chosen = Signal(str)
+
+    def __init__(self):
+        super().__init__()
+        self.setObjectName("bottomBar")
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(4, 0, 4, 0)
+        lay.setSpacing(0)
+        self.buttons = {}
+        for i, (key, text) in enumerate(RAIL + [("preview", "Preview")]):
+            b = QToolButton()
+            b.setObjectName("bottomButton")
+            b.setText(tr(text))
+            b.setCheckable(True)
+            b.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
+            b.setSizePolicy(b.sizePolicy().horizontalPolicy().Expanding, b.sizePolicy().verticalPolicy())
+            b.setMinimumHeight(theme.TOUCH_TARGET)
+            b.clicked.connect(lambda _c=False, k=key: self.chosen.emit(k))
+            lay.addWidget(b, 1)
+            self.buttons[key] = b
+
+    def show_key(self, key):
+        for k, b in self.buttons.items():
+            if b.isChecked() != (k == key):
+                b.setChecked(k == key)
+
+
+class MenuButton(QToolButton):
+    """The menu bar's menus (File, Edit, View, Help: the same menus, so their shortcuts and ticks stay one) from a
+    toolbar button, for a touch screen with no menu bar."""
+
+    def __init__(self, menus):
+        super().__init__()
+        self.setObjectName("toolbarMenu")   # as Presets and More designs
+        self.setText(tr("Menu"))
+        self.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self.panel = QMenu(self)
+        self.presets = QAction(tr("Presets"), self)   # on a phone, where the toolbar has no room for it
+        self.panel.addAction(self.presets)
+        self.presets.setVisible(False)
+        self.panel.addSeparator()
+        for m in menus:
+            self.panel.addMenu(m)
+        self.setMenu(self.panel)
 
 
 class Fold(QWidget):
@@ -205,12 +257,18 @@ class Popup(QToolButton):
         lay.addWidget(panel)
         self.frame.setMinimumWidth(320)
         self.panel = panel
-        self.clicked.connect(self.open)
+        self.clicked.connect(lambda: self.open())
 
-    def open(self):
-        """Show the panel under the button, with the focus on its first control."""
+    def open(self, under=None):
+        """Show the panel under the button (or under another widget: the Menu button, on a phone), kept on the
+        screen, with the focus on its first control."""
+        under = under or self
         self.frame.adjustSize()
-        self.frame.move(self.mapToGlobal(self.rect().bottomLeft()))
+        pos = under.mapToGlobal(under.rect().bottomLeft())
+        screen = under.screen().availableGeometry() if under.screen() else None
+        if screen is not None:
+            pos.setX(max(screen.left(), min(pos.x(), screen.right() - self.frame.width())))
+        self.frame.move(pos)
         self.frame.show()
         self.frame.raise_()
         self.frame.activateWindow()
