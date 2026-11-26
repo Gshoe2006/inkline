@@ -120,6 +120,8 @@ python3 packaging/check_selftest.py /tmp/inkline-test
 The self-test opens the window, then writes every pattern, the photo styles, the printer test page, a booklet (plain and folded), two posters and a photo book through the app's own save code, and exits non-zero if anything fails. The unit tests (`python3 -m pip install pytest && QT_QPA_PLATFORM=offscreen python3 -m pytest -q tests`) check the engine against recordings of what Inkline 2.5 drew. GitHub runs both commands on every pull request (`.github/workflows/selftest.yml`) and keeps the rendered files for 7 days.
 
 
+How fast it is: `python3 inkline.py --benchmark` times start-up, every pattern and the photo styles without opening a window; [docs/performance.md](docs/performance.md) has the numbers and a Rust trial.
+
 [docs/manual-tests.md](docs/manual-tests.md) lists what CI can't check (a real desktop, notifications, the update timer, a printer), to run on a release candidate; `inkline --check-updates --demo` shows the update notification at once.
 ## Command line
 
@@ -215,13 +217,14 @@ python3 packaging/translation_sheet.py fr      # writes inkline-fr-review.csv: E
 
 | Path | What it is |
 | --- | --- |
-| `inkline.py` | Starts the app (with a project: `inkline.py FILE.inkline`; or `--selftest DIR`) |
+| `inkline.py` | Starts the app (with a project: `inkline.py FILE.inkline`; or `--selftest DIR`, `--benchmark`) |
 | `inkapp/` | The window: sidebar, preview, menus, saving and printing, presets, project files (Qt Widgets) |
 | `inkengine/` | The drawing engine: every pattern, photo style, booklet and poster, as PNG, PDF and SVG (also a command line) |
 | `tests/` | Tests for `inkengine/`, with recordings of what Inkline 2.5 drew to match |
 | `inkline.svg`, `icons/` | App icon; regenerate with `python3 packaging/make_icon.py` |
 | `inkline.desktop` | Application menu entry |
 | `inkline-mime.xml` | The `.inkline` project file type, so file managers open projects in Inkline |
+| `rust/inkline_fast/` | A trial: two inner loops in Rust, used when installed ([docs/performance.md](docs/performance.md)) |
 | `packaging/` | Build script, Arch PKGBUILD, self-extracting installer stub, release notes script |
 | `CHANGELOG.md` | What changed in each release; each section becomes that release's notes |
 | `VERSION` | App version used by both installers |
