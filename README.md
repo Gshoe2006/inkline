@@ -45,6 +45,7 @@ The `.deb` brings its own PySide6 (Debian and Ubuntu don't package a new enough 
 - **Saving:** what **Ctrl+E** saves: PDF (the default), PNG or SVG. The other formats stay in the File menu and under the preview, and Ctrl+Shift+E saves PNG (or PDF, when PNG has Ctrl+E).
 - **Updates:** when Inkline checks for a new version, as **Help → Check for updates automatically**, and **Check now**.
 - **Language:** as **View → Language**, from the next start.
+- **Appearance:** the theme: following the system's light or dark look, Light, Dark, or the extra themes you turn on there (High contrast, Warm paper, Slate); every theme's text is at least 4.5:1 against its background, and High contrast's at least 10:1. **View → Theme** switches between the ones offered. **Use my desktop's style** is here too.
 
 ## Updates
 

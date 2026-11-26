@@ -75,7 +75,9 @@ def main():
         sys.exit(update_check.main(app_version()))
     from inkapp.window import Window
     theme.remember_desktop(app)   # the desktop's own look, for View → Use my desktop's style
-    theme.DESKTOP["on"] = bool(theme.desktop_style_name()) and config.read("preferences.json").get("desktop_style") is True
+    prefs = config.read("preferences.json")
+    theme.DESKTOP["on"] = bool(theme.desktop_style_name()) and prefs.get("desktop_style") is True
+    theme.restore(prefs)   # Edit → Settings → Appearance
     theme.apply(app)
     win = Window(app_version())
     win.show()

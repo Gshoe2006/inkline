@@ -347,6 +347,9 @@ class Window(QMainWindow):
             a.setChecked(code == i18n.LANG)
             a.triggered.connect(lambda _on=False, code=code: self._choose_language(code))
             self.lang_actions[code] = a
+        self.theme_menu = v.addMenu(tr("T&heme"))   # the themes turned on in Edit → Settings → Appearance
+        self.theme_menu.aboutToShow.connect(self._fill_theme_menu)
+        self._fill_theme_menu()
         self.act_desktop = act(v, "Use my &desktop's style", self._toggle_desktop_style)
         self.act_desktop.setCheckable(True)
         self.act_desktop.setChecked(theme.DESKTOP["on"])
@@ -724,6 +727,51 @@ class Window(QMainWindow):
             for a, b in ((self.act_pdf, sb.pdf_btn), (self.act_png, sb.png_btn), (self.act_svg, sb.svg_btn)):
                 a.setEnabled(b.isEnabled())
                 a.setToolTip(b.toolTip())
+
+    # --- themes ----------------------------------------------------------------------------------------
+    def themes_offered(self):
+        shown = config.read("preferences.json").get("themes_offered") if self.remember else None
+        return [k for k in theme.EXTRA_THEMES if isinstance(shown, list) and k in shown]
+
+    def _fill_theme_menu(self):
+        """View → Theme: following the system, light, dark, and the extras turned on in Settings."""
+        self.theme_menu.clear()
+        self.theme_actions = {}
+        for key in theme.offered(self.themes_offered()):
+            a = self.theme_menu.addAction(tr(theme.THEME_NAMES[key]))
+            a.setCheckable(True)
+            a.setChecked(key == theme.CHOSEN["name"])
+            a.triggered.connect(lambda _on=False, k=key: self.set_theme(k))
+            self.theme_actions[key] = a
+
+    def set_theme(self, key):
+        """Use a theme now, and from the next start."""
+        theme.use_theme(QApplication.instance(), key)
+        self.preview.page.update()
+        for k, a in getattr(self, "theme_actions", {}).items():
+            a.setChecked(k == key)
+        if self.remember:
+            err = config.write("preferences.json", {**config.read("preferences.json"), "theme": key}, "Preferences")
+            if err:
+                self._msg(err)
+        self._msg(tr("Using the {theme} theme.").format(theme=tr(theme.THEME_NAMES[key])) if key != "system" else
+                  tr("Following the system's light or dark look."))
+        if theme.DESKTOP["on"]:
+            self._msg(tr("Your desktop's style is on, so the theme only colours the preview. Turn it off under View to "
+                         "see the theme everywhere."))
+
+    def offer_theme(self, key, on):
+        """Turn an extra theme on or off in the theme lists; turning off the one in use goes back to the system's."""
+        shown = [k for k in self.themes_offered() if k != key] + ([key] if on else [])
+        if self.remember:
+            err = config.write("preferences.json", {**config.read("preferences.json"),
+                                                    "themes_offered": [k for k in theme.EXTRA_THEMES if k in shown]},
+                               "Preferences")
+            if err:
+                self._msg(err)
+        if not on and theme.CHOSEN["name"] == key:
+            self.set_theme("system")
+        self._fill_theme_menu()
 
     def _toggle_desktop_style(self, on):
         theme.use_desktop(QApplication.instance(), on)
