@@ -20,6 +20,13 @@
     python3 -m inkengine photo --image cat.jpg --style cbn --crayons 10 -o colour-me.pdf
     python3 -m inkengine photo --image a.jpg b.jpg c.jpg --style line --title "Our holiday" -o book.pdf    (photo book)
     python3 -m inkengine mandala --cbn 6 --booklet 4 -o numbers.pdf    (colour-by-number booklet with shaded answers)
+    python3 -m inkengine logic --complexity 6 --answers -o logic.pdf    (logic grid puzzle)
+    python3 -m inkengine cryptogram --code symbols --answers -o code.pdf
+    python3 -m inkengine cryptogram --sentence "Happy birthday, Maya!" -o birthday.pdf
+    python3 -m inkengine ladder --complexity 5 --mark-changes --answers -o ladders.pdf    (word ladders)
+    python3 -m inkengine calendar --month 3 --year 2027 --week-start sun -o march.pdf
+    python3 -m inkengine calendar --planner week --art flow -o week.pdf    (weekly planner)
+    python3 -m inkengine photo --image cat.jpg --style dots --dots 80 -o cat-dots.pdf    (photo dot-to-dot)
     python3 -m inkengine testpage -o test.pdf    (printer test page)
 """
 
@@ -29,7 +36,7 @@ import sys
 
 from .page import PageSpec, Settings, answer_page, single_page
 from . import photo, poster
-from .patterns import GENERATORS, HAS_ANSWER, NAMES, maze, name, spot, words
+from .patterns import GENERATORS, HAS_ANSWER, NAMES, cryptogram, ladder, maze, name, planner, spot, words
 
 
 def main(argv=None):
@@ -47,6 +54,15 @@ def main(argv=None):
     ap.add_argument("--text", default="Hello", help="name page: the name or word (up to 40 characters)")
     ap.add_argument("--background", default="none", choices=sorted(name.BACKGROUNDS), help="name page: pattern under the letters")
     ap.add_argument("--picture", default="mandala", choices=sorted(spot.BASES), help="spot the difference: the picture drawn twice")
+    ap.add_argument("--code", default="numbers", choices=sorted(cryptogram.KINDS), help="cryptogram: numbers or symbols")
+    ap.add_argument("--sentence", default="", help="cryptogram: your own text to put in code (instead of a saying)")
+    ap.add_argument("--mark-changes", action="store_true", help="word ladder: shade the letter that changes on each rung")
+    cal = ap.add_argument_group("calendars (pattern: calendar)")
+    cal.add_argument("--planner", default="month", choices=sorted(planner.KINDS), help="a month calendar or a weekly planner")
+    cal.add_argument("--month", type=int, default=0, choices=range(0, 13), metavar="1-12", help="the month (default: next month)")
+    cal.add_argument("--year", type=int, default=0, help="the year (default: the next time the month comes round)")
+    cal.add_argument("--week-start", default="auto", choices=sorted(planner.WEEK_STARTS), help="the first day of the week")
+    cal.add_argument("--art", default="mandala", choices=sorted(planner.BACKGROUNDS), help="the picture to colour above it")
     ph = ap.add_argument_group("photos (pattern: photo)")
     ph.add_argument("--image", nargs="+", metavar="PICTURE",
                     help="the picture to convert (PNG, JPEG...); several make a photo book (PDF): a page each, plus a cover")
@@ -61,7 +77,8 @@ def main(argv=None):
     ph.add_argument("--zoom", type=int, default=100, metavar="100..400")
     ph.add_argument("--squares", type=int, default=15, metavar="10..30", help="photo nonogram squares across")
     ph.add_argument("--crayons", type=int, default=8, metavar="4..16", help="colour by number (--style cbn): crayons to use")
-    ph.add_argument("--solved", action="store_true", help="photo nonogram: draw it solved")
+    ph.add_argument("--dots", type=int, default=60, metavar="20..150", help="photo dot-to-dot (--style dots): how many dots")
+    ph.add_argument("--solved", action="store_true", help="photo nonogram or dot-to-dot: draw it solved")
     ap.add_argument("--title", default="")
     ap.add_argument("--name-line", action="store_true", help='add a "Name ____" line')
     ap.add_argument("--frame", action="store_true", help="draw a border around the design")
@@ -96,7 +113,11 @@ def main(argv=None):
                  poster=bool(a.poster), grid=a.poster or "2x2", overlap=a.overlap,
                  mode="convert" if a.pattern == "photo" else "make", style=a.style, brightness=a.brightness,
                  contrast=a.contrast, threshold=a.threshold, dot=a.dot, fit="cover" if a.fill else "contain",
-                 invert=a.invert, pnono_size=a.squares, pnono_answer=a.solved,
+                 invert=a.invert, pnono_size=a.squares, pnono_answer=a.solved, pdots_n=max(20, min(150, a.dots)),
+                 pdots_answer=a.solved, crypto_code=a.code, crypto_source="custom" if a.sentence else "sayings",
+                 crypto_text=a.sentence[:cryptogram.MAX_TEXT], ladder_kind="marked" if a.mark_changes else "plain",
+                 cal_kind=a.planner, cal_month=a.month, cal_year=a.year if a.year in planner.YEARS else 0,
+                 cal_start=a.week_start, cal_art=a.art,
                  pcbn_colours=max(4, min(16, a.crayons)), cbn=bool(a.cbn), cbn_colours=max(3, min(12, a.cbn or 6)),
                  pcover=not a.no_cover, ppage_nums=not a.no_page_numbers)
     from . import output   # imported here so --help works without starting Qt

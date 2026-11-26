@@ -357,10 +357,14 @@ class Popup(QToolButton):
 GROUP_NAMES = {"art": "Colouring and art", "puzzles": "Puzzles", "maths": "Maths", "literacy": "Reading and writing",
                "classroom": "Classroom"}
 GROUPS = [("art", ["mandala", "truchet", "contour", "flow", "name", "symmetry"]),
-          ("puzzles", ["maze", "dots", "words", "crossword", "sudoku", "kakuro", "nonogram", "spot", "scramble"]),
+          ("puzzles", ["maze", "dots", "words", "crossword", "sudoku", "kakuro", "nonogram", "spot", "scramble", "logic",
+                       "cryptogram"]),
           ("maths", ["maths", "early", "clock", "fractions"]),
-          ("literacy", ["trace", "spelltest", "reading"]),
-          ("classroom", ["bingo", "reward", "ruled"])]
+          ("literacy", ["trace", "spelltest", "reading", "ladder"]),
+          ("classroom", ["bingo", "reward", "ruled", "calendar"])]
+# more words a search finds a pattern by, besides its name and description (in this language or in English)
+KEYWORDS = {"logic": "Einstein, reasoning, deduction, clues", "cryptogram": "Secret code, cipher, decode, quote, proverb",
+            "ladder": "Words, spelling, letters, doublets", "calendar": "Month, week, planner, diary, schedule, dates"}
 
 
 def _plain(text):
@@ -374,7 +378,7 @@ def matches(gen, query, names, descriptions, group=""):
     q = _plain(query.strip())
     if not q:
         return True
-    texts = [names.get(gen, gen), descriptions.get(gen, ""), gen, group]
+    texts = [names.get(gen, gen), descriptions.get(gen, ""), gen, group, KEYWORDS.get(gen, "")]
     return any(q in _plain(t) or q in _plain(tr(t)) for t in texts if t)
 
 

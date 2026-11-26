@@ -40,13 +40,14 @@ def _coerce(v, kind):
 # outside its range is brought into it; text that isn't one of its choices, or is too long, falls back.
 RANGES = {"seed": (0, 4294967295), "complexity": (1, 10), "weight": (1, 10), "margin": (0, 2), "dpi": (36, 1200),
           "pages": (2, 40), "overlap": (0, 1), "brightness": (-100, 100), "contrast": (20, 300), "threshold": (1, 254),
-          "dot": (1, 8), "pnono_size": (10, 30), "pcbn_colours": (4, 16), "cbn_colours": (3, 12)}
-LENGTHS = {"title": 80, "pack_words": 600, "pack_days": 200, "reward_text": 60, "bingo_words": 600, "maze_word": 12, "ws_words": 300, "name_text": 40, "trace_text": 300, "cross_words": 2000, "panel_gens": 200}
+          "dot": (1, 8), "pnono_size": (10, 30), "pcbn_colours": (4, 16), "cbn_colours": (3, 12),
+          "cal_month": (0, 12), "cal_year": (0, 2040), "pdots_n": (20, 150)}
+LENGTHS = {"title": 80, "pack_words": 600, "pack_days": 200, "reward_text": 60, "bingo_words": 600, "crypto_text": 120, "maze_word": 12, "ws_words": 300, "name_text": 40, "trace_text": 300, "cross_words": 2000, "panel_gens": 200}
 
 
 def _choices():
     from . import pack, poster
-    from .patterns import bingo, clock, early, crossword, fractions, maths, money, reward, ruled, name, spot, trace, words
+    from .patterns import bingo, clock, early, crossword, cryptogram, fractions, ladder, maths, money, planner, reward, ruled, name, spot, trace, words
     try:
         from .photo import STYLES
     except ImportError:      # the engine without Qt: no photo styles to check against
@@ -54,6 +55,8 @@ def _choices():
     return {"gen": set(NAMES), "paper": set(PAPER), "orient": {"portrait", "landscape"}, "maze_shape": set(maze.SHAPE_NAMES),
             "spot_base": set(spot.BASES), "ws_theme": set(words.THEME_NAMES) | {"custom"}, "name_bg": set(name.BACKGROUNDS),
             "age": {"any", "4-6", "7-9", "10+"}, "sheet": set(SHEETS), "maths_kind": set(maths.KINDS), "clock_task": set(clock.TASKS), "frac_kind": set(fractions.KINDS), "ruled_kind": set(ruled.KINDS), "reward_kind": set(reward.KINDS), "bingo_kind": set(bingo.KINDS), "early_kind": set(early.KINDS), "bingo_theme": set(words.THEME_NAMES) | {"custom"}, "money": set(money.CURRENCIES), "pack_theme": set(pack.THEME_NAMES), "trace_source": set(trace.SOURCES), "trace_style": set(trace.LETTERS), "trace_hand": set(trace.HANDS), "cross_theme": set(crossword.THEME_NAMES),
+            "crypto_code": set(cryptogram.KINDS), "crypto_source": set(cryptogram.SOURCES), "ladder_kind": set(ladder.KINDS),
+            "cal_kind": set(planner.KINDS), "cal_art": set(planner.BACKGROUNDS), "cal_start": set(planner.WEEK_STARTS),
             "grid": set(poster.GRIDS), "mode": {"make", "convert"}, "fit": {"contain", "cover"},
             **({"style": set(STYLES)} if STYLES else {})}
 
@@ -107,6 +110,15 @@ class Settings:
     early_kind: str = "tenframe" # early maths: patterns.early.KINDS (ten frames, bonds, place value, counting)
     bingo_theme: str = "animals" # bingo words: a word search theme (patterns.words.THEME_NAMES), or "custom"
     bingo_words: str = ""        # bingo words: your own list, for bingo_theme "custom"
+    crypto_code: str = "numbers" # cryptogram: patterns.cryptogram.KINDS (numbers, symbols)
+    crypto_source: str = "sayings"   # cryptogram: a saying, or "custom" for crypto_text
+    crypto_text: str = ""        # cryptogram: your own text to put in code
+    ladder_kind: str = "plain"   # word ladder: patterns.ladder.KINDS (plain, or the letter that changes marked)
+    cal_kind: str = "month"      # calendar: patterns.planner.KINDS (month, week)
+    cal_month: int = 0           # calendar: 1-12, or 0 for next month
+    cal_year: int = 0            # calendar: the year, or 0 for the next time cal_month comes round
+    cal_start: str = "auto"      # calendar: the first day of the week (auto, mon, sun)
+    cal_art: str = "mandala"     # calendar: the picture above it (patterns.planner.BACKGROUNDS)
     frac_kind: str = "fractions" # fractions and number lines: patterns.fractions.KINDS
     clock_task: str = "read"     # telling the time: patterns.clock.TASKS (read, draw, mixed)
     trace_style: str = "print"   # handwriting: patterns.trace.LETTERS (print, or joined-up in the language's school style)
@@ -144,6 +156,8 @@ class Settings:
     invert: bool = False
     pnono_size: int = 15         # photo nonogram squares across, 10..30
     pnono_answer: bool = False   # draw the photo nonogram solved
+    pdots_n: int = 60            # photo dot-to-dot: how many dots, 20..150
+    pdots_answer: bool = False   # draw the photo dot-to-dot joined up
     pcbn_colours: int = 8        # colour by number crayons, 4..16
     cbn: bool = False            # mandalas, woven tiles, contours and name pages as colour by number
     cbn_colours: int = 6         # their crayons, 3..12
@@ -179,7 +193,8 @@ class Settings:
 
 # What each page of a booklet built page by page keeps for itself; the rest is the booklet's.
 PAGE_KEYS = ("gen", "seed", "complexity", "cbn", "cbn_colours", "cbn_maths", "maze_shape", "maze_word", "ws_theme", "ws_words",
-             "name_text", "name_bg", "spot_base", "maths_kind", "money", "frac_kind", "ruled_kind", "reward_kind", "reward_text", "bingo_kind", "bingo_theme", "bingo_words", "early_kind", "clock_task", "trace_source", "trace_style", "trace_hand", "trace_text",
+             "name_text", "name_bg", "spot_base", "maths_kind", "money", "frac_kind", "ruled_kind", "reward_kind", "reward_text", "bingo_kind", "bingo_theme", "bingo_words", "early_kind", "crypto_code", "crypto_source", "crypto_text", "ladder_kind",
+             "cal_kind", "cal_month", "cal_year", "cal_start", "cal_art", "clock_task", "trace_source", "trace_style", "trace_hand", "trace_text",
              "cross_theme", "cross_words")
 
 

@@ -10,6 +10,7 @@ into a small work image, one pixel per dot, then turned into tones and drawn in 
   threshold  solid black & white                    nono       a nonogram puzzle that reveals the photo
   line       line drawing (difference of Gaussians, for colouring)
   cbn        colour by number, with a crayon key (cbn.py)
+  dots       a dot-to-dot of the photo's main outline (photodots.py)
 
 From the work image on, this matches index.html exactly: tones are kept in 32-bit floats where the
 JavaScript keeps them in Float32Arrays (numpy float32 and array('f') round the same way), and the
@@ -43,13 +44,13 @@ try:   # optional: the same dither loop in Rust (rust/inkline_fast); the Python 
 except ImportError:
     inkline_fast = None
 
-STYLES = ["fs", "atkinson", "bayer", "halftone", "engrave", "stipple", "cbn", "nono", "threshold", "line"]
+STYLES = ["fs", "atkinson", "bayer", "halftone", "engrave", "stipple", "cbn", "nono", "threshold", "line", "dots"]
 STYLE_NAMES = {"fs": "Dither: smooth (Floyd–Steinberg)", "atkinson": "Dither: crisp (Atkinson)",
                "bayer": "Dither: pattern (ordered)", "halftone": "Halftone dots", "engrave": "Engraving lines",
                "stipple": "Stippling dots", "cbn": "Colour by number (with a crayon key)",
                "nono": "Nonogram puzzle (picture logic)", "threshold": "Solid black & white",
-               "line": "Line drawing (colouring page)"}
-VECTOR_STYLES = {"engrave", "stipple", "nono", "cbn"}   # drawn as shapes, so they save as real vector SVG
+               "line": "Line drawing (colouring page)", "dots": "Dot-to-dot (numbered dots round the outline)"}
+VECTOR_STYLES = {"engrave", "stipple", "nono", "cbn", "dots"}   # drawn as shapes, so they save as real vector SVG
 
 
 def _js_round(x):
@@ -408,6 +409,7 @@ class Conversion:
     cbn: dict = None             # colour by number: crayons, region colours, number spots, border lines
     overhang: tuple = (0, 0)     # page pixels the crop overhangs on each side (for drag-to-pan)
     stipple: dict = field(default_factory=dict)
+    outlines: dict = field(default_factory=dict)   # dot-to-dot: the outline's dots, for each number of dots
     _image: QImage = None
 
     def image(self):
@@ -477,6 +479,9 @@ def cell_size(style, dot, box, s, dpi):
     elif style == "cbn":
         from .cbn import CBN_DPI
         c = dpi / CBN_DPI
+    elif style == "dots":
+        from .photodots import work_cell
+        c = work_cell(box)
     else:
         c = dot
     return max(1, c)
@@ -512,6 +517,9 @@ def convert(ctx, box, dpi, s, photo, style=None, dot=None, view=None):
     elif style == "nono":
         if e.nono:
             nonogram.draw_nonogram(ctx, box, dpi, s.weight * dpi / 150, e.nono, s.pnono_answer)
+    elif style == "dots":
+        from . import photodots
+        photodots.draw(ctx, box, dpi, s, e, inv)
     else:
         ctx.draw_image(e.image(), box.x, box.y, box.w, box.h)
     return e

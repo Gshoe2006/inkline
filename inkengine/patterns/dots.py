@@ -109,32 +109,6 @@ def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, connect=False, **_opt
             for i, p in enumerate(e["line"]):
                 (ctx.line_to if i else ctx.move_to)(*T(p))
             ctx.stroke()
-    rd = max(lw * 0.9, dpi * 0.016)
-
-    if connect:   # answer page: the finished picture
-        ctx.begin_path()
-        for i, d in enumerate(dots):
-            (ctx.line_to if i else ctx.move_to)(*d)
-        ctx.close_path()
-        ctx.stroke()
-        for d in dots:
-            ctx.begin_path()
-            ctx.arc(d[0], d[1], rd * 0.8, 0, math.pi * 2)
-            ctx.fill()
-        ctx.restore()
-        return {"shape": shape_name, "dots": len(dots), "overlaps": 0}
-
-    # numbers sit outside the outline; try a few angles so they don't land on other numbers or dots
-    nd = len(dots)
-    spacing = math.inf
-    for i in range(nd):
-        q = dots[(i + 1) % nd]
-        spacing = min(spacing, math.hypot(q[0] - dots[i][0], q[1] - dots[i][1]))
-    fs = max(dpi * 0.085, min(dpi * 0.17, spacing * 0.6))
-    cx, cy = box.x + box.w / 2, box.y + box.h / 2
-    placed = []
-    ctx.set_font(fs, 600)
-    ctx.text_align, ctx.text_baseline = "center", "alphabetic"
     # the fixed details (eye, door, flower centre) are obstacles too: sample points along them
     detail = []
     for e in shape.extras:
@@ -151,6 +125,40 @@ def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, connect=False, **_opt
                 while t <= 1:          # the same float steps as the JavaScript's t += 1 / 8
                     detail.append(T((a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t)))
                     t += 1 / 8
+    out = draw_numbered(ctx, box, dots, lw, dpi, connect, detail)
+    ctx.restore()
+    return {"shape": shape_name, **out}
+
+
+def draw_numbered(ctx, box, dots, lw, dpi, connect=False, detail=()):
+    """Dots numbered in order round an outline: each number outside it, where it doesn't land on another number, a
+    dot or a detail (points to keep clear), and a ring round dot 1. With connect (the answer), the outline joined up.
+    Returns {"dots", "overlaps"}, and the numbers' size and places. (Photo dot-to-dots use it too.)"""
+    rd = max(lw * 0.9, dpi * 0.016)
+
+    if connect:   # answer page: the finished picture
+        ctx.begin_path()
+        for i, d in enumerate(dots):
+            (ctx.line_to if i else ctx.move_to)(*d)
+        ctx.close_path()
+        ctx.stroke()
+        for d in dots:
+            ctx.begin_path()
+            ctx.arc(d[0], d[1], rd * 0.8, 0, math.pi * 2)
+            ctx.fill()
+        return {"dots": len(dots), "overlaps": 0}
+
+    # numbers sit outside the outline; try a few angles so they don't land on other numbers or dots
+    nd = len(dots)
+    spacing = math.inf
+    for i in range(nd):
+        q = dots[(i + 1) % nd]
+        spacing = min(spacing, math.hypot(q[0] - dots[i][0], q[1] - dots[i][1]))
+    fs = max(dpi * 0.085, min(dpi * 0.17, spacing * 0.6))
+    cx, cy = box.x + box.w / 2, box.y + box.h / 2
+    placed = []
+    ctx.set_font(fs, 600)
+    ctx.text_align, ctx.text_baseline = "center", "alphabetic"
 
     def in_box(r):
         return r[0] >= box.x and r[1] >= box.y and r[0] + r[2] <= box.x + box.w and r[1] + r[3] <= box.y + box.h
@@ -200,5 +208,4 @@ def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, connect=False, **_opt
     ctx.begin_path()
     ctx.arc(dots[0][0], dots[0][1], rd * 2.4, 0, math.pi * 2)   # a ring marks where to start
     ctx.stroke()
-    ctx.restore()
-    return {"shape": shape_name, "dots": nd, "overlaps": overlaps, "fs": fs / dpi, "labels": placed}
+    return {"dots": nd, "overlaps": overlaps, "fs": fs / dpi, "labels": placed}
