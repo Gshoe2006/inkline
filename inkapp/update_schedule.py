@@ -30,17 +30,17 @@ RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 
 
 def supported(kind=None, platform=None):
-    """Whether this copy can check while it isn't running (not in a Flatpak, and only on Linux or Windows)."""
+    """Whether this copy can check while it isn't running (not in a Flatpak; on Linux, Windows or macOS)."""
     kind = kind or updater.install_kind()
     platform = platform or sys.platform
-    return kind != "flatpak" and (platform.startswith("linux") or platform == "win32")
+    return kind != "flatpak" and (platform.startswith("linux") or platform in ("win32", "darwin"))
 
 
 def command(kind=None, env=None, root=updater.ROOT):
     """How the timer or task starts this Inkline: an absolute program first (the timer checks it's still there)."""
     env = os.environ if env is None else env
     kind = kind or updater.install_kind(env=env)
-    if kind == "windows":
+    if kind in ("windows", "macos"):   # the app's own program (Inkline.exe, or Inkline.app's)
         return [sys.executable]
     if kind == "source":
         return [sys.executable, os.path.join(root, "inkline.py")]
@@ -125,6 +125,8 @@ def apply(schedule, kind=None, env=None, runner=subprocess.run, platform=None, r
     want = schedule if schedule in BACKGROUND and supported(kind, platform) else None
     if platform == "win32":
         return _apply_windows(want, kind, env, runner, registry)
+    if platform == "darwin":
+        return _apply_macos(want, kind, env, runner)
     if not platform.startswith("linux"):
         return ""
     folder = unit_dir(env)
@@ -172,6 +174,48 @@ def _apply_windows(want, kind, env, runner, registry):
     else:
         _run(["schtasks", "/Delete", "/TN", TASK, "/F"], runner)   # none there is fine
     return err
+
+
+# --- macOS: a launchd agent of the user's own ---------------------------------------------------------------------
+AGENT = "io.github.gshoe2006.Inkline.update"
+
+
+def agent_path(env=None):
+    env = os.environ if env is None else env
+    return os.path.join(env.get("HOME") or os.path.expanduser("~"), "Library", "LaunchAgents", f"{AGENT}.plist")
+
+
+def launchd_plist(schedule, cmd):
+    """The agent: at login (RunAtLoad), or every day or week at noon (launchd runs a missed one on waking)."""
+    import plistlib
+    job = {"Label": AGENT, "ProgramArguments": list(cmd) + ["--check-updates"], "ProcessType": "Background"}
+    if schedule == "login":
+        job["RunAtLoad"] = True
+    elif schedule == "daily":
+        job["StartCalendarInterval"] = {"Hour": 12, "Minute": 0}
+    else:
+        job["StartCalendarInterval"] = {"Weekday": 1, "Hour": 12, "Minute": 0}
+    return plistlib.dumps(job)
+
+
+def _apply_macos(want, kind, env, runner):
+    path = agent_path(env)
+    domain = f"gui/{os.getuid()}" if hasattr(os, "getuid") else "gui/501"
+    if os.path.exists(path):   # the old one out first (bootout of none is fine)
+        _run(["launchctl", "bootout", domain, path], runner)
+    if want is None:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+        return ""
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "wb") as f:
+            f.write(launchd_plist(want, command(kind, env)))
+    except OSError as e:
+        return str(e)
+    return _run(["launchctl", "bootstrap", domain, path], runner)
 
 
 def _winreg_run_key(value):

@@ -3,8 +3,8 @@
 #   1. check    VERSION is a new version, and CHANGELOG.md has notes for it
 #   2. selftest the same self-test every pull request runs (selftest.yml)
 #   3. build    the .run installer and the Arch package (in Arch Linux), the .flatpak, the Debian/Ubuntu
-#               .deb, the AppImage and the Windows installer
-#   4. release  tags the commit, publishes "Inkline <version>" with those notes and the six files,
+#               .deb, the AppImage, the Windows installer and the macOS disk image
+#   4. release  tags the commit, publishes "Inkline <version>" with those notes and the seven files,
 #               then tells the app portal (Gshoe2006/Apps) to show it straight away
 #
 # Nothing is published unless every step passes. To release: in one pull request, bump VERSION and
@@ -12,7 +12,7 @@
 # releases the current VERSION if that hasn't happened yet (for example after fixing a failed build).
 #
 # Tick "Test build only" under Run workflow to do everything but publish: the notes check, the
-# self-test and all six builds, with the packages kept for 7 days under the run's Artifacts.
+# self-test and all seven builds, with the packages kept for 7 days under the run's Artifacts.
 # Releases are only ever published from main.
 name: Release
 
@@ -338,8 +338,74 @@ jobs:
           sudo apt-get install -y --no-install-recommends poppler-utils
           python3 packaging/check_selftest.py windows-selftest --install-kind windows
 
+  macos:
+    needs: check
+    if: needs.check.outputs.build == 'true'
+    runs-on: macos-14   # Apple silicon: the app is built for M1 and later Macs
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install PySide6, numpy and PyInstaller
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install PySide6-Essentials==6.12.0 shiboken6==6.12.0 numpy==2.3.5 pyinstaller
+
+      - name: Build the app and its disk image
+        run: |
+          python packaging/macos/build.py
+          test -f "dist/inkline-${{ needs.check.outputs.version }}-macos.dmg"
+          test "$(defaults read "$PWD/dist/Inkline.app/Contents/Info" CFBundleShortVersionString)" = "${{ needs.check.outputs.version }}"
+          codesign --verify --deep "dist/Inkline.app"
+
+      - name: Run the self-test with the built Inkline.app
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: dist/Inkline.app/Contents/MacOS/Inkline --selftest macos-selftest
+
+      # Help → Check for updates automatically sets up a launchd agent for the person: launchd must accept it
+      - name: Set up and remove the update check's launchd agent
+        run: |
+          python -c "from inkapp import update_schedule as u; import sys; e = u.apply('daily', 'macos'); print(e); sys.exit(1 if e else 0)"
+          launchctl print "gui/$(id -u)/io.github.gshoe2006.Inkline.update" | head -20
+          python -c "from inkapp import update_schedule as u; u.apply(None, 'macos')"
+          test ! -f "$HOME/Library/LaunchAgents/io.github.gshoe2006.Inkline.update.plist"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: macos
+          path: dist/inkline-*-macos.dmg
+          if-no-files-found: error
+          retention-days: 7
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: macos-selftest
+          path: macos-selftest/
+          retention-days: 7
+
+  macos-check:
+    needs: [check, macos]
+    if: needs.check.outputs.build == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: macos-selftest
+          path: macos-selftest
+      - name: Check the files Inkline.app wrote
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends poppler-utils
+          python3 packaging/check_selftest.py macos-selftest --install-kind macos
+
   release:
-    needs: [check, selftest, run-and-arch, flatpak, deb, appimage, windows, windows-check]
+    needs: [check, selftest, run-and-arch, flatpak, deb, appimage, windows, windows-check, macos, macos-check]
     if: needs.check.outputs.publish == 'true'
     runs-on: ubuntu-24.04
     permissions:
@@ -368,6 +434,10 @@ jobs:
         with:
           name: windows
           path: dist
+      - uses: actions/download-artifact@v8
+        with:
+          name: macos
+          path: dist
 
       - name: Publish the release
         env:
@@ -378,7 +448,7 @@ jobs:
           printf '\n## Code signing policy\n\nSee [Code signing policy](%s/%s/blob/main/README.md#code-signing-policy).\n' \
             "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" >> notes.md
           ls -l dist
-          test "$(ls dist | wc -l)" = 6 || { echo "::error::Expected the 6 packages in dist, found: $(ls dist)"; exit 1; }
+          test "$(ls dist | wc -l)" = 7 || { echo "::error::Expected the 7 packages in dist, found: $(ls dist)"; exit 1; }
           gh release create "$V" dist/* \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
@@ -394,7 +464,7 @@ jobs:
         run: sh packaging/notify_portal.sh --warn
 
   test-build-done:
-    needs: [check, selftest, run-and-arch, flatpak, deb, appimage, windows, windows-check]
+    needs: [check, selftest, run-and-arch, flatpak, deb, appimage, windows, windows-check, macos, macos-check]
     if: needs.check.outputs.build == 'true' && needs.check.outputs.publish != 'true'
     runs-on: ubuntu-24.04
     steps:

@@ -34,8 +34,11 @@ Each [release](https://github.com/Gshoe2006/inkline/releases) has a package for 
 | Any distro, sandboxed | `inkline-<version>.flatpak` | `flatpak install --user inkline-<version>.flatpak` |
 | Any distro, your own Python | `inkline-<version>.run` | `sh inkline-<version>.run` |
 | Windows 10 or 11 (64-bit) | `inkline-<version>-windows-setup.exe` | Run it; no administrator needed |
+| macOS 12 or later, Apple silicon (M1 and later) | `inkline-<version>-macos.dmg` | Open it and drag Inkline to Applications |
 
 The Windows installer isn't signed yet, so Windows SmartScreen may warn that it's from an unknown publisher: choose **More info → Run anyway**. It adds Inkline to the Start menu, opens `.inkline` projects with a double-click, and uninstalls from Settings → Apps. Settings are kept in `%APPDATA%\Inkline`.
+
+The macOS app isn't signed with an Apple Developer ID or notarized yet, so the first time you open it macOS says it can't check it: Control-click Inkline in Applications and choose **Open** (or open it from System Settings → Privacy & Security → **Open Anyway**). It's built for Apple silicon; on an Intel Mac, run it from source. Help → Check for updates installs a newer version in place of the app, and checking while Inkline is closed uses a launchd agent of your own (`~/Library/LaunchAgents/io.github.gshoe2006.Inkline.update.plist`); its notification has no button, so Inkline offers the update when you next open it.
 
 The `.deb` brings its own PySide6 (Debian and Ubuntu don't package a new enough one) and uses the system's Python and numpy. The AppImage brings everything, Python included; for it to appear in your app menu and open `.inkline` projects with a double-click, use an AppImage manager such as Gear Lever or AppImageLauncher.
 

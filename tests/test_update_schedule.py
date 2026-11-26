@@ -36,7 +36,7 @@ class Runner:
 # --- what is set up ----------------------------------------------------------------------------------------------
 def test_supported():
     assert update_schedule.supported("deb", "linux") and update_schedule.supported("windows", "win32")
-    assert not update_schedule.supported("flatpak", "linux") and not update_schedule.supported("source", "darwin")
+    assert not update_schedule.supported("flatpak", "linux") and not update_schedule.supported("source", "freebsd14")
 
 
 def test_the_command_starts_this_copy(tmp_path):
@@ -334,3 +334,75 @@ def test_the_manual_tests_cover_what_ci_cant():
     text = open(os.path.join(ROOT, "docs", "manual-tests.md"), encoding="utf-8").read()
     for must in ("--check-updates --demo", "list-timers inkline-update.timer", "Task Scheduler", "tour", "High contrast"):
         assert must in text, must
+
+
+# --- macOS --------------------------------------------------------------------------------------------------------
+def test_macos_is_recognised_and_updates_from_its_disk_image():
+    assert updater.install_kind(env={}, frozen=True, platform="darwin") == "macos"
+    assert updater.install_kind(env={}, frozen="macos") == "macos"
+    assert updater.asset_name("macos", "6.0.0") == "inkline-6.0.0-macos.dmg"
+    assert updater.app_bundle(executable="/Applications/Inkline.app/Contents/MacOS/Inkline") == "/Applications/Inkline.app"
+    assert updater.app_bundle(executable="/Users/a/Apps/Inkline.app/Contents/MacOS/Inkline") == "/Users/a/Apps/Inkline.app"
+    cmd, after = updater.install_steps("macos", "/tmp/new.dmg")
+    assert cmd[:2] == ["sh", "-c"] and cmd[-2:] == ["/tmp/new.dmg", updater.app_bundle()] and after == "restart"
+    assert updater.relaunch_command("macos")[:2] == ["open", "-n"]
+    assert update_schedule.command("macos", {}) == [sys.executable]
+    assert update_schedule.supported("macos", "darwin") and not update_schedule.supported("flatpak", "darwin")
+
+
+def test_the_swap_script_puts_the_new_app_in_place(tmp_path):
+    """The real script, with stand-ins for macOS's hdiutil and ditto (the disk image is a folder here)."""
+    bin_ = tmp_path / "bin"
+    bin_.mkdir()
+    (bin_ / "hdiutil").write_text('#!/bin/sh\nif [ "$1" = attach ]; then for a; do last="$a"; done; '
+                                  'mnt=""; while [ $# -gt 0 ]; do [ "$1" = -mountpoint ] && mnt="$2"; shift; done; '
+                                  'cp -R "$last"/. "$mnt"/; fi\n')
+    (bin_ / "ditto").write_text('#!/bin/sh\ncp -R "$1" "$2"\n')
+    for f in bin_.iterdir():
+        f.chmod(0o755)
+    dmg = tmp_path / "dmg"
+    (dmg / "Inkline.app" / "Contents").mkdir(parents=True)
+    (dmg / "Inkline.app" / "Contents" / "VERSION").write_text("6.1.0")
+    app = tmp_path / "Applications" / "Inkline.app"
+    (app / "Contents").mkdir(parents=True)
+    (app / "Contents" / "VERSION").write_text("6.0.0")
+    cmd, _after = updater.install_steps("macos", str(dmg))
+    cmd[-1] = str(app)
+    p = subprocess.run(cmd, env={**os.environ, "PATH": f"{bin_}:{os.environ['PATH']}"}, capture_output=True, text=True)
+    assert p.returncode == 0, p.stderr
+    assert (app / "Contents" / "VERSION").read_text() == "6.1.0"
+    assert not (tmp_path / "Applications" / "Inkline.app.new").exists()
+    assert not (tmp_path / "Applications" / "Inkline.app.old").exists()
+
+
+@pytest.mark.parametrize("schedule", update_schedule.BACKGROUND)
+def test_the_launchd_agent(schedule):
+    import plistlib
+    job = plistlib.loads(update_schedule.launchd_plist(schedule, ["/Applications/Inkline.app/Contents/MacOS/Inkline"]))
+    assert job["Label"] == update_schedule.AGENT
+    assert job["ProgramArguments"] == ["/Applications/Inkline.app/Contents/MacOS/Inkline", "--check-updates"]
+    assert job.get("RunAtLoad") == (True if schedule == "login" else None)
+    cal = job.get("StartCalendarInterval")
+    assert (cal is None) == (schedule == "login") and (cal or {}).get("Weekday") == (1 if schedule == "weekly" else None)
+
+
+def test_macos_apply_and_remove(tmp_path):
+    run = Runner()
+    env = {"HOME": str(tmp_path)}
+    assert update_schedule.apply("daily", "macos", env, run, "darwin") == ""
+    path = update_schedule.agent_path(env)
+    assert os.path.exists(path) and run.calls[-1][:2] == ["launchctl", "bootstrap"]
+    assert update_schedule.apply("start", "macos", env, run, "darwin") == ""
+    assert not os.path.exists(path) and ["launchctl", "bootout"] == run.calls[-1][:2]
+
+
+def test_macos_notification():
+    seen = []
+    assert update_check.notify_macos('Inkline "6.1.0"', "You have 6.0.0", run=lambda c, **k: seen.append(c)) is False
+    assert seen[0][:2] == ["osascript", "-e"] and 'with title "Inkline \\"6.1.0\\""' in seen[0][2]
+
+
+def test_the_release_builds_and_checks_macos():
+    flow = open(os.path.join(ROOT, ".github", "workflows", "release.yml"), encoding="utf-8").read()
+    assert "packaging/macos/build.py" in flow and "--install-kind macos" in flow and "runs-on: macos-14" in flow
+    assert '= 7 ||' in flow and "name: macos\n" in flow

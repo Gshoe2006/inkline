@@ -31,16 +31,19 @@ API = f"https://api.github.com/repos/{REPO}/releases/latest"
 PAGE = f"https://github.com/{REPO}/releases/latest"
 DAY = 24 * 3600
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-INSTALL_KINDS = ("windows", "appimage", "run-user", "run-system", "deb", "arch", "flatpak", "source")
+INSTALL_KINDS = ("windows", "macos", "appimage", "run-user", "run-system", "deb", "arch", "flatpak", "source")
 NEEDS_ADMIN = ("run-system", "deb", "arch")
 
 
-def install_kind(env=None, frozen=None, root=ROOT):
+def install_kind(env=None, frozen=None, root=ROOT, platform=None):
     """How this copy of Inkline was installed (one of INSTALL_KINDS)."""
     env = os.environ if env is None else env
     frozen = getattr(sys, "frozen", False) if frozen is None else frozen
+    platform = platform or sys.platform
     if frozen and os.name == "nt" or frozen == "windows":
         return "windows"
+    if frozen and platform == "darwin" or frozen == "macos":   # Inkline.app, built by packaging/macos/build.py
+        return "macos"
     if env.get("APPIMAGE"):
         return "appimage"
     if env.get("FLATPAK_ID") or os.path.exists("/.flatpak-info") and root.startswith("/app/"):
@@ -68,7 +71,8 @@ def newer(latest, current):
 
 def asset_name(kind, version):
     """The release file for a kind of install, or None for those that don't update themselves."""
-    return {"windows": f"inkline-{version}-windows-setup.exe", "appimage": f"inkline-{version}-x86_64.AppImage",
+    return {"windows": f"inkline-{version}-windows-setup.exe", "macos": f"inkline-{version}-macos.dmg",
+            "appimage": f"inkline-{version}-x86_64.AppImage",
             "run-user": f"inkline-{version}.run", "run-system": f"inkline-{version}.run",
             "deb": f"inkline_{version}-1_amd64.deb", "arch": f"inkline-{version}-1-any.pkg.tar.zst"}.get(kind)
 
@@ -168,6 +172,8 @@ def install_steps(kind, path, env=None):
         return [path, "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART"], "quit"
     if kind == "appimage":
         return None, "replace"
+    if kind == "macos":   # the new Inkline.app from the disk image, in place of this one
+        return ["sh", "-c", MAC_SWAP, "inkline-update", path, app_bundle(env)], "restart"
     if kind == "run-user":
         return ["sh", path], "restart"
     admin = shutil.which("pkexec", path=env.get("PATH"))
@@ -182,6 +188,22 @@ def install_steps(kind, path, env=None):
         pacman = shutil.which("pacman", path=env.get("PATH")) or "pacman"
         return [admin, pacman, "-U", "--noconfirm", path], "restart"
     return None, "manual"
+
+
+# mount the disk image, copy its app beside this one, swap them, unmount (the running copy keeps going until it quits)
+MAC_SWAP = ('set -e; dmg="$1"; app="$2"; mnt=$(mktemp -d); hdiutil attach -nobrowse -quiet -mountpoint "$mnt" "$dmg"; '
+            'trap \'hdiutil detach -quiet "$mnt" || true\' EXIT; rm -rf "$app.new"; ditto "$mnt/Inkline.app" "$app.new"; '
+            'rm -rf "$app.old"; mv "$app" "$app.old"; mv "$app.new" "$app"; rm -rf "$app.old"')
+
+
+def app_bundle(env=None, executable=None):
+    """The Inkline.app this copy runs from (…/Inkline.app/Contents/MacOS/Inkline), or /Applications/Inkline.app."""
+    exe = executable or sys.executable
+    parts = os.path.abspath(exe).split(os.sep)
+    for i in range(len(parts) - 1, 0, -1):
+        if parts[i].endswith(".app"):
+            return os.sep.join(parts[:i + 1]) or os.sep
+    return "/Applications/Inkline.app"
 
 
 def manual_command(kind, path):
@@ -207,6 +229,8 @@ def relaunch_command(kind, env=None):
     env = os.environ if env is None else env
     if kind == "appimage":
         return [env["APPIMAGE"]]
+    if kind == "macos":
+        return ["open", "-n", app_bundle(env)]
     if kind == "run-user":
         return [os.path.expanduser("~/.local/bin/inkline")]
     if kind == "run-system":

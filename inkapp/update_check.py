@@ -121,6 +121,22 @@ def notify_windows(title, body, wait=WAIT):
     return bool(clicked)
 
 
+# --- macOS: Notification Centre, through AppleScript (no button: Inkline offers the update when it next opens) --------
+def notify_macos(title, body, run=subprocess.run):
+    def q(text):
+        return '"' + text.replace("\\", "\\\\").replace('"', '\\"') + '"'
+    run(["osascript", "-e", f"display notification {q(body)} with title {q(title)}"], timeout=30)
+    return False
+
+
+def notify(title, body, button):
+    if sys.platform == "win32":
+        return notify_windows(title, body)
+    if sys.platform == "darwin":
+        return notify_macos(title, body)
+    return notify_linux(title, body, button)
+
+
 def open_update(kind=None):
     """Start Inkline with its update box open."""
     cmd = update_schedule.command(kind) + ["--update"]
@@ -140,7 +156,7 @@ def main(version, demo=False):
     on a desktop; docs/manual-tests.md)."""
     if demo:
         title, body, button = texts(demo_version(version), version)
-        pressed = notify_windows(title, body) if sys.platform == "win32" else notify_linux(title, body, button)
+        pressed = notify(title, body, button)
         if pressed:
             open_update()
         return 0
@@ -149,7 +165,7 @@ def main(version, demo=False):
     if not release:
         return 0
     title, body, button = texts(release["version"], version)
-    pressed = notify_windows(title, body) if sys.platform == "win32" else notify_linux(title, body, button)
+    pressed = notify(title, body, button)
     if pressed:
         open_update()
     return 0

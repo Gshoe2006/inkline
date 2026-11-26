@@ -41,6 +41,15 @@ Start Inkline from the package you're testing, not from the source checkout, unl
       Check for updates… → Update now installs the latest and Restart now opens it. The .deb and Arch package ask for
       the administrator password.
 
+## macOS
+
+- [ ] Open `inkline-<version>-macos.dmg`, drag Inkline to Applications, Control-click → Open: it starts, and the
+      self-test's checks (`/Applications/Inkline.app/Contents/MacOS/Inkline --selftest /tmp/st`) pass.
+- [ ] Help → Check for updates automatically → Every day: `launchctl print gui/$(id -u)/io.github.gshoe2006.Inkline.update`
+      shows it; `inkline --check-updates --demo` (the app's program) shows a notification.
+- [ ] With an older version installed, Update now replaces /Applications/Inkline.app and Restart now opens the new one.
+- [ ] Printing through the macOS print dialog; Retina display: nothing blurry or cut off.
+
 ## Printing
 
 - [ ] Edit → Settings → Printer: choose a printer; File → Print… starts with it. Its dead edges show on the preview
