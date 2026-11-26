@@ -62,7 +62,7 @@ class SettingsDialog(QDialog):
         outer.setContentsMargins(theme.PAD_X, theme.PAD_X, theme.PAD_X, theme.PAD_X)
         outer.setSpacing(theme.SECTION_GAP)
         columns = QHBoxLayout()   # two columns, so it fits a small laptop's screen
-        columns.setSpacing(theme.PAD_X * 2)
+        columns.setSpacing(theme.SECTION_GAP)
         left, right = QVBoxLayout(), QVBoxLayout()
         for col in (left, right):
             col.setSpacing(theme.SECTION_GAP)
@@ -74,8 +74,10 @@ class SettingsDialog(QDialog):
 
         printing = Section("Printing")
         names = printers()
-        current = window.printer_name if window.printer_name in names else ""
+        current = window.print_with if window.print_with in names else ""
         self.printer = combo(list(PRINTER_DEFAULT.items()) + [(n, n) for n in names], current)
+        for i, n in enumerate(names, 1):   # the system's names, as they are (not looked up for a translation)
+            self.printer.setItemText(i, n)
         printing.add(OptionRow("Printer", self.printer))
         self.paper = combo(PAPERS, start["paper"])
         self.orient = combo(ORIENTS, start["orient"])
@@ -86,6 +88,7 @@ class SettingsDialog(QDialog):
         printing.add(Hint("New projects start with these. The design open now keeps its own until you use them for it."))
         self.use_now = button("Use for this design", tip="Put this size, orientation, margin and resolution on the "
                                                          "design open now (Undo takes it back)")
+        self.use_now.setAutoDefault(False)   # Enter closes the dialog; it doesn't press these
         printing.add(self.use_now)
         left.addWidget(printing)
         left.addStretch(1)
@@ -101,21 +104,28 @@ class SettingsDialog(QDialog):
         can = update_schedule.supported(window.updates.kind)
         for i, key in enumerate(["off", *update_schedule.SCHEDULES]):
             if key in update_schedule.BACKGROUND and not can:
-                self.schedule.model().item(i).setEnabled(False)
-        updates.add(OptionRow("Check for updates", self.schedule))
+                item = self.schedule.model().item(i)
+                item.setEnabled(False)
+                item.setToolTip(tr("Only while Inkline is open: a Flatpak can't check in the background.")
+                                if window.updates.kind == "flatpak" else tr("Only while Inkline is open, on this system."))
+        updates.add(OptionRow("Check for updates automatically", self.schedule))
         self.check_now = button("Check now", tip="Ask GitHub for the latest version now")
+        self.check_now.setAutoDefault(False)
         updates.add(self.check_now)
         right.addWidget(updates)
 
         language = Section("Language")
         chosen = prefs.get("language") if prefs.get("language") in i18n.LANGUAGES else i18n.LANG
-        self.language = combo(list(i18n.LANGUAGES.items()), chosen)   # each in its own language
+        self.language = combo(list(i18n.LANGUAGES.items()), chosen)
+        for i, name in enumerate(i18n.LANGUAGES.values()):   # each in its own language, as View → Language has them
+            self.language.setItemText(i, name)
         language.add(OptionRow("Language", self.language))
         language.add(Hint("Inkline uses it from the next start."))
         right.addWidget(language)
         right.addStretch(1)
 
         row = QHBoxLayout()
+        row.setSpacing(theme.PAIR_GAP)
         row.addStretch(1)
         close = button("Close", "primary")
         close.setDefault(True)

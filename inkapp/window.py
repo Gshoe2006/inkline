@@ -158,9 +158,13 @@ class Window(QMainWindow):
             if isinstance(lists, dict) else {}
         self._saved_class_set = project.class_set({})   # what the open project's file holds
         # the printer last chosen in the Print dialog ("" is the system's default): its dead edges are shown
-        self.printer_name = config.read("printer.json").get("name", "") if remember else ""
+        printers = config.read("printer.json") if remember else {}
+        self.printer_name = printers.get("name", "")   # the printer last printed to: its edges show on the preview
         if not isinstance(self.printer_name, str):
             self.printer_name = ""
+        self.print_with = printers.get("default", "")  # Edit → Settings' printer, which Print starts with
+        if not isinstance(self.print_with, str):
+            self.print_with = ""
         self._view = None
         recent = config.read("recent.json") if remember else {}
         self.recent = [p for p in recent.get("photos", []) if isinstance(p, str)][:MAX_RECENT]
@@ -707,6 +711,16 @@ class Window(QMainWindow):
         """The File menu's saves are enabled exactly when the footer's buttons are (2.x clicked the button)."""
         if hasattr(self, "act_pdf"):
             sb = self.sidebar
+            # Ctrl+E saves Edit → Settings' format, or PDF when that can't save this page (SVG of a photo)
+            buttons = {"pdf": sb.pdf_btn, "png": sb.png_btn, "svg": sb.svg_btn}
+            fmt = getattr(self, "_save_format", "pdf")
+            fmt = fmt if buttons[fmt].isEnabled() else "pdf"
+            second = "pdf" if fmt == "png" else "png"
+            for kind, a in (("pdf", self.act_pdf), ("png", self.act_png), ("svg", self.act_svg)):
+                a.setShortcut(QKeySequence("Ctrl+E" if kind == fmt else "Ctrl+Shift+E" if kind == second else ""))
+            if sb.save_format != fmt:
+                sb.save_format = fmt
+                sb.save_tips(self.state.settings)
             for a, b in ((self.act_pdf, sb.pdf_btn), (self.act_png, sb.png_btn), (self.act_svg, sb.svg_btn)):
                 a.setEnabled(b.isEnabled())
                 a.setToolTip(b.toolTip())
@@ -862,7 +876,8 @@ class Window(QMainWindow):
             return
         fresh = replace(State().settings, **(settings.defaults() if self.remember else {}))
         self._use_project(project.Project(fresh), None)
-        self._msg(tr("New project. Settings are back to their defaults."))
+        self._msg(tr("New project, with your paper settings from Edit → Settings.") if self.remember and settings.defaults()
+                  else tr("New project. Settings are back to their defaults."))
 
     def open_project(self, path=None):
         asked = path is None
@@ -1464,8 +1479,8 @@ class Window(QMainWindow):
         printer.setFullPage(True)
         printer.setDocName(j.name)
         printer.setColorMode(QPrinter.ColorMode.GrayScale)
-        if self.printer_name and self.printer_name in settings.printers():   # Edit → Settings', or the last used
-            printer.setPrinterName(self.printer_name)
+        if self.print_with and self.print_with in settings.printers():   # Edit → Settings' choice
+            printer.setPrinterName(self.print_with)
         if j.duplex:   # fold-and-staple books: double-sided, flipping on the short edge
             printer.setDuplex(QPrinter.DuplexMode.DuplexShortSide)
         self._msg(tr("Opening the print dialog…"))
@@ -1491,11 +1506,13 @@ class Window(QMainWindow):
         settings.SettingsDialog(self).exec()
 
     def set_printer(self, name):
-        """The printer Print starts with ("" for the system's default); its margins show on the preview."""
+        """The printer Print starts with ("" for the system's default); its margins show on the preview until
+        another is printed to."""
         jobs.forget_printer_margins()
-        self.printer_name = name or ""
+        self.print_with = name or ""
+        self.printer_name = self.print_with
         if self.remember:
-            err = config.write("printer.json", {"name": self.printer_name}, "Printer")
+            err = config.write("printer.json", {"name": self.printer_name, "default": self.print_with}, "Printer")
             if err:
                 self._msg(err)
         self._show_printer_edges()
@@ -1511,22 +1528,18 @@ class Window(QMainWindow):
 
     def apply_save_format(self, fmt=None):
         """Ctrl+E saves fmt (PDF unless Settings says otherwise); Ctrl+Shift+E saves PNG, or PDF when PNG has Ctrl+E."""
-        fmt = fmt or (settings.save_format() if self.remember else "pdf")
-        second = "pdf" if fmt == "png" else "png"
-        for kind, a in (("pdf", self.act_pdf), ("png", self.act_png), ("svg", self.act_svg)):
-            a.setShortcut(QKeySequence("Ctrl+E" if kind == fmt else "Ctrl+Shift+E" if kind == second else ""))
-        self.sidebar.save_format = fmt
-        self.sidebar.save_tips(self.state.settings)
+        self._save_format = fmt or (settings.save_format() if self.remember else "pdf")
         self._sync_actions()
 
     def use_paper(self, values):
         """Put Settings' paper defaults on the design open now, as if chosen in the Paper section (Undo takes it
         back)."""
         changed = [k for k, v in values.items() if getattr(self.state.settings, k) != v]
-        for k in changed:
-            self.state.update(**{k: values[k]})
+        if changed:   # one step, however many of them change
+            self.state.update(**{k: values[k] for k in changed})
             self.sidebar.load()
-            self._changed(k)
+            self._step_name = tr("Use my paper settings")
+            self._changed(changed[0])
         self._msg(tr("The design now uses your paper settings.") if changed else
                   tr("The design already uses your paper settings."))
 
@@ -1534,7 +1547,7 @@ class Window(QMainWindow):
         jobs.forget_printer_margins()   # the printers, or the system's default, may have changed
         if self.remember and name and name != self.printer_name:
             self.printer_name = name
-            err = config.write("printer.json", {"name": name}, "Printer")
+            err = config.write("printer.json", {"name": name, "default": self.print_with}, "Printer")
             if err:
                 self._msg(err)
         self._show_printer_edges()

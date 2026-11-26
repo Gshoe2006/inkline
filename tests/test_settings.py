@@ -76,9 +76,10 @@ def test_use_for_this_design_and_undo(make_win):
     d.use_now.click()
     assert w.state.settings.paper == "a4" and w.state.settings.margin == 1.0
     assert w.sidebar._binds["paper"][0].value() == "a4"     # the Paper section shows it too
-    while w.history.canUndo() and w.state.settings.paper == "a4":
-        w.history.undo()
-    assert w.state.settings.paper == "letter"
+    QApplication.processEvents()
+    assert "Use my paper settings" in w.history.undoText()
+    w.history.undo()                                         # one Undo takes it all back
+    assert w.state.settings.paper == "letter" and w.state.settings.margin == 0.5
 
 
 def test_ctrl_e_saves_the_chosen_format(make_win):
@@ -88,9 +89,21 @@ def test_ctrl_e_saves_the_chosen_format(make_win):
     d.format.set_value("png")
     assert w.act_png.shortcut().toString() == "Ctrl+E" and w.act_pdf.shortcut().toString() == "Ctrl+Shift+E"
     assert w.sidebar.png_btn.toolTip() == "Save PNG (Ctrl+E)" and w.sidebar.pdf_btn.toolTip() == "Save PDF (Ctrl+Shift+E)"
+    assert "Ctrl+E PNG" in w.sidebar.keys.text()             # the shortcuts line under the buttons too
     d.format.set_value("svg")
     assert w.act_svg.shortcut().toString() == "Ctrl+E" and w.act_pdf.shortcut().toString() == ""
     assert w.sidebar.svg_btn.toolTip().endswith("(Ctrl+E)")
+    w.state.update(mode="convert", style="floyd")            # a photo in pixels can't be SVG: Ctrl+E saves PDF
+    w.sidebar.load()
+    w._changed("mode")
+    QApplication.processEvents()
+    assert not w.sidebar.svg_btn.isEnabled() and w.act_pdf.shortcut().toString() == "Ctrl+E"
+    assert "Ctrl+E PDF" in w.sidebar.keys.text()
+    w.state.update(mode="make")
+    w.sidebar.load()
+    w._changed("mode")
+    QApplication.processEvents()
+    assert w.act_svg.shortcut().toString() == "Ctrl+E"
     again = make_win()                                       # kept for the next start
     assert again.act_svg.shortcut().toString() == "Ctrl+E" and again.act_png.shortcut().toString() == "Ctrl+Shift+E"
 
@@ -150,6 +163,12 @@ def test_the_printer(make_win, monkeypatch):
     monkeypatch.setattr(win_mod, "QPrintDialog", Dialog)
     w.print_()
     assert named == ["Lab"]                                  # Print starts with it
+    w._remember_printer("Office")                            # printing once to another printer
+    assert w.printer_name == "Office" and w.print_with == "Lab"
+    named.clear()
+    w.print_()
+    assert named == ["Lab"]                                  # still starts with the one chosen in Settings
+    assert make_win().print_with == "Lab"
     d.printer.set_value("")
     assert w.printer_name == "" and config.read("printer.json")["name"] == ""
     named.clear()

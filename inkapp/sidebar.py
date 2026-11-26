@@ -194,7 +194,8 @@ class Sidebar(QFrame):
         prow.addWidget(self.cancel_btn)
         self.progress_row.hide()
         lay.addWidget(self.progress_row)
-        keys = label("Ctrl+P print · Ctrl+E PDF · Ctrl+S save project · Ctrl+N new design · ← → pages", "keys")
+        self.save_format = "pdf"   # what Ctrl+E saves (Edit → Settings; the window keeps it up to date)
+        self.keys = keys = label("Ctrl+P print · Ctrl+E PDF · Ctrl+S save project · Ctrl+N new design · ← → pages", "keys")
         keys.setWordWrap(True)
         lay.addWidget(keys)
         return f
@@ -1160,6 +1161,10 @@ class Sidebar(QFrame):
         """The footer's save buttons' tooltips, with the shortcut each has (Ctrl+E saves Edit → Settings' format)."""
         fmt = getattr(self, "save_format", "pdf")
         make = s.mode == "make"
+        self.keys.setText(tr("Ctrl+P print · Ctrl+E PDF · Ctrl+S save project · Ctrl+N new design · ← → pages")
+                          if fmt == "pdf" else
+                          tr("Ctrl+P print · Ctrl+E {format} · Ctrl+S save project · Ctrl+N new design · ← → pages")
+                          .format(format=fmt.upper()))
         self.pdf_btn.setToolTip(tr("Save PDF (Ctrl+E)") if fmt == "pdf" else
                                 tr("Save PDF (Ctrl+Shift+E)") if fmt == "png" else tr("Save PDF"))
         self.png_btn.setToolTip(tr("Posters save as PDF (one page per sheet) or print directly")
