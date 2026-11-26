@@ -39,6 +39,20 @@ class Updates(QObject):
         self._progress_dialog = None
         self.progress.connect(self._show_progress)
 
+    def _save(self, **changes):
+        """Keep update preferences (not when the window remembers nothing); a failed write is said."""
+        if not self.window.remember:
+            return
+        err = config.write("preferences.json", {**config.read("preferences.json"), **changes}, "Preferences")
+        if err:
+            self.window._msg(err)
+
+    def _box(self, icon, title, text, informative=""):
+        box = QMessageBox(icon, title, text, QMessageBox.StandardButton.NoButton, self.window)
+        if informative:
+            box.setInformativeText(informative)
+        return box
+
     # --- checking --------------------------------------------------------------------------------------
     def at_start(self):
         """At start: ask once whether to check for updates; then check if a day has passed since the last."""
@@ -53,10 +67,11 @@ class Updates(QObject):
                                       "sent. You can change this under Help."))
             yes = box.addButton(tr("Check for updates"), QMessageBox.ButtonRole.AcceptRole)
             box.addButton(tr("Don't check"), QMessageBox.ButtonRole.RejectRole)
+            box.setDefaultButton(yes)
             box.exec()
-            prefs = {**config.read("preferences.json"), "update_check": box.clickedButton() is yes}
-            config.write("preferences.json", prefs, "Preferences")
-            self.window.act_updates_auto.setChecked(prefs["update_check"])
+            self._save(update_check=box.clickedButton() is yes)
+            prefs = config.read("preferences.json")
+            self.window.act_updates_auto.setChecked(prefs.get("update_check") is True)
         if updater.due(prefs):
             self.check(asked=False)
 
@@ -75,7 +90,7 @@ class Updates(QObject):
         threading.Thread(target=work, daemon=True).start()
 
     def set_automatic(self, on):
-        config.write("preferences.json", {**config.read("preferences.json"), "update_check": bool(on)}, "Preferences")
+        self._save(update_check=bool(on))
 
     def _failed(self, why, asked):
         if asked:
@@ -84,7 +99,7 @@ class Updates(QObject):
 
     def _found(self, release, asked):
         prefs = config.read("preferences.json")
-        config.write("preferences.json", {**prefs, "update_checked": time.time()}, "Preferences")
+        self._save(update_checked=time.time())
         self.release = release
         if not release or not updater.newer(release["version"], self.version):
             if asked:
@@ -113,13 +128,14 @@ class Updates(QObject):
         update = box.addButton(tr("Update now") if can else tr("Open the release page"), QMessageBox.ButtonRole.AcceptRole)
         notes = box.addButton(tr("What's new"), QMessageBox.ButtonRole.HelpRole)
         box.addButton(tr("Later"), QMessageBox.ButtonRole.RejectRole)
-        skip = box.addButton(tr("Skip this version"), QMessageBox.ButtonRole.DestructiveRole)
+        skip = box.addButton(tr("Skip this version"), QMessageBox.ButtonRole.ActionRole)
+        box.setDefaultButton(update)
         box.exec()
         chosen = box.clickedButton()
         if chosen is notes:
             QDesktopServices.openUrl(QUrl(release["page"]))
         elif chosen is skip:
-            config.write("preferences.json", {**config.read("preferences.json"), "update_skip": version}, "Preferences")
+            self._save(update_skip=version)
         elif chosen is update:
             if can:
                 self.start_download(release)
@@ -132,7 +148,7 @@ class Updates(QObject):
         self._cancel = False
         d = QProgressDialog(tr("Downloading Inkline {version}…").format(version=release["version"]), tr("Cancel"),
                             0, 100, self.window)
-        d.setWindowTitle(tr("Update"))
+        d.setWindowTitle(tr("Update available"))
         d.setMinimumDuration(0)
         d.canceled.connect(lambda: setattr(self, "_cancel", True))
         d.show()
@@ -159,7 +175,8 @@ class Updates(QObject):
             self._progress_dialog = None
         if path is None:
             if why:
-                self.window._msg(tr("The update couldn't be downloaded: {why}").format(why=why))
+                self.window._msg(tr("The update couldn't be downloaded ({why}). Try again from Help → Check for "
+                                    "updates.").format(why=why))
             return
         self.install(path)
 
@@ -168,26 +185,28 @@ class Updates(QObject):
         version = self.release["version"] if self.release else ""
         if after == "manual":   # no way to ask for the administrator password here: the person installs it
             QDesktopServices.openUrl(QUrl.fromLocalFile(path.rsplit("/", 1)[0]))
-            QMessageBox.information(self.window, tr("Update downloaded"), tr(
+            box = self._box(QMessageBox.Icon.Information, tr("Update downloaded"), tr(
                 "The new version is downloaded. To install it, open a terminal and run:\n\n{command}").format(
                 command=updater.manual_command(self.kind, path)))
+            box.addButton(QMessageBox.StandardButton.Ok)
+            box.exec()
             return
         if after == "quit":     # Windows: the installer takes over once Inkline has closed
             if self.window.close():
                 subprocess.Popen(cmd, close_fds=True)
                 QApplication.quit()
             return
-        if after == "replace":
-            try:
-                updater.replace_appimage(path)
-            except OSError as e:
-                self.installed.emit(False, str(e))
-                return
-            self.installed.emit(True, "")
-            return
         self.window._msg(tr("Installing Inkline {version}…").format(version=version))
 
-        def work():
+        def work():   # off the window's thread: an AppImage is a large file to copy
+            if after == "replace":
+                try:
+                    updater.replace_appimage(path)
+                except OSError as e:
+                    self.installed.emit(False, str(e))
+                    return
+                self.installed.emit(True, "")
+                return
             ok, out = updater.run(cmd)
             self.installed.emit(ok, out)
         threading.Thread(target=work, daemon=True).start()
@@ -195,14 +214,20 @@ class Updates(QObject):
     def _installed(self, ok, out):
         version = self.release["version"] if self.release else ""
         if not ok:
-            QMessageBox.warning(self.window, tr("Update"), tr("Inkline {version} couldn't be installed.").format(
-                version=version) + ("\n\n" + out if out else ""))
+            # a box, not the status bar: the installer's own words are what tells what went wrong
+            box = self._box(QMessageBox.Icon.Warning, tr("Update not installed"), tr(
+                "Inkline {version} couldn't be installed. This version still works; try again from Help → Check for "
+                "updates, or install it from the release page.").format(version=version))
+            if out:
+                box.setDetailedText(out)
+            box.addButton(QMessageBox.StandardButton.Ok)
+            box.exec()
             return
-        box = QMessageBox(QMessageBox.Icon.Information, tr("Update"),
-                          tr("Inkline {version} is installed. Restart Inkline to use it.").format(version=version),
-                          QMessageBox.StandardButton.NoButton, self.window)
+        box = self._box(QMessageBox.Icon.Information, tr("Restart Inkline?"),
+                        tr("Inkline {version} is installed. Restart Inkline to use it.").format(version=version))
         restart = box.addButton(tr("Restart now"), QMessageBox.ButtonRole.AcceptRole)
         box.addButton(tr("Later"), QMessageBox.ButtonRole.RejectRole)
+        box.setDefaultButton(restart)
         box.exec()
         if box.clickedButton() is restart and self.window.close():
             subprocess.Popen(updater.relaunch_command(self.kind), close_fds=True, start_new_session=True)

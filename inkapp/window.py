@@ -355,7 +355,7 @@ class Window(QMainWindow):
         act(h, "Check for &updates…", lambda: self.updates.check(asked=True))
         self.act_updates_auto = act(h, "Check for updates au&tomatically", self.updates.set_automatic)
         self.act_updates_auto.setCheckable(True)
-        self.act_updates_auto.setChecked(config.read("preferences.json").get("update_check") is True)
+        self.act_updates_auto.setChecked(self.remember and config.read("preferences.json").get("update_check") is True)
         act(h, "&About Inkline", self._about)
 
     # --- state changes -------------------------------------------------------------------------------

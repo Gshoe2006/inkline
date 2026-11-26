@@ -358,3 +358,26 @@ def test_a_bad_download_installs_nothing(win, monkeypatch, tmp_path):
     win.updates.check(asked=True)
     assert wait_for(lambda: any("SHA-256" in m for m in msgs), timeout=10)
     assert ran == [] and "inkline_9.1.0-1_amd64.deb" not in os.listdir(tmp_path)
+
+
+def test_checking_without_remembering_writes_nothing(tmp_path, monkeypatch):
+    monkeypatch.setenv("INKLINE_CONFIG_DIR", str(tmp_path))
+    from inkapp.window import Window
+    w = Window("5.5.0", remember=False)
+    released(monkeypatch)
+    shown = boxes(monkeypatch, lambda texts: "Skip this version")
+    w.updates.check(asked=True)
+    assert wait_for(lambda: shown)
+    assert config.read("preferences.json") == {} and not w.act_updates_auto.isChecked()
+
+
+def test_the_appimage_is_put_in_place_off_the_window_thread(win, monkeypatch, tmp_path):
+    import threading
+    win.updates.kind = "appimage"
+    win.updates.release = {"version": "9.1.0"}
+    where = []
+    monkeypatch.setattr(updater, "replace_appimage", lambda path: where.append(threading.current_thread()))
+    shown = boxes(monkeypatch, lambda texts: "Later")
+    win.updates.install(str(tmp_path / "new.AppImage"))
+    assert wait_for(lambda: shown)
+    assert where and where[0] is not threading.main_thread() and "Restart now" in shown[0][1]
