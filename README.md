@@ -19,7 +19,7 @@ A desktop app for Linux and Windows that converts photos to, or generates, black
 - **Printer test page:** true-size squares and rulers, edge-margin marks, every dither style and dot size, and every line weight, to check your printer at a glance.
 - **Print-ready output:** Letter or A4 at 150/300 dpi, with Print, Save PNG and Save PDF at true paper size. Booklets and photo books can print or save only some pages (*Paper → Print or save only*, e.g. `3-5, 8, cover`). The preview hatches the edge your printer can't reach and warns if the design runs into it.
 - **Posters:** print any design or photo big across 2×1 up to 4×4 sheets, with overlap strips, trim marks and sheet labels (A1, A2…) for assembly.
-- **English, Spanish, French, Portuguese and German:** Inkline uses your system's language, or choose one under *View → Language*. The window and everything printed are translated; word searches, crosswords and handwriting sheets use words and an alphabet in that language.
+- **English, Spanish, French, Portuguese, German, Italian and Dutch:** Inkline uses your system's language, or choose one under *View → Language*. The window and everything printed are translated; word searches, crosswords and handwriting sheets use words and an alphabet in that language.
 - **SVG export:** generated designs save as true vector lines at real paper size, for Inkscape, Cricut/Silhouette cutting machines and laser cutters.
 
 ## Install
@@ -164,7 +164,7 @@ python packaging/windows/build.py         # dist/Inkline/ and dist/inkline-<vers
 
 ## Translations
 
-Inkline is in English, Spanish (`es`), French (`fr`), Brazilian Portuguese (`pt`) and German (`de`). Each translation is `inkengine/locale/<code>.json`: the
+Inkline is in English, Spanish (`es`), French (`fr`), Brazilian Portuguese (`pt`), German (`de`), Italian (`it`) and Dutch (`nl`). Each translation is `inkengine/locale/<code>.json`: the
 English text as written in the code, and its translation. Word search themes, crossword words and clues, and the
 default handwriting words are written in each language in `inkengine/patterns/words.py`, `crossword.py` and
 `trace.py`.

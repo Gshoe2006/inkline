@@ -166,7 +166,67 @@ THEMES_DE = {
               "danke wirklich natürlich jeder etwas nichts warum welche Schule Freund Kinder Mutter Vater Wasser "
               "Stadt",
 }
-THEMES_BY_LANGUAGE = {"es": THEMES_ES, "fr": THEMES_FR, "pt": THEMES_PT, "de": THEMES_DE}
+THEMES_IT = {
+    "animals": "gatto cane cavallo tigre zebra coniglio scimmia giraffa leone orso topo pecora capra anatra rana gufo "
+               "aquila panda koala lontra cammello ippopotamo serpente riccio lupo volpe pinguino elefante",
+    "ocean": "onda conchiglia granchio balena squalo corallo polpo delfino foca marea sabbia scoglio calamaro alga "
+             "stella medusa aragosta ancora barca perla sale isola spiaggia pesce",
+    "space": "stella luna pianeta cometa razzo galassia saturno marte venere terra giove asteroide nebulosa sole "
+             "meteora cratere astronauta telescopio spazio astronave satellite orbita",
+    "food": "mela pane formaggio pizza pasta minestra insalata banana uva mango carota riso miele biscotto torta "
+            "pesca limone burro pera prugna ananas latte gelato fragola",
+    "weather": "pioggia neve vento nuvola tempesta sole tuono nebbia grandine brina arcobaleno brezza rugiada caldo "
+               "freddo pioviggine tornado fulmine temporale ombrello",
+    "sports": "calcio tennis golf hockey rugby ciclismo pattinaggio sci canottaggio pugilato karate surf judo nuoto "
+              "corsa pallacanestro danza ginnastica vela equitazione pallavolo",
+    "autumn": "autunno foglia castagna ghianda fungo aquilone mela zucca riccio bosco nebbia pioggia vento raccolto "
+              "noce albero stivali sciarpa vendemmia uva ottobre",
+    "halloween": "zucca strega fantasma scopa calderone ragno pipistrello candela maschera luna gufo gatto vampiro "
+                 "mostro paura costume caramelle castello magia notte scheletro mummia",
+    "winter": "neve ghiaccio gelo slittino sciarpa berretto guanti fiocco freddo camino stufa pinguino orso "
+              "pupazzo igloo ghiacciolo sci stella inverno coperta cioccolata dicembre",
+    "spring": "primavera fiore tulipano gemma bocciolo uccello nido uovo pulcino agnello coniglio ape pioggia sole "
+              "giardino erba prato coccinella bruco seme farfalla margherita",
+    "summer": "estate sole spiaggia mare sabbia gelato vacanze caldo costume onda conchiglia tenda picnic nuoto "
+              "cappello occhiali anguria fragola secchiello barca ombrellone",
+    "sight1": "una lui lei noi voi loro mamma papà nonno nonna casa sole mare cane gatto palla mano rosso blu "
+              "ciao bimbo pane latte gioco luna",
+    "sight2": "che non con per più molto anche come quando dove oggi ieri bene male grande piccolo bello nuovo "
+              "tutto poco altro fare dire vedere andare",
+    "sight3": "sempre mai dopo prima allora perché mentre insieme ancora qualche ogni niente domani adesso spesso "
+              "forse davvero grazie scuola amico bambini acqua città famiglia mattina",
+}
+THEMES_NL = {
+    "animals": "kat hond paard tijger zebra konijn aap giraf leeuw beer muis schaap geit eend kikker uil adelaar "
+               "panda koala otter kameel nijlpaard slang egel wolf vos pinguïn koe varken haas",
+    "ocean": "golf schelp krab walvis haai koraal octopus dolfijn zeehond eb vloed zand rif inktvis zeewier zeester "
+             "kwal kreeft anker boot parel zout eiland strand duin meeuw",
+    "space": "ster maan planeet komeet raket melkweg saturnus mars venus aarde jupiter zon meteoor krater astronaut "
+             "telescoop heelal satelliet baan neptunus uranus ruimte",
+    "food": "appel brood kaas pizza pasta soep salade banaan druif mango wortel rijst honing koekje taart perzik "
+            "citroen boter peer pruim ananas melk ei tomaat",
+    "weather": "regen sneeuw wind wolk storm zonnig donder mist hagel vorst regenboog bries dauw hitte kou motregen "
+               "tornado bliksem onweer ijzel",
+    "sports": "voetbal tennis golf hockey rugby fietsen schaatsen skiën roeien boksen karate surfen judo zwemmen "
+              "hardlopen basketbal dansen turnen zeilen paardrijden korfbal",
+    "autumn": "herfst blad bladeren kastanje eikel paddenstoel vlieger appel pompoen egel bos mist regen wind oogst "
+              "noot boom laarzen sjaal lantaarn eekhoorn",
+    "halloween": "pompoen heks geest spook bezem ketel spin vleermuis kaars masker maan uil kat vampier monster "
+                 "griezel kostuum snoep kasteel toverstaf nacht skelet",
+    "winter": "sneeuw ijs vorst slee sjaal muts handschoen vlok kou haard kachel thee ijsbeer sneeuwpop iglo "
+              "ijspegel ski ster winter deken schaatsen kerst",
+    "spring": "lente bloem tulp knop bloesem vogel nest ei kuiken lam haas bij regen zon tuin gras wei vlinder rups "
+              "pasen zaadje narcis",
+    "summer": "zomer zon strand zee zand ijsje vakantie hitte zwembad golf schelp tent picknick zwemmen zonnehoed "
+              "meloen aardbei barbecue boot zonnebril",
+    "sight1": "ben het een nee mama papa oma opa bal kat vis huis rood blauw geel wij jij zij maan hond boom "
+              "auto zon bed deur pop",
+    "sight2": "niet ook nog maar heel goed heeft hebben zijn kan wil moet gaat komt maakt zegt ziet speelt vandaag "
+              "dan als want alle veel klein groot nieuw",
+    "sight3": "altijd weer misschien samen soms eerst later gisteren morgen daarna verder alsjeblieft bedankt echt "
+              "natuurlijk iedereen iets niets waarom welke school vriend kinderen moeder vader water stad",
+}
+THEMES_BY_LANGUAGE = {"es": THEMES_ES, "fr": THEMES_FR, "pt": THEMES_PT, "de": THEMES_DE, "it": THEMES_IT, "nl": THEMES_NL}
 THEME_NAMES = {"animals": "Animals", "ocean": "Ocean", "space": "Space", "food": "Food", "weather": "Weather",
                "sports": "Sports", "autumn": "Autumn", "halloween": "Halloween", "winter": "Winter", "spring": "Spring",
                "summer": "Summer", "sight1": "Sight words: first", "sight2": "Sight words: next",

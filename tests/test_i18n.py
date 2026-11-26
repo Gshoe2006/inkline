@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.join(ROOT, "packaging"))
 TRANSLATED = [code for code in i18n.LANGUAGES if code != "en"]
 # a few words each window shows in its language: the File menu, and Copies
 SAMPLES = {"es": ("&Archivo", "Copias"), "fr": ("&Fichier", "Exemplaires"), "pt": ("&Arquivo", "Cópias"),
-           "de": ("&Datei", "Exemplare")}
+           "de": ("&Datei", "Exemplare"), "it": ("&File", "Copie"), "nl": ("&Bestand", "Exemplaren")}
 
 
 @pytest.fixture
@@ -35,7 +35,7 @@ def language(request):
 
 
 def test_every_language_has_a_file_and_samples():
-    assert TRANSLATED == ["es", "fr", "pt", "de"]
+    assert TRANSLATED == ["es", "fr", "pt", "de", "it", "nl"]
     for code in TRANSLATED:
         assert os.path.isfile(os.path.join(ROOT, "inkengine", "locale", f"{code}.json")) and code in SAMPLES
 
@@ -56,7 +56,8 @@ def test_choosing_a_language():
     assert i18n.system_language("es_ES") == i18n.system_language("es-MX") == "es"
     assert i18n.system_language("fr_FR") == i18n.system_language("fr-CA") == "fr"
     assert i18n.system_language("pt_BR") == "pt" and i18n.system_language("de_AT") == "de"
-    assert i18n.system_language("it_IT") == i18n.system_language("") == "en"
+    assert i18n.system_language("it_IT") == "it" and i18n.system_language("nl_BE") == "nl"
+    assert i18n.system_language("sv_SE") == i18n.system_language("") == "en"
     i18n.set_language("xx")
     assert i18n.LANG == "en" and i18n.tr("Name") == "Name"
     i18n.set_language("es")
@@ -284,7 +285,7 @@ def test_view_language_remembers_the_choice(tmp_path, monkeypatch):
     w = Window("5.0.0", remember=False)
     w.show()
     try:
-        assert set(w.lang_actions) == {"en", "es", "fr", "pt", "de"} and w.lang_actions["en"].isChecked()
+        assert set(w.lang_actions) == {"en", "es", "fr", "pt", "de", "it", "nl"} and w.lang_actions["en"].isChecked()
         assert w.lang_actions["es"].text() == "Español" and w.lang_actions["fr"].text() == "Français"
         w.lang_actions["es"].trigger()
         assert config.read("preferences.json")["language"] == "es"

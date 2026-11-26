@@ -14,7 +14,8 @@ import os
 import re
 import unicodedata
 
-LANGUAGES = {"en": "English", "es": "Español", "fr": "Français", "pt": "Português", "de": "Deutsch"}
+LANGUAGES = {"en": "English", "es": "Español", "fr": "Français", "pt": "Português", "de": "Deutsch", "it": "Italiano",
+             "nl": "Nederlands"}
 # letters a language's word puzzles keep as they are (others lose their accents: É → E); its alphabet for tracing
 KEEP_LETTERS = {"es": "Ñ"}
 # letters a language's word puzzles write as two (German grids write Ä as AE, as German crosswords do)

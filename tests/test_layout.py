@@ -195,7 +195,7 @@ def test_a_wrong_page_range_shows_the_field(make_win):
     assert sb.page_key() == "print" and sb.folds["paper"].is_open()
 
 
-@pytest.mark.parametrize("lang", ["en", "es", "fr", "pt", "de"])
+@pytest.mark.parametrize("lang", ["en", "es", "fr", "pt", "de", "it", "nl"])
 def test_the_rail_labels_fit(make_win, lang):
     from inkengine import i18n
     try:

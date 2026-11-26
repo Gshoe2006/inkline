@@ -1,0 +1,1172 @@
+[
+ {
+  "level": 1,
+  "title": "Sara e l'aquilone",
+  "text": "Sara ha un aquilone rosso. Ha una lunga coda blu. Sabato Sara va al parco con la nonna. Il vento è forte. Sara corre veloce e l'aquilone sale su, su, su. Vola sopra gli alberi. La nonna batte le mani. Sara sorride. Far volare l'aquilone è la cosa che le piace di più.",
+  "questions": [
+   {
+    "q": "Di che colore è l'aquilone?",
+    "choices": [
+     "Blu",
+     "Rosso",
+     "Verde"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Chi va al parco con Sara?",
+    "choices": [
+     "La nonna",
+     "Il papà",
+     "La sua amica"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Che cosa fa la nonna?",
+    "choices": [
+     "Corre",
+     "Canta",
+     "Batte le mani"
+    ],
+    "answer": 2
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Una mattina di neve",
+  "text": "Mia guarda fuori dalla finestra. È tutto bianco! C'è la neve sul prato e sulle macchine. Mia mette il cappotto, il berretto e gli stivali caldi. Esce con suo fratello. Fanno un grande pupazzo di neve. Ha il naso di carota e due occhi di sasso. Poi tornano in casa a bere il latte caldo.",
+  "questions": [
+   {
+    "q": "Che cosa c'è sul prato?",
+    "choices": [
+     "La pioggia",
+     "Le foglie",
+     "La neve"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Di che cosa è fatto il naso del pupazzo?",
+    "choices": [
+     "Di carota",
+     "Di sasso",
+     "Di legno"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Che cosa bevono in casa?",
+    "choices": [
+     "Succo d'arancia",
+     "Latte caldo",
+     "Acqua"
+    ],
+    "answer": 1
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Il portamerenda nuovo",
+  "text": "Luca ha un portamerenda nuovo. È verde con le stelle gialle. Oggi Luca ha un panino al formaggio, una mela e qualche bastoncino di carota. All'ora di pranzo si siede vicino alla sua amica Elena. Elena ha dimenticato la mela. Luca taglia la sua mela a metà e ne dà una metà a Elena. Elena dice grazie. Fare a metà li rende felici tutti e due.",
+  "questions": [
+   {
+    "q": "Che cosa c'è sul portamerenda?",
+    "choices": [
+     "Stelle gialle",
+     "Pallini rossi",
+     "Pesci blu"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Che cosa ha dimenticato Elena?",
+    "choices": [
+     "Il panino",
+     "La bibita",
+     "La mela"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Che cosa dà Luca a Elena?",
+    "choices": [
+     "Un bastoncino di carota",
+     "Metà della sua mela",
+     "Il suo panino"
+    ],
+    "answer": 1
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "La piccola anatra",
+  "text": "Una piccola anatra vive vicino allo stagno. Ogni mattina nuota con la sua mamma. Le piace schizzare nell'acqua. Un giorno vede una rana su una foglia di ninfea. La rana salta nello stagno. Splash! La piccola anatra fa qua qua e nuota via per dirlo alla mamma. Poi fa un pisolino al sole caldo.",
+  "questions": [
+   {
+    "q": "Dove vive la piccola anatra?",
+    "choices": [
+     "In una stalla",
+     "Vicino allo stagno",
+     "Su un albero"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Che cosa vede su una foglia di ninfea?",
+    "choices": [
+     "Una rana",
+     "Un pesce",
+     "Un uccellino"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Che cosa fa alla fine?",
+    "choices": [
+     "Mangia il pane",
+     "Vola via",
+     "Fa un pisolino"
+    ],
+    "answer": 2
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Piantiamo un seme",
+  "text": "Leo e la sua mamma piantano un seme di girasole. Mettono la terra in un vaso. Leo spinge il seme nella terra con il dito. La mamma gli dà un po' d'acqua. Mettono il vaso sul davanzale, al sole. Ogni giorno Leo controlla il vaso. Dopo una settimana spunta un piccolo germoglio verde. Leo è felicissimo.",
+  "questions": [
+   {
+    "q": "Che seme piantano?",
+    "choices": [
+     "Un seme di fagiolo",
+     "Un seme di zucca",
+     "Un seme di girasole"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Dove mettono il vaso?",
+    "choices": [
+     "Sul davanzale",
+     "Sotto il letto",
+     "In cantina"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Quando spunta il germoglio verde?",
+    "choices": [
+     "Il giorno dopo",
+     "Dopo una settimana",
+     "Dopo un anno"
+    ],
+    "answer": 1
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "In biblioteca",
+  "text": "Martedì la classe seconda va in biblioteca. In biblioteca c'è silenzio. Sugli scaffali ci sono tantissimi libri. Nora trova un libro sui dinosauri. Marco trova un libro sui treni. La signora Colli, la bibliotecaria, li aiuta a prendere in prestito i libri. Possono tenerli per due settimane. Nora vuole leggere il suo libro prima di dormire.",
+  "questions": [
+   {
+    "q": "Che giorno va in biblioteca la classe seconda?",
+    "choices": [
+     "Lunedì",
+     "Martedì",
+     "Venerdì"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Di che cosa parla il libro di Marco?",
+    "choices": [
+     "Di treni",
+     "Di dinosauri",
+     "Di gatti"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Per quanto tempo possono tenere i libri?",
+    "choices": [
+     "Un giorno",
+     "Due settimane",
+     "Un mese"
+    ],
+    "answer": 1
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Che bello quando piove",
+  "text": "Piove. Zoe non può giocare fuori. È un po' triste. Poi il papà ha un'idea. Costruiscono una capanna con una coperta e due sedie. Zoe porta la torcia e il suo orsacchiotto. Dentro la capanna, il papà legge una storia. Zoe ascolta la pioggia sulla finestra. Adesso i giorni di pioggia le piacciono.",
+  "questions": [
+   {
+    "q": "Perché Zoe non può giocare fuori?",
+    "choices": [
+     "È buio",
+     "Piove",
+     "Fa troppo caldo"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Che cosa costruiscono?",
+    "choices": [
+     "Una capanna",
+     "Una barca",
+     "Una torre"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Alla fine, che cosa pensa Zoe dei giorni di pioggia?",
+    "choices": [
+     "Le fanno paura",
+     "La annoiano",
+     "Le piacciono"
+    ],
+    "answer": 2
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "La festa dello sport",
+  "text": "Oggi a scuola c'è la festa dello sport. Splende il sole. Amir fa la corsa con l'uovo nel cucchiaio. Cammina con molta attenzione. L'uovo traballa, ma non cade. Amir arriva secondo! Poi c'è la corsa con i sacchi. Tutti saltano e ridono. Alla fine tutti i bambini ricevono un adesivo. Amir attacca l'adesivo sulla maglietta.",
+  "questions": [
+   {
+    "q": "Qual è la prima gara di Amir?",
+    "choices": [
+     "La corsa con i sacchi",
+     "La corsa con l'uovo nel cucchiaio",
+     "La corsa veloce"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "In che posizione arriva Amir?",
+    "choices": [
+     "Secondo",
+     "Primo",
+     "Ultimo"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Che cosa ricevono tutti i bambini alla fine?",
+    "choices": [
+     "Una medaglia",
+     "Una torta",
+     "Un adesivo"
+    ],
+    "answer": 2
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Le crêpe del nonno",
+  "text": "Lisa e il nonno preparano le crêpe. Mescolano farina, uova e latte in una grande ciotola. Il nonno scalda la padella e versa dentro l'impasto. Quando la crêpe è pronta, la fa saltare in alto nell'aria. Lisa ridacchia. Lei mette limone e zucchero sulla sua crêpe. Al nonno piace la marmellata sulla sua. Le mangiano tutte.",
+  "questions": [
+   {
+    "q": "Chi prepara le crêpe con Lisa?",
+    "choices": [
+     "Il nonno",
+     "La mamma",
+     "La maestra"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Che cosa mette Lisa sulla sua crêpe?",
+    "choices": [
+     "Marmellata",
+     "Cioccolato",
+     "Limone e zucchero"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Che cosa fa il nonno con la crêpe?",
+    "choices": [
+     "La fa cadere",
+     "La fa saltare in aria",
+     "La dà al cane"
+    ],
+    "answer": 1
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Guardando la Luna",
+  "text": "Di sera Pietro guarda il cielo. Vede la Luna. Stasera è grande e rotonda. Pietro vede anche tante piccole stelle. La mamma gli dice che la Luna cambia forma da una notte all'altra. A volte è sottile come un sorriso. Pietro saluta la Luna con la mano, le dice buonanotte e va a letto.",
+  "questions": [
+   {
+    "q": "Com'è la Luna stasera?",
+    "choices": [
+     "Grande e rotonda",
+     "Sottile come un sorriso",
+     "Rossa e piccola"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Che altro vede Pietro nel cielo?",
+    "choices": [
+     "Nuvole e pioggia",
+     "Un arcobaleno",
+     "Piccole stelle"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Che cosa fa Pietro alla fine?",
+    "choices": [
+     "Legge un libro",
+     "Dà la buonanotte alla Luna",
+     "Mangia uno spuntino"
+    ],
+    "answer": 1
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Il libro scomparso",
+  "text": "Matteo adorava il suo libro della biblioteca sui vulcani. Lo aveva letto tre volte. Venerdì doveva restituirlo, ma non lo trovava da nessuna parte. Guardò sotto il letto e nello zaino. Guardò perfino in bagno. Matteo cominciò a preoccuparsi. Che cosa avrebbe detto il signor Rossi, il bibliotecario?\n\nPoi entrò la sua sorellina, Ada, con il libro in mano. L'aveva preso per guardare le figure della lava rovente. Matteo rise, sollevato. Riportò il libro in biblioteca appena in tempo. Il signor Rossi sorrise e gli parlò di un libro nuovo sui terremoti. Matteo lo prese subito in prestito, e questa volta lo tenne sulla sua mensola.",
+  "questions": [
+   {
+    "q": "Di che cosa parlava il libro di Matteo?",
+    "choices": [
+     "Di terremoti",
+     "Di vulcani",
+     "Di fiumi"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Chi aveva il libro?",
+    "choices": [
+     "Sua sorella Ada",
+     "Il papà",
+     "Il signor Rossi"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Dove tenne Matteo il nuovo libro?",
+    "choices": [
+     "Sotto il letto",
+     "Nello zaino",
+     "Sulla sua mensola"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Perché Matteo cominciò a preoccuparsi?",
+    "answer": "Non trovava il libro e doveva restituirlo."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Foglie d'autunno",
+  "text": "In autunno gli alberi di via dei Tigli cambiano colore. Le foglie verdi diventano gialle, arancioni e rosse. Succede perché le giornate diventano più corte e più fredde, e gli alberi si preparano a riposare durante l'inverno. Presto le foglie cominciano a cadere e il marciapiede si copre di un tappeto che scricchiola.\n\nGiulia e il suo amico Tommaso adorano l'autunno. Dopo la scuola raccolgono le foglie più belle che trovano. Scelgono foglie grandi, piccole e con i bordi a punta. A casa, Giulia le incolla su un foglio per fare il disegno di una volpe. Tommaso con le sue fa una corona colorata. Cercano anche le castagne sotto il grande castagno. L'autunno è la loro stagione preferita.",
+  "questions": [
+   {
+    "q": "Di che colore diventano le foglie?",
+    "choices": [
+     "Blu, viola e rosa",
+     "Gialle, arancioni e rosse",
+     "Bianche e nere"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Che cosa fa Tommaso con le sue foglie?",
+    "choices": [
+     "Una corona",
+     "Il disegno di una volpe",
+     "Un segnalibro"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Dove cercano le castagne?",
+    "choices": [
+     "In cortile",
+     "Vicino al laghetto del parco",
+     "Sotto il grande castagno"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Perché le foglie cambiano colore?",
+    "answer": "Perché le giornate diventano più corte e più fredde."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "L'orto della scuola",
+  "text": "La classe quarta aveva un piccolo orto dietro l'aula. In primavera i bambini piantarono patate, piselli e lattuga. Ognuno aveva un compito. Davide si occupava di innaffiare. Sofia toglieva le erbacce. Pietro contava le lumache e le spostava con delicatezza verso la siepe.\n\nUna settimana fece molto caldo e non piovve mai. Le foglie della lattuga cominciarono ad afflosciarsi. Davide se ne accorse e chiese se poteva innaffiare l'orto due volte al giorno. La maestra Ferri disse di sì. Presto le piante tornarono dritte. In estate la classe aveva coltivato abbastanza verdura per una grande insalata. La divisero con la classe accanto. Tutti dissero che era più buona di qualsiasi insalata del negozio, perché l'avevano coltivata loro.",
+  "questions": [
+   {
+    "q": "Qual era il compito di Davide?",
+    "choices": [
+     "Togliere le erbacce",
+     "Innaffiare",
+     "Contare le lumache"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Che cosa faceva Pietro con le lumache?",
+    "choices": [
+     "Le spostava verso la siepe",
+     "Le metteva in un barattolo",
+     "Dava loro la lattuga"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Con chi divise l'insalata la classe?",
+    "choices": [
+     "Con i genitori",
+     "Con la preside",
+     "Con la classe accanto"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Che cosa notò Davide quando faceva caldo?",
+    "answer": "Le foglie della lattuga si stavano afflosciando."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "La torta della nonna",
+  "text": "Era il settantesimo compleanno di nonna Rosa, ed Elia voleva prepararle una torta. Il papà lo aiutò a leggere la ricetta. Pesarono il burro, lo zucchero e la farina, ed Elia ruppe le uova con molta attenzione. Cadde dentro solo un pezzettino di guscio, e il papà lo aiutò a tirarlo fuori.\n\nMentre la torta cuoceva, la cucina profumava di dolce. Quando si fu raffreddata, Elia spalmò sopra una glassa rosa e aggiunse sette candeline, una per ogni dieci anni. Alla festa tutti cantarono. Nonna Rosa spense le candeline con un unico grande soffio. Disse che era la torta più buona che avesse mai assaggiato. Elia si sentì orgoglioso e chiese se potevano cucinare insieme anche la settimana dopo.",
+  "questions": [
+   {
+    "q": "Quanti anni compiva nonna Rosa?",
+    "choices": [
+     "Sessanta",
+     "Settanta",
+     "Sette"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Di che colore era la glassa?",
+    "choices": [
+     "Rosa",
+     "Bianca",
+     "Gialla"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Chi aiutò Elia a leggere la ricetta?",
+    "choices": [
+     "Nonna Rosa",
+     "Sua sorella",
+     "Il papà"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Perché Elia mise sette candeline sulla torta?",
+    "answer": "Una candelina per ogni dieci anni."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Una giornata al mare",
+  "text": "Una domenica di sole la famiglia Hassan andò al mare in macchina. Layla sentì il profumo dell'aria salata prima ancora di vedere il mare. Sulla spiaggia costruì un castello di sabbia con il fratellino. Lo decorarono con le conchiglie e una bandierina di alghe.\n\nPiù tardi Layla andò con la mamma a esplorare le pozze tra gli scogli. Trovarono un granchietto nascosto sotto un sasso e alcuni anemoni di mare che sembravano gelatina rossa. La mamma le ricordò di guardare con attenzione e di rimettere tutto dove l'aveva trovato. A pranzo un gabbiano sfacciato cercò di rubare il panino del papà, ma lui lo tenne stretto. Prima di tornare a casa, giocarono tutti tra le onde fresche. Layla si addormentò in macchina, sognando i granchi.",
+  "questions": [
+   {
+    "q": "Con che cosa fecero la bandierina del castello?",
+    "choices": [
+     "Con un bastoncino",
+     "Con una foglia",
+     "Con le alghe"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "A che cosa somigliavano gli anemoni di mare?",
+    "choices": [
+     "A gelatina rossa",
+     "A sassi verdi",
+     "A piccole stelle"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Che cosa cercò di rubare il gabbiano?",
+    "choices": [
+     "Il gelato di Layla",
+     "Il panino del papà",
+     "Una conchiglia"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Che cosa ricordò la mamma a Layla tra gli scogli?",
+    "answer": "Di guardare con attenzione e rimettere tutto a posto."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "La festa delle lanterne",
+  "text": "Ogni inverno il paese di Valfiorita organizza la festa delle lanterne. Per settimane le famiglie costruiscono lanterne di carta, bastoncini e spago. Quest'anno Chen ha fatto una lanterna a forma di pesce, con le squame arancioni e la coda arricciata. La sua amica Grazia ha fatto una stella giallo brillante.\n\nLa sera della festa tutti si sono riuniti in piazza. Dentro le lanterne sono state accese piccole luci sicure. Poi è cominciata la sfilata. Centinaia di lanterne luminose si muovevano lente per le strade buie come un fiume di luce. Una banda suonava tamburi e flauti. Chen teneva il suo pesce in alto, così sembrava che nuotasse. Alla fine, nel municipio, c'era una minestra calda per tutti.",
+  "questions": [
+   {
+    "q": "Che forma aveva la lanterna di Chen?",
+    "choices": [
+     "Una stella",
+     "Un pesce",
+     "Una luna"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Quando si tiene la festa delle lanterne?",
+    "choices": [
+     "Ogni inverno",
+     "Ogni estate",
+     "Ogni primavera"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Che cosa c'era per tutti alla fine?",
+    "choices": [
+     "Il gelato",
+     "La cioccolata calda",
+     "Una minestra calda"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "A che cosa somigliava la sfilata?",
+    "answer": "A un fiume di luce."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "La partita di calcio",
+  "text": "La squadra di calcio di Maya, le Volpi Verdi, aveva una partita importante sabato mattina. Maya era il portiere. Prima della partita sentiva le farfalle nello stomaco. Il suo allenatore, il signor Danieli, le disse di fare tre respiri profondi e di guardare la palla.\n\nL'altra squadra, i Gufi Blu, era velocissima. Nel primo tempo segnò un gol. Maya ci rimase male, ma le compagne le batterono il cinque e dissero: «Forza, continua!». Nel secondo tempo Maya fece due parate bellissime, tuffandosi prima a sinistra e poi a destra. Poi la sua amica Isa segnò per le Volpi. La partita finì in pareggio, uno a uno. Maya era contenta perché aveva fatto del suo meglio.",
+  "questions": [
+   {
+    "q": "In che ruolo giocava Maya?",
+    "choices": [
+     "Attaccante",
+     "Difensore",
+     "Portiere"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Come si chiamava l'altra squadra?",
+    "choices": [
+     "I Gufi Blu",
+     "I Falchi Rossi",
+     "Le Volpi Verdi"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Chi segnò per le Volpi Verdi?",
+    "choices": [
+     "Maya",
+     "Isa",
+     "Il signor Danieli"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Che cosa disse l'allenatore a Maya?",
+    "answer": "Di fare tre respiri profondi e guardare la palla."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Un riccio in giardino",
+  "text": "Una sera Filippo vide qualcosa di piccolo e spinoso vicino alla recinzione del giardino. Era un riccio! Annusava tra le foglie, cercando coleotteri e vermi da mangiare. Filippo rimase immobile per non spaventarlo.\n\nIl giorno dopo Filippo e la mamma lessero un libro sui ricci. Scoprirono che i ricci escono di notte e fanno tanta strada per trovare il cibo. Scoprirono anche che hanno bisogno di passaggi nelle recinzioni per spostarsi da un giardino all'altro. Così la mamma di Filippo fece un piccolo buco in fondo alla recinzione. Filippo mise fuori una ciotola bassa con l'acqua. Qualche notte dopo il riccio tornò. Questa volta Filippo lo vide passare dal nuovo buco ed entrare nel giardino dei vicini.",
+  "questions": [
+   {
+    "q": "Che cosa mangia il riccio?",
+    "choices": [
+     "Pane e latte",
+     "Coleotteri e vermi",
+     "Semi e noci"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Quando escono i ricci?",
+    "choices": [
+     "Di notte",
+     "All'ora di pranzo",
+     "Solo d'estate"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Che cosa mise fuori Filippo?",
+    "choices": [
+     "Una scatola di foglie",
+     "Un po' di formaggio",
+     "Una ciotola bassa con l'acqua"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Perché la mamma di Filippo fece un buco nella recinzione?",
+    "answer": "Perché i ricci potessero passare da un giardino all'altro."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Il temporale",
+  "text": "Il cielo del pomeriggio diventò grigio scuro. Cominciarono a cadere grosse gocce di pioggia, poi ci fu un lampo accecante. Rosa contò piano, uno, due, tre, quattro, finché sentì il brontolio del tuono. Suo fratello maggiore Sami le spiegò che la luce viaggia più veloce del suono, per questo vediamo il lampo prima di sentire il tuono.\n\n«Più grande è il numero, più lontano è il temporale» disse Sami. Guardarono dalla finestra e contarono dopo ogni lampo. Prima fu quattro, poi sei, poi nove. Rosa era contenta, perché voleva dire che il temporale si stava allontanando. Presto la pioggia smise e uscì il sole. Un arcobaleno si allungò nel cielo sopra i tetti.",
+  "questions": [
+   {
+    "q": "Di che colore diventò il cielo?",
+    "choices": [
+     "Grigio scuro",
+     "Rosa acceso",
+     "Azzurro chiaro"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Chi spiegò il lampo e il tuono?",
+    "choices": [
+     "La mamma di Rosa",
+     "La maestra di Rosa",
+     "Sami, il fratello di Rosa"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Che cosa apparve dopo il temporale?",
+    "choices": [
+     "La neve",
+     "Un arcobaleno",
+     "La nebbia"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Come capì Rosa che il temporale si stava allontanando?",
+    "answer": "I numeri che contava diventavano più grandi."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Una casetta per gli uccellini",
+  "text": "La zia Giovanna arrivò con un sacchetto di legno, qualche chiodo e un piccolo martello. «Oggi costruiamo una casetta per gli uccellini» disse a Noè. Prima misurarono i pezzi e la zia li segò della misura giusta. Poi Noè la aiutò a inchiodarli insieme, tenendo il martello vicino alla fine del manico, come lei gli aveva mostrato.\n\nFecero un buco rotondo sul davanti, grande appena abbastanza per un uccellino. La zia disse che il buco non doveva essere troppo grande, così gli uccelli più grossi non potevano entrare. Noè dipinse la casetta di verde chiaro. La fissarono in alto sul muro del capanno, lontano dai gatti. Settimane dopo, Noè vide una piccola cinciarella entrare con il becco pieno di muschio.",
+  "questions": [
+   {
+    "q": "Di che colore Noè dipinse la casetta?",
+    "choices": [
+     "Verde chiaro",
+     "Rosso acceso",
+     "Marrone scuro"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Dove fissarono la casetta?",
+    "choices": [
+     "Su un palo del recinto",
+     "In una siepe",
+     "In alto sul muro del capanno"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Che cosa portava la cinciarella?",
+    "choices": [
+     "Un verme",
+     "Il becco pieno di muschio",
+     "Un rametto"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Perché il buco non doveva essere troppo grande?",
+    "answer": "Perché gli uccelli più grossi non potessero entrare."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "I pinguini dei ghiacci",
+  "text": "I pinguini imperatore vivono in Antartide, uno dei luoghi più freddi della Terra. D'inverno la temperatura può scendere sotto i quaranta gradi sotto zero, e venti fortissimi spazzano il ghiaccio. Eppure questi uccelli straordinari hanno trovato modi ingegnosi per sopravvivere.\n\nI pinguini imperatore hanno spessi strati di grasso e piume fitte che tengono fuori il freddo e l'acqua. Quando il tempo è peggiore, centinaia di pinguini si stringono in un grande gruppo. A turno stanno al centro, dove fa più caldo, e all'esterno, dove fa più freddo. Così tutti possono riscaldarsi.\n\nI papà pinguino hanno un compito molto importante. La mamma depone un solo uovo, lo passa al papà e va al mare a mangiare. Il papà tiene l'uovo in equilibrio sulle zampe e lo copre con una piega di pelle calda chiamata tasca di cova. Lo protegge per circa due mesi senza mangiare niente. Quando il pulcino nasce, la mamma ritorna con il cibo nello stomaco per nutrirlo. I pinguini non sanno volare, ma sono nuotatori eccellenti: si tuffano in profondità per catturare pesci e calamari.",
+  "questions": [
+   {
+    "q": "Dove vivono i pinguini imperatore?",
+    "choices": [
+     "Nell'Artico",
+     "In Antartide",
+     "In Australia",
+     "In Islanda"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Chi si occupa dell'uovo mentre la mamma mangia?",
+    "choices": [
+     "I nonni",
+     "Gli altri pulcini",
+     "Il papà",
+     "Nessuno"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Che cos'è la tasca di cova?",
+    "choices": [
+     "Una piega di pelle calda",
+     "Un nido di sassi",
+     "Un buco nel ghiaccio",
+     "Un tipo di piuma"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Perché i pinguini stanno a turno al centro del gruppo?",
+    "answer": "Così tutti possono riscaldarsi."
+   },
+   {
+    "q": "Per quanto tempo il papà si occupa dell'uovo?",
+    "answer": "Circa due mesi."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "Il mistero dell'orologio",
+  "text": "Il prozio Ezio aveva un laboratorio pieno di orologi che ticchettavano. C'erano orologi alti, orologi piccolissimi e un orologio a forma di faro. Ogni estate Irene stava da lui e lo aiutava a ripararli.\n\nUna mattina lo zio Ezio sembrava perplesso. L'orologio a forma di faro si era fermato, e lui non capiva perché. Lo aveva caricato, oliato e aveva controllato ogni molla. Irene si offrì di aiutarlo. Prese la lente d'ingrandimento e guardò dentro. Tra gli ingranaggi dorati notò qualcosa di strano: un chicco di riso incastrato tra due dentini.\n\n«Ecco spiegato!» rise lo zio Ezio. Si ricordò di aver pranzato sul banco da lavoro il giorno prima. Con una pinzetta sottile Irene tolse il chicco. Con un leggero clic gli ingranaggi ripresero a girare, e la lucina in cima al faro ricominciò a lampeggiare.\n\nLo zio Ezio era felicissimo. Fece una nuova regola per il laboratorio: niente cibo sul banco da lavoro. Poi regalò a Irene una pinzetta tutta sua e un piccolo quaderno. Sulla prima pagina scrisse: Irene, Capo Detective degli Orologi. Irene decise che avrebbe conservato quel quaderno per sempre.",
+  "questions": [
+   {
+    "q": "Che forma aveva l'orologio che si era fermato?",
+    "choices": [
+     "Una casa",
+     "Un faro",
+     "Una nave",
+     "Un albero"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Che cosa era incastrato nell'orologio?",
+    "choices": [
+     "Un chicco di riso",
+     "Una piccola vite",
+     "Un pezzo di spago",
+     "Una briciola di pane"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Quale nuova regola fece lo zio Ezio?",
+    "choices": [
+     "Non correre nel laboratorio",
+     "Niente visite dopo il tramonto",
+     "Niente cibo sul banco da lavoro",
+     "Non toccare gli orologi"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Come era finito il riso nell'orologio?",
+    "answer": "Lo zio Ezio aveva pranzato sul banco da lavoro."
+   },
+   {
+    "q": "Che cosa regalò lo zio Ezio a Irene?",
+    "answer": "Una pinzetta e un piccolo quaderno."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "Come le api fanno il miele",
+  "text": "Le api sono insetti piccolissimi, ma sono tra le lavoratrici più instancabili della natura. Un solo alveare può contenere decine di migliaia di api, e ognuna ha un compito.\n\nLe api che raccolgono il cibo si chiamano bottinatrici. Volano di fiore in fiore e succhiano un liquido dolce chiamato nettare con la loro lingua lunga, simile a una cannuccia. Lo conservano in uno stomaco speciale, separato da quello che usano per nutrirsi. Mentre visitano i fiori, il polline si attacca al loro corpo peloso e viene portato al fiore successivo. Questo aiuta le piante a produrre semi e frutti: per questo le api sono così importanti per gli agricoltori.\n\nNell'alveare, le bottinatrici passano il nettare ad altre api, che lo masticano e lo mettono nelle cellette di cera. Il nettare è ancora troppo acquoso per essere miele. Allora le api gli fanno vento con le ali, e una parte dell'acqua evapora. Piano piano il nettare diventa miele denso e appiccicoso. Infine le api chiudono ogni celletta con un coperchio di cera, per mantenere il miele fresco. Le api mangiano questo miele d'inverno, quando non ci sono fiori da visitare.",
+  "questions": [
+   {
+    "q": "Come si chiama il liquido dolce che le api raccolgono dai fiori?",
+    "choices": [
+     "Polline",
+     "Cera",
+     "Linfa",
+     "Nettare"
+    ],
+    "answer": 3
+   },
+   {
+    "q": "Come si chiamano le api che raccolgono il cibo?",
+    "choices": [
+     "Bottinatrici",
+     "Costruttrici",
+     "Guardiane",
+     "Ventilatrici"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Come fanno le api a rendere il nettare meno acquoso?",
+    "choices": [
+     "Aggiungono polline",
+     "Gli fanno vento con le ali",
+     "Lo lasciano al sole",
+     "Lo mescolano con la cera"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Perché le api sono importanti per gli agricoltori?",
+    "answer": "Portano il polline e aiutano le piante a fare semi e frutti."
+   },
+   {
+    "q": "Quando mangiano il miele le api?",
+    "answer": "D'inverno, quando non ci sono fiori."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "Il grande faro",
+  "text": "Tanto tempo fa i marinai non avevano mappe sugli schermi né radio che li avvisassero dei pericoli. Di notte era difficilissimo vedere gli scogli nascosti sotto le onde. Per proteggere le navi, lungo le coste rocciose si costruirono i fari.\n\nUn faro è una torre alta con una luce potente in cima. In passato la luce veniva da candele o lampade a olio. Più tardi alcuni inventori aggiunsero grandi lenti di vetro, che piegavano la luce in un fascio forte, visibile a molti chilometri in mare. Ogni faro lampeggiava in un modo tutto suo, così i marinai capivano quale faro stavano guardando e dove si trovavano.\n\nI guardiani del faro vivevano dentro la torre o accanto. Il loro compito era tenere la lampada accesa tutta la notte, ogni notte. Pulivano gli stoppini, lucidavano il vetro e caricavano il meccanismo che faceva girare la luce. Con la nebbia, quando la luce si vedeva poco, suonavano invece una sirena fortissima. Spesso era un lavoro solitario, soprattutto sui fari costruiti su isolette minuscole.\n\nOggi quasi tutti i fari funzionano da soli, con luci elettriche e computer. Molti però sono ancora lì sulla costa, e alcuni sono diventati musei da visitare.",
+  "questions": [
+   {
+    "q": "Perché furono costruiti i fari?",
+    "choices": [
+     "Per conservare il pesce",
+     "Per proteggere le navi",
+     "Per osservare il tempo",
+     "Per ospitare i marinai"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Che cosa facevano le lenti di vetro alla luce?",
+    "choices": [
+     "La facevano cambiare colore",
+     "La rendevano più debole",
+     "La piegavano in un fascio forte",
+     "La facevano lampeggiare più in fretta"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Che cosa usavano i guardiani con la nebbia?",
+    "choices": [
+     "Una sirena fortissima",
+     "Una candela più grande",
+     "Una bandiera",
+     "Una campana su una barca"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Perché ogni faro lampeggiava in un modo tutto suo?",
+    "answer": "Così i marinai capivano quale faro era."
+   },
+   {
+    "q": "Perché il lavoro era spesso solitario?",
+    "answer": "Alcuni fari erano su isolette minuscole."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "Viaggio su Marte",
+  "text": "Marte è spesso chiamato il Pianeta Rosso. Il suo colore viene da una polvere arrugginita che copre le rocce e il suolo. Marte è il quarto pianeta dal Sole ed è più piccolo della Terra: è largo circa la metà.\n\nUn giorno su Marte è solo un po' più lungo di un giorno sulla Terra, ma un anno è molto più lungo. Marte impiega quasi due anni terrestri per fare un giro intorno al Sole. È anche molto più freddo della Terra, perché è più lontano dal Sole e ha uno strato d'aria sottilissimo. Su Marte non potresti respirare senza una tuta speciale.\n\nSu Marte c'è il vulcano più alto del sistema solare, l'Olympus Mons. È alto circa tre volte la montagna più alta della Terra. Marte ha anche due piccole lune, Phobos e Deimos.\n\nGli scienziati hanno mandato dei rover robotici a esplorare Marte. Questi rover sono come piccole automobili guidate dalla Terra. Si muovono piano sulla superficie, scattano fotografie ed esaminano le rocce. I rover hanno trovato segni che, tanto tempo fa, su Marte c'erano fiumi e laghi. Gli scienziati sperano che un giorno ci andranno anche gli astronauti, anche se il viaggio durerebbe molti mesi.",
+  "questions": [
+   {
+    "q": "Perché Marte è rosso?",
+    "choices": [
+     "Perché è caldissimo",
+     "Perché è coperto di polvere arrugginita",
+     "Perché ha oceani rossi",
+     "Perché riflette il Sole"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Quante lune ha Marte?",
+    "choices": [
+     "Nessuna",
+     "Una",
+     "Tre",
+     "Due"
+    ],
+    "answer": 3
+   },
+   {
+    "q": "Che cos'è l'Olympus Mons?",
+    "choices": [
+     "Un vulcano",
+     "Un rover",
+     "Una luna",
+     "Un lago"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Perché Marte è più freddo della Terra?",
+    "answer": "È più lontano dal Sole e ha l'aria sottile."
+   },
+   {
+    "q": "Di che cosa hanno trovato segni i rover?",
+    "answer": "Di fiumi e laghi di tanto tempo fa."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "La festa di mezzanotte",
+  "text": "Durante la gita scolastica in montagna, Chiara, Dev e Arianna dormivano nella stessa baita di legno nel bosco. La seconda sera Dev sussurrò un piano: «Facciamo una festa di mezzanotte!». Avevano messo da parte qualche biscotto, tre mele e un sacchetto di uvetta.\n\nImpostarono la sveglia sull'orologio di Arianna e lo misero sotto il suo cuscino. A mezzanotte suonò piano. I tre amici andarono in punta di piedi al centro della stanza e accesero una torcia. Proprio mentre Chiara apriva i biscotti, sentirono dei passi fuori. Il cuore batteva forte. La porta si aprì cigolando ed entrò la maestra Lucia, in vestaglia.\n\nI bambini rimasero immobili. Ma invece di arrabbiarsi, la maestra sorrise. Disse che aveva sentito la sveglia ed era venuta a controllare che stessero tutti bene. Poi si sedette e raccontò che, alla loro età, aveva fatto la stessa cosa durante una gita. Li lasciò finire un biscotto a testa, poi li rimandò a letto.\n\nLa mattina dopo, a colazione, la maestra Lucia fece loro l'occhiolino. Chiara decise che quella era stata la gita più bella di sempre.",
+  "questions": [
+   {
+    "q": "Dove dormivano i bambini?",
+    "choices": [
+     "In una tenda",
+     "In un albergo",
+     "In una baita di legno",
+     "A casa di un amico"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Che cosa avevano per la festa?",
+    "choices": [
+     "Patatine e torta",
+     "Biscotti, mele e uvetta",
+     "Panini e succo",
+     "Caramelle e popcorn"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Come si svegliarono a mezzanotte?",
+    "choices": [
+     "Con la sveglia dell'orologio di Arianna",
+     "Cantò un gallo",
+     "Li svegliò la maestra Lucia",
+     "Dev rimase sveglio"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Perché la maestra Lucia venne nella baita?",
+    "answer": "Aveva sentito la sveglia ed era venuta a controllare."
+   },
+   {
+    "q": "Come sappiamo che la maestra Lucia non era arrabbiata?",
+    "answer": "Sorrise e li lasciò mangiare un biscotto."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "Le prime biciclette",
+  "text": "Oggi le biciclette sono dappertutto, ma ci è voluto molto tempo perché diventassero le macchine che conosciamo. Una delle prime fu inventata circa duecento anni fa. Era di legno e aveva due ruote, ma niente pedali. Chi la usava ci si sedeva sopra e si spingeva con i piedi, un po' come con un monopattino. Si chiamava draisina.\n\nPiù tardi gli inventori aggiunsero i pedali alla ruota davanti. Era molto più veloce, ma c'era un problema: ogni giro di pedali faceva girare la ruota una volta sola. Per andare più veloci, i costruttori fecero bici con ruote anteriori enormi e ruote posteriori minuscole. In inglese si chiamavano penny-farthing, dal nome di una moneta grande e di una moneta piccola. Si stava seduti molto in alto, e cadere era frequente.\n\nIl grande cambiamento arrivò con la catena. La catena collegava i pedali alla ruota dietro, così le due ruote potevano essere uguali. Queste bici erano più sicure, e per questo furono chiamate biciclette di sicurezza. Arrivarono anche le gomme piene d'aria, che rendevano il viaggio molto meno sobbalzante. Presto andare in bicicletta piacque a tutti, perché si poteva viaggiare più lontano spendendo meno.",
+  "questions": [
+   {
+    "q": "Che cosa non avevano le prime biciclette?",
+    "choices": [
+     "Le ruote",
+     "Il sellino",
+     "I pedali",
+     "Il telaio"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Da dove viene il nome penny-farthing?",
+    "choices": [
+     "Dal nome dell'inventore",
+     "Da una moneta grande e una piccola",
+     "Dalla città dove era costruita",
+     "Dal rumore che faceva"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Che cosa collegava i pedali alla ruota dietro nelle biciclette di sicurezza?",
+    "choices": [
+     "Una catena",
+     "Una corda",
+     "Una molla",
+     "Una cinghia di cuoio"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Perché i costruttori facevano ruote anteriori così grandi?",
+    "answer": "Per andare più veloci, perché ogni giro di pedali faceva girare la ruota una volta."
+   },
+   {
+    "q": "Che cosa rese il viaggio meno sobbalzante?",
+    "answer": "Le gomme piene d'aria."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "La vita nella barriera corallina",
+  "text": "Le barriere coralline si trovano nei mari caldi e poco profondi di tutto il mondo. A prima vista il corallo può sembrare una roccia colorata o una pianta, ma in realtà è fatto di milioni di animaletti chiamati polipi. Ogni polipo costruisce intorno a sé uno scheletro duro. In centinaia di anni questi scheletri si accumulano e formano la barriera.\n\nLe barriere coprono solo una piccolissima parte del fondale marino, eppure ospitano circa un quarto di tutte le specie di creature marine. Pesci dai colori vivaci sfrecciano dentro e fuori dal corallo. Le tartarughe marine passano scivolando e i polpi si nascondono nelle fessure. Alcuni pesci, come il pesce pagliaccio, vivono tra i tentacoli urticanti degli anemoni di mare. L'anemone protegge il pesce pagliaccio, e il pesce pagliaccio aiuta a tenere pulito l'anemone.\n\nI polipi hanno anche degli aiutanti che vivono dentro di loro: esseri piccolissimi simili a piante, che usano la luce del sole per produrre cibo. Lo dividono con il corallo e gli danno gran parte del suo colore. Per questo le barriere crescono in acque basse e limpide, dove arriva il sole.\n\nIn tutto il mondo molte persone lavorano per proteggere le barriere coralline, tenendo pulito il mare e facendo crescere nuovo corallo in vivai speciali.",
+  "questions": [
+   {
+    "q": "Di che cosa è fatto il corallo?",
+    "choices": [
+     "Di rocce colorate",
+     "Di piante marine",
+     "Di animaletti chiamati polipi",
+     "Di sabbia"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Quale pesce vive tra i tentacoli degli anemoni?",
+    "choices": [
+     "Il pesce pagliaccio",
+     "Lo squalo",
+     "Il polpo",
+     "La tartaruga"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Circa quante specie di creature marine vivono nelle barriere?",
+    "choices": [
+     "Quasi nessuna",
+     "Un quarto",
+     "La metà",
+     "Tutte"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Perché le barriere crescono in acque basse e limpide?",
+    "answer": "Lì la luce del sole arriva agli aiutanti del corallo."
+   },
+   {
+    "q": "Come si aiutano il pesce pagliaccio e l'anemone?",
+    "answer": "L'anemone lo protegge; il pesce pagliaccio lo tiene pulito."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "La stazione meteo della scuola",
+  "text": "Quando la nuova stazione meteorologica arrivò alla scuola primaria degli Olmi, la classe quinta ricevette il compito di occuparsene. Stava su un palo in un angolo del campo da gioco e aveva diversi strumenti. Un pluviometro raccoglieva la pioggia, un termometro misurava la temperatura e un piccolo apparecchio con coppette girevoli, chiamato anemometro, misurava la velocità del vento.\n\nOgni mattina alle nove due alunni uscivano a scrivere le misure in un registro. Tarek e Bianca furono la prima coppia. Impararono presto che le misure andavano prese ogni giorno alla stessa ora, per poterle confrontare in modo corretto. Alla fine del mese la classe aveva fatto un grafico che mostrava come era cambiato il tempo.\n\nUn venerdì Bianca notò che durante la notte la temperatura era scesa di colpo e il vento arrivava da nord. Si ricordò delle lezioni: il vento da nord porta spesso aria più fredda. Propose che la scuola avvisasse tutti di portare cappotti pesanti il lunedì. La preside fu d'accordo e lo scrisse nel notiziario. Lunedì il cortile era coperto da una leggera brina, e tutti i bambini arrivarono ben coperti. Bianca e Tarek si sentirono veri meteorologi.",
+  "questions": [
+   {
+    "q": "Che cosa misura l'anemometro?",
+    "choices": [
+     "La pioggia",
+     "La temperatura",
+     "Il sole",
+     "La velocità del vento"
+    ],
+    "answer": 3
+   },
+   {
+    "q": "A che ora si prendevano le misure ogni giorno?",
+    "choices": [
+     "Alle nove",
+     "All'ora di pranzo",
+     "Dopo la scuola",
+     "A mezzanotte"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Che cosa c'era in cortile lunedì?",
+    "choices": [
+     "Pozzanghere",
+     "Una leggera brina",
+     "Neve alta",
+     "Foglie cadute"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Perché le misure si prendevano ogni giorno alla stessa ora?",
+    "answer": "Per poterle confrontare in modo corretto."
+   },
+   {
+    "q": "Come capì Bianca che avrebbe fatto più freddo?",
+    "answer": "La temperatura era scesa e il vento arrivava da nord."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "Il cammello del deserto",
+  "text": "I deserti sono tra i luoghi più difficili in cui vivere sulla Terra. Ci piove pochissimo, le giornate possono essere caldissime e le notti sorprendentemente fredde. Eppure i cammelli sono perfetti per la vita in queste terre aride.\n\nMolti pensano che il cammello conservi l'acqua nella gobba, ma non è vero. La gobba in realtà è piena di grasso. Quando è difficile trovare cibo, il corpo del cammello può usare questo grasso per avere energia. Un cammello che non mangia da molto tempo può avere la gobba floscia e cadente.\n\nI cammelli possono stare molti giorni senza bere. Quando trovano l'acqua, ne bevono una quantità enorme molto in fretta, a volte più di cento litri in pochi minuti. Il loro corpo è anche bravo a risparmiare acqua, così ne perdono pochissima.\n\nI cammelli hanno anche altre caratteristiche ingegnose. Hanno due file di ciglia lunghe che tengono la sabbia lontana dagli occhi, e possono chiudere le narici durante le tempeste di sabbia. I loro piedi larghi e imbottiti si allargano sulla sabbia morbida e non li fanno sprofondare. Da migliaia di anni le persone usano i cammelli per trasportare carichi pesanti nel deserto: per questo a volte sono chiamati navi del deserto.",
+  "questions": [
+   {
+    "q": "Che cosa c'è nella gobba del cammello?",
+    "choices": [
+     "Acqua",
+     "Grasso",
+     "Aria",
+     "Latte"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Come fanno i cammelli a tenere la sabbia lontana dagli occhi?",
+    "choices": [
+     "Ci mettono sopra il pelo",
+     "Li tengono chiusi tutto il giorno",
+     "Hanno due file di ciglia lunghe",
+     "Camminano all'indietro"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Quanto può bere un cammello in pochi minuti?",
+    "choices": [
+     "Più di cento litri",
+     "Circa un litro",
+     "Una tazzina",
+     "Dieci litri"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Perché la gobba di un cammello può sembrare floscia?",
+    "answer": "Ha consumato il suo grasso perché non ha mangiato."
+   },
+   {
+    "q": "Come aiutano i piedi del cammello sulla sabbia?",
+    "answer": "Sono larghi e imbottiti e non lo fanno sprofondare."
+   }
+  ]
+ }
+]
