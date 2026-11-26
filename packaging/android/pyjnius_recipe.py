@@ -9,8 +9,12 @@ import pythonforandroid.recipes.pyjnius as upstream
 from pythonforandroid.logger import info
 from pythonforandroid.recipes.pyjnius import PyjniusRecipe
 
-QT_JNIENV = """# Inkline: on python-for-android's Qt bootstrap, the JNI environment comes from Qt's Java VM
+QT_JNIENV = '''# Inkline: on python-for-android's Qt bootstrap, the JNI environment comes from Qt's Java VM
 cdef extern from *:
+    """
+    #include <jni.h>
+    JavaVM *_ZN17QtAndroidPrivate6javaVMEv(void);  /* QtAndroidPrivate::javaVM(), in libQt6Core */
+    """
     JavaVM *_ZN17QtAndroidPrivate6javaVMEv()
 
 
@@ -22,7 +26,7 @@ cdef JNIEnv *get_platform_jnienv() except NULL:
     if vm[0].AttachCurrentThread(vm, <void **>&env, NULL) != 0:
         raise Exception("Couldn't attach this thread to the Java VM")
     return env
-"""
+'''
 
 
 class InklinePyjniusRecipe(PyjniusRecipe):
