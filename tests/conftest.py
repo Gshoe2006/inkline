@@ -10,6 +10,10 @@ from PySide6.QtWidgets import QApplication  # noqa: E402
 
 _APP = QApplication.instance() or QApplication([])
 
+from inkapp import gcguard  # noqa: E402
+
+gcguard.install(_APP)   # as the app does: garbage collected on this thread, never in a worker thread
+
 import pytest  # noqa: E402
 from PySide6.QtWidgets import QMessageBox  # noqa: E402
 
@@ -32,6 +36,7 @@ def _no_windows_left():
         w.deleteLater()
     _APP.sendPostedEvents(None, QEvent.Type.DeferredDelete.value)
     _APP.processEvents()
+    gcguard.collect()   # what the closed windows left in cycles, freed here, on the UI thread
 
 
 def settle(window, timeout=20):

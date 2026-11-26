@@ -54,6 +54,8 @@ def main():
     QApplication.setApplicationName("Inkline")
     QGuiApplication.setDesktopFileName(os.environ.get("FLATPAK_ID") or "inkline")   # a Flatpak names it by its app ID
     app = QApplication(sys.argv)
+    from inkapp import gcguard
+    gcguard.install(app)   # garbage collected on this thread only, never a worker's (Qt objects must die here)
     icon = os.path.join(HERE, "inkline.svg")
     if os.path.exists(icon):
         app.setWindowIcon(QIcon(icon))
