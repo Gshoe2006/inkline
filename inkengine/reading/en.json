@@ -1,0 +1,1172 @@
+[
+ {
+  "level": 1,
+  "title": "Sam and the Kite",
+  "text": "Sam has a red kite. It has a long blue tail. On Saturday, Sam goes to the park with Gran. The wind is strong. Sam runs fast and the kite goes up, up, up. It flies over the trees. Gran claps her hands. Sam smiles. Flying a kite is his favourite thing to do.",
+  "questions": [
+   {
+    "q": "What colour is the kite?",
+    "choices": [
+     "Blue",
+     "Red",
+     "Green"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Who goes to the park with Sam?",
+    "choices": [
+     "Gran",
+     "Dad",
+     "His friend"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "What does Gran do?",
+    "choices": [
+     "She runs",
+     "She sings",
+     "She claps her hands"
+    ],
+    "answer": 2
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "A Snowy Morning",
+  "text": "Mia looks out of the window. Everything is white! Snow is on the grass and on the cars. Mia puts on her coat, her hat and her warm boots. She goes outside with her brother. They make a big snowman. He has a carrot nose and two stone eyes. Then they go inside for hot milk.",
+  "questions": [
+   {
+    "q": "What is on the grass?",
+    "choices": [
+     "Rain",
+     "Leaves",
+     "Snow"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "What is the snowman's nose?",
+    "choices": [
+     "A carrot",
+     "A stone",
+     "A stick"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "What do they drink inside?",
+    "choices": [
+     "Orange juice",
+     "Hot milk",
+     "Water"
+    ],
+    "answer": 1
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "My New Lunchbox",
+  "text": "Ravi has a new lunchbox. It is green with yellow stars. Today, Ravi has a cheese sandwich, an apple and some carrot sticks. At lunchtime, he sits next to his friend Ella. Ella has forgotten her apple. Ravi cuts his apple in half and gives one half to Ella. Ella says thank you. Sharing makes them both happy.",
+  "questions": [
+   {
+    "q": "What is on the lunchbox?",
+    "choices": [
+     "Yellow stars",
+     "Red spots",
+     "Blue fish"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "What has Ella forgotten?",
+    "choices": [
+     "Her sandwich",
+     "Her drink",
+     "Her apple"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "What does Ravi give Ella?",
+    "choices": [
+     "A carrot stick",
+     "Half of his apple",
+     "His sandwich"
+    ],
+    "answer": 1
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "The Little Duck",
+  "text": "A little duck lives by the pond. Every morning, she swims with her mum. She likes to splash in the water. One day, she sees a frog on a lily pad. The frog jumps into the pond. Splash! The little duck quacks and swims away to tell her mum. Then she has a nap in the warm sun.",
+  "questions": [
+   {
+    "q": "Where does the little duck live?",
+    "choices": [
+     "In a barn",
+     "By the pond",
+     "In a tree"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "What does the little duck see on a lily pad?",
+    "choices": [
+     "A frog",
+     "A fish",
+     "A bird"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "What does she do at the end?",
+    "choices": [
+     "She eats bread",
+     "She flies away",
+     "She has a nap"
+    ],
+    "answer": 2
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Planting a Seed",
+  "text": "Leo and his mum plant a sunflower seed. They put soil in a pot. Leo pushes the seed into the soil with his finger. Mum gives it some water. They put the pot on the windowsill in the sun. Every day, Leo checks the pot. After one week, a tiny green shoot pops up. Leo is very excited.",
+  "questions": [
+   {
+    "q": "What seed do they plant?",
+    "choices": [
+     "A bean seed",
+     "A pumpkin seed",
+     "A sunflower seed"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Where do they put the pot?",
+    "choices": [
+     "On the windowsill",
+     "Under the bed",
+     "In the garden shed"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "When does the green shoot pop up?",
+    "choices": [
+     "The next day",
+     "After one week",
+     "After one year"
+    ],
+    "answer": 1
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "At the Library",
+  "text": "On Tuesday, Class Two goes to the library. The library is quiet. There are lots of books on the shelves. Nora finds a book about dinosaurs. Ben finds a book about trains. Mrs Hill, the librarian, helps them borrow their books. They can keep them for two weeks. Nora wants to read her book at bedtime.",
+  "questions": [
+   {
+    "q": "What day does Class Two go to the library?",
+    "choices": [
+     "Monday",
+     "Tuesday",
+     "Friday"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "What is Ben's book about?",
+    "choices": [
+     "Trains",
+     "Dinosaurs",
+     "Cats"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "How long can they keep the books?",
+    "choices": [
+     "One day",
+     "Two weeks",
+     "One month"
+    ],
+    "answer": 1
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Rainy Day Fun",
+  "text": "It is raining. Zara cannot play outside. She feels a bit sad. Then Dad has an idea. They build a den with a blanket and two chairs. Zara brings her torch and her teddy. Inside the den, Dad reads a story. Zara listens to the rain on the window. Now she likes rainy days.",
+  "questions": [
+   {
+    "q": "Why can Zara not play outside?",
+    "choices": [
+     "It is dark",
+     "It is raining",
+     "It is too hot"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "What do they build?",
+    "choices": [
+     "A den",
+     "A boat",
+     "A tower"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "How does Zara feel about rainy days at the end?",
+    "choices": [
+     "She is scared of them",
+     "She is bored by them",
+     "She likes them"
+    ],
+    "answer": 2
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Sports Day",
+  "text": "Today is Sports Day at school. The sun is shining. Amir is in the egg and spoon race. He walks very carefully. The egg wobbles, but it does not fall. Amir comes second! Next is the sack race. Everyone jumps and laughs. At the end, all the children get a sticker. Amir puts his sticker on his shirt.",
+  "questions": [
+   {
+    "q": "Which race is Amir in first?",
+    "choices": [
+     "The sack race",
+     "The egg and spoon race",
+     "The running race"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "What place does Amir come?",
+    "choices": [
+     "Second",
+     "First",
+     "Last"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "What do all the children get at the end?",
+    "choices": [
+     "A medal",
+     "A cake",
+     "A sticker"
+    ],
+    "answer": 2
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Pancake Day",
+  "text": "Lily and Grandad make pancakes. They mix flour, eggs and milk in a big bowl. Grandad heats the pan. He pours in the mix. When the pancake is ready, he flips it high into the air. Lily giggles. She puts lemon and sugar on her pancake. Grandad likes jam on his. They eat them all up.",
+  "questions": [
+   {
+    "q": "Who makes pancakes with Lily?",
+    "choices": [
+     "Grandad",
+     "Mum",
+     "Her teacher"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "What does Lily put on her pancake?",
+    "choices": [
+     "Jam",
+     "Chocolate",
+     "Lemon and sugar"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "What does Grandad do with the pancake?",
+    "choices": [
+     "He drops it",
+     "He flips it into the air",
+     "He gives it to the dog"
+    ],
+    "answer": 1
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Looking at the Moon",
+  "text": "At night, Kai looks up at the sky. He can see the Moon. Tonight it is big and round. Kai can also see lots of tiny stars. Mum tells him the Moon looks different on different nights. Sometimes it is thin like a smile. Kai waves goodnight to the Moon and goes to bed.",
+  "questions": [
+   {
+    "q": "What does the Moon look like tonight?",
+    "choices": [
+     "Big and round",
+     "Thin like a smile",
+     "Red and small"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "What else can Kai see in the sky?",
+    "choices": [
+     "Clouds and rain",
+     "A rainbow",
+     "Tiny stars"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "What does Kai do at the end?",
+    "choices": [
+     "He reads a book",
+     "He waves goodnight to the Moon",
+     "He has a snack"
+    ],
+    "answer": 1
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "The Lost Library Book",
+  "text": "Ollie loved his library book about volcanoes. He had read it three times. On Friday, it was due back, but Ollie could not find it anywhere. He looked under his bed and in his school bag. He even looked in the bathroom. Ollie began to worry. What would Mr Patel, the librarian, say?\n\nThen his little sister, Ada, walked in holding the book. She had borrowed it to look at the pictures of the red-hot lava. Ollie laughed with relief. He took the book back to the library just in time. Mr Patel smiled and told him about a new book on earthquakes. Ollie borrowed that one straight away, and this time he kept it on his bookshelf.",
+  "questions": [
+   {
+    "q": "What was Ollie's library book about?",
+    "choices": [
+     "Earthquakes",
+     "Volcanoes",
+     "Rivers"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Who had the book?",
+    "choices": [
+     "His sister, Ada",
+     "His dad",
+     "Mr Patel"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Where did Ollie keep the new book?",
+    "choices": [
+     "Under his bed",
+     "In his school bag",
+     "On his bookshelf"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Why did Ollie begin to worry?",
+    "answer": "He could not find the book and it was due back."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Autumn Leaves",
+  "text": "In autumn, the trees in Hazel Lane change colour. The green leaves turn yellow, orange and red. This happens because the days get shorter and colder, and the trees get ready to rest for winter. Soon the leaves start to fall, and the pavement is covered in a crunchy carpet.\n\nPriya and her friend Tom love autumn. After school, they collect the best leaves they can find. They choose big ones, small ones and leaves with spiky edges. At home, Priya sticks them onto paper to make a leaf picture of a fox. Tom makes a bright crown out of his. They also look for conkers under the horse chestnut tree. Autumn is their favourite season.",
+  "questions": [
+   {
+    "q": "What colours do the leaves turn?",
+    "choices": [
+     "Blue, purple and pink",
+     "Yellow, orange and red",
+     "Black and white"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "What does Tom make with his leaves?",
+    "choices": [
+     "A crown",
+     "A fox picture",
+     "A bookmark"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Where do they look for conkers?",
+    "choices": [
+     "In the playground",
+     "In the park pond",
+     "Under the horse chestnut tree"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Why do the leaves change colour?",
+    "answer": "The days get shorter and colder."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "The School Garden",
+  "text": "Class Four had a small garden behind their classroom. In spring, they planted potatoes, peas and lettuce. Each child had a job. Jamal was in charge of watering. Sofia pulled out the weeds. Ben counted the snails and gently moved them to the hedge.\n\nOne week it was very hot and dry. The lettuce leaves began to droop. Jamal noticed and asked if he could water the garden twice a day. Mrs Okafor agreed. Soon the plants were standing tall again. By summer, the class had grown enough vegetables to make a big salad. They shared it with the class next door. Everyone agreed it tasted better than any salad from a shop, because they had grown it themselves.",
+  "questions": [
+   {
+    "q": "What was Jamal's job?",
+    "choices": [
+     "Pulling weeds",
+     "Watering",
+     "Counting snails"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "What did Ben do with the snails?",
+    "choices": [
+     "Moved them to the hedge",
+     "Put them in a jar",
+     "Fed them lettuce"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Who did the class share the salad with?",
+    "choices": [
+     "Their parents",
+     "The head teacher",
+     "The class next door"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "What did Jamal notice in the hot weather?",
+    "answer": "The lettuce leaves were drooping."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Grandma's Birthday Cake",
+  "text": "It was Grandma Rose's seventieth birthday, and Eli wanted to bake her a cake. Dad helped him read the recipe. They weighed the butter, sugar and flour, and Eli cracked the eggs very carefully. Only a tiny bit of shell fell in, and Dad helped him fish it out.\n\nWhile the cake baked, the kitchen smelled sweet and warm. When it had cooled, Eli spread pink icing on top and added seven candles, one for each ten years. At the party, everyone sang. Grandma Rose blew out the candles in one big breath. She said it was the best cake she had ever tasted. Eli felt proud and asked if they could bake together again next week.",
+  "questions": [
+   {
+    "q": "How old was Grandma Rose?",
+    "choices": [
+     "Sixty",
+     "Seventy",
+     "Seven"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "What colour was the icing?",
+    "choices": [
+     "Pink",
+     "White",
+     "Yellow"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Who helped Eli read the recipe?",
+    "choices": [
+     "Grandma Rose",
+     "His sister",
+     "Dad"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Why did Eli put seven candles on the cake?",
+    "answer": "One candle for each ten years."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "A Day at the Seaside",
+  "text": "The Hassan family drove to the seaside on a sunny Sunday. Layla could smell the salty air before she could see the sea. On the beach, she built a sandcastle with her baby brother. They decorated it with shells and a seaweed flag.\n\nLater, Layla went rock pooling with Mum. They found a small crab hiding under a rock and some sea anemones that looked like red jelly. Mum reminded her to look carefully and put everything back where she found it. At lunchtime, a cheeky seagull tried to grab Dad's sandwich, but he held on tight. Before going home, they all paddled in the cool waves. Layla fell asleep in the car, dreaming of crabs.",
+  "questions": [
+   {
+    "q": "What did they use for the sandcastle flag?",
+    "choices": [
+     "A stick",
+     "A leaf",
+     "Seaweed"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "What did the sea anemones look like?",
+    "choices": [
+     "Red jelly",
+     "Green stones",
+     "Tiny stars"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "What did the seagull try to grab?",
+    "choices": [
+     "Layla's ice cream",
+     "Dad's sandwich",
+     "A shell"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "What did Mum remind Layla to do in the rock pools?",
+    "answer": "Look carefully and put everything back."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "The Lantern Festival",
+  "text": "Every winter, the town of Millbrook holds a lantern festival. For weeks before, families make lanterns out of paper, sticks and string. This year, Chen made a lantern shaped like a fish, with orange scales and a curly tail. His friend Grace made a bright yellow star.\n\nOn the night of the festival, everyone gathered in the square. The lanterns were lit with small, safe lights inside. Then the parade began. Hundreds of glowing lanterns moved slowly through the dark streets like a river of light. A band played drums and flutes. Chen held his fish up high so it looked as if it were swimming. Afterwards, there was warm soup for everyone in the town hall.",
+  "questions": [
+   {
+    "q": "What shape was Chen's lantern?",
+    "choices": [
+     "A star",
+     "A fish",
+     "A moon"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "When is the lantern festival held?",
+    "choices": [
+     "Every winter",
+     "Every summer",
+     "Every spring"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "What did everyone have afterwards?",
+    "choices": [
+     "Ice cream",
+     "Hot chocolate",
+     "Warm soup"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "What did the parade look like?",
+    "answer": "A river of light."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "The Football Match",
+  "text": "Maya's football team, the Green Foxes, had a big match on Saturday morning. Maya was the goalkeeper. Before the game, her tummy felt fluttery. Her coach, Mr Daniels, told her to take three deep breaths and watch the ball.\n\nThe other team, the Blue Owls, were very fast. In the first half, they scored one goal. Maya felt disappointed, but her teammates gave her a high five and said, \"Keep going!\" In the second half, Maya made two brilliant saves, diving to the left and then to the right. Then her friend Isla scored for the Foxes. The match ended in a draw, one goal each. Maya was happy because she had tried her best.",
+  "questions": [
+   {
+    "q": "What position did Maya play?",
+    "choices": [
+     "Striker",
+     "Defender",
+     "Goalkeeper"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "What was the name of the other team?",
+    "choices": [
+     "The Blue Owls",
+     "The Red Hawks",
+     "The Green Foxes"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Who scored for the Green Foxes?",
+    "choices": [
+     "Maya",
+     "Isla",
+     "Mr Daniels"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "What did the coach tell Maya to do?",
+    "answer": "Take three deep breaths and watch the ball."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Hedgehog in the Garden",
+  "text": "One evening, Finn spotted something small and prickly by the garden fence. It was a hedgehog! It was snuffling through the leaves, looking for beetles and worms to eat. Finn stayed very still so he would not frighten it.\n\nThe next day, Finn and his mum read about hedgehogs. They learned that hedgehogs come out at night and travel a long way to find food. They also learned that hedgehogs need gaps in fences to move between gardens. So Finn's mum cut a small hole at the bottom of the fence. Finn put out a shallow dish of water. A few nights later, the hedgehog came back. This time, Finn saw it wander through the new gap into next door's garden.",
+  "questions": [
+   {
+    "q": "What does the hedgehog eat?",
+    "choices": [
+     "Bread and milk",
+     "Beetles and worms",
+     "Seeds and nuts"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "When do hedgehogs come out?",
+    "choices": [
+     "At night",
+     "At lunchtime",
+     "Only in summer"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "What did Finn put out?",
+    "choices": [
+     "A box of leaves",
+     "Some cheese",
+     "A shallow dish of water"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Why did Finn's mum cut a hole in the fence?",
+    "answer": "So hedgehogs could move between gardens."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "The Thunderstorm",
+  "text": "The afternoon sky turned dark grey. Big drops of rain began to fall, and then there was a bright flash of lightning. Rosie counted slowly, one, two, three, four, until she heard the rumble of thunder. Her big brother Sami explained that light travels faster than sound, so we see lightning before we hear thunder.\n\n\"The bigger the number, the further away the storm is,\" Sami said. They watched from the window and counted after every flash. First it was four, then six, then nine. Rosie was pleased, because it meant the storm was moving away. Soon the rain stopped, and the sun came out. A rainbow stretched across the sky above the rooftops.",
+  "questions": [
+   {
+    "q": "What colour did the sky turn?",
+    "choices": [
+     "Dark grey",
+     "Bright pink",
+     "Pale blue"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Who explained about lightning and thunder?",
+    "choices": [
+     "Rosie's mum",
+     "Rosie's teacher",
+     "Rosie's brother Sami"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "What appeared after the storm?",
+    "choices": [
+     "Snow",
+     "A rainbow",
+     "Fog"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "How did Rosie know the storm was moving away?",
+    "answer": "The numbers she counted got bigger."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Building a Bird Box",
+  "text": "Aunt Jo arrived with a bag of wood, some nails and a small hammer. \"Today we are building a bird box,\" she said to Noah. First, they measured the pieces and Aunt Jo sawed them to the right size. Then Noah helped hammer them together, holding the hammer near the end like she showed him.\n\nThey made a round hole at the front, just big enough for a small bird. Aunt Jo said the hole should not be too big, so larger birds could not get in. Noah painted the box pale green. They fixed it high on the shed wall, away from cats. Weeks later, Noah saw a tiny blue tit flying in with a beak full of moss.",
+  "questions": [
+   {
+    "q": "What colour did Noah paint the box?",
+    "choices": [
+     "Pale green",
+     "Bright red",
+     "Dark brown"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Where did they fix the bird box?",
+    "choices": [
+     "On a fence post",
+     "In a hedge",
+     "High on the shed wall"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "What did the blue tit carry?",
+    "choices": [
+     "A worm",
+     "A beak full of moss",
+     "A twig"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Why should the hole not be too big?",
+    "answer": "So larger birds cannot get in."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "Penguins of the Ice",
+  "text": "Emperor penguins live in Antarctica, one of the coldest places on Earth. In winter, temperatures can drop below minus forty degrees, and strong winds sweep across the ice. Yet these remarkable birds have found clever ways to survive.\n\nEmperor penguins have thick layers of fat and tightly packed feathers that keep out the cold and the water. When the weather is at its worst, hundreds of penguins huddle together in a large group. They take turns standing in the middle, where it is warmest, and on the outside, where it is coldest. In this way, everyone gets a chance to warm up.\n\nThe father penguins have a very important job. After the mother lays a single egg, she passes it to the father and walks to the sea to feed. The father balances the egg on his feet and covers it with a warm fold of skin called a brood pouch. He looks after it for about two months without eating at all. When the chick hatches, the mother returns with food in her stomach to feed it. Penguins cannot fly, but they are excellent swimmers, diving deep to catch fish and squid.",
+  "questions": [
+   {
+    "q": "Where do emperor penguins live?",
+    "choices": [
+     "The Arctic",
+     "Antarctica",
+     "Australia",
+     "Iceland"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Who looks after the egg while the mother feeds?",
+    "choices": [
+     "The grandparents",
+     "The other chicks",
+     "The father",
+     "Nobody"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "What is the brood pouch?",
+    "choices": [
+     "A warm fold of skin",
+     "A nest made of stones",
+     "A hole in the ice",
+     "A type of feather"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Why do penguins take turns in the middle of the huddle?",
+    "answer": "So everyone gets a chance to warm up."
+   },
+   {
+    "q": "How long does the father look after the egg?",
+    "answer": "About two months."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "The Clockwork Problem",
+  "text": "Ivy's great-uncle Ezra had a workshop full of ticking clocks. There were tall clocks, tiny clocks and one clock shaped like a lighthouse. Every summer, Ivy stayed with him and helped to fix them.\n\nOne morning, Uncle Ezra looked puzzled. The lighthouse clock had stopped, and he could not work out why. He had wound it, oiled it and checked every spring. Ivy offered to help. She fetched the magnifying glass and peered inside. Among the golden cogs, she spotted something odd: a single grain of rice, wedged between two tiny teeth.\n\n\"That explains it!\" laughed Uncle Ezra. He remembered eating his lunch at the workbench the day before. Using fine tweezers, Ivy lifted the grain out. With a soft click, the cogs began to turn, and the little light at the top of the lighthouse started to blink once more.\n\nUncle Ezra was delighted. He made a new rule for the workshop: no food on the workbench. Then he gave Ivy her very own set of tweezers and a small notebook. On the first page, he wrote, Ivy, Chief Clock Detective. Ivy decided she would keep the notebook forever.",
+  "questions": [
+   {
+    "q": "What shape was the clock that had stopped?",
+    "choices": [
+     "A house",
+     "A lighthouse",
+     "A ship",
+     "A tree"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "What was stuck in the clock?",
+    "choices": [
+     "A grain of rice",
+     "A small screw",
+     "A piece of string",
+     "A crumb of bread"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "What new rule did Uncle Ezra make?",
+    "choices": [
+     "No running in the workshop",
+     "No visitors after dark",
+     "No food on the workbench",
+     "No touching the clocks"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "How did the rice get into the clock?",
+    "answer": "Uncle Ezra ate lunch at the workbench."
+   },
+   {
+    "q": "What did Uncle Ezra give Ivy?",
+    "answer": "Tweezers and a small notebook."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "How Bees Make Honey",
+  "text": "Honeybees are tiny insects, but they are some of the hardest workers in nature. A single hive can contain tens of thousands of bees, and each one has a job to do.\n\nThe bees that collect food are called foragers. They fly from flower to flower, sucking up a sweet liquid called nectar with their long, straw-like tongues. They store it in a special stomach, separate from the one they use for their own food. As they visit flowers, pollen sticks to their fuzzy bodies and is carried to the next flower. This helps plants to make seeds and fruit, which is why bees are so important to farmers.\n\nBack at the hive, the foragers pass the nectar to other bees, who chew it and place it into wax cells. The nectar is still too watery to be honey. To fix this, the bees fan it with their wings, which makes some of the water dry up. Slowly, the nectar becomes thick, sticky honey. Finally, the bees seal each cell with a lid of wax to keep the honey fresh. The bees eat this honey during the winter, when there are no flowers to visit.",
+  "questions": [
+   {
+    "q": "What is the sweet liquid that bees collect from flowers?",
+    "choices": [
+     "Pollen",
+     "Wax",
+     "Sap",
+     "Nectar"
+    ],
+    "answer": 3
+   },
+   {
+    "q": "What are the bees that collect food called?",
+    "choices": [
+     "Foragers",
+     "Builders",
+     "Guards",
+     "Fanners"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "How do bees make the nectar less watery?",
+    "choices": [
+     "They add pollen",
+     "They fan it with their wings",
+     "They leave it in the sun",
+     "They mix it with wax"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Why are bees important to farmers?",
+    "answer": "They carry pollen, helping plants make seeds and fruit."
+   },
+   {
+    "q": "When do bees eat the honey?",
+    "answer": "In winter, when there are no flowers."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "The Great Lighthouse",
+  "text": "Long ago, sailors had no maps on screens and no radios to warn them of danger. At night, it was very hard to see rocks hidden beneath the waves. To keep ships safe, people built lighthouses along rocky coasts.\n\nA lighthouse is a tall tower with a powerful light at the top. In the past, the light came from candles or oil lamps. Later, clever inventors added large glass lenses. These lenses bent the light into a strong beam that could be seen many miles out to sea. Each lighthouse flashed in its own pattern, so sailors could tell which one they were looking at and work out where they were.\n\nLighthouse keepers lived inside or beside the tower. Their job was to keep the lamp burning all night, every night. They trimmed the wicks, polished the glass and wound the machinery that turned the light. In foggy weather, when the light was hard to see, they sounded a loud horn instead. It was often a lonely job, especially on lighthouses built on tiny islands.\n\nToday, most lighthouses work automatically, with electric lights and computers. However, many still stand proudly on the coast, and some are now museums that visitors can explore.",
+  "questions": [
+   {
+    "q": "Why were lighthouses built?",
+    "choices": [
+     "To store fish",
+     "To keep ships safe",
+     "To watch the weather",
+     "To house sailors"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "What did glass lenses do to the light?",
+    "choices": [
+     "Made it change colour",
+     "Made it softer",
+     "Bent it into a strong beam",
+     "Made it flash faster"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "What did keepers use in foggy weather?",
+    "choices": [
+     "A loud horn",
+     "A bigger candle",
+     "A flag",
+     "A bell on a boat"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Why did each lighthouse flash in its own pattern?",
+    "answer": "So sailors could tell which lighthouse it was."
+   },
+   {
+    "q": "Why was the job often lonely?",
+    "answer": "Some lighthouses were on tiny islands."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "Journey to Mars",
+  "text": "Mars is often called the Red Planet. Its colour comes from rusty dust that covers its rocks and soil. Mars is the fourth planet from the Sun, and it is smaller than Earth, about half as wide.\n\nA day on Mars is only a little longer than a day on Earth, but a year is much longer. Mars takes almost two Earth years to travel once around the Sun. It is also much colder than Earth, because it is further from the Sun and has a very thin layer of air. You could not breathe on Mars without a special suit.\n\nMars has the tallest volcano in the solar system, called Olympus Mons. It is about three times as tall as the highest mountain on Earth. Mars also has two small moons, named Phobos and Deimos.\n\nScientists have sent robotic rovers to explore Mars. These rovers are like small cars controlled from Earth. They drive slowly across the surface, taking photographs and testing rocks. Rovers have found signs that, long ago, Mars had rivers and lakes. Scientists hope that, one day, astronauts will travel there too, although the journey would take many months.",
+  "questions": [
+   {
+    "q": "Why is Mars red?",
+    "choices": [
+     "It is very hot",
+     "It is covered in rusty dust",
+     "It has red oceans",
+     "It reflects the Sun"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "How many moons does Mars have?",
+    "choices": [
+     "None",
+     "One",
+     "Three",
+     "Two"
+    ],
+    "answer": 3
+   },
+   {
+    "q": "What is Olympus Mons?",
+    "choices": [
+     "A volcano",
+     "A rover",
+     "A moon",
+     "A lake"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Why is Mars colder than Earth?",
+    "answer": "It is further from the Sun with thin air."
+   },
+   {
+    "q": "What have rovers found signs of?",
+    "answer": "Rivers and lakes long ago."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "The Midnight Feast Plan",
+  "text": "On the school trip to the outdoor centre, Kemi, Dev and Harriet shared a wooden cabin in the woods. On the second night, Dev whispered a plan. \"Let's have a midnight feast!\" They had saved some biscuits, three apples and a bag of raisins.\n\nThey set an alarm on Harriet's watch and tucked it under her pillow. At midnight, it beeped softly. The three friends tiptoed to the middle of the cabin floor and switched on a torch. Just as Kemi opened the biscuits, they heard footsteps outside. Their hearts thumped. The door creaked open, and in stepped Miss Lowe, their teacher, in her dressing gown.\n\nThe children froze. But instead of being cross, Miss Lowe smiled. She said she had heard the beeping and had come to check that everyone was all right. Then she sat down and told them that, when she was their age, she had done exactly the same thing on her own school trip. She let them finish one biscuit each, then sent them back to bed.\n\nThe next morning, at breakfast, Miss Lowe gave them a wink. Kemi decided that this had been the best trip ever.",
+  "questions": [
+   {
+    "q": "Where were the children staying?",
+    "choices": [
+     "In a tent",
+     "In a hotel",
+     "In a wooden cabin",
+     "At a friend's house"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "What did they have for the feast?",
+    "choices": [
+     "Crisps and cake",
+     "Biscuits, apples and raisins",
+     "Sandwiches and juice",
+     "Sweets and popcorn"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "How did they wake up at midnight?",
+    "choices": [
+     "An alarm on Harriet's watch",
+     "A rooster crowed",
+     "Miss Lowe woke them",
+     "Dev stayed awake"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Why did Miss Lowe come to the cabin?",
+    "answer": "She heard the beeping and came to check."
+   },
+   {
+    "q": "How do we know Miss Lowe was not cross?",
+    "answer": "She smiled and let them eat a biscuit."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "The First Bicycles",
+  "text": "Today, bicycles are everywhere, but they took a long time to become the machines we know. One of the earliest was invented around two hundred years ago. It was made of wood and had two wheels, but no pedals. Riders sat on it and pushed themselves along with their feet, a little like a scooter. People called it a running machine.\n\nLater, inventors added pedals to the front wheel. This was much faster, but there was a problem. Each turn of the pedals turned the wheel only once. To go faster, makers built bikes with enormous front wheels and tiny back wheels. These were called penny-farthings, named after a large coin and a small coin. Riders sat very high up, and falling off was common.\n\nThe big change came with the chain. A chain linked the pedals to the back wheel, so both wheels could be the same size. These bikes were safer, so they were called safety bicycles. Air-filled rubber tyres were added too, which made the ride much less bumpy. Soon, cycling became popular with all kinds of people, who could now travel further and more cheaply than ever before.",
+  "questions": [
+   {
+    "q": "What did the earliest bicycles not have?",
+    "choices": [
+     "Wheels",
+     "A seat",
+     "Pedals",
+     "A frame"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Where did the name penny-farthing come from?",
+    "choices": [
+     "The inventor's name",
+     "A large coin and a small coin",
+     "The town where it was made",
+     "The sound it made"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "What linked the pedals to the back wheel on safety bicycles?",
+    "choices": [
+     "A chain",
+     "A rope",
+     "A spring",
+     "A belt of leather"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Why did makers build such huge front wheels?",
+    "answer": "To go faster, since pedals turned the wheel once."
+   },
+   {
+    "q": "What made the ride less bumpy?",
+    "answer": "Air-filled rubber tyres."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "Life in a Coral Reef",
+  "text": "Coral reefs are found in warm, shallow seas around the world. At first glance, coral might look like colourful rocks or plants, but it is actually made of millions of tiny animals called polyps. Each polyp builds a hard skeleton around itself. Over hundreds of years, these skeletons pile up to form a reef.\n\nReefs cover only a very small part of the ocean floor, yet they are home to about a quarter of all the different kinds of sea creatures. Brightly coloured fish dart in and out of the coral. Sea turtles glide past, and octopuses hide in cracks. Some fish, such as clownfish, live among the stinging arms of sea anemones. The anemone protects the clownfish, and the clownfish helps keep the anemone clean.\n\nCoral polyps also have helpers living inside them: tiny plant-like living things that use sunlight to make food. They share this food with the coral and give it much of its colour. This is why reefs grow in shallow, clear water, where sunlight can reach them.\n\nAround the world, many people are working to protect coral reefs by keeping the sea clean and growing new coral in special nurseries.",
+  "questions": [
+   {
+    "q": "What is coral made of?",
+    "choices": [
+     "Coloured rocks",
+     "Sea plants",
+     "Tiny animals called polyps",
+     "Sand"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Which fish lives among the arms of sea anemones?",
+    "choices": [
+     "The clownfish",
+     "The shark",
+     "The octopus",
+     "The turtle"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "About how many kinds of sea creatures live on reefs?",
+    "choices": [
+     "Almost none",
+     "A quarter",
+     "Half",
+     "All of them"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Why do reefs grow in shallow, clear water?",
+    "answer": "Sunlight can reach the coral's helpers there."
+   },
+   {
+    "q": "How do the clownfish and anemone help each other?",
+    "answer": "The anemone protects; the clownfish keeps it clean."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "The Village Weather Station",
+  "text": "When the new weather station arrived at Elmwood Primary, Year Six were given the job of looking after it. It stood on a pole in the corner of the playing field and had several instruments. A rain gauge collected rainfall, a thermometer measured the temperature, and a small spinning cup device, called an anemometer, measured the wind speed.\n\nEvery morning at nine o'clock, two pupils went out to record the readings in a logbook. Tariq and Bella were the first pair. They soon learned that readings had to be taken at the same time each day, so they could be compared fairly. By the end of the month, the class had made a chart showing how the weather had changed.\n\nOne Friday, Bella noticed that the temperature had dropped sharply overnight, and the wind had turned to come from the north. She remembered from their lessons that a north wind often brought colder air. She suggested the school should warn everyone to bring warm coats on Monday. The head teacher agreed and put it in the newsletter. On Monday, the playground was covered in a light frost, and every child arrived wrapped up warmly. Bella and Tariq felt like real weather forecasters.",
+  "questions": [
+   {
+    "q": "What does an anemometer measure?",
+    "choices": [
+     "Rainfall",
+     "Temperature",
+     "Sunshine",
+     "Wind speed"
+    ],
+    "answer": 3
+   },
+   {
+    "q": "When were the readings taken each day?",
+    "choices": [
+     "At nine o'clock",
+     "At lunchtime",
+     "After school",
+     "At midnight"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "What was on the playground on Monday?",
+    "choices": [
+     "Puddles",
+     "A light frost",
+     "Deep snow",
+     "Fallen leaves"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Why were readings taken at the same time each day?",
+    "answer": "So they could be compared fairly."
+   },
+   {
+    "q": "How did Bella guess it would be colder?",
+    "answer": "The temperature dropped and the wind came from the north."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "The Desert Camel",
+  "text": "Deserts are some of the hardest places on Earth to live. They receive very little rain, the days can be scorching hot and the nights can be surprisingly cold. Yet camels are perfectly suited to life in these dry lands.\n\nMany people think that a camel stores water in its hump, but this is not true. The hump is actually full of fat. When food is hard to find, the camel's body can use this fat for energy. A camel that has not eaten for a long time may have a droopy, floppy hump.\n\nCamels can go for many days without drinking. When they do find water, they can drink an enormous amount very quickly, sometimes more than a hundred litres in just a few minutes. Their bodies are also good at saving water, so they lose very little of it.\n\nCamels have other clever features too. They have two rows of long eyelashes to keep sand out of their eyes, and they can close their nostrils during sandstorms. Their wide, padded feet spread out on the soft sand, stopping them from sinking. For thousands of years, people have relied on camels to carry heavy loads across the desert, which is why they are sometimes called ships of the desert.",
+  "questions": [
+   {
+    "q": "What is inside a camel's hump?",
+    "choices": [
+     "Water",
+     "Fat",
+     "Air",
+     "Milk"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "How do camels keep sand out of their eyes?",
+    "choices": [
+     "They wear their fur over them",
+     "They keep them shut all day",
+     "They have two rows of long eyelashes",
+     "They walk backwards"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "How much can a camel drink in a few minutes?",
+    "choices": [
+     "More than a hundred litres",
+     "About one litre",
+     "A small cup",
+     "Ten litres"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Why might a camel's hump look droopy?",
+    "answer": "It has used up its fat after not eating."
+   },
+   {
+    "q": "How do a camel's feet help it on sand?",
+    "answer": "Wide, padded feet stop it sinking."
+   }
+  ]
+ }
+]

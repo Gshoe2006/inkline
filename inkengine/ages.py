@@ -30,6 +30,9 @@ COMPLEXITY = {
     "spelltest": {"4-6": 1, "7-9": 4, "10+": 8},
     "fractions": {"4-6": 1, "7-9": 4, "10+": 8},
     "symmetry":  {"4-6": 1, "7-9": 4, "10+": 8},
+    "ruled":     {"4-6": 2, "7-9": 5, "10+": 8},
+    "reading":   {"4-6": 2, "7-9": 5, "10+": 9},
+    "reward":    {"4-6": 1, "7-9": 3, "10+": 5},
 }
 # what else an age sets, whatever the pattern
 EXTRAS = {

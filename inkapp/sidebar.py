@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QFrame, QHBoxLayout, QLabel, Q
 from inkengine import ages, book, cbn, pack, photo
 from inkengine.i18n import tr
 from inkengine.page import PAGE_KEYS, PANELS, SHEETS, has_answer, sheet_gens
-from inkengine.patterns import NAMES, clock, crossword, fractions, maths, maze, money, name, spot, trace, words
+from inkengine.patterns import NAMES, clock, crossword, fractions, reward, ruled, maths, maze, money, name, spot, trace, words
 
 from . import jobs, theme, thumbs
 from .jobs import MAX_COPIES
@@ -31,7 +31,9 @@ GEN_OPTIONS = [("mandala", "Mandala (colouring page)"), ("maze", "Maze"), ("truc
                ("scramble", "Unscramble (mixed-up words)"),
                ("spelltest", "Spelling test (lines to write words read aloud)"),
                ("fractions", "Fractions, number lines and times grids"),
-               ("symmetry", "Symmetry (shade the mirror half)")]
+               ("symmetry", "Symmetry (shade the mirror half)"),
+               ("ruled", "Graph and lined paper"), ("reward", "Reward charts and certificates"),
+               ("reading", "Reading comprehension (a passage and questions)")]
 GRID_OPTIONS = [("2x2", "2 × 2"), ("3x3", "3 × 3"), ("4x4", "4 × 4"), ("2x1", "2 across × 1"), ("3x2", "3 across × 2"),
                 ("1x2", "1 across × 2"), ("2x3", "2 across × 3")]
 CBN_PATTERN_NOTE = "Repeated spaces share a number, and spaces side by side get different colours."
@@ -278,6 +280,16 @@ class Sidebar(QFrame):
         self.frac_opts = SubOptions()
         self.frac_kind = self._combo("frac_kind", list(fractions.KINDS.items()))
         self.frac_opts.add(OptionRow("Worksheet", self.frac_kind))
+        self.ruled_opts = SubOptions()
+        self.ruled_kind = self._combo("ruled_kind", list(ruled.KINDS.items()))
+        self.ruled_opts.add(OptionRow("Paper", self.ruled_kind))
+        self.ruled_opts.add(Hint("Complexity sets the spacing: an inch apart at 1, down to 5 mm at 10."))
+        self.reward_opts = SubOptions()
+        self.reward_kind = self._combo("reward_kind", list(reward.KINDS.items()))
+        self.reward_opts.add(OptionRow("Make", self.reward_kind))
+        self.reward_text = self._text("reward_text", "e.g. reading every day", 60)
+        self.reward_opts.add(OptionRow("For", self.reward_text))
+        self.reward_opts.add(Hint("With Paper → Names, each child gets one with their name on it."))
         self.clock_opts = SubOptions()
         self.clock_task = self._combo("clock_task", list(clock.TASKS.items()))
         self.clock_opts.add(OptionRow("Clocks", self.clock_task))
@@ -299,7 +311,8 @@ class Sidebar(QFrame):
         self.cross_words_row = self.cross_opts.add(OptionRow("Your words and clues", self.cross_words))
         self.cross_words_hint = self.cross_opts.add(Hint("Each as word: clue, separated by ; (a word without a clue gets ?)."))
         self.cross_note = self.cross_opts.add(Hint())
-        sec.add(self.words_opts, self.maze_opts, self.name_opts, self.spot_opts, self.maths_opts, self.frac_opts, self.clock_opts,
+        sec.add(self.words_opts, self.maze_opts, self.name_opts, self.spot_opts, self.maths_opts, self.frac_opts, self.ruled_opts,
+                self.reward_opts, self.clock_opts,
                 self.trace_opts, self.cross_opts)
         sec.add(self._slider("complexity", "Complexity", 1, 10, lambda v: f"{v} / 10"))
         sec.add(self._slider("weight", "Line weight", 1, 10, lambda v: f"{v / 150 * 25.4:.2f} mm"))
@@ -945,11 +958,16 @@ class Sidebar(QFrame):
         self.maths_opts.setVisible(s.gen == "maths")
         self.clock_opts.setVisible(s.gen == "clock")
         self.frac_opts.setVisible(s.gen == "fractions")
+        self.ruled_opts.setVisible(s.gen == "ruled")
+        self.reward_opts.setVisible(s.gen == "reward")
         self.money_row.setVisible(s.maths_kind == "money")
         self.pack_words_row.setVisible(s.pack_theme == "spelling")
         spelling = s.pack_theme == "spelling"
         what = (tr("Handwriting, a crossword, a word search and an unscramble sheet of your words, then a spelling test, for {age}.")
-                if spelling else tr("Maths, handwriting, a crossword, a word search and a maze, for {age}."))
+                if spelling else
+                tr("Twelve of these sight words traced, in a crossword, a word search and an unscramble sheet, then a "
+                   "spelling test, for {age}.") if s.pack_theme in pack.SIGHT else
+                tr("Maths, handwriting, a crossword, a word search and a maze, for {age}."))
         ready = not spelling or bool(pack.spelling_list(s.pack_words))
         self.pack_hint.setText(what.format(age=tr(ages.AGES[s.age if s.age in ages.EXTRAS else pack.DEFAULT_AGE]).lower())
                                if ready else tr("Type this week's spelling words to make the pack."))
@@ -1163,6 +1181,10 @@ def _page_detail(gen, p):
         return p.get("name_text", "").strip()
     if gen == "maths":
         return tr(maths.KINDS.get(p.get("maths_kind", "add"), ""))
+    if gen == "ruled":
+        return tr(ruled.KINDS.get(p.get("ruled_kind", "squared"), ""))
+    if gen == "reward":
+        return tr(reward.KINDS.get(p.get("reward_kind", "chart"), ""))
     if gen == "fractions":
         return tr(fractions.KINDS.get(p.get("frac_kind", "fractions"), ""))
     if gen == "clock":

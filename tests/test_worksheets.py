@@ -243,8 +243,9 @@ def _set(w, **kw):
 
 def test_the_sidebar_offers_each_worksheets_options(win):
     sb = win.sidebar
-    assert [v for v, _t in __import__("inkapp.sidebar", fromlist=["x"]).GEN_OPTIONS][-8:] == ["maths", "trace", "crossword", "clock",
-                                                                                           "scramble", "spelltest", "fractions", "symmetry"]
+    assert [v for v, _t in __import__("inkapp.sidebar", fromlist=["x"]).GEN_OPTIONS][-11:] == ["maths", "trace", "crossword", "clock",
+                                                                                            "scramble", "spelltest", "fractions", "symmetry",
+                                                                                            "ruled", "reward", "reading"]
     _set(win, gen="maths")
     assert sb.maths_opts.isVisibleTo(sb) and not sb.trace_opts.isVisibleTo(sb) and not sb.cross_opts.isVisibleTo(sb)
     sb.maths_kind.set_value("times")

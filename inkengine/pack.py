@@ -6,7 +6,7 @@ how hard the puzzles are):
 - on a theme (animals, food, space, ocean, weather, sports): a maths drill, a handwriting sheet, a crossword, a
   word search and a maze, the crossword and word search on the theme, and an older child's handwriting sheet
   tracing the theme's words;
-- on this week's spelling words: the words four ways (traced, in a crossword whose clues are the words'
+- on this week's spelling words, or a week of sight words (a pick from the list for the stage): the words four ways (traced, in a crossword whose clues are the words'
   letters mixed up, in a word search, and to unscramble), then Friday's spelling test.
 
 It's an ordinary booklet afterwards: a cover with a name line, page numbers and answer pages at the end, and
@@ -23,7 +23,10 @@ from .rng import mulberry32
 DAYS = ("maths", "trace", "crossword", "words", "maze")
 SPELLING_DAYS = ("trace", "crossword", "words", "scramble", "spelltest")
 THEMES = tuple(t for t in crossword.THEME_NAMES if t != "custom")   # themes the crossword and word search share
-THEME_NAMES = {**{t: crossword.THEME_NAMES[t] for t in THEMES}, "spelling": "Spelling words (your own list)"}
+SIGHT = ("sight1", "sight2", "sight3")   # sight words: a week of them, picked from the word search's lists
+THEME_NAMES = {**{t: crossword.THEME_NAMES[t] for t in THEMES}, **{t: words.THEME_NAMES[t] for t in SIGHT},
+               "spelling": "Spelling words (your own list)"}
+SIGHT_WEEK = 12   # sight words in a week's pack
 DEFAULT_AGE = "7-9"                # "Any age" makes the middle one
 MAX_WORDS = 20
 
@@ -53,6 +56,14 @@ def week(s, seeds, theme=None, age=None, spelling=None):
     age = age or (s.age if s.age in ages.EXTRAS else DEFAULT_AGE)
     theme = theme or getattr(s, "pack_theme", "animals")
     spelling = spelling_list(getattr(s, "pack_words", "") if spelling is None else spelling)
+    chosen = theme       # what the controls keep showing (a sight-word pack is made as a spelling pack)
+    if theme in SIGHT:   # this week's sight words: a seeded pick from the stage's list, then as spelling words
+        pool = words.THEMES_BY_LANGUAGE.get(i18n.LANG, words.THEMES)[theme].split()
+        rnd = mulberry32(seeds[0] ^ 0x51647)
+        for i in range(len(pool) - 1, 0, -1):
+            j = rnd() * (i + 1)
+            pool[i], pool[int(j)] = pool[int(j)], pool[i]
+        spelling, theme = pool[:SIGHT_WEEK], "spelling"
     if theme == "spelling" and not spelling:
         theme = "animals"
     if theme not in THEME_NAMES:
@@ -77,4 +88,4 @@ def week(s, seeds, theme=None, age=None, spelling=None):
     return {"mode": "make", "age": age, "weight": extras["weight"], "booklet": True, "poster": False,
             "testpage": False, "fold": False, "cover": True, "name_line": True, "page_nums": True, "key": True,
             "ramp": False, "mix": False, "sheet": "one", "pages": len(pages), "page_list": pages,
-            "pack_theme": theme, **{k: v for k, v in pages[0].items() if k != "seed"}}
+            "pack_theme": chosen if chosen in SIGHT else theme, **{k: v for k, v in pages[0].items() if k != "seed"}}
