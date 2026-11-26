@@ -75,6 +75,10 @@ def test_every_page_fits_without_scrolling(make_win, lang):
             spin(0.2)
             col, view = sb._columns[page], sb._scrolls[page].viewport()
             assert col.sizeHint().height() <= view.height(), (lang, page, fold, col.sizeHint().height(), view.height())
+        sb.show_page("booklet")
+        sb.book_folds["pack"].set_open(True)                 # the Worksheet pack with its five days
+        spin(0.2)
+        assert sb._columns["booklet"].sizeHint().height() <= sb._scrolls["booklet"].viewport().height(), lang
         sb.rail.buttons["photo"].click()
         spin(0.3)
         assert sb._columns["photo"].sizeHint().height() <= sb._scrolls["photo"].viewport().height()

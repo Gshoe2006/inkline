@@ -22,6 +22,9 @@ from .rng import mulberry32
 
 DAYS = ("maths", "trace", "crossword", "words", "maze")
 SPELLING_DAYS = ("trace", "crossword", "words", "scramble", "spelltest")
+# what a day can be, when the teacher chooses the week's sheets (Booklet → Worksheet pack → the days)
+DAY_CHOICES = ("maths", "early", "trace", "crossword", "words", "maze", "clock", "scramble", "spelltest", "fractions",
+               "symmetry", "reading", "bingo", "dots", "sudoku", "kakuro")
 THEMES = tuple(t for t in crossword.THEME_NAMES if t != "custom")   # themes the crossword and word search share
 SIGHT = ("sight1", "sight2", "sight3")   # sight words: a week of them, picked from the word search's lists
 THEME_NAMES = {**{t: crossword.THEME_NAMES[t] for t in THEMES}, **{t: words.THEME_NAMES[t] for t in SIGHT},
@@ -49,6 +52,17 @@ def spelling_list(text):
     return out[:MAX_WORDS]
 
 
+def chosen_days(text):
+    """The five days typed into pack_days ("maths,trace,..."), or None if they aren't five known sheets."""
+    days = [d.strip() for d in (text or "").split(",") if d.strip()]
+    return tuple(days) if len(days) == 5 and all(d in DAY_CHOICES for d in days) else None
+
+
+def days_for(s, spelling):
+    """The week's five sheets: the teacher's choice, else the usual ones for a theme or a spelling list."""
+    return chosen_days(getattr(s, "pack_days", "")) or (SPELLING_DAYS if spelling else DAYS)
+
+
 def week(s, seeds, theme=None, age=None, spelling=None):
     """The settings for a pack: {setting: value}, with page_list holding the five pages. s: the settings now
     (whose page options the pages start from); seeds: five seeds, one per page. The theme and spelling words
@@ -73,13 +87,13 @@ def week(s, seeds, theme=None, age=None, spelling=None):
                                        "name_text", "name_bg", "spot_base", "trace_text", "cross_words", "clock_task")}
     base.update(cbn=False, maze_shape="rect", maths_kind=extras["maths_kind"], trace_source=extras["trace_source"])
     if theme == "spelling":
-        days = SPELLING_DAYS
+        days = days_for(s, True)
         listed = ", ".join(spelling)
         clues = scramble.crossword_clues(mulberry32(seeds[1] ^ 0x5EED), [words.clean_word(w) for w in spelling])
         base.update(ws_theme="custom", ws_words=listed, cross_theme="custom", cross_words=clues,
                     trace_source="words", trace_text=listed)
     else:
-        days = DAYS
+        days = days_for(s, False)
         base.update(ws_theme=theme, cross_theme=theme)
         if extras["trace_source"] == "words":
             base["trace_text"] = ", ".join(theme_words(theme))

@@ -40,7 +40,7 @@ def _coerce(v, kind):
 RANGES = {"seed": (0, 4294967295), "complexity": (1, 10), "weight": (1, 10), "margin": (0, 2), "dpi": (36, 1200),
           "pages": (2, 40), "overlap": (0, 1), "brightness": (-100, 100), "contrast": (20, 300), "threshold": (1, 254),
           "dot": (1, 8), "pnono_size": (10, 30), "pcbn_colours": (4, 16), "cbn_colours": (3, 12)}
-LENGTHS = {"title": 80, "pack_words": 600, "reward_text": 60, "bingo_words": 600, "maze_word": 12, "ws_words": 300, "name_text": 40, "trace_text": 300, "cross_words": 2000, "panel_gens": 200}
+LENGTHS = {"title": 80, "pack_words": 600, "pack_days": 200, "reward_text": 60, "bingo_words": 600, "maze_word": 12, "ws_words": 300, "name_text": 40, "trace_text": 300, "cross_words": 2000, "panel_gens": 200}
 
 
 def _choices():
@@ -95,6 +95,7 @@ class Settings:
     maths_kind: str = "add"      # maths drill: patterns.maths.KINDS (add, sub, addsub, times, bonds, mixed)
     pack_theme: str = "animals"  # worksheet pack (pack.py): a theme from pack.THEME_NAMES, or "spelling"
     pack_words: str = ""         # worksheet pack: this week's spelling words, for pack_theme "spelling"
+    pack_days: str = ""          # worksheet pack: the five days' sheets ("maths,trace,..."), or "" for the usual ones
     money: str = "auto"          # maths drill money sums: patterns.money.CURRENCIES (auto, GBP, EUR, USD)
     ruled_kind: str = "squared"  # graph and lined paper: patterns.ruled.KINDS
     reward_kind: str = "chart"   # rewards: patterns.reward.KINDS (sticker chart, certificate)

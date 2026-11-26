@@ -350,6 +350,32 @@ class Sidebar(QFrame):
         self._all_patterns = d
         d.exec()
 
+    def _pack_spelling(self, s):
+        return s.pack_theme == "spelling" or s.pack_theme in pack.SIGHT
+
+    def _show_pack_days(self, s):
+        days = pack.days_for(s, self._pack_spelling(s))
+        for c, g in zip(self.pack_day_combos, days):
+            c.blockSignals(True)
+            c.set_value(g)
+            c.blockSignals(False)
+        self.pack_days_reset.setEnabled(pack.chosen_days(s.pack_days) is not None)
+
+    def _pack_day_chosen(self):
+        if self._loading:
+            return
+        s = self.state.settings
+        days = [c.value() for c in self.pack_day_combos]
+        usual = SPELLING_USUAL if self._pack_spelling(s) else pack.DAYS
+        self.state.update(pack_days="" if tuple(days) == tuple(usual) else ",".join(days))
+        self.pack_days_reset.setEnabled(bool(self.state.settings.pack_days))
+        self.changed.emit("pack_days")
+
+    def _pack_days_usual(self):
+        self.state.update(pack_days="")
+        self._show_pack_days(self.state.settings)
+        self.changed.emit("pack_days")
+
     def _gallery_ready(self, k):
         if k in self._gallery_keys:
             self.gallery.set_picture(self._gallery_keys[k], self.gallery_thumbs.get(k))
@@ -519,6 +545,17 @@ class Sidebar(QFrame):
         sec.add(OptionRow("Worksheet pack", self.pack_theme))
         self.pack_words = self._text("pack_words", "e.g. because, friend, said, which", 600)
         self.pack_words_row = sec.add(OptionRow("Spelling words", self.pack_words))
+        # the week's five sheets: the usual ones for the theme, or the teacher's choice (pack_days)
+        self.pack_day_combos = []
+        for d in range(5):
+            c = combo([(g, NAMES[g]) for g in pack.DAY_CHOICES])
+            c.setAccessibleName(tr(DAY_NAMES[d]))
+            c.currentIndexChanged.connect(lambda _i: self._pack_day_chosen())
+            self.pack_day_combos.append(c)
+        rows = [OptionRow(DAY_NAMES[d], self.pack_day_combos[d]) for d in range(5)]
+        self.pack_days_reset = button("Usual days", "mini", "The theme's usual sheets for each day")
+        self.pack_days_reset.clicked.connect(self._pack_days_usual)
+        sec.add(Pair(rows[0], rows[1]), Pair(rows[2], rows[3]), Pair(rows[4], _bottom(self.pack_days_reset)))
         self.pack_btn = button("Make a week of worksheets", "mini",
                                "Five worksheets with answers, set for the age under Age (Undo brings back what you had)")
         self.pack_btn.clicked.connect(self.pack_make)
@@ -1189,6 +1226,10 @@ class Sidebar(QFrame):
                    "spelling test, for {age}.") if s.pack_theme in pack.SIGHT else
                 tr("Maths, handwriting, a crossword, a word search and a maze, for {age}."))
         ready = not spelling or bool(pack.spelling_list(s.pack_words))
+        self._show_pack_days(s)
+        if pack.chosen_days(s.pack_days):   # the teacher's own week: say which sheets, in order
+            what = tr("This week: {days}, for {age}.").replace("{days}", ", ".join(
+                tr(NAMES[g]) for g in pack.chosen_days(s.pack_days)))   # as written (German nouns keep capitals)
         self.pack_hint.setText(what.format(age=tr(ages.AGES[s.age if s.age in ages.EXTRAS else pack.DEFAULT_AGE]).lower())
                                if ready else tr("Type this week's spelling words to make the pack."))
         self.pack_btn.setEnabled(ready)
@@ -1483,6 +1524,20 @@ class _Elided(QLabel):
 
     def minimumSizeHint(self):
         return QSize(0, super().minimumSizeHint().height())
+
+
+DAY_NAMES = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+SPELLING_USUAL = pack.SPELLING_DAYS
+
+
+def _bottom(widget):
+    """A widget at the foot of its cell, level with the controls beside it (a button next to a labelled list)."""
+    w = QWidget()
+    lay = QVBoxLayout(w)
+    lay.setContentsMargins(0, 0, 0, 0)
+    lay.addStretch(1)
+    lay.addWidget(widget, 0, Qt.AlignmentFlag.AlignLeft)
+    return w
 
 
 def _tools(*buttons):
