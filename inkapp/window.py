@@ -27,7 +27,7 @@ from inkengine.i18n import tr
 from inkengine.page import PAGE_KEYS, Settings, clean_page, design_box, geometry, single_page
 from inkengine.patterns import NAMES
 
-from . import config, jobs, project, recovery, theme, update_ui, whatsnew
+from . import config, jobs, project, recovery, settings, theme, update_ui, whatsnew
 from .preview import Preview
 from .render import PREVIEW_DPI, Renderer, render_view, view
 from .sample import sample_photo
@@ -168,6 +168,8 @@ class Window(QMainWindow):
         self.project_path = None   # the .inkline file open, if any
         self._clip_id = uuid.uuid4().hex   # marks the booklet pages this window puts on the clipboard
         restored = self._restore()
+        if not restored:   # a first start: Edit → Settings' paper defaults, if chosen
+            self.state.settings = replace(self.state.settings, **(settings.defaults() if remember else {}))
         self.state.mirror()
         self.last_dir = os.path.expanduser("~/Pictures") if os.path.isdir(os.path.expanduser("~/Pictures")) else os.path.expanduser("~")
 
@@ -215,6 +217,7 @@ class Window(QMainWindow):
         self._wire()
         self.updates = update_ui.Updates(self, version)
         self._menus()
+        self.apply_save_format()
         QApplication.instance().installEventFilter(self)
         theme.follow_system(QApplication.instance(), self.preview.page.update)
         if self.state.settings.mode == "convert" and not self.state.photos:
@@ -321,6 +324,8 @@ class Window(QMainWindow):
         act(e, "&Paste\tCtrl+V", self.paste)
         e.addSeparator()
         act(e, "&History…", self.show_history, "Ctrl+H")
+        e.addSeparator()
+        act(e, "&Settings…", self.show_settings, "Ctrl+,")
         v = mb.addMenu(tr("&View"))
         act(v, "&New design", self.new_design, "Ctrl+N")
         act(v, "&More designs…", self.more_designs, "Ctrl+Shift+N")
@@ -855,7 +860,8 @@ class Window(QMainWindow):
     def new_project(self):
         if not self._ask_to_save():
             return
-        self._use_project(project.Project(State().settings), None)
+        fresh = replace(State().settings, **(settings.defaults() if self.remember else {}))
+        self._use_project(project.Project(fresh), None)
         self._msg(tr("New project. Settings are back to their defaults."))
 
     def open_project(self, path=None):
@@ -1458,6 +1464,8 @@ class Window(QMainWindow):
         printer.setFullPage(True)
         printer.setDocName(j.name)
         printer.setColorMode(QPrinter.ColorMode.GrayScale)
+        if self.printer_name and self.printer_name in settings.printers():   # Edit → Settings', or the last used
+            printer.setPrinterName(self.printer_name)
         if j.duplex:   # fold-and-staple books: double-sided, flipping on the short edge
             printer.setDuplex(QPrinter.DuplexMode.DuplexShortSide)
         self._msg(tr("Opening the print dialog…"))
@@ -1477,6 +1485,50 @@ class Window(QMainWindow):
             done = tr("Sent {what} to the printer.").format(what=sent) if j.count > 1 else tr("Sent to the printer.")
         self._start(j, printer, done, tr("The printer didn't accept the job. Check that it's connected."),
                     stopped=tr("Printing cancelled: nothing was sent to the printer."))
+
+    # --- Edit → Settings ------------------------------------------------------------------------------
+    def show_settings(self):
+        settings.SettingsDialog(self).exec()
+
+    def set_printer(self, name):
+        """The printer Print starts with ("" for the system's default); its margins show on the preview."""
+        jobs.forget_printer_margins()
+        self.printer_name = name or ""
+        if self.remember:
+            err = config.write("printer.json", {"name": self.printer_name}, "Printer")
+            if err:
+                self._msg(err)
+        self._show_printer_edges()
+
+    def set_save_format(self, fmt):
+        if self.remember:
+            err = config.write("preferences.json", {**config.read("preferences.json"), "save_format": fmt}, "Preferences")
+            if err:
+                self._msg(err)
+                return
+        self.apply_save_format(fmt)
+        self._msg(tr("Ctrl+E now saves {format}.").format(format=tr(settings.FORMATS[fmt])))
+
+    def apply_save_format(self, fmt=None):
+        """Ctrl+E saves fmt (PDF unless Settings says otherwise); Ctrl+Shift+E saves PNG, or PDF when PNG has Ctrl+E."""
+        fmt = fmt or (settings.save_format() if self.remember else "pdf")
+        second = "pdf" if fmt == "png" else "png"
+        for kind, a in (("pdf", self.act_pdf), ("png", self.act_png), ("svg", self.act_svg)):
+            a.setShortcut(QKeySequence("Ctrl+E" if kind == fmt else "Ctrl+Shift+E" if kind == second else ""))
+        self.sidebar.save_format = fmt
+        self.sidebar.save_tips(self.state.settings)
+        self._sync_actions()
+
+    def use_paper(self, values):
+        """Put Settings' paper defaults on the design open now, as if chosen in the Paper section (Undo takes it
+        back)."""
+        changed = [k for k, v in values.items() if getattr(self.state.settings, k) != v]
+        for k in changed:
+            self.state.update(**{k: values[k]})
+            self.sidebar.load()
+            self._changed(k)
+        self._msg(tr("The design now uses your paper settings.") if changed else
+                  tr("The design already uses your paper settings."))
 
     def _remember_printer(self, name):
         jobs.forget_printer_margins()   # the printers, or the system's default, may have changed
