@@ -24,21 +24,30 @@ A desktop app for Linux and Windows that converts photos to, or generates, black
 
 ## Install
 
-Each [release](https://github.com/Gshoe2006/inkline/releases) has a package for most Linux systems:
+Each [release](https://github.com/Gshoe2006/inkline/releases) has a package for Windows, macOS and most Linux systems:
 
 | You use | Download | Install |
 | --- | --- | --- |
 | Debian 12+, Ubuntu 22.04+, Linux Mint, Pop!_OS | `inkline_<version>-1_amd64.deb` | `sudo apt install ./inkline_<version>-1_amd64.deb` |
+| Fedora, openSUSE | `inkline-<version>-1.x86_64.rpm` | `sudo dnf install ./inkline-<version>-1.x86_64.rpm` (openSUSE: `sudo zypper install --allow-unsigned-rpm …`) |
 | Arch, CachyOS, Manjaro | `inkline-<version>-1-any.pkg.tar.zst` | `sudo pacman -U inkline-<version>-1-any.pkg.tar.zst` |
 | Any distro, nothing installed | `inkline-<version>-x86_64.AppImage` | `chmod +x inkline-*.AppImage`, then run it |
 | Any distro, sandboxed | `inkline-<version>.flatpak` | `flatpak install --user inkline-<version>.flatpak` |
+| Ubuntu and other distros with Snap | `inkline_<version>_amd64.snap` | `sudo snap install --dangerous ./inkline_<version>_amd64.snap` |
 | Any distro, your own Python | `inkline-<version>.run` | `sh inkline-<version>.run` |
+| Raspberry Pi 4 or 5, ARM laptops (64-bit) | `inkline_<version>-1_arm64.deb`, `inkline-<version>-aarch64.AppImage` or `inkline_<version>_arm64.snap` | As above |
 | Windows 10 or 11 (64-bit) | `inkline-<version>-windows-setup.exe` | Run it; no administrator needed |
-| macOS 12 or later, Apple silicon (M1 and later) | `inkline-<version>-macos.dmg` | Open it and drag Inkline to Applications |
+| Windows, without installing | `inkline-<version>-windows-portable.zip` | Unzip it anywhere (a USB stick too) and run `Inkline\Inkline.exe` |
+| macOS 14 (Sonoma) or later, any Mac | `inkline-<version>-macos.dmg` | Open it and drag Inkline to Applications |
+| …only Apple silicon, or only Intel (smaller) | `inkline-<version>-macos-arm64.dmg`, `inkline-<version>-macos-intel.dmg` | The same |
+
+The ARM64 packages need a system from 2024 or later (glibc 2.39: Ubuntu 24.04, Debian 13, Raspberry Pi OS 13 "trixie" or newer), as PySide6's ARM64 build does. The `.rpm` is for x86-64.
+
+The `.snap` file isn't from the Snap Store yet, so it's installed with `--dangerous` (not checked by the Store) and doesn't update by itself: Inkline says when there's a new one. The portable `.zip` keeps your settings in your user profile, like the installed app; to update it, Help → Check for updates downloads the new `.zip` for you to unzip in place of the old folder.
 
 The Windows installer isn't signed yet, so Windows SmartScreen may warn that it's from an unknown publisher: choose **More info → Run anyway**. It adds Inkline to the Start menu, opens `.inkline` projects with a double-click, and uninstalls from Settings → Apps. Settings are kept in `%APPDATA%\Inkline`.
 
-The macOS app isn't signed with an Apple Developer ID or notarized yet, so the first time you open it macOS says it can't check it: Control-click Inkline in Applications and choose **Open** (or open it from System Settings → Privacy & Security → **Open Anyway**). It's built for Apple silicon; on an Intel Mac, run it from source. Help → Check for updates installs a newer version in place of the app, and checking while Inkline is closed uses a launchd agent of your own (`~/Library/LaunchAgents/io.github.gshoe2006.Inkline.update.plist`); its notification has no button, so Inkline offers the update when you next open it.
+The macOS app isn't signed with an Apple Developer ID or notarized yet, so the first time you open it macOS says it can't check it: Control-click Inkline in Applications and choose **Open** (or open it from System Settings → Privacy & Security → **Open Anyway**). `inkline-<version>-macos.dmg` holds one app for both Apple silicon and Intel Macs (and is the one Help → Check for updates installs); the `-arm64` and `-intel` disk images are smaller, each for one kind of Mac. Help → Check for updates installs a newer version in place of the app, and checking while Inkline is closed uses a launchd agent of your own (`~/Library/LaunchAgents/io.github.gshoe2006.Inkline.update.plist`); its notification has no button, so Inkline offers the update when you next open it.
 
 The `.deb` brings its own PySide6 (Debian and Ubuntu don't package a new enough one) and uses the system's Python and numpy. The AppImage brings everything, Python included; for it to appear in your app menu and open `.inkline` projects with a double-click, use an AppImage manager such as Gear Lever or AppImageLauncher.
 
@@ -71,8 +80,12 @@ Checking while Inkline is closed is set up for you alone, with no administrator 
 | Windows installer | Runs the new installer, which closes Inkline and starts the new version |
 | AppImage | Puts the new AppImage in place of the old one, then offers to restart |
 | `.run` (for you) | Runs the new `.run`, then offers to restart |
-| `.deb`, Arch package, `.run --system` | Asks for an administrator password (through `pkexec`), installs, then offers to restart. Without `pkexec`, it downloads the package and shows the command to install it |
-| Flatpak, or run from source | Says there's an update and opens the release page |
+| `.deb`, `.rpm`, Arch package, `.run --system` | Asks for an administrator password (through `pkexec`), installs (with `apt`, `dnf` or `zypper`, or `pacman`), then offers to restart. Without `pkexec`, it downloads the package and shows the command to install it |
+| Mac app | Puts the new app (the universal one) in place of the old one, then offers to restart |
+| Portable `.zip` (Windows) | Downloads the new `.zip` and opens its folder, to unzip in place of the old one once Inkline is closed |
+| Flatpak, Snap, or run from source | Says there's an update and opens the release page |
+
+On an ARM64 computer, the `.deb` and AppImage update to the ARM64 package.
 
 The request sends nothing about you or your work: GitHub sees an ordinary web request, with the user agent `Inkline-update-check`.
 
@@ -147,14 +160,22 @@ packaging/build.sh
 The Debian package and the AppImage have scripts of their own (both download what they bundle, checked):
 
 ```sh
-sh packaging/debian/build-deb.sh          # dist/inkline_<version>-1_amd64.deb (needs dpkg-deb)
-sh packaging/appimage/build-appimage.sh   # dist/inkline-<version>-x86_64.AppImage (needs uv: pip install uv)
+sh packaging/debian/build-deb.sh          # dist/inkline_<version>-1_amd64.deb (needs dpkg-deb); add arm64 for ARM64
+sh packaging/appimage/build-appimage.sh   # dist/inkline-<version>-x86_64.AppImage, or -aarch64 on ARM64 (needs uv)
+sh packaging/rpm/build-rpm.sh             # dist/inkline-<version>-1.x86_64.rpm (needs rpmbuild)
+snapcraft                                 # inkline_<version>_<arch>.snap, from snap/snapcraft.yaml (needs LXD)
+```
+
+The macOS app is built on a Mac (see the top of `packaging/macos/build.py` for the universal one):
+
+```sh
+python3 packaging/macos/build.py --arch arm64   # or intel, or universal: dist/inkline-<version>-macos[-arm64|-intel].dmg
 ```
 
 The Windows installer is built on Windows, with Python, `pip install PySide6-Essentials numpy pyinstaller` and [Inno Setup 6](https://jrsoftware.org/isinfo.php):
 
 ```sh
-python packaging/windows/build.py         # dist/Inkline/ and dist/inkline-<version>-windows-setup.exe
+python packaging/windows/build.py         # dist/Inkline/, the -windows-setup.exe and the -windows-portable.zip
 ```
 
 `packaging/build.sh` outputs to `dist/`:

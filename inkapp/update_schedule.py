@@ -7,7 +7,7 @@ password), whichever way it was installed:
   skipped once the Inkline it runs is gone (a package removed leaves the files in the person's home folder).
 - Windows: "At login" is a value under the user's Run key; every day or week, a Task Scheduler task of the user's
   own, started late if the computer was off when it was due.
-- Flatpak: none (a sandbox can't set either up, and Flatpak updates come through Flathub); Inkline still checks
+- Flatpak and Snap: none (a sandbox can't set either up, and they update the app themselves); Inkline still checks
   when it starts.
 
 `--check-updates` (update_check.py) looks for a newer version and, if there is one, shows a desktop notification whose
@@ -30,17 +30,17 @@ RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 
 
 def supported(kind=None, platform=None):
-    """Whether this copy can check while it isn't running (not in a Flatpak; on Linux, Windows or macOS)."""
+    """Whether this copy can check while it isn't running (not in a Flatpak or Snap; on Linux, Windows or macOS)."""
     kind = kind or updater.install_kind()
     platform = platform or sys.platform
-    return kind != "flatpak" and (platform.startswith("linux") or platform in ("win32", "darwin"))
+    return kind not in ("flatpak", "snap") and (platform.startswith("linux") or platform in ("win32", "darwin"))
 
 
 def command(kind=None, env=None, root=updater.ROOT):
     """How the timer or task starts this Inkline: an absolute program first (the timer checks it's still there)."""
     env = os.environ if env is None else env
     kind = kind or updater.install_kind(env=env)
-    if kind in ("windows", "macos"):   # the app's own program (Inkline.exe, or Inkline.app's)
+    if kind in ("windows", "windows-portable", "macos"):   # the app's own program (Inkline.exe, or Inkline.app's)
         return [sys.executable]
     if kind == "source":
         return [sys.executable, os.path.join(root, "inkline.py")]

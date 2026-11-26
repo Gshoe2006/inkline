@@ -77,11 +77,54 @@ def test_asset_names_match_the_release_workflow():
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     flow = open(os.path.join(root, ".github/workflows/release.yml"), encoding="utf-8").read()
     v = "${{ needs.check.outputs.version }}"
-    for kind in ("windows", "appimage", "deb"):
-        assert updater.asset_name(kind, v) in flow, kind
+    m = "${{ matrix.arch }}"
+    assert updater.asset_name("windows", v) in flow and updater.asset_name("rpm", v, "x86_64") in flow
+    assert f"inkline-{v}-windows-portable.zip" in flow and f"inkline_{v}-1_{m}.deb" in flow
+    assert f"inkline-{v}-{m}.AppImage" in flow and f"inkline_{v}_{m}.snap" in flow
+    assert 'DMG="inkline-$V-macos.dmg"' in flow                  # the universal one, which the updater installs
     assert updater.asset_name("run-user", "1.2.3") == updater.asset_name("run-system", "1.2.3") == "inkline-1.2.3.run"
     assert updater.asset_name("arch", "1.2.3") == "inkline-1.2.3-1-any.pkg.tar.zst"
-    assert updater.asset_name("flatpak", "1.2.3") is None and updater.asset_name("source", "1.2.3") is None
+    for kind in ("flatpak", "snap", "source"):
+        assert updater.asset_name(kind, "1.2.3") is None
+
+
+def test_each_processor_gets_its_own_package():
+    a = updater.asset_name
+    assert a("deb", "1.2.3", "x86_64") == "inkline_1.2.3-1_amd64.deb" and a("deb", "1.2.3", "arm64") == "inkline_1.2.3-1_arm64.deb"
+    assert a("appimage", "1.2.3", "x86_64") == "inkline-1.2.3-x86_64.AppImage"
+    assert a("appimage", "1.2.3", "arm64") == "inkline-1.2.3-aarch64.AppImage"
+    assert a("rpm", "1.2.3", "x86_64") == "inkline-1.2.3-1.x86_64.rpm" and a("rpm", "1.2.3", "arm64") is None
+    assert a("macos", "1.2.3", "arm64") == a("macos", "1.2.3", "x86_64") == "inkline-1.2.3-macos.dmg"   # universal
+    assert a("windows-portable", "1.2.3") == "inkline-1.2.3-windows-portable.zip"
+    assert updater.machine("aarch64") == updater.machine("arm64") == "arm64"
+    assert updater.machine("x86_64") == updater.machine("AMD64") == "x86_64"
+
+
+def test_snap_portable_and_rpm_installs(tmp_path, monkeypatch):
+    assert updater.install_kind(env={"SNAP": "/snap/inkline/12", "SNAP_NAME": "inkline"}, frozen=False,
+                                root="/snap/inkline/12/share/inkline") == "snap"
+    assert updater.install_kind(env={}, frozen="windows-portable") == "windows-portable"
+    exe = tmp_path / "Inkline.exe"
+    exe.write_text("")
+    monkeypatch.setattr(updater.sys, "executable", str(exe))
+    monkeypatch.setattr(updater.os, "name", "nt")
+    assert updater.install_kind(env={}, frozen=True) == "windows"
+    (tmp_path / "portable").write_text("")
+    assert updater.install_kind(env={}, frozen=True) == "windows-portable"
+    monkeypatch.setattr(updater.os, "name", "posix")
+    assert updater.install_steps("windows-portable", "/tmp/x.zip") == (None, "manual")
+    bins = tmp_path / "bin"
+    bins.mkdir()
+    for name in ("pkexec", "zypper"):
+        (bins / name).write_text("")
+        (bins / name).chmod(0o755)
+    cmd, after = updater.install_steps("rpm", "/tmp/i.rpm", env={"PATH": str(bins)})
+    assert cmd[1:] == [str(bins / "zypper"), "--non-interactive", "install", "--allow-unsigned-rpm", "/tmp/i.rpm"]
+    (bins / "dnf").write_text("")
+    (bins / "dnf").chmod(0o755)
+    cmd, after = updater.install_steps("rpm", "/tmp/i.rpm", env={"PATH": str(bins)})
+    assert cmd == [str(bins / "pkexec"), str(bins / "dnf"), "install", "-y", "/tmp/i.rpm"] and after == "restart"
+    assert "rpm" in updater.NEEDS_ADMIN and "sudo dnf install /tmp/i.rpm" in updater.manual_command("rpm", "/tmp/i.rpm")
 
 
 def test_fetch_latest_reads_the_release():

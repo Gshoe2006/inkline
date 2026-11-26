@@ -1,7 +1,8 @@
 #!/bin/sh
-# Builds Inkline's Debian / Ubuntu package into ../../dist: inkline_<version>-1_amd64.deb
+# Builds Inkline's Debian / Ubuntu package into ../../dist: inkline_<version>-1_<arch>.deb
 #
-#   sh packaging/debian/build-deb.sh
+#   sh packaging/debian/build-deb.sh            for this machine (amd64, or arm64 on ARM)
+#   sh packaging/debian/build-deb.sh arm64      for the other one (the package holds no code built here)
 #
 # Debian 12 and Ubuntu 22.04/24.04 don't package PySide6 (or not a new enough one), so the package carries
 # PySide6's own build (the same wheels the Flatpak uses, which work with any Python 3.10 or newer) in
@@ -12,14 +13,23 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 SRC=$(cd "$HERE/../.." && pwd)
 VERSION=$(cat "$SRC/VERSION")
 REL=1
+ARCH=${1:-$(dpkg --print-architecture 2>/dev/null || echo amd64)}
 DIST="$SRC/dist"
 CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/inkline-build"
 
-# PySide6's Essentials (QtCore, QtGui, QtWidgets, QtPrintSupport: all Inkline uses), as in the Flatpak
-WHEELS="
+# PySide6's Essentials (QtCore, QtGui, QtWidgets, QtPrintSupport: all Inkline uses), as in the Flatpak. Its ARM64
+# build needs glibc 2.39 (Ubuntu 24.04, Debian 13 and Raspberry Pi OS 13 or newer)
+case "$ARCH" in
+  amd64) GLIBC=2.34 WHEELS="
 https://files.pythonhosted.org/packages/7b/3c/7597d8dcb36aa8315427635ec6ec9d850ffbad4ce78b9118ac854889f2d3/pyside6_essentials-6.12.0-cp310-abi3-manylinux_2_34_x86_64.whl 16f4b5e41daf49235ae048458243da9efe5f3d8040f9cc5aa454ce69893d3bd9
 https://files.pythonhosted.org/packages/49/c2/a04fa003b4360e99d8e3fc2829abacf37396ace63ea1cd616402209ec7c6/shiboken6-6.12.0-cp310-abi3-manylinux_2_34_x86_64.whl 3bde565bb0890044b5c7f63808adddede5abc241e9395a2bfed61919884d6240
-"
+" ;;
+  arm64) GLIBC=2.39 WHEELS="
+https://files.pythonhosted.org/packages/5e/4e/f4fd4c016719be832ec49d3c87940459e87fd666179a0a199a3998d07916/pyside6_essentials-6.12.0-cp310-abi3-manylinux_2_39_aarch64.whl 08c5841063fc1df69b7fa1ee405f539e66576a83fc48004be3e2c5e35ccbfa69
+https://files.pythonhosted.org/packages/97/ca/a4415e6218e0dff764fe2b2d30db2fc8f499a08ace07634232ade3f73adc/shiboken6-6.12.0-cp310-abi3-manylinux_2_39_aarch64.whl ff72a72b3277b418902d562b987b33a6f6818bed9fe40a49d634d09bc67f620e
+" ;;
+  *) echo "build-deb.sh: no PySide6 for '$ARCH' (amd64 or arm64)"; exit 1 ;;
+esac
 
 command -v dpkg-deb >/dev/null || { echo "build-deb.sh: dpkg-deb is needed (Debian/Ubuntu: sudo apt install dpkg)"; exit 1; }
 mkdir -p "$CACHE" "$DIST"
@@ -71,7 +81,7 @@ COPY
 # PySide6, unpacked where only Inkline finds it
 # (wheels are zip files, and these two hold only their packages: unpacking them is installing them, with no
 # pip needed, which some systems keep away from their own Python)
-for w in "$CACHE"/pyside6_essentials-6.12.0-*.whl "$CACHE"/shiboken6-6.12.0-*.whl; do
+for w in $(echo "$WHEELS" | while read -r url _sum; do [ -n "$url" ] && echo "$CACHE/$(basename "$url")"; done); do
   python3 -m zipfile -e "$w" "$R/usr/lib/inkline/vendor"
 done
 find "$R/usr/lib/inkline/vendor" -type d -exec chmod 755 {} +
@@ -96,10 +106,10 @@ SIZE=$(du -sk "$R" | cut -f1)
 cat > "$R/DEBIAN/control" <<CTRL
 Package: inkline
 Version: $VERSION-$REL
-Architecture: amd64
+Architecture: $ARCH
 Maintainer: Inkline <Gshoe2006@users.noreply.github.com>
 Installed-Size: $SIZE
-Depends: python3 (>= 3.10), python3-numpy, libc6 (>= 2.34), libegl1, libgl1, libfontconfig1, libfreetype6, libxkbcommon0, libxkbcommon-x11-0, libdbus-1-3, libxcb-cursor0, libxcb-icccm4, libxcb-keysyms1, libxcb-shape0, libxcb-xkb1, libwayland-client0, libwayland-cursor0, libwayland-egl1
+Depends: python3 (>= 3.10), python3-numpy, libc6 (>= $GLIBC), libegl1, libgl1, libfontconfig1, libfreetype6, libxkbcommon0, libxkbcommon-x11-0, libdbus-1-3, libxcb-cursor0, libxcb-icccm4, libxcb-keysyms1, libxcb-shape0, libxcb-xkb1, libwayland-client0, libwayland-cursor0, libwayland-egl1
 Recommends: cups
 Section: graphics
 Priority: optional
@@ -112,6 +122,6 @@ Description: black & white images for printing
  and posters. Print, or save as PDF, PNG or SVG.
 CTRL
 
-OUT="$DIST/inkline_${VERSION}-${REL}_amd64.deb"
+OUT="$DIST/inkline_${VERSION}-${REL}_${ARCH}.deb"
 dpkg-deb --root-owner-group -Zxz --build "$R" "$OUT" >/dev/null
 echo "built $OUT"

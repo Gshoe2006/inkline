@@ -1,13 +1,19 @@
-"""Builds Inkline for macOS, on a Mac: dist/Inkline.app and dist/inkline-<version>-macos.dmg.
+"""Builds Inkline for macOS, on a Mac: dist/Inkline.app and its disk image.
 
-    python3 packaging/macos/build.py            the app and the disk image
-    python3 packaging/macos/build.py --no-dmg   only the app
+    python3 packaging/macos/build.py --arch arm64       Apple silicon: inkline-<version>-macos-arm64.dmg
+    python3 packaging/macos/build.py --arch intel       Intel Macs:    inkline-<version>-macos-intel.dmg
+    python3 packaging/macos/build.py --arch universal   both, in one app: inkline-<version>-macos.dmg
+    python3 packaging/macos/build.py --arch … --no-dmg  only the app
 
 Needs Python 3.10+ with PySide6-Essentials, numpy and pyinstaller (pip install PySide6-Essentials numpy
-pyinstaller), and macOS's own iconutil, hdiutil and codesign. The app is built for the Mac it's built on (the
-release builds on Apple silicon). It isn't signed with a Developer ID or notarized: PyInstaller signs it ad hoc,
-so the first time it's opened macOS asks (Control-click → Open, or System Settings → Privacy & Security → Open
-Anyway); see README.md.
+pyinstaller), and macOS's own iconutil, hdiutil, lipo and codesign. arm64 and intel are built with a Python for
+that processor (the release builds each on a Mac of that kind). universal needs a universal2 Python (python.org's
+installer) and a universal2 numpy (PyPI has only one processor's in each wheel: the release joins the two with
+delocate-merge; PySide6's wheels are universal2 already). The universal one is what Inkline's updater installs.
+PySide6 6.12 needs macOS 14 (Sonoma) or newer.
+
+It isn't signed with a Developer ID or notarized: PyInstaller signs it ad hoc, so the first time it's opened macOS
+asks (Control-click → Open, or System Settings → Privacy & Security → Open Anyway); see README.md.
 """
 
 import os
@@ -19,6 +25,13 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 DIST = os.path.join(ROOT, "dist")
 BUILD = os.path.join(ROOT, "build", "macos")
 BUNDLE_ID = "io.github.gshoe2006.Inkline"
+ARCHES = {"arm64": ("arm64", "-arm64"), "intel": ("x86_64", "-intel"), "universal": ("universal2", "")}   # target, name
+LIPO = {"arm64": {"arm64"}, "intel": {"x86_64"}, "universal": {"arm64", "x86_64"}}   # what the app's program holds
+MIN_MACOS = "14.0"   # PySide6 6.12's wheels are built for macOS 14
+
+
+def dmg_name(arch, version):
+    return f"inkline-{version}-macos{ARCHES[arch][1]}.dmg"
 
 
 def version():
@@ -47,14 +60,14 @@ def make_icns(out):
     return out
 
 
-def app():
+def app(arch="arm64"):
     os.makedirs(BUILD, exist_ok=True)
     icns = make_icns(os.path.join(BUILD, "inkline.icns"))
     data = [f"{os.path.join(ROOT, name)}:." for name in ("VERSION", "CHANGELOG.md", "inkline.svg", "LICENSE")]
     for sub in ("locale", "reading", "fonts"):   # translations, reading passages, handwriting and reading fonts
         data.append(f"{os.path.join(ROOT, 'inkengine', sub)}:inkengine/{sub}")
     cmd = [sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", "--windowed", "--name", "Inkline",
-           "--icon", icns, "--osx-bundle-identifier", BUNDLE_ID,
+           "--icon", icns, "--osx-bundle-identifier", BUNDLE_ID, "--target-arch", ARCHES[arch][0],
            "--distpath", DIST, "--workpath", BUILD, "--specpath", BUILD,
            "--collect-submodules", "inkengine", "--collect-submodules", "inkapp",
            "--exclude-module", "tkinter", "--exclude-module", "unittest", "--exclude-module", "pydoc"]
@@ -66,14 +79,18 @@ def app():
     plist = os.path.join(bundle, "Contents", "Info.plist")
     v = version()
     for key, value in (("CFBundleShortVersionString", v), ("CFBundleVersion", v),
-                       ("NSHighResolutionCapable", "true"), ("LSMinimumSystemVersion", "12.0")):
+                       ("NSHighResolutionCapable", "true"), ("LSMinimumSystemVersion", MIN_MACOS)):
         kind = "-bool" if value == "true" else "-string"
         subprocess.run(["defaults", "write", plist, key, kind, value], check=True)
     subprocess.run(["codesign", "--force", "--deep", "--sign", "-", bundle], check=True)   # ad hoc, after editing
+    program = os.path.join(bundle, "Contents", "MacOS", "Inkline")
+    held = set(subprocess.run(["lipo", "-archs", program], check=True, capture_output=True, text=True).stdout.split())
+    if held != LIPO[arch]:
+        raise SystemExit(f"build.py: Inkline.app's program is for {sorted(held)}, not {sorted(LIPO[arch])}")
     return bundle
 
 
-def dmg(bundle):
+def dmg(bundle, arch="arm64"):
     """A disk image with the app and a link to Applications, to drag it across."""
     v = version()
     stage = os.path.join(BUILD, "dmg")
@@ -81,7 +98,7 @@ def dmg(bundle):
     os.makedirs(stage)
     subprocess.run(["ditto", bundle, os.path.join(stage, "Inkline.app")], check=True)
     os.symlink("/Applications", os.path.join(stage, "Applications"))
-    out = os.path.join(DIST, f"inkline-{v}-macos.dmg")
+    out = os.path.join(DIST, dmg_name(arch, v))
     if os.path.exists(out):
         os.remove(out)
     subprocess.run(["hdiutil", "create", "-volname", f"Inkline {v}", "-srcfolder", stage, "-ov", "-format", "UDZO",
@@ -92,10 +109,13 @@ def dmg(bundle):
 def main(argv):
     if sys.platform != "darwin":
         raise SystemExit("build.py: build the macOS app on a Mac")
-    bundle = app()
+    arch = argv[argv.index("--arch") + 1] if "--arch" in argv[:-1] else None
+    if arch not in ARCHES:
+        raise SystemExit(f"build.py: say which Macs it's for: --arch {' | '.join(ARCHES)}")
+    bundle = app(arch)
     print(f"built {bundle}")
     if "--no-dmg" not in argv:
-        print(f"built {dmg(bundle)}")
+        print(f"built {dmg(bundle, arch)}")
 
 
 if __name__ == "__main__":

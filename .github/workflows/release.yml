@@ -2,9 +2,10 @@
 #
 #   1. check    VERSION is a new version, and CHANGELOG.md has notes for it
 #   2. selftest the same self-test every pull request runs (selftest.yml)
-#   3. build    the .run installer and the Arch package (in Arch Linux), the .flatpak, the Debian/Ubuntu
-#               .deb, the AppImage, the Windows installer and the macOS disk image
-#   4. release  tags the commit, publishes "Inkline <version>" with those notes and the seven files,
+#   3. build    the .run installer and the Arch package (in Arch Linux), the .flatpak, the Debian/Ubuntu .deb and
+#               the AppImage (each for x86-64 and ARM64), the Fedora/openSUSE .rpm, the .snap (x86-64 and ARM64),
+#               the Windows installer and portable .zip, and the macOS disk images (universal, Apple silicon, Intel)
+#   4. release  tags the commit, publishes "Inkline <version>" with those notes and the fifteen files,
 #               then tells the app portal (Gshoe2006/Apps) to show it straight away
 #
 # Nothing is published unless every step passes. To release: in one pull request, bump VERSION and
@@ -12,7 +13,7 @@
 # releases the current VERSION if that hasn't happened yet (for example after fixing a failed build).
 #
 # Tick "Test build only" under Run workflow to do everything but publish: the notes check, the
-# self-test and all seven builds, with the packages kept for 7 days under the run's Artifacts.
+# self-test and all fifteen builds, with the packages kept for 7 days under the run's Artifacts.
 # Releases are only ever published from main.
 name: Release
 
@@ -125,7 +126,7 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: run-and-arch
+          name: pkg-run-and-arch
           path: |
             dist/inkline-*.run
             dist/inkline-*.pkg.tar.zst
@@ -154,7 +155,7 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: flatpak
+          name: pkg-flatpak
           path: dist/inkline-*.flatpak
           if-no-files-found: error
           retention-days: 7
@@ -162,26 +163,31 @@ jobs:
   deb:
     needs: check
     if: needs.check.outputs.build == 'true'
-    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        include:
+          - { arch: amd64, runner: ubuntu-24.04 }
+          - { arch: arm64, runner: ubuntu-24.04-arm }   # Raspberry Pi 4 and 5, ARM laptops (glibc 2.39 or newer)
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
 
       - name: Build the .deb
         run: |
-          sh packaging/debian/build-deb.sh
-          test -f "dist/inkline_${{ needs.check.outputs.version }}-1_amd64.deb"
+          sh packaging/debian/build-deb.sh ${{ matrix.arch }}
+          test -f "dist/inkline_${{ needs.check.outputs.version }}-1_${{ matrix.arch }}.deb"
 
       - name: Install it and run the self-test with it
         run: |
           sudo apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y poppler-utils "./dist/inkline_${{ needs.check.outputs.version }}-1_amd64.deb"   # poppler-utils: check_selftest reads the PDFs
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y poppler-utils "./dist/inkline_${{ needs.check.outputs.version }}-1_${{ matrix.arch }}.deb"   # poppler-utils: check_selftest reads the PDFs
           QT_QPA_PLATFORM=offscreen inkline --selftest deb-selftest
           python3 packaging/check_selftest.py deb-selftest --install-kind deb
 
       - uses: actions/upload-artifact@v7
         with:
-          name: deb
+          name: pkg-deb-${{ matrix.arch }}
           path: dist/inkline_*.deb
           if-no-files-found: error
           retention-days: 7
@@ -189,30 +195,125 @@ jobs:
   appimage:
     needs: check
     if: needs.check.outputs.build == 'true'
-    # built on the oldest supported Ubuntu, so the AppImage runs on distributions at least as new
-    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        include:
+          # built on the oldest Ubuntu it can be, so the AppImage runs on distributions at least as new
+          - { arch: x86_64, runner: ubuntu-22.04 }
+          - { arch: aarch64, runner: ubuntu-24.04-arm }   # PySide6's ARM64 build needs glibc 2.39
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
 
       - name: Build the AppImage
         run: |
-          pip install uv
+          pip install uv || python3 -m pip install --user --break-system-packages uv
+          export PATH="$HOME/.local/bin:$PATH"
           sh packaging/appimage/build-appimage.sh
-          test -f "dist/inkline-${{ needs.check.outputs.version }}-x86_64.AppImage"
+          test -f "dist/inkline-${{ needs.check.outputs.version }}-${{ matrix.arch }}.AppImage"
 
       - name: Run the self-test with it
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libegl1 libxkbcommon0 libfontconfig1 libdbus-1-3 poppler-utils   # poppler-utils: check_selftest reads the PDFs
+          sudo apt-get install -y --no-install-recommends libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3 poppler-utils   # poppler-utils: check_selftest reads the PDFs
           QT_QPA_PLATFORM=offscreen APPIMAGE_EXTRACT_AND_RUN=1 \
-            "./dist/inkline-${{ needs.check.outputs.version }}-x86_64.AppImage" --selftest appimage-selftest
+            "./dist/inkline-${{ needs.check.outputs.version }}-${{ matrix.arch }}.AppImage" --selftest appimage-selftest
           python3 packaging/check_selftest.py appimage-selftest --install-kind appimage
 
       - uses: actions/upload-artifact@v7
         with:
-          name: appimage
+          name: pkg-appimage-${{ matrix.arch }}
           path: dist/inkline-*.AppImage
+          if-no-files-found: error
+          retention-days: 7
+
+  rpm:
+    needs: check
+    if: needs.check.outputs.build == 'true'
+    runs-on: ubuntu-24.04
+    container: fedora:latest
+    timeout-minutes: 20
+    steps:
+      - name: Install build tools
+        run: dnf install -y --setopt=install_weak_deps=False rpm-build python3 curl findutils poppler-utils
+
+      - uses: actions/checkout@v7
+
+      - name: Build the .rpm
+        run: |
+          sh packaging/rpm/build-rpm.sh
+          test -f "dist/inkline-${{ needs.check.outputs.version }}-1.x86_64.rpm"
+
+      - name: Install it on Fedora and run the self-test with it
+        run: |
+          dnf install -y "./dist/inkline-${{ needs.check.outputs.version }}-1.x86_64.rpm"
+          QT_QPA_PLATFORM=offscreen inkline --selftest rpm-selftest
+          python3 packaging/check_selftest.py rpm-selftest --install-kind rpm
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: pkg-rpm
+          path: dist/inkline-*.rpm
+          if-no-files-found: error
+          retention-days: 7
+
+  # the same .rpm on openSUSE: it asks for libraries by file, which zypper must find there too
+  rpm-opensuse:
+    needs: [check, rpm]
+    if: needs.check.outputs.build == 'true'
+    runs-on: ubuntu-24.04
+    container: opensuse/tumbleweed
+    timeout-minutes: 20
+    steps:
+      - name: Install tools
+        run: zypper --non-interactive install --no-recommends tar gzip poppler-tools python3
+
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: pkg-rpm
+          path: dist
+
+      - name: Install it on openSUSE and run the self-test with it
+        run: |
+          zypper --non-interactive install --allow-unsigned-rpm "./dist/inkline-${{ needs.check.outputs.version }}-1.x86_64.rpm"
+          QT_QPA_PLATFORM=offscreen inkline --selftest rpm-selftest
+          python3 packaging/check_selftest.py rpm-selftest --install-kind rpm
+
+  snap:
+    needs: check
+    if: needs.check.outputs.build == 'true'
+    strategy:
+      matrix:
+        include:
+          - { arch: amd64, runner: ubuntu-24.04 }
+          - { arch: arm64, runner: ubuntu-24.04-arm }
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build the .snap
+        id: snap
+        uses: snapcore/action-build@v1
+
+      - name: Install it and run the self-test with it
+        run: |
+          sudo snap install --dangerous "${{ steps.snap.outputs.snap }}"
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends poppler-utils
+          QT_QPA_PLATFORM=offscreen inkline --selftest "$HOME/snap-selftest"
+          python3 packaging/check_selftest.py "$HOME/snap-selftest" --install-kind snap
+          mkdir -p dist
+          cp "${{ steps.snap.outputs.snap }}" dist/
+          test -f "dist/inkline_${{ needs.check.outputs.version }}_${{ matrix.arch }}.snap"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: pkg-snap-${{ matrix.arch }}
+          path: dist/inkline_*.snap
           if-no-files-found: error
           retention-days: 7
 
@@ -244,7 +345,14 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: |
-          python -c "import subprocess, sys; sys.exit(subprocess.run([r'dist\Inkline\Inkline.exe', '--selftest', 'windows-selftest']).returncode)"
+          python -c "import subprocess, sys; sys.exit(subprocess.run([r'dist\Inkline\Inkline.exe', '--selftest', r'windows-selftest\installed']).returncode)"
+
+      - name: Unzip the portable copy and run the self-test with it
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          Expand-Archive "dist/inkline-${{ needs.check.outputs.version }}-windows-portable.zip" -DestinationPath portable
+          python -c "import subprocess, sys; sys.exit(subprocess.run([r'portable\Inkline\Inkline.exe', '--selftest', r'windows-selftest\portable']).returncode)"
 
       # Help → Check for updates automatically sets these up for the person: Windows must accept them as written
       - name: Set up and remove the update check's task and login entry
@@ -309,8 +417,10 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: windows
-          path: dist/inkline-*-windows-setup.exe
+          name: pkg-windows
+          path: |
+            dist/inkline-*-windows-setup.exe
+            dist/inkline-*-windows-portable.zip
           if-no-files-found: error
           retention-days: 7
 
@@ -336,39 +446,79 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends poppler-utils
-          python3 packaging/check_selftest.py windows-selftest --install-kind windows
+          python3 packaging/check_selftest.py windows-selftest/installed --install-kind windows
+          python3 packaging/check_selftest.py windows-selftest/portable --install-kind windows-portable
 
   macos:
     needs: check
     if: needs.check.outputs.build == 'true'
-    runs-on: macos-15   # Apple silicon: the app is built for M1 and later Macs
-    timeout-minutes: 30
+    strategy:
+      matrix:
+        include:
+          - { arch: arm64, runner: macos-15 }          # Apple silicon (M1 and later)
+          - { arch: intel, runner: macos-15-intel }    # Intel Macs
+          # both in one app, from a universal2 Python on Apple silicon: what Inkline's updater installs; its Intel
+          # half is tested there too, under Rosetta
+          - { arch: universal, runner: macos-15 }
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v7
+        if: matrix.arch != 'universal'
         with:
           python-version: "3.12"
 
       - name: Install PySide6, numpy and PyInstaller
+        if: matrix.arch != 'universal'
         run: |
           python -m pip install --upgrade pip
           python -m pip install PySide6-Essentials==6.12.0 shiboken6==6.12.0 numpy==2.3.5 pyinstaller
+          echo "PY=$(command -v python)" >> "$GITHUB_ENV"
+
+      # PySide6's wheels are universal2; numpy's hold one processor each, so the two are joined (delocate-merge)
+      - name: Install a universal2 Python (python.org's), PySide6, PyInstaller and a universal2 numpy
+        if: matrix.arch == 'universal'
+        run: |
+          curl -fsSL -o python.pkg https://www.python.org/ftp/python/3.12.10/python-3.12.10-macos11.pkg
+          sudo installer -pkg python.pkg -target /
+          PY=/Library/Frameworks/Python.framework/Versions/3.12/bin/python3.12
+          "$PY" -m pip install --upgrade pip
+          "$PY" -m pip install PySide6-Essentials==6.12.0 shiboken6==6.12.0 pyinstaller delocate
+          for p in arm64 x86_64; do
+            "$PY" -m pip download --only-binary=:all: --no-deps --platform "macosx_14_0_$p" numpy==2.3.5 -d wheels
+          done
+          /Library/Frameworks/Python.framework/Versions/3.12/bin/delocate-merge wheels/numpy-*arm64.whl wheels/numpy-*x86_64.whl -w merged
+          "$PY" -m pip install merged/numpy-*universal2.whl
+          echo "PY=$PY" >> "$GITHUB_ENV"
 
       - name: Build the app and its disk image
         run: |
-          python packaging/macos/build.py
-          test -f "dist/inkline-${{ needs.check.outputs.version }}-macos.dmg"
-          test "$(defaults read "$PWD/dist/Inkline.app/Contents/Info" CFBundleShortVersionString)" = "${{ needs.check.outputs.version }}"
+          "$PY" packaging/macos/build.py --arch ${{ matrix.arch }}
+          V=${{ needs.check.outputs.version }}
+          case ${{ matrix.arch }} in universal) DMG="inkline-$V-macos.dmg" ;; *) DMG="inkline-$V-macos-${{ matrix.arch }}.dmg" ;; esac
+          test -f "dist/$DMG"
+          test "$(defaults read "$PWD/dist/Inkline.app/Contents/Info" CFBundleShortVersionString)" = "$V"
           codesign --verify --deep "dist/Inkline.app"
+          lipo -archs dist/Inkline.app/Contents/MacOS/Inkline
 
       - name: Run the self-test with the built Inkline.app
         env:
           QT_QPA_PLATFORM: offscreen
-        run: dist/Inkline.app/Contents/MacOS/Inkline --selftest macos-selftest
+        run: dist/Inkline.app/Contents/MacOS/Inkline --selftest selftest/macos-${{ matrix.arch }}
+
+      - name: Run the universal app's Intel half too (under Rosetta)
+        if: matrix.arch == 'universal'
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          /usr/sbin/softwareupdate --install-rosetta --agree-to-license || true
+          arch -x86_64 dist/Inkline.app/Contents/MacOS/Inkline --selftest selftest/macos-rosetta
 
       # Help → Check for updates automatically sets up a launchd agent for the person: launchd must accept it
       - name: Set up and remove the update check's launchd agent
+        if: matrix.arch == 'arm64'
         run: |
           python -c "from inkapp import update_schedule as u; import sys; e = u.apply('daily', 'macos'); print(e); sys.exit(1 if e else 0)"
           launchctl print "gui/$(id -u)/io.github.gshoe2006.Inkline.update" | head -20
@@ -377,15 +527,15 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: macos
-          path: dist/inkline-*-macos.dmg
+          name: pkg-macos-${{ matrix.arch }}
+          path: dist/inkline-*.dmg
           if-no-files-found: error
           retention-days: 7
 
       - uses: actions/upload-artifact@v7
         with:
-          name: macos-selftest
-          path: macos-selftest/
+          name: macos-selftest-${{ matrix.arch }}
+          path: selftest/
           retention-days: 7
 
   macos-check:
@@ -396,16 +546,19 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with:
-          name: macos-selftest
-          path: macos-selftest
-      - name: Check the files Inkline.app wrote
+          pattern: macos-selftest-*
+          merge-multiple: true
+          path: selftest
+      - name: Check the files each Inkline.app wrote
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends poppler-utils
-          python3 packaging/check_selftest.py macos-selftest --install-kind macos
+          for d in arm64 intel universal rosetta; do
+            python3 packaging/check_selftest.py "selftest/macos-$d" --install-kind macos
+          done
 
   release:
-    needs: [check, selftest, run-and-arch, flatpak, deb, appimage, windows, windows-check, macos, macos-check]
+    needs: [check, selftest, run-and-arch, flatpak, deb, appimage, rpm, rpm-opensuse, snap, windows, windows-check, macos, macos-check]
     if: needs.check.outputs.publish == 'true'
     runs-on: ubuntu-24.04
     permissions:
@@ -413,30 +566,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # only the packages: the self-test's sample outputs are artifacts of this run too, and aren't for the release
+      # only the packages (artifacts named pkg-*): the self-tests' sample outputs are artifacts of this run too
       - uses: actions/download-artifact@v8
         with:
-          name: run-and-arch
-          path: dist
-      - uses: actions/download-artifact@v8
-        with:
-          name: flatpak
-          path: dist
-      - uses: actions/download-artifact@v8
-        with:
-          name: deb
-          path: dist
-      - uses: actions/download-artifact@v8
-        with:
-          name: appimage
-          path: dist
-      - uses: actions/download-artifact@v8
-        with:
-          name: windows
-          path: dist
-      - uses: actions/download-artifact@v8
-        with:
-          name: macos
+          pattern: pkg-*
+          merge-multiple: true
           path: dist
 
       - name: Publish the release
@@ -448,7 +582,7 @@ jobs:
           printf '\n## Code signing policy\n\nSee [Code signing policy](%s/%s/blob/main/README.md#code-signing-policy).\n' \
             "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" >> notes.md
           ls -l dist
-          test "$(ls dist | wc -l)" = 7 || { echo "::error::Expected the 7 packages in dist, found: $(ls dist)"; exit 1; }
+          test "$(ls dist | wc -l)" = 15 || { echo "::error::Expected the 15 packages in dist, found: $(ls dist)"; exit 1; }
           gh release create "$V" dist/* \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
@@ -464,7 +598,7 @@ jobs:
         run: sh packaging/notify_portal.sh --warn
 
   test-build-done:
-    needs: [check, selftest, run-and-arch, flatpak, deb, appimage, windows, windows-check, macos, macos-check]
+    needs: [check, selftest, run-and-arch, flatpak, deb, appimage, rpm, rpm-opensuse, snap, windows, windows-check, macos, macos-check]
     if: needs.check.outputs.build == 'true' && needs.check.outputs.publish != 'true'
     runs-on: ubuntu-24.04
     steps:
@@ -473,7 +607,6 @@ jobs:
           {
             echo "### Test build of Inkline ${{ needs.check.outputs.version }} passed"
             echo
-            echo "Nothing was published. The self-test passed, and the .run installer, the Arch package, the"
-            echo ".flatpak, the .deb, the AppImage and the Windows installer built. Download them under **Artifacts**"
-            echo "below (kept for 7 days)."
+            echo "Nothing was published. The self-test passed, and all 15 packages built and passed their own"
+            echo "checks. Download them under **Artifacts** below (pkg-*, kept for 7 days)."
           } >> "$GITHUB_STEP_SUMMARY"

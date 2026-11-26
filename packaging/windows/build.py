@@ -1,7 +1,8 @@
-"""Builds Inkline for Windows, on Windows: dist/Inkline/ (the app folder) and dist/inkline-<version>-windows-setup.exe.
+"""Builds Inkline for Windows, on Windows: dist/Inkline/ (the app folder), dist/inkline-<version>-windows-setup.exe
+and dist/inkline-<version>-windows-portable.zip (the app folder to unzip and run, without installing).
 
-    python packaging/windows/build.py              the app folder and the installer
-    python packaging/windows/build.py --no-setup   only the app folder (no Inno Setup needed)
+    python packaging/windows/build.py              the app folder, the installer and the portable zip
+    python packaging/windows/build.py --no-setup   the app folder and the portable zip (no Inno Setup needed)
 
 Needs Python 3.10+ with PySide6-Essentials, numpy and pyinstaller (pip install PySide6-Essentials numpy
 pyinstaller), and for the installer Inno Setup 6 (its iscc.exe on PATH or in Program Files).
@@ -87,11 +88,32 @@ def installer(folder):
     return out
 
 
+PORTABLE_NOTE = """This copy of Inkline runs from this folder, without installing: start Inkline.exe.
+
+This file tells Inkline it's the portable copy, so Help > Check for updates downloads the new .zip for you to
+unzip in place of this folder, instead of running an installer. Your settings are kept in your user profile,
+as for an installed Inkline.
+"""
+
+
+def portable_zip(folder):
+    """The app folder as Inkline/ in a .zip, with a "portable" file beside Inkline.exe (see updater.install_kind)."""
+    v = version()
+    stage = os.path.join(BUILD, "portable")
+    shutil.rmtree(stage, ignore_errors=True)
+    shutil.copytree(folder, os.path.join(stage, "Inkline"))
+    with open(os.path.join(stage, "Inkline", "portable"), "w", encoding="utf-8", newline="\r\n") as f:
+        f.write(PORTABLE_NOTE)
+    base = os.path.join(DIST, f"inkline-{v}-windows-portable")
+    return shutil.make_archive(base, "zip", stage, "Inkline")
+
+
 def main(argv):
     folder = app_folder()
     print("built", folder)
     if "--no-setup" not in argv:
         print("built", installer(folder))
+    print("built", portable_zip(folder))
 
 
 if __name__ == "__main__":

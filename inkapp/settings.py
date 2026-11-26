@@ -123,8 +123,8 @@ class SettingsDialog(QDialog):
             if key in update_schedule.BACKGROUND and not can:
                 item = self.schedule.model().item(i)
                 item.setEnabled(False)
-                item.setToolTip(tr("Only while Inkline is open: a Flatpak can't check in the background.")
-                                if window.updates.kind == "flatpak" else tr("Only while Inkline is open, on this system."))
+                item.setToolTip(tr("Only while Inkline is open: a Flatpak or Snap can't check in the background.")
+                                if window.updates.kind in ("flatpak", "snap") else tr("Only while Inkline is open, on this system."))
         updates.add(OptionRow("Check for updates automatically", self.schedule))
         self.check_now = button("Check now", tip="Ask GitHub for the latest version now")
         self.check_now.setAutoDefault(False)

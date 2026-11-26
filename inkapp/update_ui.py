@@ -4,7 +4,9 @@ background at most daily, offer a newer version, download it with a progress bar
 The network and the installing run on worker threads; their results come back to the window as signals.
 """
 
+import os
 import subprocess
+import sys
 import threading
 import time
 
@@ -17,7 +19,7 @@ from inkengine.i18n import tr
 
 from . import config, update_schedule, updater, whatsnew
 
-NOTIFY_ONLY = ("flatpak", "source")
+NOTIFY_ONLY = ("flatpak", "snap", "source")
 
 
 class Updates(QObject):
@@ -114,8 +116,8 @@ class Updates(QObject):
             a.setCheckable(True)
             if key in update_schedule.BACKGROUND and not can:
                 a.setEnabled(False)
-                a.setToolTip(tr("Only while Inkline is open: a Flatpak can't check in the background.")
-                             if self.kind == "flatpak" else tr("Only while Inkline is open, on this system."))
+                a.setToolTip(tr("Only while Inkline is open: a Flatpak or Snap can't check in the background.")
+                             if self.kind in ("flatpak", "snap") else tr("Only while Inkline is open, on this system."))
             a.triggered.connect(lambda _on=False, k=key: self.set_schedule(k))
             group.addAction(a)
             menu.addAction(a)
@@ -192,8 +194,8 @@ class Updates(QObject):
         name = updater.asset_name(self.kind, version)
         can = self.kind not in NOTIFY_ONLY and name in release["assets"]
         if not can:
-            box.setInformativeText(tr("This copy of Inkline is updated by Flatpak or from its source code, not by "
-                                      "itself. The release page has the new version.") if self.kind in NOTIFY_ONLY
+            box.setInformativeText(tr("This copy of Inkline is updated by Flatpak, Snap or from its source code, not "
+                                      "by itself. The release page has the new version.") if self.kind in NOTIFY_ONLY
                                    else tr("The release doesn't have a package for this copy of Inkline yet. The "
                                            "release page has the new version."))
         elif self.kind in updater.NEEDS_ADMIN:
@@ -258,10 +260,14 @@ class Updates(QObject):
         cmd, after = updater.install_steps(self.kind, path)
         version = self.release["version"] if self.release else ""
         if after == "manual":   # no way to ask for the administrator password here: the person installs it
-            QDesktopServices.openUrl(QUrl.fromLocalFile(path.rsplit("/", 1)[0]))
-            box = self._box(QMessageBox.Icon.Information, tr("Update downloaded"), tr(
-                "The new version is downloaded. To install it, open a terminal and run:\n\n{command}").format(
-                command=updater.manual_command(self.kind, path)))
+            QDesktopServices.openUrl(QUrl.fromLocalFile(os.path.dirname(path)))
+            if self.kind == "windows-portable":   # Inkline can't replace its own files while it runs
+                text = tr("The new version is downloaded. Close Inkline, then unzip it in place of this folder:"
+                          "\n\n{folder}").format(folder=os.path.dirname(sys.executable))
+            else:
+                text = tr("The new version is downloaded. To install it, open a terminal and run:\n\n{command}").format(
+                    command=updater.manual_command(self.kind, path))
+            box = self._box(QMessageBox.Icon.Information, tr("Update downloaded"), text)
             box.addButton(QMessageBox.StandardButton.Ok)
             box.exec()
             return
