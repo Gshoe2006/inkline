@@ -78,6 +78,16 @@ def notes(version, seen=None):
     return "\n\n".join(f"# Inkline {ver}\n\n{md}" for ver, md in found)
 
 
+def release_notes(version, body, page=""):
+    """The markdown to show for a release offered as an update: its notes from GitHub (its changelog section),
+    kept to what changed, with a link to the release page; "" if they say nothing."""
+    found = sections(f"## {version}\n\n{body or ''}", upto=_version(version))
+    if not found:
+        return ""
+    link = f"\n\n[{tr('See the release on GitHub')}]({page})" if page else ""
+    return f"# Inkline {version}\n\n{found[0][1]}{link}"
+
+
 def due(version, remember):
     """The version last seen, if this start is the first since an update and should show what's new; else None.
     Records the current version either way."""

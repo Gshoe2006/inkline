@@ -38,7 +38,7 @@ The `.deb` brings its own PySide6 (Debian and Ubuntu don't package a new enough 
 
 ## Updates
 
-The first time Inkline starts, it asks whether to check for updates. If you say yes, it asks GitHub for the latest release at most once a day, and when there's a newer version it says so: **Update now**, **What's new**, **Later** or **Skip this version**. **Help → Check for updates…** checks at any time, and **Help → Check for updates automatically** turns the daily check on or off.
+The first time Inkline starts, it asks whether to check for updates. If you say yes, it asks GitHub for the latest release at most once a day, and when there's a newer version it says so: **Update now**, **What's new**, **Later** or **Skip this version**. **What's new** shows that release's notes in Inkline before you decide. **Help → Check for updates…** checks at any time, and **Help → Check for updates automatically** turns the daily check on or off.
 
 **Update now** downloads the package for how you installed Inkline, checks it against the SHA-256 digest GitHub lists for the release (a file that doesn't match is deleted, not installed), and installs it:
 

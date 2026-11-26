@@ -111,6 +111,18 @@ jobs:
           test -f "dist/inkline-$V.run"
           ls dist/inkline-"$V"-*.pkg.tar.zst
 
+      # Help → Check for updates installs a newer version the way this one was installed, which each package
+      # records: install them here and check each says the right thing
+      - name: Install the Arch package and the .run, and check how each says it was installed
+        run: |
+          V=${{ needs.check.outputs.version }}
+          pacman -U --noconfirm dist/inkline-"$V"-*.pkg.tar.zst
+          python3 packaging/check_install_kind.py /usr/share/inkline arch
+          sudo -u builder sh "dist/inkline-$V.run"
+          python3 packaging/check_install_kind.py /home/builder/.local/share/inkline run-user
+          sh "dist/inkline-$V.run" --system
+          python3 packaging/check_install_kind.py /usr/local/share/inkline run-system
+
       - uses: actions/upload-artifact@v7
         with:
           name: run-and-arch
@@ -165,7 +177,7 @@ jobs:
           sudo apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y poppler-utils "./dist/inkline_${{ needs.check.outputs.version }}-1_amd64.deb"   # poppler-utils: check_selftest reads the PDFs
           QT_QPA_PLATFORM=offscreen inkline --selftest deb-selftest
-          python3 packaging/check_selftest.py deb-selftest
+          python3 packaging/check_selftest.py deb-selftest --install-kind deb
 
       - uses: actions/upload-artifact@v7
         with:
@@ -195,7 +207,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends libegl1 libxkbcommon0 libfontconfig1 libdbus-1-3 poppler-utils   # poppler-utils: check_selftest reads the PDFs
           QT_QPA_PLATFORM=offscreen APPIMAGE_EXTRACT_AND_RUN=1 \
             "./dist/inkline-${{ needs.check.outputs.version }}-x86_64.AppImage" --selftest appimage-selftest
-          python3 packaging/check_selftest.py appimage-selftest
+          python3 packaging/check_selftest.py appimage-selftest --install-kind appimage
 
       - uses: actions/upload-artifact@v7
         with:
@@ -309,7 +321,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends poppler-utils
-          python3 packaging/check_selftest.py windows-selftest
+          python3 packaging/check_selftest.py windows-selftest --install-kind windows
 
   release:
     needs: [check, selftest, run-and-arch, flatpak, deb, appimage, windows, windows-check]

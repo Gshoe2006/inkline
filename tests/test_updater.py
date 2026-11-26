@@ -381,3 +381,90 @@ def test_the_appimage_is_put_in_place_off_the_window_thread(win, monkeypatch, tm
     win.updates.install(str(tmp_path / "new.AppImage"))
     assert wait_for(lambda: shown)
     assert where and where[0] is not threading.main_thread() and "Restart now" in shown[0][1]
+
+
+# --- the release's notes, shown in Inkline ------------------------------------------------------------------
+BODY = """Inkline 9.1 does things.
+
+### What's new
+
+- **A thing.** It works.
+
+### Upgrading
+
+```sh
+## not a heading
+sh inkline-9.1.0.run
+```
+
+### Found a problem?
+
+Tell us."""
+
+
+def test_release_notes_keep_what_changed():
+    from inkapp import whatsnew
+    md = whatsnew.release_notes("9.1.0", BODY, "https://example.invalid/r")
+    assert md.startswith("# Inkline 9.1.0") and "**A thing.**" in md and "does things" in md
+    assert "Upgrading" not in md and "inkline-9.1.0.run" not in md and "Tell us" not in md
+    assert "(https://example.invalid/r)" in md
+    assert whatsnew.release_notes("9.1.0", "", "x") == "" and whatsnew.release_notes("9.1.0", None) == ""
+
+
+def test_whats_new_shows_the_notes_then_asks_again(win, monkeypatch):
+    from inkapp import whatsnew
+    released(monkeypatch)
+    monkeypatch.setattr(updater, "fetch_latest", lambda **_: {**REAL_FETCH(
+        opener=opener_for(json.dumps(release_json()).encode())), "notes": BODY})
+    picks = iter(["What's new", "Later"])
+    shown = boxes(monkeypatch, lambda texts: next(picks))
+    seen = []
+    monkeypatch.setattr(whatsnew.WhatsNew, "exec", lambda dlg: seen.append(dlg.findChild(
+        whatsnew.QTextBrowser).toPlainText()) or 0)
+    opened = []
+    monkeypatch.setattr(update_ui.QDesktopServices, "openUrl", lambda url: opened.append(url))
+    win.updates.check(asked=True)
+    assert wait_for(lambda: len(shown) == 2)
+    assert len(seen) == 1 and "A thing." in seen[0] and "Upgrading" not in seen[0]
+    assert opened == []                                  # shown here, not on GitHub
+
+
+def test_whats_new_without_notes_opens_the_release_page(win, monkeypatch):
+    monkeypatch.setattr(updater, "fetch_latest", lambda **_: {**REAL_FETCH(
+        opener=opener_for(json.dumps(release_json()).encode())), "notes": ""})
+    shown = boxes(monkeypatch, lambda texts: "What's new")
+    opened = []
+    monkeypatch.setattr(update_ui.QDesktopServices, "openUrl", lambda url: opened.append(url.toString()))
+    win.updates.check(asked=True)
+    assert wait_for(lambda: opened)
+    assert opened == ["https://example.invalid/r"] and len(shown) == 1
+
+
+# --- the packages are checked to say how they were installed ------------------------------------------------
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def test_the_release_checks_every_package_says_how_it_was_installed():
+    flow = open(os.path.join(ROOT, ".github/workflows/release.yml"), encoding="utf-8").read()
+    for kind in ("deb", "appimage", "windows"):
+        assert f"--install-kind {kind}" in flow, kind
+    for root, kind in (("/usr/share/inkline", "arch"), ("/home/builder/.local/share/inkline", "run-user"),
+                       ("/usr/local/share/inkline", "run-system")):
+        assert f"check_install_kind.py {root} {kind}" in flow, kind
+    checks = open(os.path.join(ROOT, ".github/workflows/selftest.yml"), encoding="utf-8").read()
+    assert "--install-kind source" in checks
+
+
+def test_check_install_kind(tmp_path):
+    import shutil
+    import subprocess
+    import sys
+    app = tmp_path / "inkline"
+    shutil.copytree(os.path.join(ROOT, "inkapp"), app / "inkapp", ignore=shutil.ignore_patterns("__pycache__"))
+    script = os.path.join(ROOT, "packaging", "check_install_kind.py")
+    run = lambda kind: subprocess.run([sys.executable, script, str(app), kind], capture_output=True, text=True)
+    assert run("source").returncode == 0
+    (app / "install-kind").write_text("deb\n")
+    assert run("deb").returncode == 0
+    bad = run("arch")
+    assert bad.returncode != 0 and "'deb', expected 'arch'" in bad.stderr

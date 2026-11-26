@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Checks the files `inkline.py --selftest DIR` wrote: page sizes, page counts and SVG structure.
 
-Usage: python3 packaging/check_selftest.py DIR      (needs pdfinfo, from poppler-utils)
+Usage: python3 packaging/check_selftest.py DIR [--install-kind KIND]      (needs pdfinfo, from poppler-utils)
+With --install-kind, also checks the package said it was installed as KIND (deb, appimage, windows, source…): the
+updater installs a newer version by that.
 Exits 0 when every expected file is right, 1 otherwise, listing each problem.
 """
 import os
@@ -39,8 +41,16 @@ def pdf_info(path):
     return int(info["Pages"]), info.get("Page size", "").strip()
 
 
-def main(d):
+def main(d, install_kind=None):
     problems = []
+    if install_kind:
+        try:
+            said = open(os.path.join(d, "install-kind.txt"), encoding="utf-8").read().strip()
+            if said != install_kind:
+                problems.append(f"the package says it was installed as '{said}', expected '{install_kind}': "
+                                "its updates would be installed the wrong way")
+        except OSError as e:
+            problems.append(f"install-kind.txt: {e}")
     if not shutil.which("pdfinfo"):
         return ["pdfinfo isn't installed (it comes with poppler-utils)"]
     for n in PATTERNS + ["convert", "engrave", "stipple", "cbn", "testpage"]:
@@ -83,10 +93,15 @@ def main(d):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
+    args = sys.argv[1:]
+    kind = None
+    if len(args) == 3 and args[1] == "--install-kind":
+        kind = args.pop(2)
+        args.pop(1)
+    if len(args) != 1:
         sys.exit(__doc__)
-    found = main(sys.argv[1])
-    checked = len(PATTERNS) + 5 + len(PDF_PAGES) + len(SVGS)
+    found = main(args[0], kind)
+    checked = len(PATTERNS) + 5 + len(PDF_PAGES) + len(SVGS) + (1 if kind else 0)
     if found:
         print(f"check_selftest: {len(found)} problem(s) in {sys.argv[1]}:")
         for p in found:

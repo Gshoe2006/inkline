@@ -511,6 +511,7 @@
  "Saved {name}.": "Se ha guardado {name}.",
  "Saved {what} as {name}": "Se han guardado {what} como {name}",
  "Saving progress": "Progreso del guardado",
+ "See the release on GitHub": "Ver la versión en GitHub",
  "Sending to the printer…": "Enviando a la impresora…",
  "Sent to the printer, {times} copies (Copies in the print dialog).": "Enviado a la impresora, {times} copias (Copias en el diálogo de impresión).",
  "Sent to the printer.": "Enviado a la impresora.",
