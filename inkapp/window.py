@@ -43,7 +43,7 @@ STEP_NAMES = {"gen": "Pattern", "complexity": "Complexity", "weight": "Line weig
               "pages": "Design pages", "ramp": "Get harder", "mix": "Mix every pattern", "cover": "Cover page",
               "page_nums": "Page numbers", "key": "Answer pages", "maze_shape": "Maze shape", "maze_word": "Word or name", "spot_base": "Picture",
               "ws_theme": "Words from", "ws_words": "Your words", "name_text": "Name or word", "name_bg": "Around the letters",
-              "maths_kind": "Sums", "money": "Money", "clock_task": "Clocks", "frac_kind": "Worksheet", "ruled_kind": "Paper", "reward_kind": "Reward", "reward_text": "Reward for", "bingo_kind": "Bingo", "early_kind": "Early maths", "bingo_theme": "Bingo words from", "bingo_words": "Your bingo words", "pack_theme": "Worksheet pack", "pack_words": "Spelling words", "pack_days": "Worksheet pack days", "trace_source": "Trace", "trace_style": "Letters", "trace_hand": "Handwriting style", "trace_text": "Words to trace",
+              "maths_kind": "Sums", "money": "Money", "clock_task": "Clocks", "frac_kind": "Worksheet", "ruled_kind": "Paper", "reward_kind": "Reward", "reward_text": "Reward for", "bingo_kind": "Bingo", "early_kind": "Early maths", "bingo_theme": "Bingo words from", "bingo_words": "Your bingo words", "pack_theme": "Worksheet pack", "pack_words": "Spelling words", "pack_days": "Worksheet pack days", "easy_read": "Easier to read", "cream": "Cream paper", "trace_source": "Trace", "trace_style": "Letters", "trace_hand": "Handwriting style", "trace_text": "Words to trace",
               "cbn_maths": "Colour by maths", "age": "Age", "sheet": "On the sheet", "panel_gens": "Designs on the sheet", "cross_theme": "Crossword words", "cross_words": "Crossword words and clues",
               "mode": "Mode", "style": "Style", "brightness": "Brightness", "contrast": "Contrast", "threshold": "Threshold",
               "dot": "Dot size", "fit": "Placement", "invert": "Invert", "pnono_size": "Squares across",
@@ -1551,7 +1551,8 @@ class Window(QMainWindow):
         if self._busy_saving:
             return
         st = self.state
-        snap = State(replace(st.settings), [replace(p) for p in st.photos], st.sel, st.page)
+        # cream paper is for screens and PDFs: a printer gets white (no ink spent colouring the page)
+        snap = State(replace(st.settings, cream=False), [replace(p) for p in st.photos], st.sel, st.page)
         j = self._job(snap)
         if j is None:
             return

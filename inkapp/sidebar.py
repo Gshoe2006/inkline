@@ -726,6 +726,7 @@ class Sidebar(QFrame):
         text_fold = sec = Fold("Page text")
         sec.add(OptionRow("Title", self._text("title", "e.g. Rainy Day Mazes", 60)))
         sec.add(self._check("name_line", 'Add a "Name ______" line'))
+        sec.add(self._check("easy_read", "Easier to read: a clearer font, with letters and words spaced wider"))
 
         # Poster
         sec = Section("Poster")
@@ -811,6 +812,7 @@ class Sidebar(QFrame):
                      OptionRow("Orientation", self._combo("orient", [("portrait", "Portrait"), ("landscape", "Landscape")]))))
         sec.add(Pair(OptionRow("Margin", self._combo("margin", MARGINS)),
                      OptionRow("Resolution", self._combo("dpi", [(150, "150 dpi (draft)"), (300, "300 dpi")]))))
+        sec.add(self._check("cream", "Cream paper on screen and in PDFs (Print still uses white paper)"))
         self.margin_hint = sec.add(Hint())   # the printer can't reach that far in: set_margin_warning()
         self.margin_hint.setVisible(False)
         self.folds = {"paper": paper, "text": text_fold, "copies": copies_fold}

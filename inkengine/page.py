@@ -15,6 +15,7 @@ from .rng import mulberry32
 from .i18n import tr
 
 PAPER = {"letter": (8.5, 11.0), "a4": (8.27, 11.69)}
+CREAM = "#fbf3df"   # Paper → Cream paper: easier on some readers' eyes on a screen; never sent to the printer
 
 
 def js_round(x):
@@ -95,6 +96,8 @@ class Settings:
     maths_kind: str = "add"      # maths drill: patterns.maths.KINDS (add, sub, addsub, times, bonds, mixed)
     pack_theme: str = "animals"  # worksheet pack (pack.py): a theme from pack.THEME_NAMES, or "spelling"
     pack_words: str = ""         # worksheet pack: this week's spelling words, for pack_theme "spelling"
+    easy_read: bool = False      # Page text → Easier to read: Atkinson Hyperlegible, letters and words spaced wider
+    cream: bool = False          # Paper → Cream paper for screens and PDFs (Print always sends white)
     pack_days: str = ""          # worksheet pack: the five days' sheets ("maths,trace,..."), or "" for the usual ones
     money: str = "auto"          # maths drill money sums: patterns.money.CURRENCIES (auto, GBP, EUR, USD)
     ruled_kind: str = "squared"  # graph and lined paper: patterns.ruled.KINDS
@@ -398,8 +401,9 @@ def draw_design(ctx, g, box, gen, seed, c, s, lw, **opts):
 def draw_page(ctx, g, spec, s, keep=False):
     """Draw one page on a white sheet. Returns what the generator reports (e.g. a maze's grid).
     keep=True draws onto what's there (a poster sheet's window onto the whole poster)."""
-    if not keep:
-        ctx.fill_style = "#fff"
+    ctx.easy_read = bool(getattr(s, "easy_read", False))
+    if not keep:   # white paper, or cream for screens and PDFs (Print sends white: jobs.for_printer)
+        ctx.fill_style = CREAM if getattr(s, "cream", False) else "#fff"
         ctx.fill_rect(0, 0, g.W, g.H)
     ctx.stroke_style = ctx.fill_style = "#000"
     ctx.line_cap = ctx.line_join = "round"
