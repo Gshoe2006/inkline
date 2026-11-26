@@ -6,6 +6,53 @@ To release a new version, add a section headed `## <version>` (the same text as 
 pull request that bumps `VERSION`. When it merges, `.github/workflows/release.yml` builds the packages
 and publishes a GitHub Release with that section as its notes.
 
+## 5.6.0 - 2026-11-26
+
+Inkline 5.6 can update itself: it tells you when there's a new version, and downloads and installs it when you say so.
+
+### What's new
+
+- **Updates.** The first time Inkline 5.6 starts, it asks whether to check for updates. If you say yes, it checks once a day, and when there's a newer version it offers **Update now**, **What's new**, **Later** or **Skip this version**. **Help → Check for updates…** checks at any time, and **Help → Check for updates automatically** turns the daily check on or off.
+- **Update now** downloads the package for how you installed Inkline and checks it against the checksum GitHub lists for the release; a file that doesn't match is deleted, not installed. The Windows installer, the AppImage and the `.run` install themselves. The `.deb`, the Arch package and `.run --system` ask for an administrator password first (or, without one, show the command to run). The Flatpak and copies run from source open the release page.
+- **Privacy.** The check asks GitHub for the latest release and sends nothing about you or your work. It happens only if you said yes.
+
+### Upgrading
+
+Nothing changes in what Inkline needs. Your presets, settings, projects, recent files and printer carry over. Install 5.6.0 by hand this once; from then on Inkline offers each new version itself.
+
+**Windows**
+Run `inkline-5.6.0-windows-setup.exe`.
+
+**Debian / Ubuntu / Linux Mint / Pop!_OS**
+```sh
+sudo apt install ./inkline_5.6.0-1_amd64.deb
+```
+
+**Arch / CachyOS / Manjaro**
+```sh
+sudo pacman -U inkline-5.6.0-1-any.pkg.tar.zst
+```
+
+**Any distro, nothing installed**
+```sh
+chmod +x inkline-5.6.0-x86_64.AppImage && ./inkline-5.6.0-x86_64.AppImage
+```
+
+**Any other distro**
+```sh
+sh inkline-5.6.0.run            # or --system for every user
+```
+
+**Flatpak**
+```sh
+flatpak install --user inkline-5.6.0.flatpak     # if a .flatpak file is attached to this release
+sh packaging/flatpak/build.sh                    # or build it from a copy of the source
+```
+
+### Found a problem?
+
+Please open an issue saying what you did, what you expected, and what happened. Include your system (distro, or Windows version), and the printer if it's about printing.
+
 ## 5.5.0 - 2026-11-26
 
 Inkline 5.5 adds reading comprehension, sight words, graph and lined paper, and reward charts and certificates.
