@@ -54,7 +54,7 @@ jobs:
         run: python inkline.py --selftest selftest-output
 
       - name: Check the self-test's files
-        run: python packaging/check_selftest.py selftest-output
+        run: python packaging/check_selftest.py selftest-output --install-kind source
 
       - name: Build the universal installer and smoke-test it
         run: |

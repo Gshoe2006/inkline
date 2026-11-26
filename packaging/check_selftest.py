@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Checks the files `inkline.py --selftest DIR` wrote: page sizes, page counts and SVG structure.
 
-Usage: python3 packaging/check_selftest.py DIR      (needs pdfinfo, from poppler-utils)
+Usage: python3 packaging/check_selftest.py DIR [--install-kind KIND]      (needs pdfinfo, from poppler-utils)
+With --install-kind, also checks the package said it was installed as KIND (deb, appimage, windows, source…): the
+updater installs a newer version by that.
 Exits 0 when every expected file is right, 1 otherwise, listing each problem.
 """
 import os
@@ -13,7 +15,7 @@ import sys
 import xml.etree.ElementTree as ET
 
 PATTERNS = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "words", "nonogram", "spot", "kakuro", "maths",
-            "trace", "crossword", "clock", "scramble", "spelltest", "fractions", "symmetry", "ruled", "reward", "reading", "mazeshape", "name", "cbnpattern", "nonophoto"]
+            "trace", "crossword", "clock", "scramble", "spelltest", "fractions", "symmetry", "ruled", "reward", "reading", "bingo", "mazeshape", "name", "cbnpattern", "nonophoto"]
 PAGE_PX = (2550, 3300)                     # Letter at 300 dpi
 PDF_PAGES = {**{n: 1 for n in PATTERNS + ["convert", "engrave", "stipple", "cbn", "testpage"]},
              "booklet": 9,                 # cover + 6 mazes + 2 answer pages
@@ -39,8 +41,16 @@ def pdf_info(path):
     return int(info["Pages"]), info.get("Page size", "").strip()
 
 
-def main(d):
+def main(d, install_kind=None):
     problems = []
+    if install_kind:
+        try:
+            said = open(os.path.join(d, "install-kind.txt"), encoding="utf-8").read().strip()
+            if said != install_kind:
+                problems.append(f"the package says it was installed as '{said}', expected '{install_kind}': "
+                                "its updates would be installed the wrong way")
+        except OSError as e:
+            problems.append(f"install-kind.txt: {e}")
     if not shutil.which("pdfinfo"):
         return ["pdfinfo isn't installed (it comes with poppler-utils)"]
     for n in PATTERNS + ["convert", "engrave", "stipple", "cbn", "testpage"]:
@@ -73,7 +83,7 @@ def main(d):
             texts = sum(1 for _ in root.iter("{http://www.w3.org/2000/svg}text"))
             shapes = sum(1 for tag in ("rect", "circle", "line") for _ in root.iter("{http://www.w3.org/2000/svg}" + tag))
             # a crossword is a few dozen squares and its clues; a spelling test, numbered lines to write on
-            need = {"crossword": 40, "spelltest": 20, "ruled": 20, "reward": 20, "reading": 30}.get(n, 60)
+            need = {"crossword": 40, "spelltest": 20, "ruled": 20, "reward": 20, "reading": 30, "bingo": 20}.get(n, 60)
             if commands + texts + shapes < need:
                 problems.append(f"{n}.svg draws only {commands} path segments, {shapes} shapes and {texts} labels; "
                                 "expected a full design")
@@ -83,10 +93,15 @@ def main(d):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
+    args = sys.argv[1:]
+    kind = None
+    if len(args) == 3 and args[1] == "--install-kind":
+        kind = args.pop(2)
+        args.pop(1)
+    if len(args) != 1:
         sys.exit(__doc__)
-    found = main(sys.argv[1])
-    checked = len(PATTERNS) + 5 + len(PDF_PAGES) + len(SVGS)
+    found = main(args[0], kind)
+    checked = len(PATTERNS) + 5 + len(PDF_PAGES) + len(SVGS) + (1 if kind else 0)
     if found:
         print(f"check_selftest: {len(found)} problem(s) in {sys.argv[1]}:")
         for p in found:

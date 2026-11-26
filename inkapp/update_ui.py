@@ -14,7 +14,7 @@ from PySide6.QtWidgets import QApplication, QMessageBox, QProgressDialog
 
 from inkengine.i18n import tr
 
-from . import config, updater
+from . import config, updater, whatsnew
 
 NOTIFY_ONLY = ("flatpak", "source")
 
@@ -111,6 +111,15 @@ class Updates(QObject):
 
     # --- offering ----------------------------------------------------------------------------------------
     def offer(self, release):
+        """Tell the person about a newer release. What's new shows its notes, then asks again."""
+        while self._offer_once(release) == "notes":
+            text = whatsnew.release_notes(release["version"], release.get("notes"), release["page"])
+            if not text:   # nothing to show here: the release page has it
+                QDesktopServices.openUrl(QUrl(release["page"]))
+                return
+            whatsnew.WhatsNew(self.window, release["version"], text).exec()
+
+    def _offer_once(self, release):
         version = release["version"]
         box = QMessageBox(QMessageBox.Icon.Information, tr("Update available"),
                           tr("Inkline {new} is available. You have {old}.").format(new=version, old=self.version),
@@ -133,8 +142,8 @@ class Updates(QObject):
         box.exec()
         chosen = box.clickedButton()
         if chosen is notes:
-            QDesktopServices.openUrl(QUrl(release["page"]))
-        elif chosen is skip:
+            return "notes"
+        if chosen is skip:
             self._save(update_skip=version)
         elif chosen is update:
             if can:

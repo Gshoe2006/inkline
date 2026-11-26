@@ -23,7 +23,7 @@ from inkengine.qt import ensure_app
 
 from inkengine.i18n import tr
 
-from .classset import copies_vary, copy_settings, named_pages
+from .classset import always_vary, copies_vary, copy_settings, named_pages
 
 PREVIEW_DPI = 150          # colour by number's grid is 150 dpi, so the preview shows the same regions as print
 POSTER_PREVIEW_PX = 2400   # a whole poster is drawn with its long side about this many pixels
@@ -50,7 +50,7 @@ def shown_copy(state):
     if s.mode == "convert" and s.photobook and state.photos:
         return None
     i = max(0, min(getattr(state, "copy", 0), cs.count - 1))
-    vary = cs.vary and (s.mode == "make" if booklet else copies_vary(s)[0])
+    vary = (cs.vary or always_vary(s)) and (s.mode == "make" if booklet else copies_vary(s)[0])
     return copy_settings(s, i, vary), (cs.names[i] if i < len(cs.names) else ""), i, cs.label(i)
 
 

@@ -23,7 +23,7 @@ from .state import State
 
 SEED = 20261117
 PATTERNS = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "words", "nonogram", "spot", "kakuro",
-            "maths", "trace", "crossword", "clock", "scramble", "spelltest", "fractions", "symmetry", "ruled", "reward", "reading"]
+            "maths", "trace", "crossword", "clock", "scramble", "spelltest", "fractions", "symmetry", "ruled", "reward", "reading", "bingo"]
 
 
 def _pdf(path, state):
@@ -125,6 +125,12 @@ def run(window, outdir, app):
         if n != 4:
             raise RuntimeError(f"the photo book has {n} pages, expected 4")
     step("photo book", photo_book)
+
+    def install_kind():   # how this package says it was installed: what Help → Check for updates goes by
+        from . import updater
+        with open(os.path.join(outdir, "install-kind.txt"), "w", encoding="utf-8") as f:
+            f.write(updater.install_kind() + "\n")
+    step("install kind", install_kind)
 
     if fails:
         print(f"selftest: {len(fails)} failure(s)")

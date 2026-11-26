@@ -33,6 +33,7 @@ COMPLEXITY = {
     "ruled":     {"4-6": 2, "7-9": 5, "10+": 8},
     "reading":   {"4-6": 2, "7-9": 5, "10+": 9},
     "reward":    {"4-6": 1, "7-9": 3, "10+": 5},
+    "bingo":     {"4-6": 1, "7-9": 5, "10+": 9},
 }
 # what else an age sets, whatever the pattern
 EXTRAS = {

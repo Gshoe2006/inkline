@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QFrame, QHBoxLayout, QLabel, Q
 from inkengine import ages, book, cbn, pack, photo
 from inkengine.i18n import tr
 from inkengine.page import PAGE_KEYS, PANELS, SHEETS, has_answer, sheet_gens
-from inkengine.patterns import NAMES, clock, crossword, fractions, reward, ruled, maths, maze, money, name, spot, trace, words
+from inkengine.patterns import NAMES, bingo, clock, crossword, fractions, reward, ruled, maths, maze, money, name, spot, trace, words
 
 from . import jobs, theme, thumbs
 from .jobs import MAX_COPIES
@@ -33,7 +33,8 @@ GEN_OPTIONS = [("mandala", "Mandala (colouring page)"), ("maze", "Maze"), ("truc
                ("fractions", "Fractions, number lines and times grids"),
                ("symmetry", "Symmetry (shade the mirror half)"),
                ("ruled", "Graph and lined paper"), ("reward", "Reward charts and certificates"),
-               ("reading", "Reading comprehension (a passage and questions)")]
+               ("reading", "Reading comprehension (a passage and questions)"),
+               ("bingo", "Bingo cards (a different card for each child)")]
 GRID_OPTIONS = [("2x2", "2 × 2"), ("3x3", "3 × 3"), ("4x4", "4 × 4"), ("2x1", "2 across × 1"), ("3x2", "3 across × 2"),
                 ("1x2", "1 across × 2"), ("2x3", "2 across × 3")]
 CBN_PATTERN_NOTE = "Repeated spaces share a number, and spaces side by side get different colours."
@@ -290,6 +291,16 @@ class Sidebar(QFrame):
         self.reward_text = self._text("reward_text", "e.g. reading every day", 60)
         self.reward_opts.add(OptionRow("For", self.reward_text))
         self.reward_opts.add(Hint("With Paper → Names, each child gets one with their name on it."))
+        self.bingo_opts = SubOptions()
+        self.bingo_kind = self._combo("bingo_kind", list(bingo.KINDS.items()))
+        self.bingo_opts.add(OptionRow("Call out", self.bingo_kind))
+        self.bingo_theme = self._combo("bingo_theme", list(words.THEME_NAMES.items()))
+        self.bingo_theme_row = self.bingo_opts.add(OptionRow("Words from", self.bingo_theme))
+        self.bingo_words = self._text("bingo_words", "e.g. cat, dog, sun, hat, pen", 600)
+        self.bingo_words_row = self.bingo_opts.add(OptionRow("Your words", self.bingo_words))
+        self.bingo_note = self.bingo_opts.add(Hint())
+        self.bingo_opts.add(Hint("Complexity sets the card: 3 × 3, 4 × 4 or 5 × 5. With Paper → Copies or Names, every "
+                                 "card is different; Answer pages adds the caller's sheet."))
         self.clock_opts = SubOptions()
         self.clock_task = self._combo("clock_task", list(clock.TASKS.items()))
         self.clock_opts.add(OptionRow("Clocks", self.clock_task))
@@ -312,7 +323,7 @@ class Sidebar(QFrame):
         self.cross_words_hint = self.cross_opts.add(Hint("Each as word: clue, separated by ; (a word without a clue gets ?)."))
         self.cross_note = self.cross_opts.add(Hint())
         sec.add(self.words_opts, self.maze_opts, self.name_opts, self.spot_opts, self.maths_opts, self.frac_opts, self.ruled_opts,
-                self.reward_opts, self.clock_opts,
+                self.reward_opts, self.bingo_opts, self.clock_opts,
                 self.trace_opts, self.cross_opts)
         sec.add(self._slider("complexity", "Complexity", 1, 10, lambda v: f"{v} / 10"))
         sec.add(self._slider("weight", "Line weight", 1, 10, lambda v: f"{v / 150 * 25.4:.2f} mm"))
@@ -960,6 +971,11 @@ class Sidebar(QFrame):
         self.frac_opts.setVisible(s.gen == "fractions")
         self.ruled_opts.setVisible(s.gen == "ruled")
         self.reward_opts.setVisible(s.gen == "reward")
+        self.bingo_opts.setVisible(s.gen == "bingo")
+        self.bingo_theme_row.setVisible(s.bingo_kind == "words")
+        self.bingo_words_row.setVisible(s.bingo_kind == "words" and s.bingo_theme == "custom")
+        self.bingo_note.setText(bingo.note(s))
+        self.bingo_note.setVisible(bool(self.bingo_note.text()))
         self.money_row.setVisible(s.maths_kind == "money")
         self.pack_words_row.setVisible(s.pack_theme == "spelling")
         spelling = s.pack_theme == "spelling"
@@ -1052,14 +1068,15 @@ class Sidebar(QFrame):
         typed = self.copies_typed()
         off = not names and typed is not None and typed != n   # 0 or over the most: say what will print instead
         unnamed = bool(typed_names) and not names   # names typed, but no Name line to write them on
-        self.copies_vary.setVisible(shown and can_vary and n > 1)
+        always = jobs.always_vary(s)   # bingo: alike cards would all win at once, so there's nothing to choose
+        self.copies_vary.setVisible(shown and can_vary and n > 1 and not always)
         keyed = single and n > 1 and jobs.copies_have_answers(s)
         self.copies_answers.setVisible(keyed)
         book_keys = books and n > 1 and s.key
         self.copies_answer_book.setVisible(book_keys)
         self.copies_hint.setVisible(shown and (n > 1 or off or unnamed or bool(names)))
         if shown and (n > 1 or off or unnamed or names):
-            vary = can_vary and self.copies_vary.isChecked()
+            vary = can_vary and (self.copies_vary.isChecked() or always)
             parts = [tr("Copies go from 1 to {top}.").format(top=MAX_COPIES)] if off else []
             if unnamed:
                 parts.append(tr('To write the names on the booklets, turn on Page text → Add a "Name ______" line.')
@@ -1185,6 +1202,11 @@ def _page_detail(gen, p):
         return tr(ruled.KINDS.get(p.get("ruled_kind", "squared"), ""))
     if gen == "reward":
         return tr(reward.KINDS.get(p.get("reward_kind", "chart"), ""))
+    if gen == "bingo":
+        kind = p.get("bingo_kind", "numbers")
+        if kind == "words":
+            return tr("Your words") if p.get("bingo_theme") == "custom" else tr(words.THEME_NAMES.get(p.get("bingo_theme"), ""))
+        return tr(bingo.KINDS.get(kind, ""))
     if gen == "fractions":
         return tr(fractions.KINDS.get(p.get("frac_kind", "fractions"), ""))
     if gen == "clock":
