@@ -1,0 +1,40 @@
+# After each release: what each app store needs for it (winget, Homebrew, AUR, Flathub), written by
+# packaging/stores/make_manifests.py with the release's own checksums, kept as the run's "store-manifests" download.
+# Nothing is submitted: docs/publishing.md says where each goes. "Run workflow" writes them for the latest release.
+name: Store manifests
+
+on:
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  manifests:
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 0   # the tags, for the release's commit
+
+      - name: Write them
+        run: |
+          V=$(tr -d '[:space:]' < VERSION)
+          python3 packaging/stores/make_manifests.py "$V" --commit "$(git rev-list -n 1 "$V")" --out store-manifests
+          {
+            echo "### Store manifests for Inkline $V"
+            echo
+            echo "Download **store-manifests** below; docs/publishing.md says where each goes."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: store-manifests
+          path: store-manifests/
+          if-no-files-found: error
+          retention-days: 30

@@ -39,5 +39,5 @@ Without the secrets the workflow only says that no key is set; nothing else chan
 ## Google Play and F-Droid
 
 Google Play wants an Android App Bundle (`.aab`) uploaded under your Play developer account, with Play App Signing;
-F-Droid builds the app itself from the source code, using its recipe (`packaging/stores/fdroid/`), and signs it with
-its own key. Both are one-time submissions made under your accounts: see `docs/publishing.md`.
+F-Droid builds every app from source, which Qt's prebuilt PySide6 for Android doesn't allow. See
+`docs/publishing.md`.
