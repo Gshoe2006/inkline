@@ -194,7 +194,8 @@ class Sidebar(QFrame):
         prow.addWidget(self.cancel_btn)
         self.progress_row.hide()
         lay.addWidget(self.progress_row)
-        keys = label("Ctrl+P print · Ctrl+E PDF · Ctrl+S save project · Ctrl+N new design · ← → pages", "keys")
+        self.save_format = "pdf"   # what Ctrl+E saves (Edit → Settings; the window keeps it up to date)
+        self.keys = keys = label("Ctrl+P print · Ctrl+E PDF · Ctrl+S save project · Ctrl+N new design · ← → pages", "keys")
         keys.setWordWrap(True)
         lay.addWidget(keys)
         return f
@@ -1149,20 +1150,35 @@ class Sidebar(QFrame):
         # the footer's buttons: PNG isn't for posters; SVG suits designs and the vector photo styles
         poster = s.poster and not s.testpage
         self.png_btn.setEnabled(not poster)
-        self.png_btn.setToolTip(tr("Posters save as PDF (one page per sheet) or print directly") if poster
-                                else tr("Save PNG (Ctrl+Shift+E)"))
         vector = not make and s.style in photo.VECTOR_STYLES
         self.svg_btn.setEnabled((make or vector) and not s.testpage and not fold)
+        self.save_tips(s)
+        self.ws_note.setVisible(bool(self.ws_note.text()) and s.gen == "words")
+        self.cross_note.setVisible(bool(self.cross_note.text()) and s.gen == "crossword")
+        self.synced.emit()
+
+    def save_tips(self, s):
+        """The footer's save buttons' tooltips, with the shortcut each has (Ctrl+E saves Edit → Settings' format)."""
+        fmt = getattr(self, "save_format", "pdf")
+        make = s.mode == "make"
+        self.keys.setText(tr("Ctrl+P print · Ctrl+E PDF · Ctrl+S save project · Ctrl+N new design · ← → pages")
+                          if fmt == "pdf" else
+                          tr("Ctrl+P print · Ctrl+E {format} · Ctrl+S save project · Ctrl+N new design · ← → pages")
+                          .format(format=fmt.upper()))
+        self.pdf_btn.setToolTip(tr("Save PDF (Ctrl+E)") if fmt == "pdf" else
+                                tr("Save PDF (Ctrl+Shift+E)") if fmt == "png" else tr("Save PDF"))
+        self.png_btn.setToolTip(tr("Posters save as PDF (one page per sheet) or print directly")
+                                if s.poster and not s.testpage else
+                                tr("Save PNG (Ctrl+E)") if fmt == "png" else tr("Save PNG (Ctrl+Shift+E)"))
+        vector = not make and s.style in photo.VECTOR_STYLES
         tips = {"engrave": tr("Engraving lines save as vector paths, for laser engravers and plotters"),
                 "stipple": tr("Stippling dots save as vector circles, for laser engravers and plotters"),
                 "nono": tr("Photo nonograms save as vector lines and text, for editing in Inkscape"),
                 "cbn": tr("Colour-by-number outlines save as vector lines, for editing in Inkscape")}
-        self.svg_btn.setToolTip(tips[s.style] if vector else tr("Vector lines for Inkscape, Cricut, Silhouette or laser cutters"
-                                   if make else "Photos are made of pixels; choose Engraving, Stippling, Colour by number or "
-                                                "Nonogram for SVG"))
-        self.ws_note.setVisible(bool(self.ws_note.text()) and s.gen == "words")
-        self.cross_note.setVisible(bool(self.cross_note.text()) and s.gen == "crossword")
-        self.synced.emit()
+        tip = tips[s.style] if vector else tr("Vector lines for Inkscape, Cricut, Silhouette or laser cutters"
+                                              if make else "Photos are made of pixels; choose Engraving, Stippling, "
+                                                           "Colour by number or Nonogram for SVG")
+        self.svg_btn.setToolTip(tr("{tip} (Ctrl+E)").format(tip=tip) if fmt == "svg" and (make or vector) else tip)
 
     def set_status(self, text):
         self.status.setText(text)

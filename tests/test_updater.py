@@ -200,6 +200,15 @@ def test_run_reports_failure():
     assert updater.run(["/no/such/program"])[0] is False
 
 
+@pytest.fixture(autouse=True)
+def _no_real_schedule(monkeypatch):
+    """Nothing here sets up a real timer or task: what the window asks for is recorded instead."""
+    from inkapp import update_schedule
+    asked = []
+    monkeypatch.setattr(update_schedule, "apply", lambda schedule, kind=None, **kw: asked.append(schedule) or "")
+    return asked
+
+
 # --- the window ----------------------------------------------------------------------------------------------
 @pytest.fixture
 def win(tmp_path, monkeypatch):
@@ -239,9 +248,11 @@ def boxes(monkeypatch, pick):
 def test_help_menu_has_the_update_items(win):
     texts = [a.text() for m in win.menuBar().actions() for a in m.menu().actions()]
     assert "Check for &updates…" in texts and "Check for updates au&tomatically" in texts
-    assert not win.act_updates_auto.isChecked()
-    win.act_updates_auto.trigger()
-    assert config.read("preferences.json")["update_check"] is True
+    acts = win.updates.schedule_actions
+    assert [a.text() for a in acts.values()] == ["Never", "When Inkline starts", "At login", "Every day", "Every week"]
+    assert acts["off"].isChecked()
+    acts["start"].trigger()
+    assert config.read("preferences.json")["update_check"] is True and acts["start"].isChecked()
 
 
 def test_first_start_asks_once(win, monkeypatch):
@@ -250,7 +261,7 @@ def test_first_start_asks_once(win, monkeypatch):
     shown = boxes(monkeypatch, lambda texts: "Check for updates")
     win.updates.at_start()
     assert len(shown) == 1 and config.read("preferences.json")["update_check"] is True
-    assert win.act_updates_auto.isChecked() and checks == [False]   # yes: the first check straight away
+    assert win.updates.schedule_actions["start"].isChecked() and checks == [False]   # yes: a first check now
     config.write("preferences.json", {**config.read("preferences.json"), "update_checked": __import__("time").time()},
                  "Preferences")
     win.updates.at_start()
@@ -368,7 +379,7 @@ def test_checking_without_remembering_writes_nothing(tmp_path, monkeypatch):
     shown = boxes(monkeypatch, lambda texts: "Skip this version")
     w.updates.check(asked=True)
     assert wait_for(lambda: shown)
-    assert config.read("preferences.json") == {} and not w.act_updates_auto.isChecked()
+    assert config.read("preferences.json") == {} and w.updates.schedule_actions["off"].isChecked()
 
 
 def test_the_appimage_is_put_in_place_off_the_window_thread(win, monkeypatch, tmp_path):

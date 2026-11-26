@@ -8,6 +8,9 @@ everything with Qt and Python.
     python3 inkline.py FILE.inkline        the app, with that project open
     python3 inkline.py --selftest DIR      headless check: writes every kind of output into DIR
     python3 inkline.py --version           prints the version
+    python3 inkline.py --check-updates     no window: looks for a new version and says so in a notification
+                                           (what Help → Check for updates automatically runs while Inkline is closed)
+    python3 inkline.py --update            the app, with its update box open (that notification's button)
 """
 
 import os
@@ -67,6 +70,9 @@ def main():
         qt_words = QTranslator(app)
         if qt_words.load(f"qtbase_{i18n.LANG}", QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)):
             app.installTranslator(qt_words)
+    if "--check-updates" in sys.argv[1:]:
+        from inkapp import update_check
+        sys.exit(update_check.main(app_version()))
     from inkapp.window import Window
     theme.remember_desktop(app)   # the desktop's own look, for View → Use my desktop's style
     theme.DESKTOP["on"] = bool(theme.desktop_style_name()) and config.read("preferences.json").get("desktop_style") is True
@@ -80,6 +86,8 @@ def main():
         win.updates.at_start()   # ask once whether to check for updates; then at most once a day, in the background
     if path and not recovered:   # recovered work isn't put aside for the project named: it can be opened next
         win.open_project(path)
+    if "--update" in sys.argv[1:]:   # from the update notification's button
+        win.updates.check(asked=True)
     sys.exit(app.exec())
 
 
