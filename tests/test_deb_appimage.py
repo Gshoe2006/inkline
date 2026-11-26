@@ -38,14 +38,15 @@ def test_the_appimage_runs_on_its_own_python_and_declares_its_file_type():
         assert os.access(os.path.join(ROOT, "packaging", *script), os.X_OK)
 
 
-def test_every_release_has_all_six_packages():
+def test_every_release_has_all_seven_packages():
     wf = _read(".github", "workflows", "release.yml")
     assert "sh packaging/debian/build-deb.sh" in wf and "sh packaging/appimage/build-appimage.sh" in wf
-    assert "python packaging/windows/build.py" in wf
-    assert "needs: [check, selftest, run-and-arch, flatpak, deb, appimage, windows, windows-check]" in wf
+    assert "python packaging/windows/build.py" in wf and "python packaging/macos/build.py" in wf
+    assert "needs: [check, selftest, run-and-arch, flatpak, deb, appimage, windows, windows-check, macos, macos-check]" in wf
     for name in ("run-and-arch", "flatpak", "deb", "appimage", "windows"):
         assert f"name: {name}\n          path: dist" in wf
-    assert 'test "$(ls dist | wc -l)" = 6' in wf
+    assert 'test "$(ls dist | wc -l)" = 7' in wf
+    assert "python3 packaging/check_selftest.py macos-selftest" in wf      # Inkline.app's output, checked
     assert "python3 packaging/check_selftest.py windows-selftest" in wf     # Inkline.exe's output, checked
 
 
