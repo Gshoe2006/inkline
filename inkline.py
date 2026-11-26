@@ -77,6 +77,7 @@ def main():
     path = startup_project(sys.argv[1:])
     if not recovered and not path:
         win.offer_whats_new()          # the first start after an update (not when opening a project): what's changed
+    win.updates.at_start()   # ask once whether to check for updates; then at most once a day, in the background
     if path and not recovered:   # recovered work isn't put aside for the project named: it can be opened next
         win.open_project(path)
     sys.exit(app.exec())
