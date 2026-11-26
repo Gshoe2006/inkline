@@ -1,0 +1,1172 @@
+[
+ {
+  "level": 1,
+  "title": "Paul und der Drachen",
+  "text": "Paul hat einen roten Drachen. Er hat einen langen blauen Schwanz. Am Samstag geht Paul mit Oma in den Park. Der Wind ist stark. Paul rennt schnell, und der Drachen steigt hoch, hoch, hoch. Er fliegt über die Bäume. Oma klatscht in die Hände. Paul lacht. Drachen steigen lassen macht ihm am meisten Spaß.",
+  "questions": [
+   {
+    "q": "Welche Farbe hat der Drachen?",
+    "choices": [
+     "Blau",
+     "Rot",
+     "Grün"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Wer geht mit Paul in den Park?",
+    "choices": [
+     "Oma",
+     "Papa",
+     "Sein Freund"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Was macht Oma?",
+    "choices": [
+     "Sie rennt",
+     "Sie singt",
+     "Sie klatscht in die Hände"
+    ],
+    "answer": 2
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Ein Morgen im Schnee",
+  "text": "Mia schaut aus dem Fenster. Alles ist weiß! Schnee liegt auf dem Gras und auf den Autos. Mia zieht ihre Jacke, ihre Mütze und ihre warmen Stiefel an. Sie geht mit ihrem Bruder nach draußen. Sie bauen einen großen Schneemann. Er hat eine Nase aus einer Karotte und zwei Augen aus Steinen. Dann gehen sie rein und trinken warme Milch.",
+  "questions": [
+   {
+    "q": "Was liegt auf dem Gras?",
+    "choices": [
+     "Regen",
+     "Blätter",
+     "Schnee"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Woraus ist die Nase vom Schneemann?",
+    "choices": [
+     "Aus einer Karotte",
+     "Aus einem Stein",
+     "Aus einem Stock"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Was trinken sie drinnen?",
+    "choices": [
+     "Orangensaft",
+     "Warme Milch",
+     "Wasser"
+    ],
+    "answer": 1
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Meine neue Brotdose",
+  "text": "Jonas hat eine neue Brotdose. Sie ist grün mit gelben Sternen. Heute hat Jonas ein Käsebrot, einen Apfel und ein paar Möhrenstifte dabei. In der Pause sitzt er neben seiner Freundin Lena. Lena hat ihren Apfel vergessen. Jonas schneidet seinen Apfel in zwei Hälften und gibt Lena eine Hälfte. Lena sagt danke. Teilen macht beide froh.",
+  "questions": [
+   {
+    "q": "Was ist auf der Brotdose?",
+    "choices": [
+     "Gelbe Sterne",
+     "Rote Punkte",
+     "Blaue Fische"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Was hat Lena vergessen?",
+    "choices": [
+     "Ihr Brot",
+     "Ihr Getränk",
+     "Ihren Apfel"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Was gibt Jonas Lena?",
+    "choices": [
+     "Einen Möhrenstift",
+     "Eine Hälfte von seinem Apfel",
+     "Sein Käsebrot"
+    ],
+    "answer": 1
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Das kleine Entchen",
+  "text": "Ein kleines Entchen wohnt am Teich. Jeden Morgen schwimmt es mit seiner Mama. Es spritzt gern mit dem Wasser. Eines Tages sieht es einen Frosch auf einem Seerosenblatt. Der Frosch springt in den Teich. Platsch! Das Entchen quakt und schwimmt schnell zu seiner Mama, um es ihr zu erzählen. Dann macht es ein Nickerchen in der warmen Sonne.",
+  "questions": [
+   {
+    "q": "Wo wohnt das kleine Entchen?",
+    "choices": [
+     "In einer Scheune",
+     "Am Teich",
+     "Auf einem Baum"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Was sieht das Entchen auf einem Seerosenblatt?",
+    "choices": [
+     "Einen Frosch",
+     "Einen Fisch",
+     "Einen Vogel"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Was macht es am Ende?",
+    "choices": [
+     "Es frisst Brot",
+     "Es fliegt weg",
+     "Es macht ein Nickerchen"
+    ],
+    "answer": 2
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Wir pflanzen einen Samen",
+  "text": "Leo und seine Mama pflanzen einen Sonnenblumensamen. Sie füllen Erde in einen Topf. Leo drückt den Samen mit dem Finger in die Erde. Mama gießt ihn mit Wasser. Sie stellen den Topf auf die Fensterbank in die Sonne. Jeden Tag schaut Leo nach dem Topf. Nach einer Woche kommt ein kleiner grüner Keim heraus. Leo freut sich sehr.",
+  "questions": [
+   {
+    "q": "Welchen Samen pflanzen sie?",
+    "choices": [
+     "Einen Bohnensamen",
+     "Einen Kürbissamen",
+     "Einen Sonnenblumensamen"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Wohin stellen sie den Topf?",
+    "choices": [
+     "Auf die Fensterbank",
+     "Unter das Bett",
+     "In den Gartenschuppen"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Wann kommt der grüne Keim heraus?",
+    "choices": [
+     "Am nächsten Tag",
+     "Nach einer Woche",
+     "Nach einem Jahr"
+    ],
+    "answer": 1
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "In der Bücherei",
+  "text": "Am Dienstag geht die Klasse 1b in die Bücherei. In der Bücherei ist es leise. In den Regalen stehen viele Bücher. Nora findet ein Buch über Dinosaurier. Ben findet ein Buch über Züge. Frau Berg aus der Bücherei hilft ihnen, die Bücher auszuleihen. Sie dürfen die Bücher zwei Wochen behalten. Nora will ihr Buch abends im Bett lesen.",
+  "questions": [
+   {
+    "q": "An welchem Tag geht die Klasse in die Bücherei?",
+    "choices": [
+     "Am Montag",
+     "Am Dienstag",
+     "Am Freitag"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Worum geht es in Bens Buch?",
+    "choices": [
+     "Um Züge",
+     "Um Dinosaurier",
+     "Um Katzen"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Wie lange dürfen sie die Bücher behalten?",
+    "choices": [
+     "Einen Tag",
+     "Zwei Wochen",
+     "Einen Monat"
+    ],
+    "answer": 1
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Spaß an einem Regentag",
+  "text": "Es regnet. Emma kann nicht draußen spielen. Sie ist ein bisschen traurig. Dann hat Papa eine Idee. Sie bauen eine Höhle aus einer Decke und zwei Stühlen. Emma holt ihre Taschenlampe und ihren Teddy. In der Höhle liest Papa eine Geschichte vor. Emma hört den Regen am Fenster. Jetzt mag sie Regentage.",
+  "questions": [
+   {
+    "q": "Warum kann Emma nicht draußen spielen?",
+    "choices": [
+     "Es ist dunkel",
+     "Es regnet",
+     "Es ist zu heiß"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Was bauen sie?",
+    "choices": [
+     "Eine Höhle",
+     "Ein Boot",
+     "Einen Turm"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Was denkt Emma am Ende über Regentage?",
+    "choices": [
+     "Sie hat Angst davor",
+     "Sie findet sie langweilig",
+     "Sie mag sie"
+    ],
+    "answer": 2
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Das Sportfest",
+  "text": "Heute ist Sportfest in der Schule. Die Sonne scheint. Ali macht beim Eierlauf mit. Er geht ganz vorsichtig. Das Ei wackelt, aber es fällt nicht herunter. Ali wird Zweiter! Danach kommt das Sackhüpfen. Alle hüpfen und lachen. Am Ende bekommen alle Kinder einen Aufkleber. Ali klebt seinen Aufkleber auf sein T-Shirt.",
+  "questions": [
+   {
+    "q": "Bei welchem Rennen macht Ali zuerst mit?",
+    "choices": [
+     "Beim Sackhüpfen",
+     "Beim Eierlauf",
+     "Beim Wettrennen"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Der Wievielte wird Ali?",
+    "choices": [
+     "Zweiter",
+     "Erster",
+     "Letzter"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Was bekommen alle Kinder am Ende?",
+    "choices": [
+     "Eine Medaille",
+     "Einen Kuchen",
+     "Einen Aufkleber"
+    ],
+    "answer": 2
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Pfannkuchentag",
+  "text": "Lilly und Opa backen Pfannkuchen. Sie verrühren Mehl, Eier und Milch in einer großen Schüssel. Opa macht die Pfanne heiß. Er gießt den Teig hinein. Wenn der Pfannkuchen fertig ist, wirft er ihn hoch in die Luft und wendet ihn. Lilly kichert. Sie isst ihren Pfannkuchen mit Zimt und Zucker. Opa mag Marmelade auf seinem. Sie essen alles auf.",
+  "questions": [
+   {
+    "q": "Wer backt mit Lilly Pfannkuchen?",
+    "choices": [
+     "Opa",
+     "Mama",
+     "Ihre Lehrerin"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Was isst Lilly auf ihrem Pfannkuchen?",
+    "choices": [
+     "Marmelade",
+     "Schokolade",
+     "Zimt und Zucker"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Was macht Opa mit dem Pfannkuchen?",
+    "choices": [
+     "Er lässt ihn fallen",
+     "Er wirft ihn in die Luft",
+     "Er gibt ihn dem Hund"
+    ],
+    "answer": 1
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Der Mond",
+  "text": "Abends schaut Finn in den Himmel. Er kann den Mond sehen. Heute ist er groß und rund. Finn sieht auch viele kleine Sterne. Mama erzählt ihm, dass der Mond in jeder Nacht anders aussieht. Manchmal ist er schmal wie ein Lächeln. Finn winkt dem Mond gute Nacht und geht ins Bett.",
+  "questions": [
+   {
+    "q": "Wie sieht der Mond heute aus?",
+    "choices": [
+     "Groß und rund",
+     "Schmal wie ein Lächeln",
+     "Rot und klein"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Was sieht Finn noch am Himmel?",
+    "choices": [
+     "Wolken und Regen",
+     "Einen Regenbogen",
+     "Kleine Sterne"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Was macht Finn am Ende?",
+    "choices": [
+     "Er liest ein Buch",
+     "Er winkt dem Mond gute Nacht",
+     "Er isst etwas"
+    ],
+    "answer": 1
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Das verschwundene Buch",
+  "text": "Ole liebte sein Buch aus der Bücherei über Vulkane. Er hatte es schon dreimal gelesen. Am Freitag musste er es zurückgeben, aber Ole konnte es nirgends finden. Er suchte unter seinem Bett und in seinem Schulranzen. Er suchte sogar im Badezimmer. Ole bekam Angst. Was würde Herr Peters aus der Bücherei sagen?\n\nDa kam seine kleine Schwester Ida herein, mit dem Buch in der Hand. Sie hatte es sich ausgeliehen, um die Bilder von der rot glühenden Lava anzuschauen. Ole lachte erleichtert. Er brachte das Buch gerade noch rechtzeitig zurück. Herr Peters lächelte und erzählte ihm von einem neuen Buch über Erdbeben. Ole lieh es sich sofort aus, und dieses Mal stellte er es in sein Bücherregal.",
+  "questions": [
+   {
+    "q": "Worum ging es in Oles Buch?",
+    "choices": [
+     "Um Erdbeben",
+     "Um Vulkane",
+     "Um Flüsse"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Wer hatte das Buch?",
+    "choices": [
+     "Seine Schwester Ida",
+     "Sein Papa",
+     "Herr Peters"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Wo bewahrte Ole das neue Buch auf?",
+    "choices": [
+     "Unter seinem Bett",
+     "In seinem Schulranzen",
+     "In seinem Bücherregal"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Warum bekam Ole Angst?",
+    "answer": "Er fand das Buch nicht und musste es zurückgeben."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Herbstblätter",
+  "text": "Im Herbst ändern die Bäume in der Lindenstraße ihre Farbe. Die grünen Blätter werden gelb, orange und rot. Das passiert, weil die Tage kürzer und kälter werden und sich die Bäume auf ihre Winterruhe vorbereiten. Bald fallen die Blätter herunter, und auf dem Gehweg liegt ein raschelnder Teppich.\n\nPia und ihr Freund Tom lieben den Herbst. Nach der Schule sammeln sie die schönsten Blätter, die sie finden können. Sie suchen große, kleine und welche mit gezackten Rändern aus. Zu Hause klebt Pia ihre Blätter auf Papier und macht daraus ein Bild von einem Fuchs. Tom bastelt sich aus seinen eine bunte Krone. Sie suchen auch nach Kastanien unter dem Kastanienbaum. Der Herbst ist ihre liebste Jahreszeit.",
+  "questions": [
+   {
+    "q": "Welche Farben bekommen die Blätter?",
+    "choices": [
+     "Blau, lila und rosa",
+     "Gelb, orange und rot",
+     "Schwarz und weiß"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Was bastelt Tom aus seinen Blättern?",
+    "choices": [
+     "Eine Krone",
+     "Ein Fuchsbild",
+     "Ein Lesezeichen"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Wo suchen sie nach Kastanien?",
+    "choices": [
+     "Auf dem Schulhof",
+     "Am Teich im Park",
+     "Unter dem Kastanienbaum"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Warum ändern die Blätter ihre Farbe?",
+    "answer": "Die Tage werden kürzer und kälter."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Der Schulgarten",
+  "text": "Die Klasse 3a hatte einen kleinen Garten hinter ihrem Klassenzimmer. Im Frühling pflanzten die Kinder Kartoffeln, Erbsen und Salat. Jedes Kind hatte eine Aufgabe. Jamal war fürs Gießen zuständig. Sofia zupfte das Unkraut. Ben zählte die Schnecken und trug sie vorsichtig zur Hecke.\n\nIn einer Woche war es sehr heiß und trocken. Die Salatblätter ließen die Köpfe hängen. Jamal bemerkte das und fragte, ob er den Garten zweimal am Tag gießen dürfe. Frau Okafor war einverstanden. Bald standen die Pflanzen wieder gerade. Im Sommer hatte die Klasse genug Gemüse für einen großen Salat geerntet. Sie teilten ihn mit der Nachbarklasse. Alle fanden, dass er besser schmeckte als jeder Salat aus dem Laden, weil sie ihn selbst angebaut hatten.",
+  "questions": [
+   {
+    "q": "Was war Jamals Aufgabe?",
+    "choices": [
+     "Unkraut zupfen",
+     "Gießen",
+     "Schnecken zählen"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Was machte Ben mit den Schnecken?",
+    "choices": [
+     "Er trug sie zur Hecke",
+     "Er steckte sie in ein Glas",
+     "Er fütterte sie mit Salat"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Mit wem teilte die Klasse den Salat?",
+    "choices": [
+     "Mit ihren Eltern",
+     "Mit der Schulleiterin",
+     "Mit der Nachbarklasse"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Was bemerkte Jamal bei dem heißen Wetter?",
+    "answer": "Die Salatblätter ließen die Köpfe hängen."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Omas Geburtstagskuchen",
+  "text": "Oma Rosi wurde siebzig, und Elias wollte ihr einen Kuchen backen. Papa half ihm, das Rezept zu lesen. Sie wogen Butter, Zucker und Mehl ab, und Elias schlug die Eier ganz vorsichtig auf. Nur ein winziges Stück Schale fiel hinein, und Papa half ihm, es wieder herauszufischen.\n\nWährend der Kuchen im Ofen war, duftete die Küche süß und warm. Als der Kuchen abgekühlt war, strich Elias rosa Zuckerguss darauf und steckte sieben Kerzen hinein, eine für jedes Jahrzehnt. Auf der Feier sangen alle. Oma Rosi pustete die Kerzen mit einem einzigen großen Atemzug aus. Sie sagte, es sei der beste Kuchen, den sie je gegessen habe. Elias war stolz und fragte, ob sie nächste Woche wieder zusammen backen könnten.",
+  "questions": [
+   {
+    "q": "Wie alt wurde Oma Rosi?",
+    "choices": [
+     "Sechzig",
+     "Siebzig",
+     "Sieben"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Welche Farbe hatte der Zuckerguss?",
+    "choices": [
+     "Rosa",
+     "Weiß",
+     "Gelb"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Wer half Elias, das Rezept zu lesen?",
+    "choices": [
+     "Oma Rosi",
+     "Seine Schwester",
+     "Papa"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Warum steckte Elias sieben Kerzen auf den Kuchen?",
+    "answer": "Eine Kerze für jedes Jahrzehnt."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Ein Tag am Meer",
+  "text": "Familie Hassan fuhr an einem sonnigen Sonntag ans Meer. Layla roch die salzige Luft, noch bevor sie das Wasser sah. Am Strand baute sie mit ihrem kleinen Bruder eine Sandburg. Sie schmückten sie mit Muscheln und einer Fahne aus Seetang.\n\nSpäter erkundete Layla mit Mama die Wasserpfützen zwischen den Felsen. Sie fanden eine kleine Krabbe, die sich unter einem Stein versteckte, und ein paar Seeanemonen, die wie rote Götterspeise aussahen. Mama erinnerte sie daran, genau hinzuschauen und alles wieder dorthin zu legen, wo sie es gefunden hatte. Beim Mittagessen versuchte eine freche Möwe, Papas Brot zu klauen, aber er hielt es gut fest. Bevor sie nach Hause fuhren, planschten alle in den kühlen Wellen. Layla schlief im Auto ein und träumte von Krabben.",
+  "questions": [
+   {
+    "q": "Woraus war die Fahne der Sandburg?",
+    "choices": [
+     "Aus einem Stock",
+     "Aus einem Blatt",
+     "Aus Seetang"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Wie sahen die Seeanemonen aus?",
+    "choices": [
+     "Wie rote Götterspeise",
+     "Wie grüne Steine",
+     "Wie kleine Sterne"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Was wollte die Möwe klauen?",
+    "choices": [
+     "Laylas Eis",
+     "Papas Brot",
+     "Eine Muschel"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Woran erinnerte Mama Layla bei den Felsenpfützen?",
+    "answer": "Genau hinschauen und alles zurücklegen."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Das Laternenfest",
+  "text": "Jeden Winter feiert die Stadt Mühlbach ein Laternenfest. Schon Wochen vorher basteln die Familien Laternen aus Papier, Stäben und Schnur. In diesem Jahr baute Chen eine Laterne in Form eines Fisches, mit orangen Schuppen und einem geringelten Schwanz. Seine Freundin Greta bastelte einen leuchtend gelben Stern.\n\nAm Abend des Festes trafen sich alle auf dem Marktplatz. In den Laternen wurden kleine, sichere Lichter angezündet. Dann begann der Umzug. Hunderte leuchtende Laternen zogen langsam durch die dunklen Straßen wie ein Fluss aus Licht. Eine Kapelle spielte Trommeln und Flöten. Chen hielt seinen Fisch hoch, sodass es aussah, als würde er schwimmen. Danach gab es im Rathaus warme Suppe für alle.",
+  "questions": [
+   {
+    "q": "Welche Form hatte Chens Laterne?",
+    "choices": [
+     "Einen Stern",
+     "Einen Fisch",
+     "Einen Mond"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Wann findet das Laternenfest statt?",
+    "choices": [
+     "Jeden Winter",
+     "Jeden Sommer",
+     "Jeden Frühling"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Was gab es danach für alle?",
+    "choices": [
+     "Eis",
+     "Heiße Schokolade",
+     "Warme Suppe"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Wie sah der Umzug aus?",
+    "answer": "Wie ein Fluss aus Licht."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Das Fußballspiel",
+  "text": "Majas Fußballmannschaft, die Grünen Füchse, hatte am Samstagmorgen ein großes Spiel. Maja war die Torhüterin. Vor dem Spiel kribbelte es in ihrem Bauch. Ihr Trainer, Herr Daniel, sagte ihr, sie solle dreimal tief durchatmen und den Ball im Auge behalten.\n\nDie andere Mannschaft, die Blauen Eulen, war sehr schnell. In der ersten Halbzeit schossen sie ein Tor. Maja war enttäuscht, aber ihre Mitspielerinnen klatschten sie ab und riefen: „Weiter so!“ In der zweiten Halbzeit hielt Maja zwei tolle Bälle, mit einem Sprung nach links und dann nach rechts. Dann schoss ihre Freundin Isa ein Tor für die Füchse. Das Spiel endete unentschieden, eins zu eins. Maja war glücklich, weil sie ihr Bestes gegeben hatte.",
+  "questions": [
+   {
+    "q": "Auf welcher Position spielte Maja?",
+    "choices": [
+     "Stürmerin",
+     "Verteidigerin",
+     "Torhüterin"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Wie hieß die andere Mannschaft?",
+    "choices": [
+     "Die Blauen Eulen",
+     "Die Roten Falken",
+     "Die Grünen Füchse"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Wer schoss das Tor für die Grünen Füchse?",
+    "choices": [
+     "Maja",
+     "Isa",
+     "Herr Daniel"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Was sagte der Trainer zu Maja?",
+    "answer": "Dreimal tief durchatmen und auf den Ball schauen."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Ein Igel im Garten",
+  "text": "Eines Abends entdeckte Lukas am Gartenzaun etwas Kleines und Stacheliges. Es war ein Igel! Er schnüffelte durch das Laub und suchte nach Käfern und Würmern zum Fressen. Lukas blieb ganz still stehen, damit er ihn nicht erschreckte.\n\nAm nächsten Tag lasen Lukas und seine Mama etwas über Igel. Sie erfuhren, dass Igel nachts unterwegs sind und weite Wege laufen, um Futter zu finden. Sie erfuhren auch, dass Igel Lücken in Zäunen brauchen, um von Garten zu Garten zu kommen. Also schnitt Mama unten in den Zaun ein kleines Loch. Lukas stellte eine flache Schale mit Wasser hin. Ein paar Nächte später kam der Igel wieder. Dieses Mal sah Lukas, wie er durch die neue Lücke in den Nachbargarten lief.",
+  "questions": [
+   {
+    "q": "Was frisst der Igel?",
+    "choices": [
+     "Brot und Milch",
+     "Käfer und Würmer",
+     "Samen und Nüsse"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Wann sind Igel unterwegs?",
+    "choices": [
+     "Nachts",
+     "Mittags",
+     "Nur im Sommer"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Was stellte Lukas hin?",
+    "choices": [
+     "Eine Kiste mit Laub",
+     "Etwas Käse",
+     "Eine flache Schale mit Wasser"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Warum schnitt Mama ein Loch in den Zaun?",
+    "answer": "Damit Igel von Garten zu Garten kommen."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Das Gewitter",
+  "text": "Der Nachmittagshimmel wurde dunkelgrau. Dicke Regentropfen fielen, und dann zuckte ein heller Blitz. Rosa zählte langsam, eins, zwei, drei, vier, bis sie den Donner grollen hörte. Ihr großer Bruder Sami erklärte, dass Licht schneller ist als Schall. Deshalb sehen wir den Blitz, bevor wir den Donner hören.\n\n„Je größer die Zahl, desto weiter weg ist das Gewitter“, sagte Sami. Sie schauten aus dem Fenster und zählten nach jedem Blitz. Zuerst kamen sie bis vier, dann bis sechs, dann bis neun. Rosa freute sich, denn das hieß, dass das Gewitter weiterzog. Bald hörte der Regen auf, und die Sonne kam heraus. Über den Dächern spannte sich ein Regenbogen über den Himmel.",
+  "questions": [
+   {
+    "q": "Welche Farbe bekam der Himmel?",
+    "choices": [
+     "Dunkelgrau",
+     "Knallrosa",
+     "Hellblau"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Wer erklärte das mit Blitz und Donner?",
+    "choices": [
+     "Rosas Mama",
+     "Rosas Lehrerin",
+     "Rosas Bruder Sami"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Was erschien nach dem Gewitter?",
+    "choices": [
+     "Schnee",
+     "Ein Regenbogen",
+     "Nebel"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Woher wusste Rosa, dass das Gewitter weiterzog?",
+    "answer": "Die Zahlen beim Zählen wurden größer."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Wir bauen einen Nistkasten",
+  "text": "Tante Jo kam mit einer Tasche voller Holz, ein paar Nägeln und einem kleinen Hammer. „Heute bauen wir einen Nistkasten“, sagte sie zu Noah. Zuerst maßen sie die Teile ab, und Tante Jo sägte sie auf die richtige Größe. Dann half Noah, sie zusammenzunageln. Er hielt den Hammer weit hinten am Stiel, so wie sie es ihm gezeigt hatte.\n\nVorne machten sie ein rundes Loch, gerade groß genug für einen kleinen Vogel. Tante Jo sagte, das Loch dürfe nicht zu groß sein, damit größere Vögel nicht hineinkommen. Noah strich den Kasten hellgrün an. Sie hängten ihn hoch an die Wand vom Schuppen, weit weg von Katzen. Wochen später sah Noah eine winzige Blaumeise, die mit einem Schnabel voll Moos hineinflog.",
+  "questions": [
+   {
+    "q": "In welcher Farbe strich Noah den Kasten an?",
+    "choices": [
+     "Hellgrün",
+     "Knallrot",
+     "Dunkelbraun"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Wo hängten sie den Nistkasten auf?",
+    "choices": [
+     "An einen Zaunpfosten",
+     "In eine Hecke",
+     "Hoch an die Schuppenwand"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Was trug die Blaumeise im Schnabel?",
+    "choices": [
+     "Einen Wurm",
+     "Moos",
+     "Einen Zweig"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Warum durfte das Loch nicht zu groß sein?",
+    "answer": "Damit größere Vögel nicht hineinkommen."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "Pinguine im Eis",
+  "text": "Kaiserpinguine leben in der Antarktis, einem der kältesten Orte der Erde. Im Winter kann die Temperatur unter minus vierzig Grad fallen, und starke Winde fegen über das Eis. Trotzdem haben diese erstaunlichen Vögel kluge Wege gefunden, um zu überleben.\n\nKaiserpinguine haben dicke Fettschichten und eng anliegende Federn, die Kälte und Wasser abhalten. Wenn das Wetter am schlimmsten ist, drängen sich Hunderte Pinguine zu einer großen Gruppe zusammen. Abwechselnd stehen sie in der Mitte, wo es am wärmsten ist, und am Rand, wo es am kältesten ist. So bekommt jeder die Chance, sich aufzuwärmen.\n\nDie Pinguinväter haben eine sehr wichtige Aufgabe. Nachdem die Mutter ein einziges Ei gelegt hat, gibt sie es an den Vater weiter und wandert zum Meer, um zu fressen. Der Vater balanciert das Ei auf seinen Füßen und bedeckt es mit einer warmen Hautfalte, der Bruttasche. Er kümmert sich etwa zwei Monate lang darum, ohne überhaupt etwas zu fressen. Wenn das Küken schlüpft, kommt die Mutter mit Futter im Magen zurück und füttert es. Pinguine können nicht fliegen, aber sie sind ausgezeichnete Schwimmer und tauchen tief, um Fische und Tintenfische zu fangen.",
+  "questions": [
+   {
+    "q": "Wo leben Kaiserpinguine?",
+    "choices": [
+     "In der Arktis",
+     "In der Antarktis",
+     "In Australien",
+     "In Island"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Wer kümmert sich um das Ei, während die Mutter frisst?",
+    "choices": [
+     "Die Großeltern",
+     "Die anderen Küken",
+     "Der Vater",
+     "Niemand"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Was ist die Bruttasche?",
+    "choices": [
+     "Eine warme Hautfalte",
+     "Ein Nest aus Steinen",
+     "Ein Loch im Eis",
+     "Eine Art Feder"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Warum wechseln sich die Pinguine in der Mitte der Gruppe ab?",
+    "answer": "Damit jeder sich aufwärmen kann."
+   },
+   {
+    "q": "Wie lange kümmert sich der Vater um das Ei?",
+    "answer": "Etwa zwei Monate."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "Das Rätsel der Uhr",
+  "text": "Ivys Großonkel Ezra hatte eine Werkstatt voller tickender Uhren. Es gab hohe Uhren, winzige Uhren und eine Uhr in Form eines Leuchtturms. Jeden Sommer besuchte Ivy ihn und half ihm, die Uhren zu reparieren.\n\nEines Morgens sah Onkel Ezra ratlos aus. Die Leuchtturmuhr war stehen geblieben, und er wusste nicht, warum. Er hatte sie aufgezogen, geölt und jede Feder geprüft. Ivy bot ihre Hilfe an. Sie holte die Lupe und spähte hinein. Zwischen den goldenen Zahnrädern entdeckte sie etwas Seltsames: ein einzelnes Reiskorn, eingeklemmt zwischen zwei winzigen Zähnen.\n\n„Das erklärt alles!“, lachte Onkel Ezra. Ihm fiel ein, dass er am Tag zuvor an der Werkbank zu Mittag gegessen hatte. Mit einer feinen Pinzette hob Ivy das Korn heraus. Mit einem leisen Klick begannen sich die Zahnräder zu drehen, und das kleine Licht oben im Leuchtturm blinkte wieder.\n\nOnkel Ezra war begeistert. Er stellte eine neue Regel für die Werkstatt auf: kein Essen an der Werkbank. Dann schenkte er Ivy eine eigene Pinzette und ein kleines Notizbuch. Auf die erste Seite schrieb er: Ivy, oberste Uhrendetektivin. Ivy beschloss, das Notizbuch für immer zu behalten.",
+  "questions": [
+   {
+    "q": "Welche Form hatte die Uhr, die stehen geblieben war?",
+    "choices": [
+     "Ein Haus",
+     "Ein Leuchtturm",
+     "Ein Schiff",
+     "Ein Baum"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Was steckte in der Uhr fest?",
+    "choices": [
+     "Ein Reiskorn",
+     "Eine kleine Schraube",
+     "Ein Stück Schnur",
+     "Ein Brotkrümel"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Welche neue Regel stellte Onkel Ezra auf?",
+    "choices": [
+     "Kein Rennen in der Werkstatt",
+     "Kein Besuch nach Einbruch der Dunkelheit",
+     "Kein Essen an der Werkbank",
+     "Die Uhren nicht anfassen"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Wie kam das Reiskorn in die Uhr?",
+    "answer": "Onkel Ezra aß an der Werkbank zu Mittag."
+   },
+   {
+    "q": "Was schenkte Onkel Ezra Ivy?",
+    "answer": "Eine Pinzette und ein kleines Notizbuch."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "Wie Bienen Honig machen",
+  "text": "Honigbienen sind winzige Insekten, aber sie gehören zu den fleißigsten Arbeitern in der Natur. In einem einzigen Bienenstock können Zehntausende Bienen leben, und jede hat eine Aufgabe.\n\nDie Bienen, die Nahrung sammeln, heißen Sammlerinnen. Sie fliegen von Blüte zu Blüte und saugen mit ihrer langen Zunge, die wie ein Strohhalm funktioniert, eine süße Flüssigkeit auf: den Nektar. Sie bewahren ihn in einem besonderen Magen auf, getrennt von dem Magen für ihr eigenes Futter. Wenn sie Blüten besuchen, bleibt Blütenstaub, also Pollen, an ihrem pelzigen Körper hängen und wird zur nächsten Blüte getragen. Das hilft den Pflanzen, Samen und Früchte zu bilden. Deshalb sind Bienen so wichtig für die Landwirte.\n\nIm Bienenstock geben die Sammlerinnen den Nektar an andere Bienen weiter. Diese kauen ihn und füllen ihn in Wachszellen. Der Nektar ist aber noch zu wässrig, um Honig zu sein. Darum fächeln die Bienen ihm mit ihren Flügeln Luft zu, und ein Teil des Wassers verdunstet. Langsam wird der Nektar zu dickem, klebrigem Honig. Zum Schluss verschließen die Bienen jede Zelle mit einem Wachsdeckel, damit der Honig frisch bleibt. Diesen Honig fressen die Bienen im Winter, wenn es keine Blüten gibt.",
+  "questions": [
+   {
+    "q": "Wie heißt die süße Flüssigkeit, die Bienen aus Blüten sammeln?",
+    "choices": [
+     "Pollen",
+     "Wachs",
+     "Baumsaft",
+     "Nektar"
+    ],
+    "answer": 3
+   },
+   {
+    "q": "Wie heißen die Bienen, die Nahrung sammeln?",
+    "choices": [
+     "Sammlerinnen",
+     "Baumeisterinnen",
+     "Wächterinnen",
+     "Fächlerinnen"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Wie machen die Bienen den Nektar weniger wässrig?",
+    "choices": [
+     "Sie geben Pollen dazu",
+     "Sie fächeln ihm mit den Flügeln Luft zu",
+     "Sie legen ihn in die Sonne",
+     "Sie mischen ihn mit Wachs"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Warum sind Bienen wichtig für die Landwirte?",
+    "answer": "Sie tragen Pollen weiter, sodass Pflanzen Samen und Früchte bilden."
+   },
+   {
+    "q": "Wann fressen die Bienen den Honig?",
+    "answer": "Im Winter, wenn es keine Blüten gibt."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "Der große Leuchtturm",
+  "text": "Früher hatten Seeleute keine Karten auf Bildschirmen und keine Funkgeräte, die sie vor Gefahren warnten. Nachts war es sehr schwer, Felsen unter den Wellen zu erkennen. Um die Schiffe zu schützen, bauten die Menschen Leuchttürme an felsigen Küsten.\n\nEin Leuchtturm ist ein hoher Turm mit einem starken Licht an der Spitze. Früher kam das Licht von Kerzen oder Öllampen. Später fügten kluge Erfinder große Glaslinsen hinzu. Diese Linsen bündelten das Licht zu einem kräftigen Strahl, den man viele Kilometer weit draußen auf dem Meer sehen konnte. Jeder Leuchtturm blinkte in seinem eigenen Muster. So wussten die Seeleute, welchen Leuchtturm sie gerade sahen, und konnten herausfinden, wo sie waren.\n\nLeuchtturmwärter wohnten im Turm oder direkt daneben. Ihre Aufgabe war es, die Lampe die ganze Nacht brennen zu lassen, jede Nacht. Sie schnitten die Dochte zurecht, putzten das Glas und zogen die Maschine auf, die das Licht drehte. Bei Nebel, wenn man das Licht kaum sah, ließen sie stattdessen ein lautes Horn ertönen. Oft war es eine einsame Arbeit, besonders auf Leuchttürmen, die auf winzigen Inseln standen.\n\nHeute arbeiten die meisten Leuchttürme automatisch, mit elektrischem Licht und Computern. Trotzdem stehen viele noch stolz an der Küste, und manche sind jetzt Museen, die man besichtigen kann.",
+  "questions": [
+   {
+    "q": "Warum wurden Leuchttürme gebaut?",
+    "choices": [
+     "Um Fische zu lagern",
+     "Um Schiffe zu schützen",
+     "Um das Wetter zu beobachten",
+     "Damit Seeleute dort wohnen"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Was machten die Glaslinsen mit dem Licht?",
+    "choices": [
+     "Sie änderten seine Farbe",
+     "Sie machten es schwächer",
+     "Sie bündelten es zu einem kräftigen Strahl",
+     "Sie ließen es schneller blinken"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Was benutzten die Wärter bei Nebel?",
+    "choices": [
+     "Ein lautes Horn",
+     "Eine größere Kerze",
+     "Eine Fahne",
+     "Eine Glocke auf einem Boot"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Warum blinkte jeder Leuchtturm in seinem eigenen Muster?",
+    "answer": "Damit Seeleute wussten, welcher Leuchtturm es war."
+   },
+   {
+    "q": "Warum war die Arbeit oft einsam?",
+    "answer": "Manche Leuchttürme standen auf winzigen Inseln."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "Reise zum Mars",
+  "text": "Der Mars wird oft der Rote Planet genannt. Seine Farbe kommt von rostigem Staub, der seine Felsen und seinen Boden bedeckt. Der Mars ist der vierte Planet von der Sonne aus und kleiner als die Erde, etwa halb so breit.\n\nEin Tag auf dem Mars ist nur ein bisschen länger als ein Tag auf der Erde, aber ein Jahr ist viel länger. Der Mars braucht fast zwei Erdjahre, um einmal um die Sonne zu kreisen. Außerdem ist es dort viel kälter als auf der Erde, weil er weiter von der Sonne entfernt ist und nur eine sehr dünne Lufthülle hat. Ohne einen besonderen Anzug könntest du auf dem Mars nicht atmen.\n\nAuf dem Mars steht der höchste Vulkan im ganzen Sonnensystem, der Olympus Mons. Er ist etwa dreimal so hoch wie der höchste Berg der Erde. Der Mars hat außerdem zwei kleine Monde, Phobos und Deimos.\n\nForscherinnen und Forscher haben Roboterfahrzeuge zum Mars geschickt. Diese Rover sind wie kleine Autos, die von der Erde aus gesteuert werden. Sie fahren langsam über die Oberfläche, machen Fotos und untersuchen Gestein. Die Rover haben Hinweise darauf gefunden, dass es auf dem Mars vor langer Zeit Flüsse und Seen gab. Man hofft, dass eines Tages auch Astronauten dorthin reisen, auch wenn die Reise viele Monate dauern würde.",
+  "questions": [
+   {
+    "q": "Warum ist der Mars rot?",
+    "choices": [
+     "Er ist sehr heiß",
+     "Er ist mit rostigem Staub bedeckt",
+     "Er hat rote Ozeane",
+     "Er spiegelt die Sonne"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Wie viele Monde hat der Mars?",
+    "choices": [
+     "Keinen",
+     "Einen",
+     "Drei",
+     "Zwei"
+    ],
+    "answer": 3
+   },
+   {
+    "q": "Was ist der Olympus Mons?",
+    "choices": [
+     "Ein Vulkan",
+     "Ein Rover",
+     "Ein Mond",
+     "Ein See"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Warum ist der Mars kälter als die Erde?",
+    "answer": "Er ist weiter von der Sonne weg und hat dünne Luft."
+   },
+   {
+    "q": "Wofür haben die Rover Hinweise gefunden?",
+    "answer": "Für Flüsse und Seen vor langer Zeit."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "Das Mitternachtsfest",
+  "text": "Auf der Klassenfahrt ins Schullandheim teilten sich Kemi, Deniz und Hanna eine Holzhütte im Wald. In der zweiten Nacht flüsterte Deniz einen Plan: „Lasst uns ein Mitternachtspicknick machen!“ Sie hatten ein paar Kekse, drei Äpfel und eine Tüte Rosinen aufgehoben.\n\nSie stellten den Wecker an Hannas Uhr und legten sie unter ihr Kopfkissen. Um Mitternacht piepte sie leise. Die drei Freunde schlichen auf Zehenspitzen in die Mitte der Hütte und knipsten eine Taschenlampe an. Gerade als Kemi die Kekse öffnete, hörten sie draußen Schritte. Ihre Herzen klopften laut. Die Tür knarrte, und herein kam Frau Lohmann, ihre Lehrerin, im Bademantel.\n\nDie Kinder erstarrten. Aber anstatt zu schimpfen, lächelte Frau Lohmann. Sie sagte, sie habe das Piepen gehört und wollte nachsehen, ob alles in Ordnung sei. Dann setzte sie sich zu ihnen und erzählte, dass sie in ihrem Alter auf ihrer eigenen Klassenfahrt genau das Gleiche gemacht hatte. Sie ließ jedes Kind noch einen Keks essen und schickte sie dann zurück ins Bett.\n\nAm nächsten Morgen beim Frühstück zwinkerte Frau Lohmann ihnen zu. Kemi fand, dass das die beste Klassenfahrt aller Zeiten gewesen war.",
+  "questions": [
+   {
+    "q": "Wo übernachteten die Kinder?",
+    "choices": [
+     "In einem Zelt",
+     "In einem Hotel",
+     "In einer Holzhütte",
+     "Bei einem Freund"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Was hatten sie für das Picknick?",
+    "choices": [
+     "Chips und Kuchen",
+     "Kekse, Äpfel und Rosinen",
+     "Brote und Saft",
+     "Bonbons und Popcorn"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Wie wachten sie um Mitternacht auf?",
+    "choices": [
+     "Durch den Wecker an Hannas Uhr",
+     "Ein Hahn krähte",
+     "Frau Lohmann weckte sie",
+     "Deniz blieb wach"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Warum kam Frau Lohmann zur Hütte?",
+    "answer": "Sie hörte das Piepen und wollte nachsehen."
+   },
+   {
+    "q": "Woran merkst du, dass Frau Lohmann nicht böse war?",
+    "answer": "Sie lächelte und ließ sie einen Keks essen."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "Die ersten Fahrräder",
+  "text": "Heute gibt es Fahrräder überall, aber es dauerte lange, bis sie so aussahen, wie wir sie kennen. Eines der ersten wurde vor etwa zweihundert Jahren erfunden. Es war aus Holz und hatte zwei Räder, aber keine Pedale. Man setzte sich darauf und stieß sich mit den Füßen ab, ein bisschen wie bei einem Roller. Die Leute nannten es Laufmaschine.\n\nSpäter bauten Erfinder Pedale an das Vorderrad. Das war viel schneller, aber es gab ein Problem: Bei jeder Pedalumdrehung drehte sich das Rad nur einmal. Um schneller zu fahren, bauten die Hersteller Räder mit riesigen Vorderrädern und winzigen Hinterrädern. In England hießen sie Penny-Farthing, nach einer großen und einer kleinen Münze. Die Fahrer saßen sehr hoch, und Stürze waren häufig.\n\nDie große Veränderung kam mit der Kette. Eine Kette verband die Pedale mit dem Hinterrad, sodass beide Räder gleich groß sein konnten. Diese Fahrräder waren sicherer, deshalb nannte man sie Sicherheitsfahrräder. Dazu kamen luftgefüllte Gummireifen, die das Fahren viel weniger holprig machten. Bald fuhren alle möglichen Menschen Fahrrad und konnten weiter und billiger reisen als je zuvor.",
+  "questions": [
+   {
+    "q": "Was hatten die ersten Fahrräder nicht?",
+    "choices": [
+     "Räder",
+     "Einen Sitz",
+     "Pedale",
+     "Einen Rahmen"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Woher kommt der Name Penny-Farthing?",
+    "choices": [
+     "Vom Namen des Erfinders",
+     "Von einer großen und einer kleinen Münze",
+     "Von der Stadt, in der es gebaut wurde",
+     "Von seinem Geräusch"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Was verband bei Sicherheitsfahrrädern die Pedale mit dem Hinterrad?",
+    "choices": [
+     "Eine Kette",
+     "Ein Seil",
+     "Eine Feder",
+     "Ein Lederriemen"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Warum bauten die Hersteller so riesige Vorderräder?",
+    "answer": "Um schneller zu fahren, weil die Pedale das Rad nur einmal drehten."
+   },
+   {
+    "q": "Was machte das Fahren weniger holprig?",
+    "answer": "Luftgefüllte Gummireifen."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "Leben im Korallenriff",
+  "text": "Korallenriffe gibt es in warmen, flachen Meeren auf der ganzen Welt. Auf den ersten Blick sehen Korallen vielleicht aus wie bunte Steine oder Pflanzen. In Wirklichkeit bestehen sie aus Millionen winziger Tiere, den Polypen. Jeder Polyp baut sich ein hartes Skelett. Über Hunderte von Jahren stapeln sich diese Skelette und bilden ein Riff.\n\nRiffe bedecken nur einen sehr kleinen Teil des Meeresbodens. Trotzdem lebt dort etwa ein Viertel aller verschiedenen Arten von Meerestieren. Bunte Fische flitzen zwischen den Korallen hin und her. Meeresschildkröten gleiten vorbei, und Kraken verstecken sich in Spalten. Manche Fische, zum Beispiel Clownfische, leben zwischen den nesselnden Armen von Seeanemonen. Die Anemone beschützt den Clownfisch, und der Clownfisch hilft, die Anemone sauber zu halten.\n\nAuch in den Korallenpolypen wohnen Helfer: winzige, pflanzenähnliche Lebewesen, die aus Sonnenlicht Nahrung herstellen. Sie teilen diese Nahrung mit der Koralle und geben ihr einen großen Teil ihrer Farbe. Deshalb wachsen Riffe in flachem, klarem Wasser, wo das Sonnenlicht hinkommt.\n\nAuf der ganzen Welt setzen sich viele Menschen für den Schutz der Korallenriffe ein. Sie halten das Meer sauber und ziehen neue Korallen in besonderen Aufzuchtstationen heran.",
+  "questions": [
+   {
+    "q": "Woraus bestehen Korallen?",
+    "choices": [
+     "Aus bunten Steinen",
+     "Aus Meerespflanzen",
+     "Aus winzigen Tieren, den Polypen",
+     "Aus Sand"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Welcher Fisch lebt zwischen den Armen von Seeanemonen?",
+    "choices": [
+     "Der Clownfisch",
+     "Der Hai",
+     "Der Krake",
+     "Die Schildkröte"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Wie viele Arten von Meerestieren leben ungefähr in Riffen?",
+    "choices": [
+     "Fast keine",
+     "Ein Viertel",
+     "Die Hälfte",
+     "Alle"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Warum wachsen Riffe in flachem, klarem Wasser?",
+    "answer": "Dort erreicht Sonnenlicht die Helfer der Koralle."
+   },
+   {
+    "q": "Wie helfen sich Clownfisch und Anemone gegenseitig?",
+    "answer": "Die Anemone beschützt, der Clownfisch hält sie sauber."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "Die Wetterstation",
+  "text": "Als die neue Wetterstation an der Grundschule Am Lindenhof ankam, bekam die Klasse 4 die Aufgabe, sich um sie zu kümmern. Sie stand auf einem Mast in der Ecke des Sportplatzes und hatte mehrere Messgeräte. Ein Regenmesser sammelte den Regen, ein Thermometer maß die Temperatur, und ein kleines Gerät mit sich drehenden Schalen, ein Anemometer, maß die Windgeschwindigkeit.\n\nJeden Morgen um neun Uhr gingen zwei Kinder hinaus und schrieben die Messwerte in ein Wetterbuch. Tarik und Bella waren das erste Paar. Bald lernten sie, dass man jeden Tag zur gleichen Uhrzeit messen muss, damit man die Werte fair vergleichen kann. Am Ende des Monats zeichnete die Klasse ein Diagramm, das zeigte, wie sich das Wetter verändert hatte.\n\nAn einem Freitag bemerkte Bella, dass die Temperatur über Nacht stark gefallen war und der Wind nun aus Norden kam. Sie wusste aus dem Unterricht, dass Nordwind oft kältere Luft bringt. Sie schlug vor, dass die Schule alle warnen sollte, am Montag warme Jacken mitzubringen. Die Schulleiterin war einverstanden und schrieb es in den Elternbrief. Am Montag war der Schulhof mit leichtem Reif bedeckt, und alle Kinder kamen warm eingepackt. Bella und Tarik fühlten sich wie echte Wetterforscher.",
+  "questions": [
+   {
+    "q": "Was misst ein Anemometer?",
+    "choices": [
+     "Den Regen",
+     "Die Temperatur",
+     "Den Sonnenschein",
+     "Die Windgeschwindigkeit"
+    ],
+    "answer": 3
+   },
+   {
+    "q": "Wann wurde jeden Tag gemessen?",
+    "choices": [
+     "Um neun Uhr",
+     "Mittags",
+     "Nach der Schule",
+     "Um Mitternacht"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Was lag am Montag auf dem Schulhof?",
+    "choices": [
+     "Pfützen",
+     "Leichter Reif",
+     "Tiefer Schnee",
+     "Herbstlaub"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Warum wurde jeden Tag zur gleichen Uhrzeit gemessen?",
+    "answer": "Damit man die Werte fair vergleichen kann."
+   },
+   {
+    "q": "Woran erkannte Bella, dass es kälter werden würde?",
+    "answer": "Die Temperatur fiel, und der Wind kam aus Norden."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "Das Kamel in der Wüste",
+  "text": "Wüsten gehören zu den Orten auf der Erde, an denen das Leben am schwersten ist. Es regnet sehr wenig, die Tage können glühend heiß und die Nächte überraschend kalt sein. Trotzdem sind Kamele perfekt an das Leben in diesen trockenen Gebieten angepasst.\n\nViele Menschen glauben, dass ein Kamel in seinem Höcker Wasser speichert, aber das stimmt nicht. Der Höcker ist in Wirklichkeit voller Fett. Wenn es schwer ist, Futter zu finden, kann der Körper des Kamels dieses Fett als Energie nutzen. Ein Kamel, das lange nichts gefressen hat, hat manchmal einen schlaffen, hängenden Höcker.\n\nKamele können viele Tage ohne Trinken auskommen. Wenn sie Wasser finden, können sie sehr schnell riesige Mengen trinken, manchmal mehr als hundert Liter in nur wenigen Minuten. Außerdem kann ihr Körper gut Wasser sparen, sodass sie nur sehr wenig davon verlieren.\n\nKamele haben noch andere schlaue Eigenschaften. Sie haben zwei Reihen langer Wimpern, die den Sand aus ihren Augen halten, und bei Sandstürmen können sie ihre Nasenlöcher schließen. Ihre breiten, gepolsterten Füße verteilen sich auf dem weichen Sand, sodass sie nicht einsinken. Seit Tausenden von Jahren tragen Kamele für die Menschen schwere Lasten durch die Wüste. Deshalb nennt man sie manchmal auch Schiffe der Wüste.",
+  "questions": [
+   {
+    "q": "Was ist im Höcker eines Kamels?",
+    "choices": [
+     "Wasser",
+     "Fett",
+     "Luft",
+     "Milch"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Wie halten Kamele den Sand aus ihren Augen?",
+    "choices": [
+     "Sie legen ihr Fell darüber",
+     "Sie halten sie den ganzen Tag geschlossen",
+     "Sie haben zwei Reihen langer Wimpern",
+     "Sie laufen rückwärts"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Wie viel kann ein Kamel in wenigen Minuten trinken?",
+    "choices": [
+     "Mehr als hundert Liter",
+     "Etwa einen Liter",
+     "Einen kleinen Becher",
+     "Zehn Liter"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Warum kann der Höcker eines Kamels schlaff aussehen?",
+    "answer": "Es hat sein Fett verbraucht, weil es nichts gefressen hat."
+   },
+   {
+    "q": "Wie helfen die Füße dem Kamel im Sand?",
+    "answer": "Breite, gepolsterte Füße verhindern, dass es einsinkt."
+   }
+  ]
+ }
+]

@@ -1,0 +1,1172 @@
+[
+ {
+  "level": 1,
+  "title": "Pedro e a pipa",
+  "text": "Pedro tem uma pipa vermelha. Ela tem uma rabiola azul bem comprida. No sábado, Pedro vai ao parque com a vovó. O vento está forte. Pedro corre rápido e a pipa sobe, sobe, sobe. Ela voa por cima das árvores. A vovó bate palmas. Pedro sorri. Soltar pipa é o que ele mais gosta de fazer.",
+  "questions": [
+   {
+    "q": "De que cor é a pipa?",
+    "choices": [
+     "Azul",
+     "Vermelha",
+     "Verde"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Quem vai ao parque com Pedro?",
+    "choices": [
+     "A vovó",
+     "O papai",
+     "Um amigo"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "O que a vovó faz?",
+    "choices": [
+     "Ela corre",
+     "Ela canta",
+     "Ela bate palmas"
+    ],
+    "answer": 2
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Uma manhã de neve",
+  "text": "Mia olha pela janela. Está tudo branco! Tem neve na grama e nos carros. Mia veste o casaco, o gorro e as botas quentinhas. Ela sai de casa com o irmão. Eles fazem um boneco de neve bem grande. Ele tem nariz de cenoura e dois olhos de pedra. Depois, eles entram para tomar leite quente.",
+  "questions": [
+   {
+    "q": "O que tem na grama?",
+    "choices": [
+     "Chuva",
+     "Folhas",
+     "Neve"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "De que é o nariz do boneco de neve?",
+    "choices": [
+     "De cenoura",
+     "De pedra",
+     "De graveto"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "O que eles bebem lá dentro?",
+    "choices": [
+     "Suco de laranja",
+     "Leite quente",
+     "Água"
+    ],
+    "answer": 1
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Minha lancheira nova",
+  "text": "Rafael tem uma lancheira nova. Ela é verde com estrelas amarelas. Hoje, Rafael levou um sanduíche de queijo, uma maçã e palitos de cenoura. Na hora do lanche, ele senta ao lado da amiga Laura. Laura esqueceu a maçã dela. Rafael corta a maçã ao meio e dá uma metade para Laura. Laura agradece. Dividir deixa os dois felizes.",
+  "questions": [
+   {
+    "q": "O que tem na lancheira?",
+    "choices": [
+     "Estrelas amarelas",
+     "Bolinhas vermelhas",
+     "Peixes azuis"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "O que Laura esqueceu?",
+    "choices": [
+     "O sanduíche",
+     "A bebida",
+     "A maçã"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "O que Rafael dá para Laura?",
+    "choices": [
+     "Um palito de cenoura",
+     "Metade da maçã dele",
+     "O sanduíche dele"
+    ],
+    "answer": 1
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "A patinha",
+  "text": "Uma patinha mora perto da lagoa. Toda manhã, ela nada com a mamãe. Ela gosta de espirrar água para todo lado. Um dia, ela vê um sapo em cima de uma folha. O sapo pula na lagoa. Tchibum! A patinha faz quá-quá e sai nadando para contar à mamãe. Depois, ela tira uma soneca no sol quentinho.",
+  "questions": [
+   {
+    "q": "Onde a patinha mora?",
+    "choices": [
+     "Num celeiro",
+     "Perto da lagoa",
+     "Numa árvore"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "O que a patinha vê em cima de uma folha?",
+    "choices": [
+     "Um sapo",
+     "Um peixe",
+     "Um passarinho"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "O que ela faz no final?",
+    "choices": [
+     "Ela come pão",
+     "Ela sai voando",
+     "Ela tira uma soneca"
+    ],
+    "answer": 2
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Plantando uma semente",
+  "text": "Lucas e a mãe plantam uma semente de girassol. Eles colocam terra num vaso. Lucas empurra a semente para dentro da terra com o dedo. A mamãe rega a terra. Eles colocam o vaso na janela, no sol. Todo dia, Lucas olha o vaso. Depois de uma semana, aparece um brotinho verde. Lucas fica muito animado.",
+  "questions": [
+   {
+    "q": "Que semente eles plantam?",
+    "choices": [
+     "De feijão",
+     "De abóbora",
+     "De girassol"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Onde eles colocam o vaso?",
+    "choices": [
+     "Na janela",
+     "Embaixo da cama",
+     "No quartinho do quintal"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Quando o brotinho verde aparece?",
+    "choices": [
+     "No dia seguinte",
+     "Depois de uma semana",
+     "Depois de um ano"
+    ],
+    "answer": 1
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Na biblioteca",
+  "text": "Na terça-feira, a turma do 1º ano vai à biblioteca. A biblioteca é silenciosa. Tem muitos livros nas prateleiras. Nina encontra um livro sobre dinossauros. Bruno encontra um livro sobre trens. Dona Helena, a bibliotecária, ajuda os dois a pegar os livros emprestados. Eles podem ficar com os livros por duas semanas. Nina quer ler o livro dela na hora de dormir.",
+  "questions": [
+   {
+    "q": "Em que dia a turma vai à biblioteca?",
+    "choices": [
+     "Segunda-feira",
+     "Terça-feira",
+     "Sexta-feira"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Sobre o que é o livro de Bruno?",
+    "choices": [
+     "Trens",
+     "Dinossauros",
+     "Gatos"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Por quanto tempo eles podem ficar com os livros?",
+    "choices": [
+     "Um dia",
+     "Duas semanas",
+     "Um mês"
+    ],
+    "answer": 1
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Diversão em dia de chuva",
+  "text": "Está chovendo. Júlia não pode brincar lá fora. Ela fica um pouco triste. Então o papai tem uma ideia. Eles fazem uma cabana com um cobertor e duas cadeiras. Júlia traz a lanterna e o ursinho. Dentro da cabana, o papai lê uma história. Júlia escuta a chuva batendo na janela. Agora ela gosta de dias de chuva.",
+  "questions": [
+   {
+    "q": "Por que Júlia não pode brincar lá fora?",
+    "choices": [
+     "Está escuro",
+     "Está chovendo",
+     "Está muito quente"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "O que eles fazem?",
+    "choices": [
+     "Uma cabana",
+     "Um barco",
+     "Uma torre"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "O que Júlia acha dos dias de chuva no final?",
+    "choices": [
+     "Ela tem medo deles",
+     "Ela acha chatos",
+     "Ela gosta deles"
+    ],
+    "answer": 2
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Dia de esportes",
+  "text": "Hoje é dia de esportes na escola. O sol está brilhando. Davi está na corrida do ovo na colher. Ele anda com muito cuidado. O ovo balança, mas não cai. Davi chega em segundo lugar! Depois vem a corrida de saco. Todo mundo pula e dá risada. No final, todas as crianças ganham um adesivo. Davi cola o adesivo na camiseta.",
+  "questions": [
+   {
+    "q": "De qual corrida Davi participa primeiro?",
+    "choices": [
+     "Da corrida de saco",
+     "Da corrida do ovo na colher",
+     "Da corrida de velocidade"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Em que lugar Davi chega?",
+    "choices": [
+     "Em segundo",
+     "Em primeiro",
+     "Em último"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "O que todas as crianças ganham no final?",
+    "choices": [
+     "Uma medalha",
+     "Um bolo",
+     "Um adesivo"
+    ],
+    "answer": 2
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Dia de panqueca",
+  "text": "Alice e o vovô fazem panquecas. Eles misturam farinha, ovos e leite numa tigela grande. O vovô esquenta a frigideira. Ele despeja a massa. Quando a panqueca fica pronta, ele joga ela bem alto no ar para virar. Alice dá risada. Ela coloca banana e mel na panqueca dela. O vovô gosta de geleia na dele. Eles comem tudo.",
+  "questions": [
+   {
+    "q": "Quem faz panquecas com Alice?",
+    "choices": [
+     "O vovô",
+     "A mamãe",
+     "A professora"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "O que Alice coloca na panqueca dela?",
+    "choices": [
+     "Geleia",
+     "Chocolate",
+     "Banana e mel"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "O que o vovô faz com a panqueca?",
+    "choices": [
+     "Deixa cair",
+     "Joga no ar para virar",
+     "Dá para o cachorro"
+    ],
+    "answer": 1
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Olhando a Lua",
+  "text": "À noite, Caio olha para o céu. Ele consegue ver a Lua. Hoje ela está grande e redonda. Caio também vê muitas estrelinhas. A mamãe conta que a Lua fica diferente em noites diferentes. Às vezes, ela é fininha como um sorriso. Caio dá tchau para a Lua e vai dormir.",
+  "questions": [
+   {
+    "q": "Como a Lua está hoje?",
+    "choices": [
+     "Grande e redonda",
+     "Fininha como um sorriso",
+     "Vermelha e pequena"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "O que mais Caio vê no céu?",
+    "choices": [
+     "Nuvens e chuva",
+     "Um arco-íris",
+     "Estrelinhas"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "O que Caio faz no final?",
+    "choices": [
+     "Lê um livro",
+     "Dá tchau para a Lua",
+     "Come um lanchinho"
+    ],
+    "answer": 1
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "O livro perdido",
+  "text": "Gabriel adorava o livro da biblioteca sobre vulcões. Ele já tinha lido o livro três vezes. Na sexta-feira, era dia de devolver, mas Gabriel não achava o livro em lugar nenhum. Ele procurou embaixo da cama e na mochila da escola. Procurou até no banheiro. Gabriel começou a ficar preocupado. O que o seu Paulo, o bibliotecário, ia dizer?\n\nEntão a irmãzinha dele, Ana, entrou no quarto com o livro na mão. Ela tinha pegado o livro para ver as figuras da lava quente e vermelha. Gabriel riu, aliviado. Ele devolveu o livro na biblioteca bem na hora. Seu Paulo sorriu e contou a ele sobre um livro novo sobre terremotos. Gabriel pegou esse livro emprestado na mesma hora e, desta vez, guardou na estante.",
+  "questions": [
+   {
+    "q": "Sobre o que era o livro da biblioteca de Gabriel?",
+    "choices": [
+     "Terremotos",
+     "Vulcões",
+     "Rios"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Quem estava com o livro?",
+    "choices": [
+     "A irmã dele, Ana",
+     "O pai dele",
+     "Seu Paulo"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Onde Gabriel guardou o livro novo?",
+    "choices": [
+     "Embaixo da cama",
+     "Na mochila da escola",
+     "Na estante"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Por que Gabriel começou a ficar preocupado?",
+    "answer": "Ele não achava o livro e precisava devolver."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Folhas de outono",
+  "text": "No outono, as árvores da Rua das Flores mudam de cor. As folhas verdes ficam amarelas, laranja e vermelhas. Isso acontece porque os dias ficam mais curtos e mais frios, e as árvores se preparam para descansar no inverno. Logo as folhas começam a cair, e a calçada fica coberta por um tapete que faz croc-croc.\n\nClara e o amigo Tomás adoram o outono. Depois da escola, eles juntam as folhas mais bonitas que encontram. Escolhem folhas grandes, pequenas e com pontas espinhudas. Em casa, Clara cola as folhas num papel e faz o desenho de uma raposa. Tomás faz uma coroa colorida com as dele. Eles também procuram castanhas embaixo do castanheiro. O outono é a estação preferida dos dois.",
+  "questions": [
+   {
+    "q": "De que cores as folhas ficam?",
+    "choices": [
+     "Azul, roxo e rosa",
+     "Amarelas, laranja e vermelhas",
+     "Preto e branco"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "O que Tomás faz com as folhas dele?",
+    "choices": [
+     "Uma coroa",
+     "O desenho de uma raposa",
+     "Um marcador de livro"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Onde eles procuram castanhas?",
+    "choices": [
+     "No parquinho",
+     "No lago do parque",
+     "Embaixo do castanheiro"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Por que as folhas mudam de cor?",
+    "answer": "Os dias ficam mais curtos e mais frios."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "A horta da escola",
+  "text": "A turma do 3º ano tinha uma pequena horta atrás da sala de aula. Na primavera, eles plantaram batatas, ervilhas e alface. Cada criança tinha uma tarefa. Jonas cuidava da rega. Sofia arrancava o mato. Bento contava os caracóis e levava todos, com cuidado, para a cerca viva.\n\nNuma semana, fez muito calor e não choveu. As folhas de alface começaram a murchar. Jonas percebeu e perguntou se podia regar a horta duas vezes por dia. A professora Marta deixou. Logo as plantas estavam de pé de novo. No verão, a turma já tinha colhido verduras suficientes para fazer uma salada enorme. Eles dividiram a salada com a turma da sala ao lado. Todos concordaram que era mais gostosa do que qualquer salada do mercado, porque eles mesmos tinham plantado.",
+  "questions": [
+   {
+    "q": "Qual era a tarefa de Jonas?",
+    "choices": [
+     "Arrancar o mato",
+     "Regar",
+     "Contar caracóis"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "O que Bento fazia com os caracóis?",
+    "choices": [
+     "Levava para a cerca viva",
+     "Colocava num pote",
+     "Dava alface para eles"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Com quem a turma dividiu a salada?",
+    "choices": [
+     "Com os pais",
+     "Com a diretora",
+     "Com a turma da sala ao lado"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "O que Jonas percebeu no tempo quente?",
+    "answer": "As folhas de alface estavam murchando."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "O bolo de aniversário da vovó",
+  "text": "Era o aniversário de setenta anos da vovó Rosa, e Eduardo queria fazer um bolo para ela. O papai ajudou a ler a receita. Eles pesaram a manteiga, o açúcar e a farinha, e Eduardo quebrou os ovos com muito cuidado. Só um pedacinho de casca caiu dentro, e o papai ajudou a tirar.\n\nEnquanto o bolo assava, a cozinha ficou com um cheiro doce e gostoso. Quando o bolo esfriou, Eduardo espalhou uma cobertura cor-de-rosa por cima e colocou sete velas, uma para cada dez anos. Na festa, todo mundo cantou parabéns. A vovó Rosa apagou as velas de um sopro só. Ela disse que era o bolo mais gostoso que já tinha comido. Eduardo ficou orgulhoso e perguntou se eles podiam fazer outro bolo juntos na semana seguinte.",
+  "questions": [
+   {
+    "q": "Quantos anos a vovó Rosa fez?",
+    "choices": [
+     "Sessenta",
+     "Setenta",
+     "Sete"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "De que cor era a cobertura?",
+    "choices": [
+     "Cor-de-rosa",
+     "Branca",
+     "Amarela"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Quem ajudou Eduardo a ler a receita?",
+    "choices": [
+     "A vovó Rosa",
+     "A irmã dele",
+     "O papai"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Por que Eduardo colocou sete velas no bolo?",
+    "answer": "Uma vela para cada dez anos."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Um dia na praia",
+  "text": "A família Hassan foi para a praia num domingo de sol. Laila sentiu o cheiro salgado do mar antes mesmo de ver a água. Na areia, ela fez um castelo com o irmãozinho. Eles enfeitaram o castelo com conchas e uma bandeira de alga.\n\nMais tarde, Laila foi explorar as poças entre as pedras com a mamãe. Elas encontraram um caranguejinho escondido embaixo de uma pedra e umas anêmonas-do-mar que pareciam gelatina vermelha. A mamãe lembrou que era para olhar com cuidado e deixar tudo de volta onde estava. Na hora do almoço, uma gaivota atrevida tentou pegar o sanduíche do papai, mas ele segurou firme. Antes de ir embora, todos molharam os pés nas ondas geladinhas. Laila dormiu no carro, sonhando com caranguejos.",
+  "questions": [
+   {
+    "q": "O que eles usaram para fazer a bandeira do castelo?",
+    "choices": [
+     "Um graveto",
+     "Uma folha",
+     "Alga"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Com o que as anêmonas-do-mar pareciam?",
+    "choices": [
+     "Gelatina vermelha",
+     "Pedras verdes",
+     "Estrelinhas"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "O que a gaivota tentou pegar?",
+    "choices": [
+     "O sorvete de Laila",
+     "O sanduíche do papai",
+     "Uma concha"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "O que a mamãe lembrou Laila de fazer nas poças?",
+    "answer": "Olhar com cuidado e deixar tudo de volta."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "A festa das lanternas",
+  "text": "Todo inverno, a cidade de Vale Verde faz uma festa das lanternas. Durante semanas, as famílias fazem lanternas de papel, varetas e barbante. Este ano, Chen fez uma lanterna em forma de peixe, com escamas laranja e um rabo enrolado. A amiga dele, Bia, fez uma estrela amarela bem brilhante.\n\nNa noite da festa, todo mundo se reuniu na praça. As lanternas foram acesas com luzinhas seguras dentro. Então o desfile começou. Centenas de lanternas brilhantes passavam devagar pelas ruas escuras, como um rio de luz. Uma banda tocava tambores e flautas. Chen segurava o peixe bem alto, para parecer que ele estava nadando. Depois, teve sopa quentinha para todo mundo no salão da prefeitura.",
+  "questions": [
+   {
+    "q": "Qual era a forma da lanterna de Chen?",
+    "choices": [
+     "Uma estrela",
+     "Um peixe",
+     "Uma lua"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Quando acontece a festa das lanternas?",
+    "choices": [
+     "Todo inverno",
+     "Todo verão",
+     "Toda primavera"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "O que todo mundo comeu ou bebeu depois?",
+    "choices": [
+     "Sorvete",
+     "Chocolate quente",
+     "Sopa quentinha"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Com o que o desfile parecia?",
+    "answer": "Um rio de luz."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "A partida de futebol",
+  "text": "O time de futebol de Marina, as Raposas Verdes, tinha um jogo importante no sábado de manhã. Marina era a goleira. Antes do jogo, ela sentia um frio na barriga. O treinador, seu Daniel, disse para ela respirar fundo três vezes e ficar de olho na bola.\n\nO outro time, as Corujas Azuis, era muito rápido. No primeiro tempo, elas fizeram um gol. Marina ficou chateada, mas as colegas bateram na mão dela e disseram: \"Continua!\" No segundo tempo, Marina fez duas defesas incríveis, pulando para a esquerda e depois para a direita. Então a amiga dela, Isa, marcou um gol para as Raposas. O jogo terminou empatado, um a um. Marina ficou feliz porque tinha dado o seu melhor.",
+  "questions": [
+   {
+    "q": "Em que posição Marina jogava?",
+    "choices": [
+     "Atacante",
+     "Zagueira",
+     "Goleira"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Qual era o nome do outro time?",
+    "choices": [
+     "As Corujas Azuis",
+     "Os Gaviões Vermelhos",
+     "As Raposas Verdes"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Quem marcou o gol das Raposas Verdes?",
+    "choices": [
+     "Marina",
+     "Isa",
+     "Seu Daniel"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "O que o treinador disse para Marina fazer?",
+    "answer": "Respirar fundo três vezes e olhar a bola."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Um ouriço no quintal",
+  "text": "Numa noite, Felipe viu uma coisinha cheia de espinhos perto da cerca do quintal. Era um ouriço! Ele fuçava entre as folhas, procurando besouros e minhocas para comer. Felipe ficou bem quietinho para não assustar o bichinho.\n\nNo dia seguinte, Felipe e a mãe leram sobre ouriços. Aprenderam que os ouriços saem à noite e andam muito para encontrar comida. Aprenderam também que eles precisam de buracos nas cercas para passar de um quintal para outro. Então a mãe de Felipe fez um buraquinho embaixo da cerca. Felipe deixou um pratinho raso com água. Algumas noites depois, o ouriço voltou. Desta vez, Felipe viu o bichinho passar pelo buraco novo para o quintal do vizinho.",
+  "questions": [
+   {
+    "q": "O que o ouriço come?",
+    "choices": [
+     "Pão e leite",
+     "Besouros e minhocas",
+     "Sementes e nozes"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Quando os ouriços saem?",
+    "choices": [
+     "À noite",
+     "Na hora do almoço",
+     "Só no verão"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "O que Felipe deixou para o ouriço?",
+    "choices": [
+     "Uma caixa de folhas",
+     "Um pedaço de queijo",
+     "Um pratinho raso com água"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Por que a mãe de Felipe fez um buraco na cerca?",
+    "answer": "Para os ouriços passarem de um quintal para outro."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "A tempestade",
+  "text": "O céu da tarde ficou cinza-escuro. Gotas grossas de chuva começaram a cair, e então veio um clarão de relâmpago. Rosa contou devagar, um, dois, três, quatro, até ouvir o ronco do trovão. O irmão mais velho dela, Samuel, explicou que a luz viaja mais rápido que o som, por isso vemos o relâmpago antes de ouvir o trovão.\n\n\"Quanto maior o número, mais longe está a tempestade\", disse Samuel. Eles ficaram olhando pela janela e contando depois de cada clarão. Primeiro deu quatro, depois seis, depois nove. Rosa ficou contente, porque isso queria dizer que a tempestade estava indo embora. Logo a chuva parou e o sol apareceu. Um arco-íris se abriu no céu, por cima dos telhados.",
+  "questions": [
+   {
+    "q": "De que cor o céu ficou?",
+    "choices": [
+     "Cinza-escuro",
+     "Rosa-choque",
+     "Azul-claro"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Quem explicou sobre o relâmpago e o trovão?",
+    "choices": [
+     "A mãe de Rosa",
+     "A professora de Rosa",
+     "O irmão de Rosa, Samuel"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "O que apareceu depois da tempestade?",
+    "choices": [
+     "Neve",
+     "Um arco-íris",
+     "Neblina"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Como Rosa soube que a tempestade estava indo embora?",
+    "answer": "Os números que ela contava ficavam maiores."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Uma casinha de passarinho",
+  "text": "A tia Jô chegou com um saco de madeira, alguns pregos e um martelinho. \"Hoje vamos fazer uma casinha de passarinho\", ela disse para Nicolas. Primeiro, eles mediram as peças, e a tia Jô serrou cada uma no tamanho certo. Depois, Nicolas ajudou a pregar as peças, segurando o martelo perto da ponta do cabo, como ela ensinou.\n\nEles fizeram um buraco redondo na frente, do tamanho certinho para um passarinho pequeno. A tia Jô disse que o buraco não podia ser grande demais, para os pássaros maiores não entrarem. Nicolas pintou a casinha de verde-claro. Eles prenderam a casinha bem alto na parede do quartinho do quintal, longe dos gatos. Semanas depois, Nicolas viu uma corruíra pequenininha entrando com o bico cheio de musgo.",
+  "questions": [
+   {
+    "q": "De que cor Nicolas pintou a casinha?",
+    "choices": [
+     "Verde-claro",
+     "Vermelho vivo",
+     "Marrom-escuro"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Onde eles prenderam a casinha?",
+    "choices": [
+     "Num poste da cerca",
+     "Numa cerca viva",
+     "Bem alto na parede do quartinho"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "O que a corruíra levava no bico?",
+    "choices": [
+     "Uma minhoca",
+     "Musgo",
+     "Um graveto"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Por que o buraco não podia ser grande demais?",
+    "answer": "Para os pássaros maiores não entrarem."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "Os pinguins do gelo",
+  "text": "Os pinguins-imperadores vivem na Antártida, um dos lugares mais frios da Terra. No inverno, a temperatura pode cair abaixo de quarenta graus negativos, e ventos fortes varrem o gelo. Mesmo assim, essas aves incríveis encontraram jeitos inteligentes de sobreviver.\n\nOs pinguins-imperadores têm camadas grossas de gordura e penas bem juntinhas, que não deixam entrar o frio nem a água. Quando o tempo está pior, centenas de pinguins se amontoam num grupo grande. Eles se revezam: ora ficam no meio, onde é mais quente, ora do lado de fora, onde é mais frio. Assim, todos têm a chance de se esquentar.\n\nOs pinguins pais têm uma tarefa muito importante. Depois que a mãe bota um único ovo, ela passa o ovo para o pai e caminha até o mar para se alimentar. O pai equilibra o ovo sobre os pés e o cobre com uma dobra de pele quentinha chamada bolsa de incubação. Ele cuida do ovo por cerca de dois meses, sem comer nada. Quando o filhote nasce, a mãe volta com comida no estômago para alimentá-lo. Os pinguins não voam, mas são ótimos nadadores e mergulham fundo para pegar peixes e lulas.",
+  "questions": [
+   {
+    "q": "Onde vivem os pinguins-imperadores?",
+    "choices": [
+     "No Ártico",
+     "Na Antártida",
+     "Na Austrália",
+     "Na Islândia"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Quem cuida do ovo enquanto a mãe se alimenta?",
+    "choices": [
+     "Os avós",
+     "Os outros filhotes",
+     "O pai",
+     "Ninguém"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "O que é a bolsa de incubação?",
+    "choices": [
+     "Uma dobra de pele quentinha",
+     "Um ninho de pedras",
+     "Um buraco no gelo",
+     "Um tipo de pena"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Por que os pinguins se revezam no meio do grupo?",
+    "answer": "Para que todos tenham a chance de se esquentar."
+   },
+   {
+    "q": "Por quanto tempo o pai cuida do ovo?",
+    "answer": "Cerca de dois meses."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "O mistério do relógio",
+  "text": "O tio-avô de Iara, o tio Ezequiel, tinha uma oficina cheia de relógios fazendo tique-taque. Havia relógios altos, relógios pequeninos e um relógio em forma de farol. Todo verão, Iara passava uns dias com ele e ajudava a consertá-los.\n\nCerta manhã, o tio Ezequiel parecia confuso. O relógio-farol tinha parado, e ele não conseguia descobrir por quê. Ele já tinha dado corda, colocado óleo e conferido cada mola. Iara se ofereceu para ajudar. Pegou a lupa e espiou lá dentro. No meio das engrenagens douradas, viu uma coisa estranha: um único grão de arroz, preso entre dois dentinhos.\n\n\"Então é isso!\", riu o tio Ezequiel. Ele lembrou que tinha almoçado na bancada no dia anterior. Com uma pinça fininha, Iara tirou o grão. Com um clique suave, as engrenagens começaram a girar, e a luzinha no alto do farol voltou a piscar.\n\nO tio Ezequiel ficou muito contente. Ele criou uma regra nova para a oficina: nada de comida na bancada. Depois, deu a Iara uma pinça só dela e um caderninho. Na primeira página, escreveu: Iara, Detetive-Chefe de Relógios. Iara decidiu que guardaria o caderninho para sempre.",
+  "questions": [
+   {
+    "q": "Qual era a forma do relógio que parou?",
+    "choices": [
+     "Uma casa",
+     "Um farol",
+     "Um navio",
+     "Uma árvore"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "O que estava preso no relógio?",
+    "choices": [
+     "Um grão de arroz",
+     "Um parafusinho",
+     "Um pedaço de barbante",
+     "Uma migalha de pão"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Que regra nova o tio Ezequiel criou?",
+    "choices": [
+     "Nada de correr na oficina",
+     "Nada de visitas depois que escurece",
+     "Nada de comida na bancada",
+     "Nada de mexer nos relógios"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Como o arroz foi parar dentro do relógio?",
+    "answer": "O tio Ezequiel almoçou na bancada."
+   },
+   {
+    "q": "O que o tio Ezequiel deu a Iara?",
+    "answer": "Uma pinça e um caderninho."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "Como as abelhas fazem mel",
+  "text": "As abelhas são insetos pequeninos, mas estão entre os bichos mais trabalhadores da natureza. Uma única colmeia pode ter dezenas de milhares de abelhas, e cada uma tem uma tarefa.\n\nAs abelhas que buscam comida são chamadas de campeiras. Elas voam de flor em flor, sugando um líquido doce chamado néctar com a língua comprida, que funciona como um canudinho. Elas guardam o néctar num estômago especial, separado daquele que usam para a própria comida. Enquanto visitam as flores, o pólen gruda no corpo peludinho delas e é levado para a próxima flor. Isso ajuda as plantas a produzir sementes e frutos, e é por isso que as abelhas são tão importantes para os agricultores.\n\nDe volta à colmeia, as campeiras passam o néctar para outras abelhas, que o mastigam e o colocam em favos de cera. O néctar ainda está aguado demais para ser mel. Para resolver isso, as abelhas o abanam com as asas, e parte da água evapora. Aos poucos, o néctar vira um mel grosso e grudento. Por fim, as abelhas fecham cada favo com uma tampinha de cera para manter o mel fresco. Elas comem esse mel no inverno, quando não há flores para visitar.",
+  "questions": [
+   {
+    "q": "Qual é o líquido doce que as abelhas recolhem das flores?",
+    "choices": [
+     "Pólen",
+     "Cera",
+     "Seiva",
+     "Néctar"
+    ],
+    "answer": 3
+   },
+   {
+    "q": "Como são chamadas as abelhas que buscam comida?",
+    "choices": [
+     "Campeiras",
+     "Construtoras",
+     "Guardas",
+     "Abanadoras"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Como as abelhas deixam o néctar menos aguado?",
+    "choices": [
+     "Colocam pólen",
+     "Abanam com as asas",
+     "Deixam no sol",
+     "Misturam com cera"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Por que as abelhas são importantes para os agricultores?",
+    "answer": "Levam o pólen e ajudam as plantas a dar sementes e frutos."
+   },
+   {
+    "q": "Quando as abelhas comem o mel?",
+    "answer": "No inverno, quando não há flores."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "O grande farol",
+  "text": "Há muito tempo, os marinheiros não tinham mapas em telas nem rádios para avisar sobre perigos. À noite, era muito difícil ver as pedras escondidas embaixo das ondas. Para proteger os navios, as pessoas construíram faróis ao longo das costas cheias de rochas.\n\nUm farol é uma torre alta com uma luz bem forte no topo. Antigamente, a luz vinha de velas ou lamparinas a óleo. Mais tarde, inventores espertos colocaram grandes lentes de vidro. Essas lentes curvavam a luz e formavam um feixe forte, que podia ser visto a muitos quilômetros mar adentro. Cada farol piscava do seu próprio jeito, para que os marinheiros soubessem qual farol estavam vendo e descobrissem onde estavam.\n\nOs faroleiros moravam dentro da torre ou ao lado dela. O trabalho deles era manter a lâmpada acesa a noite toda, todas as noites. Eles aparavam os pavios, poliam o vidro e davam corda na máquina que fazia a luz girar. Com neblina, quando era difícil ver a luz, eles tocavam uma buzina bem alta. Muitas vezes, era um trabalho solitário, principalmente nos faróis construídos em ilhas pequeninas.\n\nHoje, a maioria dos faróis funciona sozinha, com luz elétrica e computadores. Mesmo assim, muitos continuam firmes na costa, e alguns viraram museus que os visitantes podem explorar.",
+  "questions": [
+   {
+    "q": "Por que os faróis foram construídos?",
+    "choices": [
+     "Para guardar peixes",
+     "Para proteger os navios",
+     "Para observar o tempo",
+     "Para os marinheiros morarem"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "O que as lentes de vidro faziam com a luz?",
+    "choices": [
+     "Mudavam a cor dela",
+     "Deixavam a luz mais fraca",
+     "Curvavam a luz num feixe forte",
+     "Faziam a luz piscar mais rápido"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "O que os faroleiros usavam quando havia neblina?",
+    "choices": [
+     "Uma buzina bem alta",
+     "Uma vela maior",
+     "Uma bandeira",
+     "Um sino num barco"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Por que cada farol piscava do seu próprio jeito?",
+    "answer": "Para os marinheiros saberem qual farol era."
+   },
+   {
+    "q": "Por que o trabalho muitas vezes era solitário?",
+    "answer": "Alguns faróis ficavam em ilhas pequeninas."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "Viagem a Marte",
+  "text": "Marte é muitas vezes chamado de Planeta Vermelho. A cor vem de uma poeira enferrujada que cobre as rochas e o solo. Marte é o quarto planeta a partir do Sol e é menor que a Terra, com mais ou menos metade da largura.\n\nUm dia em Marte é só um pouquinho mais longo que um dia na Terra, mas um ano é muito mais longo. Marte leva quase dois anos terrestres para dar uma volta em torno do Sol. Ele também é muito mais frio que a Terra, porque fica mais longe do Sol e tem uma camada de ar bem fininha. Você não conseguiria respirar em Marte sem uma roupa especial.\n\nMarte tem o vulcão mais alto do sistema solar, chamado Monte Olimpo. Ele é cerca de três vezes mais alto que a montanha mais alta da Terra. Marte também tem duas luas pequenas, chamadas Fobos e Deimos.\n\nOs cientistas já mandaram robôs exploradores para Marte. Esses robôs, chamados de rovers, são como carrinhos controlados da Terra. Eles andam devagar pela superfície, tirando fotos e examinando rochas. Os rovers encontraram sinais de que, há muito tempo, Marte tinha rios e lagos. Os cientistas esperam que um dia astronautas também viajem até lá, embora a viagem leve muitos meses.",
+  "questions": [
+   {
+    "q": "Por que Marte é vermelho?",
+    "choices": [
+     "Porque é muito quente",
+     "Porque é coberto de poeira enferrujada",
+     "Porque tem oceanos vermelhos",
+     "Porque reflete o Sol"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Quantas luas Marte tem?",
+    "choices": [
+     "Nenhuma",
+     "Uma",
+     "Três",
+     "Duas"
+    ],
+    "answer": 3
+   },
+   {
+    "q": "O que é o Monte Olimpo?",
+    "choices": [
+     "Um vulcão",
+     "Um rover",
+     "Uma lua",
+     "Um lago"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Por que Marte é mais frio que a Terra?",
+    "answer": "Fica mais longe do Sol e tem pouco ar."
+   },
+   {
+    "q": "De que os rovers encontraram sinais?",
+    "answer": "De rios e lagos de muito tempo atrás."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "O plano do lanche da meia-noite",
+  "text": "Na excursão da escola para um acampamento, Kemi, Diego e Helena dividiram uma cabana de madeira no meio do mato. Na segunda noite, Diego cochichou um plano: \"Vamos fazer um lanche da meia-noite!\" Eles tinham guardado umas bolachas, três maçãs e um saquinho de uvas-passas.\n\nEles programaram o alarme do relógio de Helena e o esconderam embaixo do travesseiro dela. À meia-noite, o relógio apitou baixinho. Os três amigos foram na ponta dos pés até o meio da cabana e acenderam uma lanterna. Bem quando Kemi abriu as bolachas, eles ouviram passos lá fora. O coração disparou. A porta rangeu, e quem entrou foi a professora Lúcia, de roupão.\n\nAs crianças congelaram. Mas, em vez de ficar brava, a professora Lúcia sorriu. Ela disse que tinha ouvido o apito e veio ver se estava tudo bem. Depois, ela se sentou e contou que, quando tinha a idade deles, fez exatamente a mesma coisa numa excursão da escola. Ela deixou cada um comer uma bolacha e depois mandou todos de volta para a cama.\n\nNa manhã seguinte, no café da manhã, a professora Lúcia piscou para eles. Kemi decidiu que aquela tinha sido a melhor excursão de todas.",
+  "questions": [
+   {
+    "q": "Onde as crianças estavam dormindo?",
+    "choices": [
+     "Numa barraca",
+     "Num hotel",
+     "Numa cabana de madeira",
+     "Na casa de um amigo"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "O que eles tinham para o lanche?",
+    "choices": [
+     "Salgadinho e bolo",
+     "Bolachas, maçãs e uvas-passas",
+     "Sanduíches e suco",
+     "Balas e pipoca"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Como eles acordaram à meia-noite?",
+    "choices": [
+     "Com o alarme do relógio de Helena",
+     "Um galo cantou",
+     "A professora Lúcia acordou todos",
+     "Diego ficou acordado"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Por que a professora Lúcia foi até a cabana?",
+    "answer": "Ela ouviu o apito e foi ver se estava tudo bem."
+   },
+   {
+    "q": "Como sabemos que a professora Lúcia não ficou brava?",
+    "answer": "Ela sorriu e deixou cada um comer uma bolacha."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "As primeiras bicicletas",
+  "text": "Hoje em dia, as bicicletas estão por toda parte, mas elas demoraram muito para ficar do jeito que conhecemos. Uma das primeiras foi inventada há uns duzentos anos. Era feita de madeira e tinha duas rodas, mas não tinha pedais. A pessoa sentava nela e se empurrava com os pés, um pouco como num patinete. Ela era chamada de máquina de correr.\n\nMais tarde, os inventores colocaram pedais na roda da frente. Era bem mais rápido, mas havia um problema. Cada volta dos pedais girava a roda só uma vez. Para andar mais rápido, os fabricantes fizeram bicicletas com rodas da frente enormes e rodas de trás pequeninas. Na Inglaterra, elas eram chamadas de penny-farthing, por causa de uma moeda grande e uma moeda pequena. O ciclista ficava sentado bem no alto, e cair era comum.\n\nA grande mudança veio com a corrente. Uma corrente ligava os pedais à roda de trás, e assim as duas rodas podiam ter o mesmo tamanho. Essas bicicletas eram mais seguras, por isso eram chamadas de bicicletas de segurança. Também apareceram os pneus de borracha cheios de ar, que deixavam o passeio muito menos sacolejante. Logo, andar de bicicleta virou moda entre todo tipo de gente, que agora podia ir mais longe e gastar menos do que nunca.",
+  "questions": [
+   {
+    "q": "O que as primeiras bicicletas não tinham?",
+    "choices": [
+     "Rodas",
+     "Banco",
+     "Pedais",
+     "Quadro"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "De onde veio o nome penny-farthing?",
+    "choices": [
+     "Do nome do inventor",
+     "De uma moeda grande e uma moeda pequena",
+     "Da cidade onde era feita",
+     "Do barulho que fazia"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "O que ligava os pedais à roda de trás nas bicicletas de segurança?",
+    "choices": [
+     "Uma corrente",
+     "Uma corda",
+     "Uma mola",
+     "Uma tira de couro"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Por que os fabricantes fizeram rodas da frente tão grandes?",
+    "answer": "Para andar mais rápido, já que os pedais giravam a roda uma vez só."
+   },
+   {
+    "q": "O que deixou o passeio menos sacolejante?",
+    "answer": "Pneus de borracha cheios de ar."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "A vida num recife de coral",
+  "text": "Os recifes de coral ficam em mares quentes e rasos pelo mundo todo. À primeira vista, o coral pode parecer pedras coloridas ou plantas, mas na verdade ele é formado por milhões de animaizinhos chamados pólipos. Cada pólipo constrói um esqueleto duro em volta de si. Ao longo de centenas de anos, esses esqueletos se acumulam e formam um recife.\n\nOs recifes cobrem só uma partezinha do fundo do mar, mas são o lar de cerca de um quarto de todos os tipos de animais marinhos. Peixes de cores vivas entram e saem do coral. Tartarugas-marinhas passam deslizando, e polvos se escondem nas frestas. Alguns peixes, como o peixe-palhaço, vivem entre os braços urticantes das anêmonas-do-mar. A anêmona protege o peixe-palhaço, e o peixe-palhaço ajuda a manter a anêmona limpa.\n\nOs pólipos de coral também têm ajudantes morando dentro deles: seres vivos pequeninos, parecidos com plantas, que usam a luz do sol para produzir alimento. Eles dividem esse alimento com o coral e dão a ele boa parte da sua cor. É por isso que os recifes crescem em águas rasas e limpas, onde a luz do sol consegue chegar.\n\nNo mundo todo, muitas pessoas trabalham para proteger os recifes de coral, mantendo o mar limpo e cultivando corais novos em viveiros especiais.",
+  "questions": [
+   {
+    "q": "Do que o coral é formado?",
+    "choices": [
+     "Pedras coloridas",
+     "Plantas do mar",
+     "Animaizinhos chamados pólipos",
+     "Areia"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Que peixe vive entre os braços das anêmonas-do-mar?",
+    "choices": [
+     "O peixe-palhaço",
+     "O tubarão",
+     "O polvo",
+     "A tartaruga"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Mais ou menos quantos tipos de animais marinhos vivem nos recifes?",
+    "choices": [
+     "Quase nenhum",
+     "Um quarto",
+     "Metade",
+     "Todos"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Por que os recifes crescem em águas rasas e limpas?",
+    "answer": "Ali a luz do sol chega até os ajudantes do coral."
+   },
+   {
+    "q": "Como o peixe-palhaço e a anêmona se ajudam?",
+    "answer": "A anêmona protege; o peixe-palhaço a mantém limpa."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "A estação meteorológica da escola",
+  "text": "Quando a nova estação meteorológica chegou à Escola Municipal Ipê Amarelo, a turma do 5º ano ficou responsável por cuidar dela. Ela ficava num poste no canto do campo de futebol e tinha vários instrumentos. Um pluviômetro recolhia a chuva, um termômetro media a temperatura e um aparelhinho com conchas que giram, chamado anemômetro, media a velocidade do vento.\n\nToda manhã, às nove horas, dois alunos saíam para anotar as medições num caderno de registros. Tarik e Bela foram a primeira dupla. Logo eles aprenderam que as medições precisavam ser feitas sempre no mesmo horário, para poder comparar de forma justa. No fim do mês, a turma fez um gráfico mostrando como o tempo tinha mudado.\n\nNuma sexta-feira, Bela percebeu que a temperatura tinha caído muito durante a noite, e o vento tinha passado a vir do sul. Ela lembrou das aulas que o vento sul muitas vezes trazia ar mais frio. Ela sugeriu que a escola avisasse todo mundo para trazer casacos quentes na segunda-feira. A diretora concordou e colocou o aviso no informativo. Na segunda, o pátio amanheceu coberto de uma geada fininha, e todas as crianças chegaram bem agasalhadas. Bela e Tarik se sentiram verdadeiros meteorologistas.",
+  "questions": [
+   {
+    "q": "O que o anemômetro mede?",
+    "choices": [
+     "A chuva",
+     "A temperatura",
+     "O sol",
+     "A velocidade do vento"
+    ],
+    "answer": 3
+   },
+   {
+    "q": "Quando as medições eram feitas todos os dias?",
+    "choices": [
+     "Às nove horas",
+     "Na hora do almoço",
+     "Depois da aula",
+     "À meia-noite"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "O que havia no pátio na segunda-feira?",
+    "choices": [
+     "Poças",
+     "Uma geada fininha",
+     "Muita neve",
+     "Folhas caídas"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Por que as medições eram feitas sempre no mesmo horário?",
+    "answer": "Para poder comparar de forma justa."
+   },
+   {
+    "q": "Como Bela adivinhou que ia esfriar?",
+    "answer": "A temperatura caiu e o vento passou a vir do sul."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "O camelo do deserto",
+  "text": "Os desertos estão entre os lugares mais difíceis para viver na Terra. Chove muito pouco, os dias podem ser escaldantes e as noites podem ser surpreendentemente frias. Mesmo assim, os camelos são perfeitos para a vida nessas terras secas.\n\nMuita gente acha que o camelo guarda água na corcova, mas isso não é verdade. A corcova, na verdade, é cheia de gordura. Quando é difícil encontrar comida, o corpo do camelo usa essa gordura como energia. Um camelo que passou muito tempo sem comer pode ficar com a corcova murcha e mole.\n\nOs camelos conseguem passar muitos dias sem beber. Quando encontram água, eles bebem uma quantidade enorme bem rápido, às vezes mais de cem litros em poucos minutos. O corpo deles também é ótimo em economizar água, então eles perdem muito pouca.\n\nOs camelos têm outras características espertas. Eles têm duas fileiras de cílios compridos para proteger os olhos da areia e conseguem fechar as narinas durante as tempestades de areia. Os pés largos e acolchoados se espalham na areia fofa e não deixam o camelo afundar. Há milhares de anos, as pessoas contam com os camelos para carregar cargas pesadas pelo deserto, e é por isso que eles às vezes são chamados de navios do deserto.",
+  "questions": [
+   {
+    "q": "O que tem dentro da corcova do camelo?",
+    "choices": [
+     "Água",
+     "Gordura",
+     "Ar",
+     "Leite"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Como os camelos protegem os olhos da areia?",
+    "choices": [
+     "Cobrem os olhos com o pelo",
+     "Ficam de olhos fechados o dia todo",
+     "Têm duas fileiras de cílios compridos",
+     "Andam de costas"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Quanto um camelo consegue beber em poucos minutos?",
+    "choices": [
+     "Mais de cem litros",
+     "Cerca de um litro",
+     "Um copinho",
+     "Dez litros"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Por que a corcova de um camelo pode ficar murcha?",
+    "answer": "Ele gastou a gordura depois de ficar sem comer."
+   },
+   {
+    "q": "Como os pés do camelo ajudam na areia?",
+    "answer": "Os pés largos e acolchoados não deixam ele afundar."
+   }
+  ]
+ }
+]
