@@ -11,7 +11,7 @@
   has no menu bar.
 """
 
-from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtCore import QEvent, QObject, QSize, Qt, Signal
 from PySide6.QtGui import QAction, QIcon, QPixmap
 from PySide6.QtWidgets import QFrame, QGridLayout, QHBoxLayout, QMenu, QToolButton, QVBoxLayout, QWidget
 
@@ -121,7 +121,8 @@ class MenuButton(QToolButton):
     def __init__(self, menus):
         super().__init__()
         self.setObjectName("toolbarMenu")   # as Presets and More designs
-        self.setText(tr("Menu"))
+        self.setText(tr("Menu") + "  ▾")   # as Popup's buttons (Presets)
+        self.setAccessibleName(tr("Menu"))
         self.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         self.panel = QMenu(self)
         self.presets = QAction(tr("Presets"), self)   # on a phone, where the toolbar has no room for it
@@ -182,6 +183,67 @@ class Fold(QWidget):
             self.opened.emit()
 
 
+class ArrowKeys(QObject):
+    """The keyboard in a grid of picture buttons (the gallery's patterns): the arrow keys move to the nearest one that
+    way, as they're laid out on the screen (so a search that hides some, or a row that's short, still works), and
+    Enter or Return chooses the one focused, as a click does. Up from the top row goes to `above`, if given (All
+    patterns' search box); `scroll` is scrolled to keep the focused button in view."""
+
+    DIRS = {Qt.Key.Key_Left: (-1, 0), Qt.Key.Key_Right: (1, 0), Qt.Key.Key_Up: (0, -1), Qt.Key.Key_Down: (0, 1)}
+
+    def __init__(self, parent, buttons, above=None, scroll=None):
+        super().__init__(parent)
+        self.buttons, self.above, self.scroll = list(buttons), above, scroll
+        for b in self.buttons:
+            b.installEventFilter(self)
+        if above is not None:
+            above.installEventFilter(self)
+
+    def first(self):
+        """The first button shown, in reading order (the top left one)."""
+        shown = [b for b in self.buttons if b.isVisibleTo(b.window()) and b.isEnabled()]
+        return min(shown, key=lambda b: (b.mapTo(b.window(), b.rect().topLeft()).y(),
+                                         b.mapTo(b.window(), b.rect().topLeft()).x()), default=None)
+
+    def eventFilter(self, obj, e):
+        if obj is self.above and e.type() == QEvent.Type.KeyPress and e.key() == Qt.Key.Key_Down:
+            b = self.first()   # down from the search box: into the pictures
+            if b is not None:
+                b.setFocus(Qt.FocusReason.TabFocusReason)
+                if self.scroll is not None:
+                    self.scroll.ensureWidgetVisible(b)
+                return True
+        if e.type() == QEvent.Type.KeyPress and obj in self.buttons and \
+                not e.modifiers() & ~Qt.KeyboardModifier.KeypadModifier:
+            if e.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+                obj.click()
+                return True
+            if e.key() in self.DIRS:
+                target = self.nearest(obj, *self.DIRS[e.key()])
+                if target is None and e.key() == Qt.Key.Key_Up and self.above is not None:
+                    target = self.above
+                if target is not None:
+                    target.setFocus(Qt.FocusReason.TabFocusReason)
+                    if self.scroll is not None and target in self.buttons:
+                        self.scroll.ensureWidgetVisible(target)
+                return True   # at the edge: stay (rather than the window turning a booklet's page)
+        return super().eventFilter(obj, e)
+
+    def nearest(self, b, dx, dy):
+        """The button next to b that way: the nearest along it, keeping to its row or column."""
+        top = b.window()
+        here = b.mapTo(top, b.rect().center())
+        best, score = None, None
+        for c in self.buttons:
+            if c is b or not c.isVisibleTo(top) or not c.isEnabled():
+                continue
+            p = c.mapTo(top, c.rect().center()) - here
+            along, across = p.x() * dx + p.y() * dy, abs(p.x() * dy - p.y() * dx)
+            if along > 2 and (score is None or along + 3 * across < score):
+                best, score = c, along + 3 * across
+        return best
+
+
 def one_open(folds):
     """Folds that take turns: opening one closes the others."""
     for f in folds:
@@ -211,6 +273,7 @@ class Gallery(QWidget):
             b.clicked.connect(lambda _c=False, i=i: self._click(i))
             grid.addWidget(b, i // 3, i % 3)
             self.buttons.append(b)
+        self.keys = ArrowKeys(self, self.buttons)
         self.gens = []
 
     def show_gens(self, gens, current):
@@ -249,6 +312,7 @@ class Popup(QToolButton):
     def __init__(self, text, panel):
         super().__init__()
         self.setText(tr(text) + "  ▾")
+        self.setAccessibleName(tr(text))   # without the arrow
         self.setObjectName("toolbarMenu")
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.frame = QFrame(self, Qt.WindowType.Popup)
@@ -371,6 +435,10 @@ class AllPatterns(QWidget):
         lay.addWidget(self.empty)
         scroll.setWidget(body)
         outer.addWidget(scroll, 1)
+        # the keyboard: Down from the search box into the pictures, arrows between them, Enter to choose; Enter in
+        # the search box chooses the first match
+        self.keys = ArrowKeys(self, self.buttons.values(), above=self.search, scroll=scroll)
+        self.search.returnPressed.connect(lambda: self.keys.first() and self.keys.first().click())
         self.search.textChanged.connect(self.filter)
         self.thumbs.request(base, specs)
 

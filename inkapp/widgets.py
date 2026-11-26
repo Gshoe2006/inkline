@@ -132,6 +132,8 @@ class OptionRow(QWidget):
         top.setSpacing(theme.PAIR_GAP)
         self.label = label(text)
         self.label.setBuddy(control)
+        if not control.accessibleName():   # a screen reader names a list by its label, not its current entry
+            control.setAccessibleName(self.label.text())
         top.addWidget(self.label, 1)
         self.value = label("", "value")
         top.addWidget(self.value)

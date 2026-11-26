@@ -57,6 +57,18 @@ Since 6.0 the options come a page at a time. The rail on the left chooses what y
 
 The first time 6.0 opens, a short tour points at the rail, the gallery, the toolbar, the sections and Settings in turn (Back, Next, Skip, or Escape); **Help → Tour of the window** shows it again.
 
+To look closer at the page, pinch the preview (a touch screen or a trackpad), use **Ctrl+wheel**, or **View → Zoom in** / **Zoom out** (Ctrl++ and Ctrl+-). While it's zoomed, drag it (one finger, or the mouse) to look round; a double tap, a double click or **View → Whole page** (Ctrl+0) shows the whole page again. The zoom only changes the view: what's printed stays the same, and with a photo open the wheel still zooms the photo.
+
+With the touch-screen layout (always on Android, or **Edit → Settings → Appearance**), a window narrower than 1000 px shows one column with a bottom bar; a tablet held sideways keeps the rail, gives the page the window's height and the options the room beside it, and shows **More designs…** in the toolbar when there's room.
+
+## Accessibility
+
+- **Screen readers** (Orca, NVDA, VoiceOver, TalkBack): every button, list, slider and check box has a name, in your language, and a tooltip that explains a button is read as its description. Lists are named by their labels; the rail's, the toolbar's and the booklet page list's buttons by what they do ("Move up", "Remove"); the preview says which page it shows ("Page 2 of 10: Maze"). A test (`tests/test_accessibility.py`) checks every control in the window, Settings and All patterns.
+- **Keyboard:** Tab goes from the rail through the options to the toolbar and the preview, and the focused control is outlined in every theme. Ctrl+1 to Ctrl+5 choose the rail's pages, ← → turn a booklet's pages. In the gallery and **All patterns…** the arrow keys move between the pictures and Enter chooses one (Down from the search box goes into them; Enter there chooses the first match). In the booklet's page list and the photo book's list, Delete removes the selected one and Alt+↑ / Alt+↓ move it (Ctrl+D duplicates a page, Enter changes it). With the preview focused, + and - zoom it, 0 fits it and the arrow keys move round it.
+- **High contrast:** turn on **High contrast** in **Edit → Settings → Appearance** and choose it: black on white, its text at least 10:1. Every theme's text is at least 4.5:1, and **Follow the system** follows your desktop's light or dark setting. Inkline draws its own colours, so it doesn't take a system high-contrast scheme (Windows' contrast themes) by itself: choose High contrast in Inkline too.
+- **Larger text and touch-sized controls:** the touch-screen layout (Edit → Settings → Appearance) makes every control at least 48 px tall and its text a step larger, on any computer. The whole window also follows the system's display scaling (125%, 150%, 200%).
+- **Easier-to-read pages:** *Print → Page text → Easier to read* prints in Atkinson Hyperlegible (recommended for dyslexia), with wider letter and word spacing, and *Cream paper* tints the page.
+
 ## Settings
 
 **Edit → Settings…** (Ctrl+,) keeps what Inkline starts with in one place, and each change applies at once:

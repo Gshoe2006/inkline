@@ -66,6 +66,11 @@ PAPER_COLOUR = "#ffffff"   # pages are white paper in both themes (the preview's
 # and tablets held upright; beside the rail and the options page a narrower window would leave the preview too little
 TOUCH_TARGET = 48          # px: the rail buttons' height, for every control
 ONE_COLUMN_WIDTH = 1000    # px: narrower than this, one column
+# A tablet held sideways (touch, at least ONE_COLUMN_WIDTH wide): its height is what limits a portrait page, so the
+# page gets a narrower margin on the light table, and the options get the room beside the page it can't use, up to
+# TOUCH_SIDEBAR_WIDTH (touch-sized lists show more of their text; at 1024 px the preview keeps over half the width)
+TOUCH_STAGE_PAD = 12       # px: round the page in the preview, on a touch screen (STAGE_PAD otherwise)
+TOUCH_SIDEBAR_WIDTH = 380  # px: the options' width on a tablet, at most
 TOUCH = {"on": False}
 
 
@@ -240,6 +245,7 @@ QToolButton#toolbarMenu {{ font-size: 13px; font-weight: 600; background: {t.fie
   border-radius: 6px; padding: 7px 9px; }}
 QToolButton#toolbarMenu:hover {{ border-color: {t.accent}; }}
 QToolButton#toolbarMenu:focus {{ border: 2px solid {t.accent}; padding: 6px 8px; }}
+QToolButton#toolbarMenu::menu-indicator {{ image: none; width: 0; }}   /* its text ends in ▾, as Presets' does */
 QLabel#brandTag {{ color: {t.muted}; font-size: 12px; }}
 QLabel#brandVersion {{ color: {t.muted}; font-family: {mono}; font-size: 11px; }}
 
@@ -276,7 +282,9 @@ QProgressBar {{ background: {t.field}; border: 0; border-radius: 3px; max-height
 QProgressBar::chunk {{ background: {t.accent}; border-radius: 3px; }}
 
 
-QListWidget#photoList, QListWidget#pageList {{ background: {t.panel}; border: 0; font-size: 12px; }}
+QListWidget#photoList, QListWidget#pageList {{ background: {t.panel}; border: 2px solid transparent; border-radius: 6px;
+  font-size: 12px; }}
+QListWidget#photoList:focus, QListWidget#pageList:focus {{ border-color: {t.accent}; }}
 QListWidget#photoList::item, QListWidget#pageList::item {{ border: 1px solid {t.line}; border-radius: 6px; padding: 4px; margin-bottom: 4px; }}
 QListWidget#photoList::item:selected, QListWidget#pageList::item:selected {{ border-color: {t.accent}; background: {t.field}; color: {t.ink}; }}
 QFrame#drop {{ border: 2px dashed {t.line}; border-radius: 8px; }}
