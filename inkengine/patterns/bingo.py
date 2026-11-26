@@ -97,17 +97,34 @@ def pool(c, settings=None):
     return [(str(k), (f"{COLUMNS[(k - 1) // 15]} {k}" if n == 5 else str(k))) for k in range(1, top + 1)]
 
 
+SPARE = 2   # words beyond a card's squares, so cards can differ (11 for a 3 x 3)
+
+
+def _squares(n):
+    return n * n - (1 if n == 5 else 0)
+
+
+def note(settings):
+    """What the sidebar says when your own words are too few for a card, or ""."""
+    if getattr(settings, "bingo_kind", "") != "words" or getattr(settings, "bingo_theme", "") != "custom":
+        return ""
+    have = len(_words(settings))
+    if have >= _squares(3) + SPARE:
+        return ""
+    return tr("Bingo needs at least {need} words, so every card can be different (you have {have}).").format(
+        need=_squares(3) + SPARE, have=have)
+
+
 def card(rnd, c, settings=None):
     """The card: rows of what's in each square (None for the free square), or None if there's too little to
     call for a card this size (a short list of your own makes a smaller card)."""
     kind = getattr(settings, "bingo_kind", "numbers")
     items = [shown for shown, _ in pool(c, settings)]
     n = size_for(c)
-    squares = lambda k: k * k - (1 if k == 5 else 0)
-    while n > 3 and len(items) < squares(n) + 2:   # a short list: a smaller card, so cards still differ
+    while n > 3 and len(items) < _squares(n) + SPARE:   # a short list: a smaller card, so cards still differ
         n -= 1
-    free, need = n == 5, squares(n)
-    if len(items) < need:
+    free, need = n == 5, _squares(n)
+    if len(items) < need + SPARE:
         return None
     if kind == "numbers" and n == 5:   # each column from its own fifteen, in order down the column
         cols = []
@@ -163,8 +180,9 @@ def _draw_card(ctx, box, grid, lw, kind):
         for k, text in enumerate(row):
             cx, cy = x0 + (k + 0.5) * cell, y0 + (r + 0.5) * cell
             if text is None:
-                ctx.set_font(_fit(ctx, tr("FREE"), cell * 0.8, cell * 0.24, 800), 800)
-                ctx.fill_text(tr("FREE"), cx, cy)
+                free = tr("Free").upper()
+                ctx.set_font(_fit(ctx, free, cell * 0.8, cell * 0.24, 800), 800)
+                ctx.fill_text(free, cx, cy)
                 ctx.begin_path()
                 ctx.arc(cx, cy, cell * 0.42, 0, 6.2832)
                 ctx.stroke()
@@ -213,12 +231,7 @@ def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, solve=False, **_opts)
         ctx.restore()
         return {"kind": kind, "called": len(items)}
     grid = card(rnd, c, settings)
-    if grid is None:
-        ctx.fill_style = "#000"
-        ctx.text_align, ctx.text_baseline = "center", "middle"
-        ctx.set_font(min(box.w, box.h) * 0.04, 500)
-        ctx.fill_text(tr("Add more words for a bingo card (at least 9)."), box.x + box.w / 2, box.y + box.h / 2,
-                      box.w * 0.9)
+    if grid is None:   # too few of your own words: the sidebar says so (note), as the word search does
         ctx.restore()
         return None
     _draw_card(ctx, box, grid, lw, kind)

@@ -298,6 +298,7 @@ class Sidebar(QFrame):
         self.bingo_theme_row = self.bingo_opts.add(OptionRow("Words from", self.bingo_theme))
         self.bingo_words = self._text("bingo_words", "e.g. cat, dog, sun, hat, pen", 600)
         self.bingo_words_row = self.bingo_opts.add(OptionRow("Your words", self.bingo_words))
+        self.bingo_note = self.bingo_opts.add(Hint())
         self.bingo_opts.add(Hint("Complexity sets the card: 3 × 3, 4 × 4 or 5 × 5. With Paper → Copies or Names, every "
                                  "card is different; Answer pages adds the caller's sheet."))
         self.clock_opts = SubOptions()
@@ -973,6 +974,8 @@ class Sidebar(QFrame):
         self.bingo_opts.setVisible(s.gen == "bingo")
         self.bingo_theme_row.setVisible(s.bingo_kind == "words")
         self.bingo_words_row.setVisible(s.bingo_kind == "words" and s.bingo_theme == "custom")
+        self.bingo_note.setText(bingo.note(s))
+        self.bingo_note.setVisible(bool(self.bingo_note.text()))
         self.money_row.setVisible(s.maths_kind == "money")
         self.pack_words_row.setVisible(s.pack_theme == "spelling")
         spelling = s.pack_theme == "spelling"

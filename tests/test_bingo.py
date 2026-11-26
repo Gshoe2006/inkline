@@ -71,7 +71,11 @@ def test_words_come_from_the_theme_or_your_own_list():
     assert bingo.card(mulberry32(1), 9, short) is None
     ctx = RecordingCanvas()
     assert bingo.draw(ctx, Box(0, 0, 800, 1000), mulberry32(1), 9, short, dpi=100) is None
-    assert any("at least 9" in t for t in _texts(ctx))
+    assert _texts(ctx) == []                                    # nothing printed: the sidebar says why
+    assert "at least 11" in bingo.note(short) and "you have 3" in bingo.note(short)
+    ten = Settings(bingo_kind="words", bingo_theme="custom", bingo_words="a b c d e f g h i j")
+    assert bingo.card(mulberry32(1), 1, ten) is None and bingo.note(ten)   # one card for everyone isn't bingo
+    assert bingo.note(own) == "" and bingo.note(Settings(bingo_kind="words")) == "" and bingo.note(Settings()) == ""
     dup = Settings(bingo_kind="words", bingo_theme="custom", bingo_words="Cat, cat, CAT, dog")
     assert [w for w, _ in bingo.pool(1, dup)] == ["Cat", "dog"]
 
@@ -171,7 +175,11 @@ def test_the_sidebar_shows_bingos_options(win):
     _set(win, bingo_kind="words")
     assert sb.bingo_theme_row.isVisibleTo(sb) and not sb.bingo_words_row.isVisibleTo(sb)
     _set(win, bingo_theme="custom")
-    assert sb.bingo_words_row.isVisibleTo(sb)
+    assert sb.bingo_words_row.isVisibleTo(sb) and not sb.bingo_note.isVisibleTo(sb)   # none yet: the theme's
+    _set(win, bingo_words="cat dog sun")
+    assert sb.bingo_note.isVisibleTo(sb) and "you have 3" in sb.bingo_note.text()
+    _set(win, bingo_words="a b c d e f g h i j k l")
+    assert not sb.bingo_note.isVisibleTo(sb)
     _set(win, gen="maze")
     assert not sb.bingo_opts.isVisibleTo(sb)
 
