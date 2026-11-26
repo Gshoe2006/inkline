@@ -80,11 +80,11 @@ release, next to the APKs. Everything for the listing is in the repository or th
   `inkline-<version>-android-x86_64.aab`, with its own versionCode; whether Play Console takes it beside the arm64
   one in the same release is worth trying before relying on it. Merging the two into one bundle would mean merging
   their compiled resources, which isn't done.)
-- **Target API 35** (`ANDROID_API` in `packaging/android/deploy.py`), minimum API 28 (Android 9, Qt 6.12's
-  minimum). Play raises the target it requires every August (API 35 from 31 August 2025; expect API 36 from
+- **Target API 36** (`ANDROID_API` in `packaging/android/deploy.py`), minimum API 28 (Android 9, Qt 6.12's
+  minimum). Play raises the target it requires every August (API 35 from 31 August 2025, API 36 from
   31 August 2026): check <https://developer.android.com/google/play/requirements/target-sdk> before uploading, and
   if it has gone up, change `ANDROID_API`, the `platforms;android-NN` the workflows install, and the
-  `targetSdkVersion` the Android workflow checks for. Building for a newer target: `build.py --target-api 36`.
+  `targetSdkVersion` the Android workflow checks for. Building for a newer target: `build.py --target-api 37`.
 - **16 KB pages.** Play requires every native library of an app targeting API 35 or later to be aligned for 16 KB
   memory pages. NDK r28c builds that way by default; the workflows check every library in the APKs and the bundle
   with `packaging/android/check_16kb.py` (and `zipalign -c -P 16`), and fail if one isn't.
@@ -95,10 +95,10 @@ release, next to the APKs. Everything for the listing is in the repository or th
 
 ### Before the first submission
 
-- **Updates on Android.** Play's policy doesn't let an app installed from Play point people to installing a newer
-  version from elsewhere. Inkline's Android update check offers the APK on the GitHub release page (`updater.py`,
-  install kind `android`); the copy built for Play should only say a new version exists (Play updates it), or not
-  check at all. That's a change in `inkapp/`, not made yet: make it before the first upload.
+- **Updates on Android** are handled: Play's policy doesn't let an app installed from Play point people to a newer
+  version elsewhere, so a copy Android says came from Play (installer `com.android.vending`, install kind
+  `android-play` in `updater.py`) never checks; Help → Check for updates says Google Play keeps it up to date. A
+  downloaded APK still offers the GitHub release page. Check it on a phone once the app is in a Play test track.
 - Read `aapt2 dump badging` in the Android workflow's log ("Check it as Google Play would"): it lists the
   permissions the APK asks for, which the Data safety form and the review look at.
 

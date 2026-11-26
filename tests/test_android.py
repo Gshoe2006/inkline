@@ -199,7 +199,7 @@ def test_deploy_sets_play_api_levels_the_version_code_icons_and_apk_or_aab():
     icons = deploy.icon_paths("/i")
     assert icons == {"icon": "/i/icon.png", "foreground": "/i/icon_fg.png", "background": "/i/icon_bg.png"}
     s = dict(deploy.inkline_settings("6.1.0", 1000601001, icons, "py,png,qml"))
-    assert s["android.api"] == "35" and s["android.minapi"] == "28" and s["android.ndk_api"] == "28"
+    assert s["android.api"] == "36" and s["android.minapi"] == "28" and s["android.ndk_api"] == "28"
     assert s["android.numeric_version"] == "1000601001" and s["version"] == "6.1.0"
     assert s["android.release_artifact"] == "apk" and s["android.debug_artifact"] == "apk"   # buildozer's default: aab
     assert s["source.include_exts"] == "py,png,qml,json,ttf,svg,md,txt"
@@ -365,7 +365,7 @@ def test_the_apk_can_run_the_screenshot_pass_and_ci_takes_the_play_screenshots()
     assert "check_screenshots.py" in shot and "screencap" in shot
     flow = open(os.path.join(ROOT, ".github", "workflows", "android.yml"), encoding="utf-8").read()
     assert "screenshots.sh" in flow and "play-screenshots" in flow and "profile: pixel_tablet" in flow
-    assert "check_16kb.py" in flow and 'zipalign" -c -P 16' in flow and "targetSdkVersion:'35'" in flow
+    assert "check_16kb.py" in flow and 'zipalign" -c -P 16' in flow and "targetSdkVersion:'36'" in flow
     assert "build.version_code(" in flow and "make_graphics.py play-graphics" in flow
 
 

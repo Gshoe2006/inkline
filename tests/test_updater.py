@@ -526,5 +526,27 @@ def test_check_install_kind(tmp_path):
 
 def test_android_offers_the_release_page():
     from inkapp import update_ui
-    assert updater.install_kind(env={}, frozen=False, platform="android") == "android"
+    assert updater.install_kind(env={}, frozen=False, platform="android", installer="") == "android"
+    assert updater.install_kind(env={}, frozen=False, platform="android", installer="com.google.android.packageinstaller") == "android"
     assert "android" in update_ui.NOTIFY_ONLY and updater.asset_name("android", "1.2.3") is None
+
+
+def test_a_copy_from_google_play_leaves_updates_to_play(monkeypatch):
+    """Play's rules: an app it installed mustn't send people elsewhere for updates, so Inkline doesn't check."""
+    from inkapp import update_ui
+    assert updater.install_kind(env={}, frozen=False, platform="android", installer=updater.PLAY_STORE) == "android-play"
+    assert updater.android_installer() == ""   # no pyjnius off Android: a downloaded APK, as before
+
+    class Window:
+        remember = True
+        said = []
+
+        def _msg(self, text):
+            self.said.append(text)
+    monkeypatch.setattr(updater, "fetch_latest", lambda: (_ for _ in ()).throw(AssertionError("asked GitHub")))
+    monkeypatch.setattr(update_ui.QObject, "__init__", lambda self, parent=None: None)
+    u = update_ui.Updates.__new__(update_ui.Updates)
+    u.window, u.version, u.kind = Window(), "6.1.0", "android-play"
+    u.check(asked=True)
+    u.at_start()   # no "Check for updates?" question
+    assert Window.said == ["Google Play keeps Inkline up to date."]

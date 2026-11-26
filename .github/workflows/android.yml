@@ -46,8 +46,8 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install PySide6-Essentials==6.12.0 shiboken6==6.12.0 jinja2 pkginfo tqdm packaging==24.1
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$NDK_VERSION" "platforms;android-35" \
-            "build-tools;35.0.0" "platform-tools" > /dev/null
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$NDK_VERSION" "platforms;android-36" \
+            "build-tools;36.0.0" "platform-tools" > /dev/null
           # buildozer and python-for-android look for sdkmanager in the old place, <sdk>/tools/bin
           rm -rf "$ANDROID_HOME/tools"
           mkdir -p "$ANDROID_HOME/tools"
@@ -78,12 +78,12 @@ jobs:
         run: |
           APK=$(ls dist/inkline-*-android-${{ matrix.arch }}-debug.apk)
           python3 packaging/android/check_16kb.py "$APK"
-          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 -v 4 "$APK" | tail -3
-          "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump badging "$APK" > badging.txt
+          "$ANDROID_HOME/build-tools/36.0.0/zipalign" -c -P 16 -v 4 "$APK" | tail -3
+          "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$APK" > badging.txt
           grep -E "^package:|sdkVersion|application-label:|application-icon|uses-permission" badging.txt   # (the permissions: for the Data safety form)
           CODE=$(python3 -c "import sys; sys.path.insert(0, 'packaging/android'); import build; print(build.version_code(build.version(), '${{ matrix.arch }}'))")
           grep -q "versionCode='$CODE'" badging.txt || { echo "::error::versionCode isn't $CODE"; exit 1; }
-          grep -q "targetSdkVersion:'35'" badging.txt || { echo "::error::targetSdkVersion isn't 35"; exit 1; }
+          grep -q "targetSdkVersion:'36'" badging.txt || { echo "::error::targetSdkVersion isn't 36"; exit 1; }
           grep -q "^sdkVersion:'28'" badging.txt || { echo "::error::minSdkVersion isn't 28"; exit 1; }
           grep -q "name='io.github.gshoe2006.inkline'" badging.txt || { echo "::error::wrong package name"; exit 1; }
 

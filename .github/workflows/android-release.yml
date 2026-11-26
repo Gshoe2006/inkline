@@ -85,8 +85,8 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install PySide6-Essentials==6.12.0 shiboken6==6.12.0 jinja2 pkginfo tqdm packaging==24.1
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$NDK_VERSION" "platforms;android-35" \
-            "build-tools;35.0.0" "platform-tools" > /dev/null
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$NDK_VERSION" "platforms;android-36" \
+            "build-tools;36.0.0" "platform-tools" > /dev/null
           rm -rf "$ANDROID_HOME/tools"
           mkdir -p "$ANDROID_HOME/tools"
           ln -s "$ANDROID_HOME/cmdline-tools/latest/bin" "$ANDROID_HOME/tools/bin"
@@ -116,8 +116,8 @@ jobs:
         run: |
           V=${{ steps.release.outputs.version }}
           APK="dist/inkline-$V-android-${{ matrix.arch }}.apk"
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$APK"
-          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 -v 4 "$APK" | tail -3
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs "$APK"
+          "$ANDROID_HOME/build-tools/36.0.0/zipalign" -c -P 16 -v 4 "$APK" | tail -3
           python3 packaging/android/check_16kb.py "$APK"
           if [ "${{ matrix.arch }}" = aarch64 ]; then
             AAB="dist/inkline-$V-android.aab"

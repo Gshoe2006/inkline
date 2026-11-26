@@ -34,7 +34,7 @@ import PySide6
 SCRIPTS = os.path.join(os.path.dirname(PySide6.__file__), "scripts")
 HERE = os.path.dirname(os.path.abspath(__file__))
 JAVA = os.path.join(HERE, "java")   # Print's Java side
-ANDROID_API = "35"   # targetSdk: Google Play's floor for new apps and updates rises each August (docs/publishing.md)
+ANDROID_API = "36"   # targetSdk: Google Play's floor for new apps and updates rises each August (docs/publishing.md)
 MIN_API = "28"       # Qt 6.12's minimum (Android 9); python-for-android builds with the NDK at this API too
 DATA_EXTS = "json,ttf,svg,md,txt"
 

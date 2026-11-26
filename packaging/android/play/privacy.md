@@ -14,14 +14,16 @@ Photos you open, the pages you make, and your projects and settings stay on your
 you choose them, and saved only where you choose. When you print, the pages go to Android's print service and the
 printer you pick there, as with any app that prints.
 
-## The one network request: checking for updates
+## No network use
 
-The first time Inkline starts, it asks whether it may check for a new version. Only if you say yes, it asks GitHub
-(`api.github.com`, the site where Inkline is published) for the latest release, at most once a day. That request
-carries nothing about you or your work; like any web request, GitHub sees your device's IP address, under
-[GitHub's privacy statement](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement).
-You can turn it off at any time under Help → Check for updates automatically. If you say no, Inkline never uses the
-internet.
+Installed from Google Play, Inkline doesn't use the internet at all: Google Play keeps it up to date, so it doesn't
+check for new versions itself.
+
+(A copy installed from an APK downloaded from GitHub can check for a new version, but only if you say yes when it
+first asks: it then asks GitHub (`api.github.com`, where Inkline is published) for the latest release, at most once a
+day. That request carries nothing about you or your work; like any web request, GitHub sees your device's IP address,
+under [GitHub's privacy statement](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement).
+You can turn it off at any time under Help → Check for updates automatically.)
 
 ## Children
 
