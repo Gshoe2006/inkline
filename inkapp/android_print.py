@@ -30,10 +30,12 @@ def job_path(name):
 
 def print_pdf(path, name, duplex=False, autoclass=None):
     """Open Android's print dialog for the PDF at path (named name). Raises OSError when it can't be reached."""
+    print(f"inkline: opening Android's print dialog for {path}")   # python-for-android puts this in logcat
     try:
         if autoclass is None:
             from jnius import autoclass
         activity = autoclass(ACTIVITY).mActivity
         autoclass(JAVA_CLASS).start(activity, path, name, bool(duplex))
     except Exception as e:   # noqa: BLE001 — pyjnius raises its own Java exceptions
+        print(f"inkline: Android's print dialog didn't open: {e!r}")
         raise OSError(str(e)) from e
