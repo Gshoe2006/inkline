@@ -98,6 +98,20 @@ def test_fetch_latest_reads_the_release():
         updater.fetch_latest(opener=opener_for(json.dumps({"message": "Not Found"}).encode()))
 
 
+def test_https_trusts_the_system_bundle_when_python_knows_none(tmp_path, monkeypatch):
+    import ssl
+    real = ssl.create_default_context
+    empty = lambda: ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)   # verifies, but trusts no one yet
+    monkeypatch.setattr(ssl, "create_default_context", empty)
+    found = [p for p in updater.CA_BUNDLES if os.path.exists(p)]
+    if not found:
+        pytest.skip("no system certificate bundle here")
+    ctx = updater.tls_context(bundles=[str(tmp_path / "missing.pem"), found[0]])
+    assert ctx.verify_mode == ssl.CERT_REQUIRED and ctx.cert_store_stats()["x509_ca"] > 0
+    monkeypatch.setattr(ssl, "create_default_context", real)
+    assert updater.tls_context().verify_mode == ssl.CERT_REQUIRED
+
+
 def test_due_and_worth_offering():
     now = 1_000_000.0
     assert not updater.due({}, now)                                    # the person hasn't said yes

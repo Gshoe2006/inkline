@@ -19,6 +19,7 @@ import json
 import os
 import re
 import shutil
+import ssl
 import subprocess
 import sys
 import tempfile
@@ -72,12 +73,36 @@ def asset_name(kind, version):
             "deb": f"inkline_{version}-1_amd64.deb", "arch": f"inkline-{version}-1-any.pkg.tar.zst"}.get(kind)
 
 
+# where Linux distributions keep their certificate authorities: a Python with its own OpenSSL (the AppImage's) looks
+# only in /etc/ssl, so on Fedora or openSUSE it would trust nothing
+CA_BUNDLES = ("/etc/ssl/certs/ca-certificates.crt", "/etc/pki/tls/certs/ca-bundle.crt",
+              "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem", "/etc/ssl/ca-bundle.pem", "/etc/ssl/cert.pem")
+
+
+def tls_context(bundles=CA_BUNDLES):
+    """A verifying HTTPS context; if the default one knows no certificate authorities, the system's bundle."""
+    ctx = ssl.create_default_context()
+    if os.name != "nt" and not ctx.cert_store_stats().get("x509_ca"):
+        for path in bundles:
+            if os.path.exists(path):
+                try:
+                    ctx.load_verify_locations(cafile=path)
+                    break
+                except (OSError, ssl.SSLError):
+                    continue
+    return ctx
+
+
+def _open(req, timeout):
+    return urllib.request.urlopen(req, timeout=timeout, context=tls_context())
+
+
 def fetch_latest(timeout=10, opener=None):
     """The latest release, from GitHub's API: {version, notes, page, assets: {name: (url, sha256, size)}}.
     Raises OSError (or ValueError for an answer that isn't a release)."""
     req = urllib.request.Request(API, headers={"Accept": "application/vnd.github+json",
                                                "User-Agent": "Inkline-update-check"})
-    with (opener or urllib.request.urlopen)(req, timeout=timeout) as r:
+    with (opener or _open)(req, timeout=timeout) as r:
         data = json.loads(r.read().decode("utf-8"))
     version = str(data.get("tag_name", "")).lstrip("v")
     if not parse_version(version):
@@ -110,7 +135,7 @@ def download(url, sha256, dest_dir=None, progress=None, cancelled=None, opener=N
     path = os.path.join(dest_dir, os.path.basename(url.split("?", 1)[0]))
     req = urllib.request.Request(url, headers={"User-Agent": "Inkline-update-check"})
     h = hashlib.sha256()
-    with (opener or urllib.request.urlopen)(req, timeout=timeout) as r, open(path, "wb") as f:
+    with (opener or _open)(req, timeout=timeout) as r, open(path, "wb") as f:
         total = int(r.headers.get("Content-Length") or 0) if hasattr(r, "headers") else 0
         done = 0
         while True:
