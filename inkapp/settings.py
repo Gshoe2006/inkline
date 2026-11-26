@@ -107,8 +107,6 @@ class SettingsDialog(QDialog):
             c.toggled.connect(lambda on, k=key: self._offer(k, on))
             looks.add(c)
             self.extra[key] = c
-        left.addWidget(looks)
-        left.addStretch(1)
         self._fill_themes()
         self.theme.currentIndexChanged.connect(self._theme_picked)
 
@@ -140,7 +138,9 @@ class SettingsDialog(QDialog):
             self.language.setItemText(i, name)
         language.add(OptionRow("Language", self.language))
         language.add(Hint("Inkline uses it from the next start."))
-        right.addWidget(language)
+        left.addWidget(language)
+        left.addStretch(1)
+        right.addWidget(looks)
         right.addStretch(1)
 
         row = QHBoxLayout()
