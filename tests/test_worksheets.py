@@ -247,22 +247,22 @@ def test_the_sidebar_offers_each_worksheets_options(win):
                                                                                             "scramble", "spelltest", "fractions", "symmetry",
                                                                                             "ruled", "reward", "reading", "bingo"]
     _set(win, gen="maths")
-    assert sb.maths_opts.isVisibleTo(sb) and not sb.trace_opts.isVisibleTo(sb) and not sb.cross_opts.isVisibleTo(sb)
+    assert sb.shown(sb.maths_opts) and not sb.shown(sb.trace_opts) and not sb.shown(sb.cross_opts)
     sb.maths_kind.set_value("times")
     assert win.state.settings.maths_kind == "times"
     _set(win, gen="trace")
-    assert sb.trace_opts.isVisibleTo(sb) and not sb.trace_text_row.isVisibleTo(sb)
+    assert sb.shown(sb.trace_opts) and not sb.shown(sb.trace_text_row)
     _set(win, trace_source="words")
-    assert sb.trace_text_row.isVisibleTo(sb)
+    assert sb.shown(sb.trace_text_row)
     _set(win, trace_source="name")
-    assert sb.trace_hint.isVisibleTo(sb) and "Paper → Names" in sb.trace_hint.text()
+    assert sb.shown(sb.trace_hint) and "Paper → Names" in sb.trace_hint.text()
     _set(win, gen="crossword")
-    assert sb.cross_opts.isVisibleTo(sb) and not sb.cross_words_row.isVisibleTo(sb)
+    assert sb.shown(sb.cross_opts) and not sb.shown(sb.cross_words_row)
     _set(win, cross_theme="custom")
-    assert sb.cross_words_row.isVisibleTo(sb) and sb.cross_words_hint.isVisibleTo(sb)
+    assert sb.shown(sb.cross_words_row) and sb.shown(sb.cross_words_hint)
     _set(win, gen="mandala", cbn=True)
     maths_switch = next(w for w in sb.cbn_opts.findChildren(type(sb.copies_vary)) if "Colour by maths" in w.text.text())
-    assert maths_switch.isVisibleTo(sb)
+    assert sb.shown(maths_switch)
     maths_switch.setChecked(True)
     assert win.state.settings.cbn_maths
 

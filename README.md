@@ -37,6 +37,10 @@ The Windows installer isn't signed yet, so Windows SmartScreen may warn that it'
 
 The `.deb` brings its own PySide6 (Debian and Ubuntu don't package a new enough one) and uses the system's Python and numpy. The AppImage brings everything, Python included; for it to appear in your app menu and open `.inkline` projects with a double-click, use an AppImage manager such as Gear Lever or AppImageLauncher.
 
+## The window
+
+Since 6.0 the options come a page at a time. The rail on the left chooses what you're working on: **Create** (a pattern made up for you, chosen from pictures of the patterns you used last, or from the full list) or **Photo** (converting one), then **Booklet**, **Poster** and **Print** (paper, page text, copies and names). Each page fits without scrolling, and its sections take turns: opening one closes the others. **Presets**, **New design**, **More designs…**, the PDF, PNG and SVG saves and **Print…** are in the toolbar over the preview, and what just happened shows under it.
+
 ## Settings
 
 **Edit → Settings…** (Ctrl+,) keeps what Inkline starts with in one place, and each change applies at once:

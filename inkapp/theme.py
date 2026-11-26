@@ -156,6 +156,31 @@ QFrame#brand, QFrame#footer {{ background: {t.panel}; }}
 QFrame#brand {{ border-bottom: 1px solid {t.line}; }}
 QFrame#footer {{ border-top: 1px solid {t.line}; }}
 QLabel#brandName {{ font-family: {head}; font-size: 20px; font-weight: 700; }}
+QFrame#toolbar {{ background: {t.panel}; border-bottom: 1px solid {t.line}; }}
+QFrame#toolbar QFrame#brand {{ border: 0; background: transparent; }}
+QFrame#rail {{ background: {t.panel}; border-right: 1px solid {t.line}; }}
+QFrame#railLine {{ background: {t.line}; border: 0; }}
+QToolButton#railButton {{ background: transparent; border: 1px solid transparent; border-radius: 8px; color: {t.muted};
+  font-size: 12px; font-weight: 600; padding: 4px; }}
+QToolButton#railButton:hover {{ border-color: {t.line}; color: {t.ink}; }}
+QToolButton#railButton:checked {{ background: {t.field}; border-color: {t.accent}; color: {t.accent}; }}
+QToolButton#railButton:focus {{ border: 2px dotted {t.accent}; }}
+QToolButton#railButton:disabled {{ color: {t.line}; }}
+QToolButton#galleryItem {{ background: {t.field}; border: 1px solid {t.line}; border-radius: 8px; font-size: 11px;
+  padding: 4px; }}
+QToolButton#galleryItem:hover {{ border-color: {t.accent}; }}
+QToolButton#galleryItem:checked {{ border: 2px solid {t.accent}; background: {t.panel}; }}
+QToolButton#galleryItem:focus {{ border: 2px solid {t.accent}; }}
+QToolButton#foldHead {{ background: transparent; border: 0; color: {t.muted}; font-size: 11px; font-weight: 600;
+  letter-spacing: 1px; padding: 2px 0; text-align: left; }}
+QToolButton#foldHead:hover {{ color: {t.ink}; }}
+QToolButton#foldHead:focus {{ color: {t.accent}; }}
+QToolButton#toolbarMenu {{ font-size: 13px; font-weight: 600; background: {t.field}; border: 1px solid {t.line};
+  border-radius: 6px; padding: 7px 22px 7px 9px; }}
+QToolButton#toolbarMenu:hover {{ border-color: {t.accent}; }}
+QToolButton#toolbarMenu:focus {{ border: 2px solid {t.accent}; padding: 6px 21px 6px 8px; }}
+QToolButton#toolbarMenu::menu-indicator {{ image: url("{_arrow(t.muted)}"); width: 10px; height: 6px;
+  subcontrol-origin: padding; subcontrol-position: center right; right: 8px; }}
 QLabel#brandTag {{ color: {t.muted}; font-size: 12px; }}
 QLabel#brandVersion {{ color: {t.muted}; font-family: {mono}; font-size: 11px; }}
 

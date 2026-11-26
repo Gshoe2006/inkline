@@ -42,6 +42,7 @@ def _set(w, **kw):
 def _booklet(w, **kw):
     _set(w, booklet=True, pages=6, mix=True, ramp=True, **kw)
     w.sidebar.pages_edit.emit(True)
+    w.sidebar.reveal(w.sidebar.page_list)   # the Booklet page, as clicking Booklet on the rail shows it
 
 
 def _fill(win, n):
@@ -63,12 +64,12 @@ def test_edit_pages_one_by_one_keeps_the_booklet_as_it_was(win):
     s = win.state.settings
     assert len(s.page_list) == 6 and _designs(win) == before
     sb = win.sidebar
-    assert sb.page_list.isVisibleTo(sb) and sb.page_list.count() == 6
-    assert not sb.pages_row.isVisibleTo(sb) and not sb.mix_check.isVisibleTo(sb) and not sb.pages_edit_btn.isVisibleTo(sb)
+    assert sb.shown(sb.page_list) and sb.page_list.count() == 6
+    assert not sb.shown(sb.pages_row) and not sb.shown(sb.mix_check) and not sb.shown(sb.pages_edit_btn)
     assert sb.page_count.text() == "6 design pages"
     assert win.history.undoText() == "Edit pages one by one"
     win.history.undo()
-    assert win.state.settings.page_list == [] and not sb.page_list.isVisibleTo(sb)
+    assert win.state.settings.page_list == [] and not sb.shown(sb.page_list)
 
 
 def test_the_design_section_edits_the_selected_page_only(win):
@@ -78,7 +79,7 @@ def test_the_design_section_edits_the_selected_page_only(win):
     assert win.state.book_sel == 2 and sb.page_list.currentRow() == 2
     assert win.state.settings.gen == win.state.settings.page_list[2]["gen"]   # Design shows that page
     assert win.state.page == 1 + 2                                            # and the preview turns to it (after the cover)
-    assert sb.design_note.isVisibleTo(sb) and "page 3 of 6" in sb.design_note.text()
+    assert sb.shown(sb.design_note) and "page 3 of 6" in sb.design_note.text()
     others = [dict(p) for i, p in enumerate(win.state.settings.page_list) if i != 2]
     _set(win, gen="kakuro", complexity=9)
     pl = win.state.settings.page_list
@@ -374,7 +375,7 @@ def test_each_puzzle_can_leave_its_answer_out(win):
     sb, h = win.sidebar, win.history
     sb.book_page_selected.emit(1)
     chk = sb.page_answer_check
-    assert chk.isVisibleTo(sb) and chk.isChecked()
+    assert sb.shown(chk) and chk.isChecked()
     chk.setChecked(False)                                  # as a click does
     pl = win.state.settings.page_list
     assert pl[1]["answer"] is False and "answer" not in pl[0]
@@ -393,14 +394,14 @@ def test_the_switch_shows_only_where_there_is_an_answer(win):
     _set(win, gen="mandala", booklet=True, pages=2, mix=False, ramp=False, key=True, cbn=False)
     win.sidebar.pages_edit.emit(True)
     sb = win.sidebar
-    assert not sb.page_answer_check.isVisibleTo(sb)        # a plain colouring page has no answer
+    assert not sb.shown(sb.page_answer_check)        # a plain colouring page has no answer
     _set(win, cbn=True)
-    assert sb.page_answer_check.isVisibleTo(sb)            # colour by number has a shaded one
+    assert sb.shown(sb.page_answer_check)            # colour by number has a shaded one
     _set(win, key=False)
-    assert not sb.page_answer_check.isVisibleTo(sb)        # no answer pages at all
+    assert not sb.shown(sb.page_answer_check)        # no answer pages at all
     _set(win, booklet=False)
     _set(win, key=True)
-    assert not sb.page_answer_check.isVisibleTo(sb)        # a single page
+    assert not sb.shown(sb.page_answer_check)        # a single page
 
 
 def test_rows_follow_the_answer_pages_switch_and_new_pages_have_their_answer(win):
@@ -452,6 +453,7 @@ def test_delete_never_removes_the_last_page(win):
     _set(win, gen="maze", booklet=True, pages=2, mix=False, ramp=False)
     win.sidebar.pages_edit.emit(True)
     lst = win.sidebar.page_list
+    win.sidebar.reveal(lst)
     lst.setFocus()
     QTest.keyClick(lst, Qt.Key.Key_Delete)
     QTest.keyClick(lst, Qt.Key.Key_Delete)

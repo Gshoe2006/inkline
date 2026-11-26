@@ -169,26 +169,26 @@ def _set(w, **kw):
 def test_the_sidebar_shows_bingos_options(win):
     sb = win.sidebar
     _set(win, gen="bingo")
-    assert sb.bingo_opts.isVisibleTo(sb) and not sb.bingo_theme_row.isVisibleTo(sb)
+    assert sb.shown(sb.bingo_opts) and not sb.shown(sb.bingo_theme_row)
     sb.bingo_kind.set_value("words")
     assert win.state.settings.bingo_kind == "words"
     _set(win, bingo_kind="words")
-    assert sb.bingo_theme_row.isVisibleTo(sb) and not sb.bingo_words_row.isVisibleTo(sb)
+    assert sb.shown(sb.bingo_theme_row) and not sb.shown(sb.bingo_words_row)
     _set(win, bingo_theme="custom")
-    assert sb.bingo_words_row.isVisibleTo(sb) and not sb.bingo_note.isVisibleTo(sb)   # none yet: the theme's
+    assert sb.shown(sb.bingo_words_row) and not sb.shown(sb.bingo_note)   # none yet: the theme's
     _set(win, bingo_words="cat dog sun")
-    assert sb.bingo_note.isVisibleTo(sb) and "you have 3" in sb.bingo_note.text()
+    assert sb.shown(sb.bingo_note) and "you have 3" in sb.bingo_note.text()
     _set(win, bingo_words="a b c d e f g h i j k l")
-    assert not sb.bingo_note.isVisibleTo(sb)
+    assert not sb.shown(sb.bingo_note)
     _set(win, gen="maze")
-    assert not sb.bingo_opts.isVisibleTo(sb)
+    assert not sb.shown(sb.bingo_opts)
 
 
 def test_copies_of_bingo_dont_offer_alike_cards(win):
     sb = win.sidebar
     sb.copies.setText("3")
     _set(win, gen="maze")
-    maze_offers = sb.copies_vary.isVisibleTo(sb)
+    maze_offers = sb.shown(sb.copies_vary)
     _set(win, gen="bingo")
-    assert maze_offers and not sb.copies_vary.isVisibleTo(sb)
+    assert maze_offers and not sb.shown(sb.copies_vary)
     assert "its own design" in sb.copies_hint.text() or "own designs" in sb.copies_hint.text()

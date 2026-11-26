@@ -45,7 +45,7 @@ def test_choosing_an_age_sets_the_page_up_for_it_in_one_undo_step(win):
     _pick(win, sb.age, "4-6")
     s = win.state.settings
     assert s.age == "4-6" and s.complexity == 2 and s.weight == 6 and s.cbn_colours == 4
-    assert sb.age_hint.isVisibleTo(sb)
+    assert sb.shown(sb.age_hint)
     assert win.history.count() == before + 1 and win.history.undoText() == "Age"
     _pick(win, sb.gen, "words")                                            # another pattern: its age complexity
     assert win.state.settings.complexity == 1 and win.state.settings.weight == 6

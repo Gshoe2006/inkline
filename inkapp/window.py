@@ -184,8 +184,20 @@ class Window(QMainWindow):
         lay.setSpacing(0)
         self.sidebar = Sidebar(self.state, version)
         self.preview = Preview()
+        # 6.0: the rail, the options it chooses, then the toolbar, the preview and the status line
+        lay.addWidget(self.sidebar.rail)
         lay.addWidget(self.sidebar)
-        lay.addWidget(self.preview, 1)
+        right = QVBoxLayout()
+        right.setContentsMargins(0, 0, 0, 0)
+        right.setSpacing(0)
+        right.addWidget(self.sidebar.toolbar)
+        right.addWidget(self.preview, 1)
+        right.addWidget(self.sidebar.statusbar)
+        lay.addLayout(right, 1)
+        if self.remember:   # the gallery's patterns: those used last
+            used = config.read("preferences.json").get("recent_patterns")
+            self.sidebar.recent_gens = [g for g in used if isinstance(g, str)] if isinstance(used, list) else []
+            self.sidebar._fill_gallery(self.state.settings)
         self.setCentralWidget(central)
         self.sidebar.fill_presets(self.saved_presets)
 
@@ -375,6 +387,11 @@ class Window(QMainWindow):
         self._typed = control if isinstance(control, QLineEdit) and control.hasFocus() else None
         st = self.state
         s = st.settings
+        if key == "gen":   # the gallery shows the patterns used last
+            self.sidebar.note_pattern(s.gen)
+            if self.remember:
+                config.write("preferences.json", {**config.read("preferences.json"),
+                                                  "recent_patterns": self.sidebar.recent_gens[:12]}, "Preferences")
         # one multi-page mode at a time, and the pager starts again where 2.x restarted it
         if key == "booklet":
             st.page = 0
@@ -1500,13 +1517,13 @@ class Window(QMainWindow):
         """What Print and Save PDF produce, with the Paper section's choice of pages; None (and why, in the status
         line) when that choice doesn't make sense."""
         sb = self.sidebar
-        only = sb.only_pages.text() if sb.only_row.isVisibleTo(sb) else ""
-        copies = sb.copies_count() if sb.copies_row.isVisibleTo(sb) else 1
+        only = sb.only_pages.text() if sb.shown(sb.only_row) else ""
+        copies = sb.copies_count() if sb.shown(sb.copies_row) else 1
         try:
-            names = sb.copies_names_list() if sb.copies_row.isVisibleTo(sb) else []
+            names = sb.copies_names_list() if sb.shown(sb.copies_row) else []
             # a switch that isn't shown doesn't count (one copy has no answer pages)
-            answers = sb.copies_answers.isVisibleTo(sb) and sb.copies_answers.isChecked()
-            book = sb.copies_answer_book.isVisibleTo(sb) and sb.copies_answer_book.isChecked()
+            answers = sb.shown(sb.copies_answers) and sb.copies_answers.isChecked()
+            book = sb.shown(sb.copies_answer_book) and sb.copies_answer_book.isChecked()
             return jobs.job(snap, only, copies, sb.copies_vary.isChecked(), answers, names, book)
         except ValueError as why:
             self._msg(tr("{why} Fix the pages under Paper → Print or save only, or clear it to use every page.").format(

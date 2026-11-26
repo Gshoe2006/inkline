@@ -64,7 +64,7 @@ def test_the_preset_makes_the_pack_for_the_age_chosen_and_undoes_in_one_step(win
     assert [p["gen"] for p in s.page_list] == list(pack.DAYS) and s.age == "4-6" and s.booklet
     assert win.history.undoText() == f"“{PRESET}”"
     assert "ages 4–6" in win.sidebar.status.text() and "animals" in win.sidebar.status.text()
-    assert not win.sidebar.pack_words_row.isVisibleTo(win)
+    assert not win.sidebar.shown(win.sidebar.pack_words_row)
     assert win.sidebar.page_list.count() == 5   # the page list shows the five pages to change
     win.history.undo()
     assert win.state.settings.page_list == before.page_list and not win.state.settings.booklet
@@ -111,7 +111,7 @@ def test_the_booklet_section_makes_a_pack_from_its_own_controls(win):
     sb.load()
     sb.pack_theme.set_value("spelling")
     QApplication.processEvents()
-    assert sb.pack_words_row.isVisibleTo(win) and not sb.pack_btn.isEnabled()   # no words yet, and it says so
+    assert win.sidebar.shown(sb.pack_words_row) and not sb.pack_btn.isEnabled()   # no words yet, and it says so
     assert sb.pack_hint.text() == "Type this week's spelling words to make the pack."
     sb.pack_words.setText("rain, cloud, thunder")
     sb.pack_words.editingFinished.emit()
