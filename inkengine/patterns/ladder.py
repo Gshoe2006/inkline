@@ -312,7 +312,8 @@ def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, solve=False, **_opts)
     ctx.text_align, ctx.text_baseline = "center", "middle"
     for k, path in enumerate(ladders):
         r, col = divmod(k, per_row)
-        lx = box.x + col * cw + (cw - letters * cell) / 2
+        in_row = min(per_row, count - r * per_row)   # a row with fewer ladders (3 in two rows) is centred
+        lx = box.x + (per_row - in_row) * cw / 2 + col * cw + (cw - letters * cell) / 2
         ly = top + r * ch + (ch - rungs * cell * 1.25) / 2
         ctx.line_width = max(1.0, lw * 0.8)   # the rails
         ctx.begin_path()

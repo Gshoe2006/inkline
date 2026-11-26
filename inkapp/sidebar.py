@@ -519,17 +519,19 @@ class Sidebar(QFrame):
         self.crypto_text = self._text("crypto_text", "e.g. Happy birthday, Grandma!", cryptogram.MAX_TEXT)
         self.crypto_text_row = self.crypto_opts.add(OptionRow("Your text", self.crypto_text))
         self.crypto_note = self.crypto_opts.add(Hint())
-        self.crypto_opts.add(Hint("Complexity sets how long the saying is and how few letters the key gives away."))
+        self.crypto_hint = self.crypto_opts.add(Hint("Complexity sets how long the saying is and how few letters the key "
+                                                     "gives away."))
+        self.crypto_own_hint = self.crypto_opts.add(Hint("Complexity sets how few letters the key gives away."))
         self.ladder_opts = SubOptions()
         self.ladder_kind = self._combo("ladder_kind", list(ladder.KINDS.items()))
-        self.ladder_opts.add(OptionRow("Help", self.ladder_kind))
+        self.ladder_opts.add(OptionRow("Clue", self.ladder_kind))
         self.ladder_note = self.ladder_opts.add(Hint())
         self.ladder_opts.add(Hint("Complexity sets the words (3, 4 or 5 letters) and how many steps each ladder takes."))
         self.cal_opts = SubOptions()
         self.cal_kind = self._combo("cal_kind", list(planner.KINDS.items()))
         self.cal_opts.add(OptionRow("Make", self.cal_kind))
         self.cal_month = self._combo("cal_month", planner.MONTH_CHOICES)
-        self.cal_year = self._combo("cal_year", planner.YEAR_CHOICES)
+        self.cal_year = self._combo("cal_year", planner.year_choices())
         self.cal_date_row = self.cal_opts.add(Pair(OptionRow("Month", self.cal_month), OptionRow("Year", self.cal_year)))
         self.cal_start = self._combo("cal_start", list(planner.WEEK_STARTS.items()))
         self.cal_opts.add(OptionRow("Week starts on", self.cal_start))
@@ -1293,6 +1295,8 @@ class Sidebar(QFrame):
         self.logic_opts.setVisible(s.gen == "logic")
         self.crypto_opts.setVisible(s.gen == "cryptogram")
         self.crypto_text_row.setVisible(s.crypto_source == "custom")
+        self.crypto_hint.setVisible(s.crypto_source != "custom")
+        self.crypto_own_hint.setVisible(s.crypto_source == "custom")
         self.crypto_note.setText(cryptogram.note(s) if s.gen == "cryptogram" else "")
         self.crypto_note.setVisible(bool(self.crypto_note.text()))
         self.ladder_opts.setVisible(s.gen == "ladder")
@@ -1300,6 +1304,13 @@ class Sidebar(QFrame):
         self.ladder_note.setVisible(bool(self.ladder_note.text()))
         self.cal_opts.setVisible(s.gen == "calendar")
         self.cal_date_row.setVisible(s.cal_kind == "month")
+        if self.cal_year.findData(s.cal_year) < 0 and planner.FIRST_YEAR <= s.cal_year <= planner.LAST_YEAR:
+            was, self._loading = self._loading, True   # a year saved earlier, before this year's list: listed too
+            self.cal_year.clear()
+            for value, text in planner.year_choices(keep=s.cal_year):
+                self.cal_year.addItem(tr(text), value)
+            self.cal_year.set_value(s.cal_year)
+            self._loading = was
         self.money_row.setVisible(s.maths_kind == "money")
         self.pack_words_row.setVisible(s.pack_theme == "spelling")
         spelling = s.pack_theme == "spelling"

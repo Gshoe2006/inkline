@@ -4,6 +4,7 @@ language, and fitting the page on Letter and A4, upright and sideways."""
 import calendar
 import datetime
 import re
+from dataclasses import replace
 
 import pytest
 from PySide6.QtWidgets import QApplication
@@ -408,3 +409,109 @@ def test_presets_and_ages():
     st.apply_preset(BUILTIN_PRESETS["Logic puzzle booklet with answers"])
     s = st.settings
     assert (s.gen, s.booklet, s.key) == ("logic", True, True)
+
+
+# --- after an independent check --------------------------------------------------------------------------------------
+
+def _ink_in_picture(s):
+    """How much of the middle of the calendar's picture is inked, printed."""
+    import numpy as np
+    from PySide6.QtGui import QImage
+    from inkengine import output
+    img = output.render_image(s, single_page(s)).convertToFormat(QImage.Format.Format_Grayscale8)
+    a = np.frombuffer(img.constBits(), np.uint8, img.sizeInBytes()).reshape(img.height(), img.bytesPerLine())[:, :img.width()]
+    b = draw_page(RecordingCanvas(), geometry(s), single_page(s), s)["art_box"]
+    side = min(b.w, b.h)
+    x, y = int(b.x + (b.w - side) / 2), int(b.y + (b.h - side) / 2)
+    return (a[y:y + int(side), x:x + int(side)] < 128).mean()
+
+
+@pytest.mark.parametrize("art", ["mandala", "truchet", "flow", "contour"])
+def test_the_calendars_picture_stays_open_enough_to_colour(art):
+    for weight in (3, 4):   # Age 10+'s line weight, and the usual one
+        assert _ink_in_picture(Settings(gen="calendar", cal_art=art, complexity=10, weight=weight, dpi=100)) < 0.3
+    assert planner.art_complexity(10) <= 3 and planner.art_complexity(1) == 1
+
+
+def test_a_calendar_booklet_is_a_month_a_page():
+    from inkengine import book
+    s = Settings(gen="calendar", booklet=True, pages=12, cal_month=11, cal_year=2027, ramp=False, key=True)
+    pages = book.book_pages(s)
+    designs = [p for p in pages if p.kind == "design"]
+    months = [planner.month_shown(replace(s, **d.opts)) for d in designs]
+    assert months == [(2027, 11), (2027, 12)] + [(2028, m) for m in range(1, 11)]
+    assert pages[0].kind == "cover" and pages[0].title == "November 2027 – October 2028"
+    assert not any(p.kind == "answers" for p in pages)
+    ctx = RecordingCanvas()
+    out = draw_page(ctx, geometry(s), designs[2], s)
+    assert (out["year"], out["month"]) == (2028, 1) and "January 2028" in _texts(ctx)
+    ctx = RecordingCanvas()
+    draw_page(ctx, geometry(s), pages[0], s)   # the cover's picture is a mandala, not a calendar
+    assert not any(t.isdigit() for t in _texts(ctx))
+    week = replace(s, cal_kind="week")
+    assert all(not p.opts for p in book.book_pages(week) if p.kind == "design")
+    assert book.book_pages(replace(s, gen="maze"))[1].opts == {}
+
+
+@pytest.mark.parametrize("paper,orient", [("letter", "portrait"), ("a4", "portrait"), ("letter", "landscape"),
+                                          ("a4", "landscape")])
+def test_the_weekly_planner_fills_each_day_with_lines(paper, orient):
+    for art in ("mandala", "none"):
+        s = Settings(gen="calendar", cal_kind="week", cal_art=art, paper=paper, orient=orient, dpi=100)
+        out = draw_page(RecordingCanvas(), geometry(s), single_page(s), s)
+        assert len(out["lines"]) == 7 and min(out["lines"]) >= (3 if orient == "portrait" else 8)
+
+
+def test_the_year_list_starts_this_year_and_keeps_a_saved_one():
+    now = datetime.date(2026, 11, 26)
+    years = [y for y, _t in planner.year_choices(now)]
+    assert years == [0] + list(range(2026, 2037))
+    assert 2019 in [y for y, _t in planner.year_choices(now, keep=2019)]
+    assert Settings.from_dict({"calYear": 2019}).cal_year == 2019 and Settings.from_dict({"calYear": 5000}).cal_year == 2100
+    assert planner.month_shown(Settings(cal_month=3, cal_year=2019), now) == (2019, 3)
+    assert planner.month_shown(Settings(cal_month=3, cal_year=5), now) == (2027, 3)   # not a year: the next March
+
+
+def test_a_saved_year_shows_in_the_sidebar(win):
+    _set(win, gen="calendar", cal_month=3, cal_year=2019)
+    assert win.sidebar.cal_year.value() == 2019 and win.state.settings.cal_year == 2019
+
+
+def test_cryptogram_punctuation_is_narrow_and_the_key_heading_is_centred():
+    s = Settings(crypto_source="custom", crypto_text="Hi, Grandma!")
+    ctx = RecordingCanvas()
+    out = cryptogram.draw(ctx, Box(0, 0, 1000, 1300), mulberry32(1), 5, s, dpi=100)
+    texts = {op[1]: op for op in ctx.ops if op[0] == "text"}
+    rects = [op for op in ctx.ops if op[0] == "stroke_rect"]
+    cell = out["cell"] * 100
+    last_box = max(r[1] + r[3] for r in rects if abs(r[2] - rects[0][2]) < 1 and r[3] < cell)   # the line's last box
+    assert texts["!"][2] - last_box < cell * 0.4     # the ! right after the last letter, not a whole slot on
+    key = texts[i18n.tr("Key")]
+    assert abs(key[2] - 500) < 1
+
+
+def test_the_cryptogram_hint_suits_your_own_text(win):
+    sb = win.sidebar
+    _set(win, gen="cryptogram")
+    assert sb.shown(sb.crypto_hint) and not sb.shown(sb.crypto_own_hint)
+    _set(win, crypto_source="custom")
+    assert not sb.shown(sb.crypto_hint) and sb.shown(sb.crypto_own_hint)
+
+
+def test_three_ladders_in_two_rows_centre_the_last():
+    ctx = RecordingCanvas()
+    out = ladder.draw(ctx, Box(0, 0, 1000, 1300), mulberry32(2), 9, Settings(), dpi=100)
+    assert len(out["ladders"]) == 3
+    rects = [op for op in ctx.ops if op[0] == "stroke_rect"]
+    per = len(rects) // 3
+    lefts = [min(r[1] for r in rects[k * per:(k + 1) * per]) for k in range(3)]
+    rights = [max(r[1] + r[3] for r in rects[k * per:(k + 1) * per]) for k in range(3)]
+    assert abs((lefts[2] + rights[2]) / 2 - 500) < 2      # the third, alone on its row, in the middle
+
+
+def test_the_youngest_logic_puzzle_uses_the_page():
+    ctx = RecordingCanvas()
+    box = Box(0, 0, 750, 1000)
+    logic.draw(ctx, box, mulberry32(1), 1, Settings(), dpi=100)
+    ys = [op[2] for op in ctx.ops if op[0] in ("M", "L", "text")] + [op[2] + op[4] for op in ctx.ops if op[0] == "stroke_rect"]
+    assert max(ys) > box.h * 0.7   # (it was 0.6: the grid now takes what the few clues leave)

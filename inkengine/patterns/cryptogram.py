@@ -202,13 +202,21 @@ def _words(toks):
     return words + ([cur] if cur else [])
 
 
+PUNCTUATION = 0.45   # a comma or ! takes this much of a letter's width: no box, so no full slot
+
+
+def _units(word):
+    """A word's width in letters' widths."""
+    return sum(1 if letter else PUNCTUATION for letter, _shown in word)
+
+
 def _lines(words, cell, width):
     lines, line, used = [], [], 0.0
     for w in words:
-        need = len(w) * cell + (cell * 0.8 if line else 0)
+        need = _units(w) * cell + (cell * 0.8 if line else 0)
         if line and used + need > width:
             lines.append(line)
-            line, used = [w], len(w) * cell
+            line, used = [w], _units(w) * cell
         else:
             line.append(w)
             used += need
@@ -248,7 +256,7 @@ def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, solve=False, **_opts)
     # the text: the biggest boxes that fit above the key
     words = _words(p["tokens"])
     room = box.y + box.h - top - key_h - fs
-    cell = min(dpi * 0.5, box.w / 6, box.w / max(len(w) for w in words))   # the longest word fits on a line
+    cell = min(dpi * 0.5, box.w / 6, box.w / max(_units(w) for w in words))   # the longest word fits on a line
     lines = _lines(words, cell, box.w)
     while len(lines) * cell * 2.1 > room and cell > dpi * 0.12:
         cell *= 0.94
@@ -256,7 +264,7 @@ def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, solve=False, **_opts)
     ctx.text_align, ctx.text_baseline = "center", "middle"
     y = top + (room - len(lines) * cell * 2.1) / 2 if room > len(lines) * cell * 2.1 else top
     for line in lines:
-        widths = sum(len(w) for w in line) * cell + cell * 0.8 * (len(line) - 1)
+        widths = sum(_units(w) for w in line) * cell + cell * 0.8 * (len(line) - 1)
         x = box.x + (box.w - widths) / 2
         for w in line:
             for letter, shown in w:
@@ -271,18 +279,19 @@ def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, solve=False, **_opts)
                         ctx.fill_text(letter, x + cell / 2, y + cell * 0.44)
                         ctx.fill_style = "#000"
                     _draw_code(ctx, kind, code[letter], x + cell / 2, y + cell * 1.3, cell, lw)
+                    x += cell
                 else:
                     ctx.set_font(cell * 0.6, 600)
-                    ctx.fill_text(shown, x + cell / 2, y + cell * 0.44)
-                x += cell
+                    ctx.fill_text(shown, x + cell * PUNCTUATION / 2, y + cell * 0.44)
+                    x += cell * PUNCTUATION
             x += cell * 0.8
         y += cell * 2.1
     # the key
     letter_of = {v: k for k, v in code.items()}
     ky = box.y + box.h - key_h
-    ctx.text_align, ctx.text_baseline = "left", "alphabetic"
+    ctx.text_align, ctx.text_baseline = "center", "alphabetic"   # over the key's boxes, which are centred too
     ctx.set_font(fs * 0.85, 700)
-    ctx.fill_text(tr("Key"), box.x, ky + fs)
+    ctx.fill_text(tr("Key"), box.x + box.w / 2, ky + fs)
     ctx.text_align, ctx.text_baseline = "center", "middle"
     for k, v in enumerate(keys):
         row, col = divmod(k, per_row)

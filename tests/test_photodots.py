@@ -28,7 +28,7 @@ def _disc(w=200, h=150, cx=90, cy=70, r=50, dark=30, light=230):
 def test_a_filled_circle_gives_dots_round_the_circle(n):
     lum, mask = _disc()
     pts = photodots.outline(lum, mask, 200, 150, 128, False, n)
-    assert len(pts) == n
+    assert n * 0.9 <= len(pts) <= n   # (a dot too close to the one before is left out)
     assert all(abs(math.hypot(x - 90, y - 70) - 50) < 1.5 for x, y in pts)
     angles = sorted(math.atan2(y - 70, x - 90) for x, y in pts)   # spread all the way round
     assert max(b - a for a, b in zip(angles, angles[1:] + [angles[0] + 2 * math.pi])) < 2 * math.pi / n * 3
@@ -96,3 +96,38 @@ def test_a_photo_with_no_outline_says_so():
     ctx = RecordingCanvas()
     draw_page(ctx, geometry(s), single_page(s, Photo(img, name="white.png")), s)
     assert any("Threshold" in op[1] for op in ctx.ops if op[0] == "text")
+
+
+def test_no_dots_along_the_pictures_edge():
+    """Dark hills along the bottom of a landscape, in a photo fitted inside the page (empty space round it): the dots
+    follow the hills' tops, not the photo's frame."""
+    w, h = 240, 320
+    yy, xx = np.mgrid[0:h, 0:w]
+    mask = ((yy >= 80) & (yy < 240)).astype(np.uint8).reshape(-1)        # the photo: a band across the middle
+    ridge = 170 + 12 * np.sin(xx / 15.0)
+    lum = np.where(yy > ridge, 40, 220).astype(np.float32).reshape(-1)
+    x0, y0, x1, y1 = photodots.frame(mask, w, h)
+    assert (x0, y0, x1, y1) == (0, 80, 239, 239)
+    pts = photodots.outline(lum, mask, w, h, 128, False, 40)
+    assert len(pts) >= 20
+    assert all(x0 + 2 < x < x1 - 2 and y0 + 2 < y < y1 - 2 for x, y in pts)   # none on the frame
+    assert all(abs(y - (170 + 12 * math.sin(x / 15.0))) < 3 for x, y in pts)    # all on the ridge
+
+
+def test_dots_keep_their_distance_and_dot_one_has_room():
+    lum, mask = _disc()
+    pts = photodots.outline(lum, mask, 200, 150, 128, False, 150)
+    step = sum(math.dist(p, q) for p, q in zip(pts, pts[1:] + pts[:1])) / len(pts)
+    assert min(math.dist(p, q) for p, q in zip(pts, pts[1:] + pts[:1])) >= step * 0.45
+    assert math.dist(pts[0], pts[1]) >= step * 0.9 and math.dist(pts[0], pts[-1]) >= step * 0.9
+
+
+def test_the_self_tests_photo_makes_a_real_outline():
+    from inkapp.selftest import _silhouette
+    s = Settings(mode="convert", style="dots", dpi=72, pdots_n=60)
+    out = draw_page(RecordingCanvas(), geometry(s), single_page(s, _silhouette()), s)
+    pts = out.outlines[60]
+    assert 50 <= len(pts) <= 60
+    xs, ys = [p[0] for p in pts], [p[1] for p in pts]
+    x0, y0, x1, y1 = photodots.frame(out.mask, out.ww, out.wh)
+    assert min(xs) > x0 + 5 and max(xs) < x1 - 5 and min(ys) > y0 + 5 and max(ys) < y1 - 5
