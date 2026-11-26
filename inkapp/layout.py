@@ -225,7 +225,7 @@ GROUP_NAMES = {"art": "Colouring and art", "puzzles": "Puzzles", "maths": "Maths
                "classroom": "Classroom"}
 GROUPS = [("art", ["mandala", "truchet", "contour", "flow", "name", "symmetry"]),
           ("puzzles", ["maze", "dots", "words", "crossword", "sudoku", "kakuro", "nonogram", "spot", "scramble"]),
-          ("maths", ["maths", "clock", "fractions"]),
+          ("maths", ["maths", "early", "clock", "fractions"]),
           ("literacy", ["trace", "spelltest", "reading"]),
           ("classroom", ["bingo", "reward", "ruled"])]
 

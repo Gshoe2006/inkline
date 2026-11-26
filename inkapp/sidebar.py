@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (QStackedWidget, QAbstractItemView, QFrame, QHBoxL
 from inkengine import ages, book, cbn, pack, photo
 from inkengine.i18n import tr
 from inkengine.page import PAGE_KEYS, PANELS, SHEETS, has_answer, sheet_gens
-from inkengine.patterns import NAMES, bingo, clock, crossword, fractions, reward, ruled, maths, maze, money, name, spot, trace, words
+from inkengine.patterns import NAMES, bingo, clock, early, crossword, fractions, reward, ruled, maths, maze, money, name, spot, trace, words
 
 from . import jobs, theme, thumbs
 from .jobs import MAX_COPIES
@@ -35,7 +35,8 @@ GEN_OPTIONS = [("mandala", "Mandala (colouring page)"), ("maze", "Maze"), ("truc
                ("symmetry", "Symmetry (shade the mirror half)"),
                ("ruled", "Graph and lined paper"), ("reward", "Reward charts and certificates"),
                ("reading", "Reading comprehension (a passage and questions)"),
-               ("bingo", "Bingo cards (a different card for each child)")]
+               ("bingo", "Bingo cards (a different card for each child)"),
+               ("early", "Early maths with pictures (ten frames, number bonds, tens and ones, counting)")]
 GRID_OPTIONS = [("2x2", "2 × 2"), ("3x3", "3 × 3"), ("4x4", "4 × 4"), ("2x1", "2 across × 1"), ("3x2", "3 across × 2"),
                 ("1x2", "1 across × 2"), ("2x3", "2 across × 3")]
 CBN_PATTERN_NOTE = "Repeated spaces share a number, and spaces side by side get different colours."
@@ -449,6 +450,10 @@ class Sidebar(QFrame):
         self.reward_text = self._text("reward_text", "e.g. reading every day", 60)
         self.reward_opts.add(OptionRow("For", self.reward_text))
         self.reward_opts.add(Hint("With Paper → Names, each child gets one with their name on it."))
+        self.early_opts = SubOptions()
+        self.early_kind = self._combo("early_kind", list(early.KINDS.items()))
+        self.early_opts.add(OptionRow("Pictures", self.early_kind))
+        self.early_opts.add(Hint("Complexity sets the numbers: up to 10, then up to 20 (place value up to 50, then 99)."))
         self.bingo_opts = SubOptions()
         self.bingo_kind = self._combo("bingo_kind", list(bingo.KINDS.items()))
         self.bingo_opts.add(OptionRow("Call out", self.bingo_kind))
@@ -481,7 +486,7 @@ class Sidebar(QFrame):
         self.cross_words_hint = self.cross_opts.add(Hint("Each as word: clue, separated by ; (a word without a clue gets ?)."))
         self.cross_note = self.cross_opts.add(Hint())
         sec.add(self.words_opts, self.maze_opts, self.name_opts, self.spot_opts, self.maths_opts, self.frac_opts, self.ruled_opts,
-                self.reward_opts, self.bingo_opts, self.clock_opts,
+                self.reward_opts, self.bingo_opts, self.early_opts, self.clock_opts,
                 self.trace_opts, self.cross_opts)
         sec.add(self._slider("complexity", "Complexity", 1, 10, lambda v: f"{v} / 10"))
         sec.add(self._slider("weight", "Line weight", 1, 10, lambda v: f"{v / 150 * 25.4:.2f} mm"))
@@ -1057,7 +1062,7 @@ class Sidebar(QFrame):
                 btns.addWidget(b)
             btns.addStretch(1)
             lst.setItemWidget(item, row)
-        lst.setFixedHeight(min(260, max(1, len(pl)) * (row_h + 4) + 4))
+        lst.setFixedHeight(min(220, max(1, len(pl)) * (row_h + 4) + 4))   # room under it for Change this page
         lst.setCurrentRow(st.book_sel if pl else -1)
         self.refresh_thumbs()
         n = len(pl)
@@ -1170,6 +1175,7 @@ class Sidebar(QFrame):
         self.ruled_opts.setVisible(s.gen == "ruled")
         self.reward_opts.setVisible(s.gen == "reward")
         self.bingo_opts.setVisible(s.gen == "bingo")
+        self.early_opts.setVisible(s.gen == "early")
         self.bingo_theme_row.setVisible(s.bingo_kind == "words")
         self.bingo_words_row.setVisible(s.bingo_kind == "words" and s.bingo_theme == "custom")
         self.bingo_note.setText(bingo.note(s))
@@ -1415,6 +1421,8 @@ def _page_detail(gen, p):
         return tr(ruled.KINDS.get(p.get("ruled_kind", "squared"), ""))
     if gen == "reward":
         return tr(reward.KINDS.get(p.get("reward_kind", "chart"), ""))
+    if gen == "early":
+        return tr(early.KINDS.get(p.get("early_kind", "tenframe"), ""))
     if gen == "bingo":
         kind = p.get("bingo_kind", "numbers")
         if kind == "words":
