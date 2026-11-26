@@ -73,7 +73,7 @@ def main(d):
             texts = sum(1 for _ in root.iter("{http://www.w3.org/2000/svg}text"))
             shapes = sum(1 for tag in ("rect", "circle", "line") for _ in root.iter("{http://www.w3.org/2000/svg}" + tag))
             # a crossword is a few dozen squares and its clues; a spelling test, numbered lines to write on
-            need = {"crossword": 40, "spelltest": 20, "ruled": 20, "reward": 20}.get(n, 60)
+            need = {"crossword": 40, "spelltest": 20, "ruled": 20, "reward": 20, "reading": 30}.get(n, 60)
             if commands + texts + shapes < need:
                 problems.append(f"{n}.svg draws only {commands} path segments, {shapes} shapes and {texts} labels; "
                                 "expected a full design")
