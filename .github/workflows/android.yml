@@ -80,11 +80,15 @@ jobs:
           python3 packaging/android/check_16kb.py "$APK"
           "$ANDROID_HOME/build-tools/36.0.0/zipalign" -c -P 16 -v 4 "$APK" | tail -3
           "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$APK" > badging.txt
-          grep -E "^package:|sdkVersion|application-label:|application-icon|uses-permission" badging.txt   # (the permissions: for the Data safety form)
+          grep -iE "^package:|sdkVersion|application-label:|application-icon|uses-permission" badging.txt   # (the permissions: for the Data safety form)
           CODE=$(python3 -c "import sys; sys.path.insert(0, 'packaging/android'); import build; print(build.version_code(build.version(), '${{ matrix.arch }}'))")
           grep -q "versionCode='$CODE'" badging.txt || { echo "::error::versionCode isn't $CODE"; exit 1; }
           grep -q "targetSdkVersion:'36'" badging.txt || { echo "::error::targetSdkVersion isn't 36"; exit 1; }
-          grep -q "^sdkVersion:'28'" badging.txt || { echo "::error::minSdkVersion isn't 28"; exit 1; }
+          # the minimum Android version, from the manifest itself (aapt2's summary leaves the sdkVersion line out)
+          "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump xmltree "$APK" --file AndroidManifest.xml > manifest.txt
+          grep -iE "(min|target)SdkVersion" manifest.txt || true
+          MIN=$(grep -oE "minSdkVersion\([^)]*\)=[0-9]+" manifest.txt | grep -oE "[0-9]+$" | head -1)
+          [ "$MIN" = 28 ] || { echo "::error::minSdkVersion is '${MIN:-missing}', not 28"; exit 1; }
           grep -q "name='io.github.gshoe2006.inkline'" badging.txt || { echo "::error::wrong package name"; exit 1; }
 
       - name: Draw the Play listing's icon and feature graphic
