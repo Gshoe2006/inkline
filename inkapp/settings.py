@@ -101,6 +101,7 @@ class SettingsDialog(QDialog):
         self.desktop.toggled.connect(lambda on: window.act_desktop.isChecked() != on and window.act_desktop.trigger())
         looks.add(self.desktop)
         self.touch = check("Larger controls for touch screens", theme.TOUCH["on"])
+        self.touch.setEnabled(not theme.touch_forced())   # always on Android
         self.touch.toggled.connect(lambda on: theme.TOUCH["on"] != on and window.set_touch(on))
         looks.add(self.touch)
         looks.add(Hint("More themes to choose from:"))

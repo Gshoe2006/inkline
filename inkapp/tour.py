@@ -27,8 +27,11 @@ CARD_W = 320
 
 def target(window, name):
     sb = window.sidebar
-    return {"rail": sb.rail, "gallery": sb.gallery, "toolbar": sb.toolbar, "sidebar": sb,
-            "menu": window.menuBar()}[name]
+    bottom = getattr(window, "bottom", None)
+    menu_btn = getattr(window, "menu_btn", None)
+    rail = bottom if bottom is not None and bottom.isVisible() else sb.rail   # one column: the bottom bar
+    menus = menu_btn if menu_btn is not None and menu_btn.isVisible() else window.menuBar()   # touch: Menu button
+    return {"rail": rail, "gallery": sb.gallery, "toolbar": sb.toolbar, "sidebar": sb, "menu": menus}[name]
 
 
 class Tour(QFrame):

@@ -118,3 +118,33 @@ def test_the_setting_is_kept(make_win):
     d.touch.setChecked(False)
     assert not theme.TOUCH["on"] and config.read("preferences.json").get("touch") is False
     d.close()
+
+
+def test_what_the_independent_check_found(make_win, monkeypatch):
+    from inkapp import tour
+    w = make_win()
+    app = QApplication.instance()
+    assert w.bottom not in app.topLevelWidgets()   # hidden inside the window, not a window of its own
+    w.set_touch(True, save=False)
+    w.resize(360, 760)
+    QApplication.processEvents()
+    sb = w.sidebar
+    assert sb.new_design.height() >= theme.TOUCH_TARGET   # its own padding rule no longer wins over touch's
+    assert tour.target(w, "rail") is w.bottom and tour.target(w, "menu") is w.menu_btn
+    w.bottom.buttons["preview"].click()
+    w.preview.set_info([[("Letter", True), (" 8.5 × 11 in", False)], [("300", True), (" dpi · 2550 × 3300 px", False)],
+                        [("ink coverage ", False), ("13.6%", True)]])
+    QApplication.processEvents()
+    boxes = [w.preview._bar.itemAt(i).widget() for i in range(w.preview._bar.count() - 1)]
+    shown = [b for b in boxes if b.isVisible()]
+    assert shown and shown == boxes[:len(shown)] and len(shown) < len(boxes)   # the first facts, none cut off
+    assert sum(b.width() for b in shown) <= w.preview.width()
+    w.resize(1200, 800)
+    QApplication.processEvents()
+    assert all(b.isVisible() for b in boxes) and tour.target(w, "rail") is sb.rail
+    w.sidebar.png_btn.setFocus()
+    monkeypatch.setattr(theme, "touch_forced", lambda *a: True)
+    from inkapp.settings import SettingsDialog
+    d = SettingsDialog(w)
+    assert not d.touch.isEnabled()   # on Android it stays on
+    d.close()

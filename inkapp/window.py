@@ -237,6 +237,8 @@ class Window(QMainWindow):
         self.apply_save_format()
         # touch screens: the menus from a toolbar button, and in a phone-width window one column with a bottom bar
         self.bottom = BottomBar()
+        self.bottom.setParent(self.centralWidget())   # hidden until one column: never a window of its own
+        self.bottom.hide()
         self.bottom.chosen.connect(self._bottom_chosen)
         self.menu_btn = MenuButton(self._top_menus)
         self.menu_btn.presets.triggered.connect(lambda: self.sidebar.presets_btn.open(under=self.menu_btn))
@@ -783,7 +785,7 @@ class Window(QMainWindow):
         self.menu_btn.setVisible(bool(on))
         self.sidebar.keys.setVisible(not on)   # the keyboard shortcuts: no keyboard
         if on:
-            self.setMinimumSize(320, 480)
+            self.setMinimumSize(360, 480)   # the bottom bar's six entries
         else:
             self.setMinimumSize(900, 600)
         theme.apply(QApplication.instance())
@@ -808,6 +810,7 @@ class Window(QMainWindow):
         if narrow == self._narrow:   # laid out so already (the window is built wide)
             return
         sb = self.sidebar
+        focused = QApplication.focusWidget()   # moving the widgets hides them for a moment: keep the focus where it was
         parts = (sb.rail, sb, sb.toolbar, self.preview, sb.statusbar, self.bottom)
         central = QWidget()
         central.setObjectName("central")
@@ -850,6 +853,8 @@ class Window(QMainWindow):
         self.setCentralWidget(central)
         self._page_shown(sb.page_key())
         self._match_bottom()
+        if focused is not None and focused.isVisible():
+            focused.setFocus()
 
     def _fit_toolbar(self):
         """Touch-sized buttons don't all fit: the toolbar keeps what's used most, the rest being in the menus (the
@@ -1520,7 +1525,8 @@ class Window(QMainWindow):
     def _save_preset(self, name):
         if not name:
             self._msg(tr("Type a name for the preset first."))
-            self.sidebar.presets_btn.open()   # the panel the name is typed in
+            phone = self.sidebar.presets_btn.isHidden()   # in the Menu button, in one column
+            self.sidebar.presets_btn.open(under=self.menu_btn if phone else None)   # the panel the name is typed in
             self.sidebar.preset_name.setFocus()
             return
         if name in BUILTIN_PRESETS:

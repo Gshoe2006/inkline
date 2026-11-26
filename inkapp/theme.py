@@ -152,11 +152,15 @@ def _arrow(colour):
 
 def touch_wanted(prefs, platform=None, env=None):
     """Whether to lay Inkline out for a finger: always on Android, else as Settings (or INKLINE_TOUCH=1) says."""
+    return touch_forced(platform, env) or prefs.get("touch") is True
+
+
+def touch_forced(platform=None, env=None):
+    """Touch mode that Settings can't turn off: on Android, or with INKLINE_TOUCH=1."""
     import os
     import sys
-    platform = platform or sys.platform
     env = os.environ if env is None else env
-    return platform == "android" or env.get("INKLINE_TOUCH") == "1" or prefs.get("touch") is True
+    return (platform or sys.platform) == "android" or env.get("INKLINE_TOUCH") == "1"
 
 
 def stylesheet(t, touch=None):
@@ -174,6 +178,8 @@ QLabel[role="label"], QCheckBox, QComboBox, QLineEdit, QPushButton, QToolButton#
 QComboBox, QLineEdit, QPushButton, QToolButton#toolbarMenu, QToolButton#foldHead {{ min-height: {h - 2 * 10}px; }}
 QComboBox, QLineEdit, QPushButton, QToolButton#toolbarMenu {{ padding: 10px 10px; }}
 QPushButton:focus, QComboBox:focus, QLineEdit:focus, QToolButton#toolbarMenu:focus {{ padding: 9px 9px; }}
+QPushButton#newDesign {{ padding: 10px 14px; }}
+QPushButton#newDesign:focus {{ padding: 9px 13px; }}
 QPushButton[role="mini"] {{ font-size: 13px; padding: 10px 12px; }}
 QPushButton[role="mini"]:focus {{ padding: 9px 11px; }}
 QToolButton#foldHead {{ font-size: 12px; padding: 10px 0; }}
@@ -181,7 +187,9 @@ QToolButton#railButton {{ font-size: 13px; min-height: {h}px; }}
 QToolButton#bottomButton {{ background: transparent; border: 0; border-top: 3px solid transparent; color: {t.muted};
   font-size: 13px; font-weight: 600; min-height: {h}px; padding: 2px 4px; }}
 QToolButton#bottomButton:checked {{ border-top-color: {t.accent}; color: {t.accent}; }}
-QToolButton#bottomButton:focus {{ color: {t.ink}; text-decoration: underline; }}
+QToolButton#bottomButton:hover {{ color: {t.ink}; }}
+QToolButton#bottomButton:focus {{ border: 2px solid {t.ink}; border-top-width: 3px; padding: 0 2px; }}
+QToolButton#bottomButton:disabled {{ color: {t.line}; }}
 QFrame#bottomBar {{ background: {t.panel}; border-top: 1px solid {t.line}; }}
 QCheckBox::indicator {{ width: 22px; height: 22px; }}
 QSlider {{ min-height: {h}px; }}
@@ -319,7 +327,7 @@ def apply(app, dark=None):
     With the desktop's style on, the widgets keep the desktop's look and colours; the preview's paper and table
     still come from the tokens."""
     t = tokens(dark)
-    if DESKTOP["on"] and DESKTOP["style"]:
+    if DESKTOP["on"] and DESKTOP["style"] and not TOUCH["on"]:   # touch sizes are Inkline's own stylesheet
         app.setStyleSheet("")
         app.setStyle(DESKTOP["style"])
         app.setPalette(DESKTOP["palette"] if DESKTOP["palette"] is not None else app.style().standardPalette())

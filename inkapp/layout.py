@@ -100,6 +100,7 @@ class BottomBar(QFrame):
             b.setObjectName("bottomButton")
             b.setText(tr(text))
             b.setCheckable(True)
+            b.setCursor(Qt.CursorShape.PointingHandCursor)
             b.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
             b.setSizePolicy(b.sizePolicy().horizontalPolicy().Expanding, b.sizePolicy().verticalPolicy())
             b.setMinimumHeight(theme.TOUCH_TARGET)
