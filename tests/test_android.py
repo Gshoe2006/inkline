@@ -337,6 +337,21 @@ def test_the_screenshot_pass_shows_each_page_and_waits_for_each_picture(tmp_path
     assert open(now, encoding="utf-8").read().strip() == "done"
 
 
+def test_the_print_dialog_step_is_announced_before_it_opens(tmp_path):
+    """Android's print dialog pauses Inkline behind it, timers too: the last step is named before it runs."""
+    screens = _load("inkline_screens", "packaging", "android", "screens.py")
+    folder = str(tmp_path / "screens")
+    seen = []
+    steps = [("a", lambda w: None),
+             ("z-print", lambda w: seen.append(open(os.path.join(folder, "now"), encoding="utf-8").read().strip()))]
+    d = screens.Driver(object(), folder, steps, settle=5, wait=20000, poll=5)
+    d.i = 1
+    d._next()
+    assert seen == ["z-print"]
+    sh = open(os.path.join(ROOT, "packaging", "android", "screenshots.sh"), encoding="utf-8").read()
+    assert '[ "$taken" -ge 5 ] && break' in sh
+
+
 def test_the_screenshot_pass_drives_the_real_window(tmp_path, monkeypatch):
     from inkapp import window
     screens = _load("inkline_screens", "packaging", "android", "screens.py")

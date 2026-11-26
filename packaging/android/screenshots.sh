@@ -53,6 +53,7 @@ for _ in $(seq 1 300); do   # up to ten minutes
   taken=$((taken + 1))
   adb shell "run-as $PKG sh -c 'echo $now > $d/screens/ack'"
   last=$now
+  [ "$taken" -ge 5 ] && break   # the print dialog is the last; Inkline is paused behind it and won't say "done"
 done
 adb logcat -d > "$OUT-logcat.txt"
 demo exit

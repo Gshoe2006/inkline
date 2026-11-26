@@ -70,6 +70,10 @@ class Driver:
             _write(os.path.join(self.folder, "now"), "done")
             return
         name, act = self.steps[self.i]
+        if self.i == len(self.steps) - 1:
+            # the last step opens Android's print dialog, which pauses Inkline (and its timers) behind it: say it
+            # first, and the screenshot script waits for the dialog itself
+            _write(os.path.join(self.folder, "now"), name)
         try:
             act(self.w)
         except Exception as e:   # noqa: BLE001 - a step that fails still gets its screenshot, and the rest go on
