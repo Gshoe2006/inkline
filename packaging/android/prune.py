@@ -69,8 +69,15 @@ def inkline_prune(pyside_dir, libs_dir):
                 rm(_ink_os.path.join(tr, f))
     # the libraries: what the kept modules, PySide's own libraries and the kept plugins load, and what those load
     starts = [_ink_os.path.join(pyside_dir, m + ".abi3.so") for m in INKLINE_MODULES]
+    # Qt for Android keeps its plugins beside its libraries (libplugins_<kind>_<name>_<arch>.so): those of kinds
+    # Inkline doesn't use go first, or they'd keep what they load (the multimedia plugins keep all of FFmpeg)
+    for d in (libs_dir, _ink_os.path.join(qt, "lib")):
+        if _ink_os.path.isdir(d):
+            for f in _ink_os.listdir(d):
+                if f.startswith("libplugins_") and f.split("_")[1] not in INKLINE_PLUGINS:
+                    rm(_ink_os.path.join(d, f))
     starts += [_ink_os.path.join(libs_dir, f) for f in _ink_os.listdir(libs_dir)
-               if not f.startswith("libQt6") and f.endswith(".so")]
+               if f.endswith(".so") and not f.startswith(("libQt6", "libav", "libsw"))]
     if _ink_os.path.isdir(plugins):
         for root, _d, files in _ink_os.walk(plugins):
             starts += [_ink_os.path.join(root, f) for f in files if f.endswith(".so")]
@@ -78,14 +85,14 @@ def inkline_prune(pyside_dir, libs_dir):
     lib_dirs = [libs_dir, _ink_os.path.join(qt, "lib")]
     while todo:
         for name in _inkline_needed(todo.pop()):
-            if name.startswith("libQt6") and name not in keep:
+            if name.startswith(("libQt6", "libav", "libsw")) and name not in keep:
                 keep.add(name)
                 todo += [_ink_os.path.join(d, name) for d in lib_dirs if _ink_os.path.exists(_ink_os.path.join(d, name))]
     for d in lib_dirs:
         if _ink_os.path.isdir(d):
             for f in _ink_os.listdir(d):
-                if f.startswith("libQt6") and f.endswith(".so") and f not in keep:
-                    rm(_ink_os.path.join(d, f))
+                if f.startswith(("libQt6", "libav", "libsw")) and f.endswith(".so") and f not in keep:
+                    rm(_ink_os.path.join(d, f))   # Qt libraries, and FFmpeg's, that nothing kept loads
     return removed
 
 

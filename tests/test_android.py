@@ -131,3 +131,17 @@ def test_the_trim_follows_what_the_kept_modules_load(tmp_path):
     assert (pyside / "QtCore.abi3.so").exists() and not (pyside / "QtQuick.abi3.so").exists()
     assert not (pyside / "Qt" / "qml").exists() and not (pyside / "Qt" / "plugins" / "multimedia").exists()
     assert (pyside / "Qt" / "plugins" / "platforms").exists() and not (libs / "libQt6Quick_x86_64.so").exists()
+
+
+def test_the_trim_drops_plugins_of_unused_kinds_and_what_only_they_load(tmp_path):
+    ns = {"PySideRecipe": type("R", (), {"build_arch": lambda s, a: None}), "info": print}
+    exec(open(os.path.join(ROOT, "packaging", "android", "prune.py"), encoding="utf-8").read(), ns)
+    pyside, libs = tmp_path / "PySide6", tmp_path / "libs"
+    (pyside / "Qt" / "lib").mkdir(parents=True)
+    libs.mkdir()
+    for f in ("libplugins_multimedia_ffmpegmediaplugin_x86_64.so", "libplugins_platforms_qtforandroid_x86_64.so",
+              "libavcodec.so", "libQt6Multimedia_x86_64.so"):
+        (libs / f).write_bytes(b"x")
+    ns["inkline_prune"](str(pyside), str(libs))
+    left = sorted(p.name for p in libs.iterdir())
+    assert left == ["libplugins_platforms_qtforandroid_x86_64.so"]   # (stand-in files load nothing)
