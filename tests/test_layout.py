@@ -197,7 +197,13 @@ def test_the_rail_labels_fit(make_win, lang):
     try:
         i18n.set_language(lang)
         w = make_win()
-        for key, b in w.sidebar.rail.buttons.items():
-            assert b.fontMetrics().horizontalAdvance(b.text()) + 12 <= b.width(), (lang, key, b.text())
+        for font in (None, "DejaVu Sans"):   # Inkline's own, and a wider one (CI's)
+            if font:
+                from PySide6.QtGui import QFont
+                for b in w.sidebar.rail.buttons.values():
+                    b.setFont(QFont(font, 12))
+                w.sidebar.rail.fit_width()
+            for key, b in w.sidebar.rail.buttons.items():
+                assert b.fontMetrics().horizontalAdvance(b.text()) + 12 <= b.width(), (lang, font, key, b.text())
     finally:
         i18n.set_language("en")

@@ -46,12 +46,31 @@ class Rail(QFrame):
             b.setCheckable(True)   # not exclusive buttons: those switch on the arrow keys, changing the mode by accident
             b.setCursor(Qt.CursorShape.PointingHandCursor)
             b.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
-            b.setFixedWidth(RAIL_WIDTH - 16)
             b.setMinimumHeight(48)
             b.clicked.connect(lambda _c=False, k=key: self.chosen.emit(k))
             lay.addWidget(b)
             self.buttons[key] = b
         lay.addStretch(1)
+        self.fit_width()
+
+    def fit_width(self):
+        """As wide as RAIL_WIDTH, or wider when a label needs it (a longer language, a wider font)."""
+        need = max(b.fontMetrics().horizontalAdvance(b.text()) for b in self.buttons.values()) + 16 + 16
+        w = max(RAIL_WIDTH, need)
+        if self.width() != w or self.minimumWidth() != w:
+            self.setFixedWidth(w)
+        for b in self.buttons.values():
+            b.setFixedWidth(w - 16)
+
+    def changeEvent(self, ev):
+        from PySide6.QtCore import QEvent
+        if ev.type() in (QEvent.Type.StyleChange, QEvent.Type.FontChange, QEvent.Type.PolishRequest):
+            self.fit_width()
+        super().changeEvent(ev)
+
+    def showEvent(self, ev):
+        self.fit_width()   # once the stylesheet has set the labels' font
+        super().showEvent(ev)
 
     def show_key(self, key):
         """Mark one as chosen (clicking the one already chosen keeps it so)."""
