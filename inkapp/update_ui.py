@@ -10,11 +10,12 @@ import time
 
 from PySide6.QtCore import QObject, QUrl, Signal
 from PySide6.QtGui import QDesktopServices
+from PySide6.QtGui import QAction, QActionGroup
 from PySide6.QtWidgets import QApplication, QMessageBox, QProgressDialog
 
 from inkengine.i18n import tr
 
-from . import config, updater, whatsnew
+from . import config, update_schedule, updater, whatsnew
 
 NOTIFY_ONLY = ("flatpak", "source")
 
@@ -71,9 +72,12 @@ class Updates(QObject):
             box.exec()
             self._save(update_check=box.clickedButton() is yes)
             prefs = config.read("preferences.json")
-            self.window.act_updates_auto.setChecked(prefs.get("update_check") is True)
-        if updater.due(prefs):
-            self.check(asked=False)
+            self.show_schedule()
+        elif self.schedule() in update_schedule.BACKGROUND:
+            self.apply_schedule(self.schedule(), quiet=True)   # Inkline may have moved (an AppImage): point it here
+        found = prefs.get("update_found")
+        if updater.due(prefs) or (prefs.get("update_check") is True and updater.newer(found, self.version)):
+            self.check(asked=False)   # a check while Inkline was closed found a version: offer it now
 
     def check(self, asked=True):
         """Ask GitHub for the latest release, on a worker thread."""
@@ -89,8 +93,57 @@ class Updates(QObject):
             self.found.emit(release, asked)
         threading.Thread(target=work, daemon=True).start()
 
-    def set_automatic(self, on):
-        self._save(update_check=bool(on))
+    # --- when to check ----------------------------------------------------------------------------------
+    def schedule(self):
+        """"off", or when Inkline checks (update_schedule.SCHEDULES)."""
+        prefs = config.read("preferences.json") if self.window.remember else {}
+        if prefs.get("update_check") is not True:
+            return "off"
+        s = prefs.get("update_schedule", "start")
+        return s if s in update_schedule.SCHEDULES else "start"
+
+    def add_menu(self, menu):
+        """Help → Check for updates automatically: Never, or when (those Inkline can't set up are greyed out)."""
+        self.schedule_actions = {}
+        group = QActionGroup(menu)
+        can = update_schedule.supported(self.kind)
+        for key, text in [("off", tr("Never")), *((k, tr(v)) for k, v in update_schedule.SCHEDULES.items())]:
+            a = QAction(text, menu)
+            a.setCheckable(True)
+            if key in update_schedule.BACKGROUND and not can:
+                a.setEnabled(False)
+                a.setToolTip(tr("Only while Inkline is open: a Flatpak can't check in the background."))
+            a.triggered.connect(lambda _on=False, k=key: self.set_schedule(k))
+            group.addAction(a)
+            menu.addAction(a)
+            self.schedule_actions[key] = a
+        menu.setToolTipsVisible(True)
+        self.show_schedule()
+
+    def show_schedule(self):
+        actions = getattr(self, "schedule_actions", {})
+        if self.schedule() in actions:
+            actions[self.schedule()].setChecked(True)
+
+    def set_schedule(self, key):
+        if key == "off":
+            self._save(update_check=False)
+        else:
+            self._save(update_check=True, update_schedule=key)
+        self.apply_schedule(key if key != "off" else None)
+        self.show_schedule()
+
+    def apply_schedule(self, key, quiet=False):
+        """Set up (or remove) the check while Inkline is closed; says if it couldn't."""
+        if not self.window.remember:
+            return
+        err = update_schedule.apply(key, self.kind)
+        if err and not quiet:
+            self.window._msg(tr("Couldn't set up checking while Inkline is closed ({why}). Inkline still checks when "
+                                "it starts.").format(why=err))
+
+    def set_automatic(self, on):   # kept for anything calling it: on is when Inkline starts
+        self.set_schedule("start" if on else "off")
 
     def _failed(self, why, asked):
         if asked:
@@ -101,6 +154,9 @@ class Updates(QObject):
         prefs = config.read("preferences.json")
         self._save(update_checked=time.time())
         self.release = release
+        if prefs.get("update_found") and (not release or not updater.newer(prefs["update_found"], self.version)
+                                          or release["version"] != prefs["update_found"]):
+            self._save(update_found=None)
         if not release or not updater.newer(release["version"], self.version):
             if asked:
                 self.window._msg(tr("Inkline {version} is the latest version.").format(version=self.version))

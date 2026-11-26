@@ -39,7 +39,9 @@ The `.deb` brings its own PySide6 (Debian and Ubuntu don't package a new enough 
 
 ## Updates
 
-The first time Inkline starts, it asks whether to check for updates. If you say yes, it asks GitHub for the latest release at most once a day, and when there's a newer version it says so: **Update now**, **What's new**, **Later** or **Skip this version**. **What's new** shows that release's notes in Inkline before you decide. **Help → Check for updates…** checks at any time, and **Help → Check for updates automatically** turns the daily check on or off.
+The first time Inkline starts, it asks whether to check for updates. If you say yes, it asks GitHub for the latest release at most once a day, and when there's a newer version it says so: **Update now**, **What's new**, **Later** or **Skip this version**. **What's new** shows that release's notes in Inkline before you decide. **Help → Check for updates…** checks at any time, and **Help → Check for updates automatically** chooses when Inkline checks by itself: **Never**, **When Inkline starts** (at most once a day), or also while Inkline is closed, **At login**, **Every day** or **Every week**.
+
+Checking while Inkline is closed is set up for you alone, with no administrator password: on Linux a systemd user timer (`~/.config/systemd/user/inkline-update.timer`), on Windows a Task Scheduler task of your own (or, for **At login**, an entry under your user's Run key). It runs `inkline --check-updates`, which shows a notification when there's a new version; its **Update now** button opens Inkline's update box, and if you miss the notification Inkline offers the update when you next open it. Choosing **Never** or **When Inkline starts** removes the timer or task, and so does uninstalling the Windows app or the `.run`; after removing the `.deb` or Arch package, the timer stays in your home folder but does nothing. A Flatpak checks only while it's open.
 
 **Update now** downloads the package for how you installed Inkline, checks it against the SHA-256 digest GitHub lists for the release (a file that doesn't match is deleted, not installed), and installs it:
 

@@ -246,6 +246,21 @@ jobs:
         run: |
           python -c "import subprocess, sys; sys.exit(subprocess.run([r'dist\Inkline\Inkline.exe', '--selftest', 'windows-selftest']).returncode)"
 
+      # Help → Check for updates automatically sets these up for the person: Windows must accept them as written
+      - name: Set up and remove the update check's task and login entry
+        run: |
+          python -c "from inkapp import update_schedule as u; import sys; e = u.apply('daily', 'windows'); print(e); sys.exit(1 if e else 0)"
+          schtasks /Query /TN "Inkline update check" /XML
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          python -c "from inkapp import update_schedule as u; import sys; e = u.apply('login', 'windows'); print(e); sys.exit(1 if e else 0)"
+          (Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run")."Inkline update check"
+          if (-not (Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run")."Inkline update check") { exit 1 }
+          schtasks /Query /TN "Inkline update check" 2>$null
+          if ($LASTEXITCODE -eq 0) { Write-Error "the daily task should be gone"; exit 1 }
+          python -c "from inkapp import update_schedule as u; u.apply(None, 'windows')"
+          if ((Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run")."Inkline update check") { exit 1 }
+          $global:LASTEXITCODE = 0
+
       - name: Check the installer's file details
         run: |
           $exe = Get-Item "dist/inkline-${{ needs.check.outputs.version }}-windows-setup.exe"

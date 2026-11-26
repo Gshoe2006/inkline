@@ -54,5 +54,10 @@ Root: HKA; Subkey: "Software\Classes\Inkline.Project"; ValueType: string; ValueN
 Root: HKA; Subkey: "Software\Classes\Inkline.Project\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\Inkline.exe,0"
 Root: HKA; Subkey: "Software\Classes\Inkline.Project\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Inkline.exe"" ""%1"""
 
+[UninstallRun]
+; the update check Help -> Check for updates automatically set up, if any (none there is fine)
+Filename: "{sys}\schtasks.exe"; Parameters: "/Delete /TN ""Inkline update check"" /F"; Flags: runhidden; RunOnceId: "DelUpdateTask"
+Filename: "{sys}\reg.exe"; Parameters: "delete ""HKCU\Software\Microsoft\Windows\CurrentVersion\Run"" /v ""Inkline update check"" /f"; Flags: runhidden; RunOnceId: "DelUpdateLogin"
+
 [Run]
 Filename: "{app}\Inkline.exe"; Description: "{cm:LaunchProgram,Inkline}"; Flags: nowait postinstall skipifsilent

@@ -50,6 +50,14 @@ if [ "$ACTION" = uninstall ]; then
   rm -rf "$APP"
   rm -f "$BIN/inkline" "$DESK/inkline.desktop" "$ICONS/scalable/apps/inkline.svg" "$ICONS"/*/apps/inkline.png
   rm -f "$MIME/packages/inkline.xml" "$ICONS/scalable/mimetypes/application-x-inkline-project.svg"
+  if [ "$MODE" = user ]; then   # the update check Help → Check for updates automatically set up, if any
+    UNITS="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
+    if [ -f "$UNITS/inkline-update.timer" ]; then
+      systemctl --user disable --now inkline-update.timer >/dev/null 2>&1 || true
+      rm -f "$UNITS/inkline-update.timer" "$UNITS/inkline-update.service"
+      systemctl --user daemon-reload >/dev/null 2>&1 || true
+    fi
+  fi
   refresh_menus
   echo "Inkline has been removed from $PREFIX."
   exit 0

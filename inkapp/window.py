@@ -353,9 +353,7 @@ class Window(QMainWindow):
         h = mb.addMenu(tr("&Help"))
         act(h, "&What's new", lambda: self.show_whats_new())
         act(h, "Check for &updates…", lambda: self.updates.check(asked=True))
-        self.act_updates_auto = act(h, "Check for updates au&tomatically", self.updates.set_automatic)
-        self.act_updates_auto.setCheckable(True)
-        self.act_updates_auto.setChecked(self.remember and config.read("preferences.json").get("update_check") is True)
+        self.updates.add_menu(h.addMenu(tr("Check for updates au&tomatically")))
         act(h, "&About Inkline", self._about)
 
     # --- state changes -------------------------------------------------------------------------------
