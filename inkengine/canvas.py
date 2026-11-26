@@ -40,6 +40,8 @@ class State:
 class Canvas:
     """The shared part: state stack and the current path. Back ends draw finished paths."""
 
+    easy_read = False   # Page text → Easier to read: the clearer font, spaced wider (draw_page sets it)
+
     def __init__(self, width, height):
         self.width, self.height = width, height
         self.st = State()
@@ -183,7 +185,7 @@ class Canvas:
 
     def measure_text(self, text):
         """Width of text in the current font, in page pixels."""
-        return QFontMetricsF(make_font(self.st.font_size, self.st.font_weight, self.st.font_family)).horizontalAdvance(text)
+        return QFontMetricsF(make_font(self.st.font_size, self.st.font_weight, self.st.font_family, self.easy_read)).horizontalAdvance(text)
 
     def _on_save(self):
         pass
@@ -201,7 +203,7 @@ class Canvas:
             x -= drawn / 2
         elif align in ("right", "end"):
             x -= drawn
-        fm = QFontMetricsF(make_font(self.st.font_size, self.st.font_weight, self.st.font_family))
+        fm = QFontMetricsF(make_font(self.st.font_size, self.st.font_weight, self.st.font_family, self.easy_read))
         if self.st.text_baseline == "middle":
             y += (fm.ascent() - fm.descent()) / 2
         elif self.st.text_baseline == "top":
@@ -338,7 +340,7 @@ class QtCanvas(Canvas):
         self.p.save()
         self.p.translate(x, y)
         self.p.scale(scale, 1)
-        font = make_font(self.st.font_size, self.st.font_weight, self.st.font_family)
+        font = make_font(self.st.font_size, self.st.font_weight, self.st.font_family, self.easy_read)
         if _is_white(self.st.fill_style):
             # White text only ever covers an outline of the same text (name pages' bubble letters).
             # Fill the same glyph shapes the outline used: in a PDF, drawText writes real text whose
@@ -355,7 +357,7 @@ class QtCanvas(Canvas):
     def stroke_text(self, text, x, y, max_width=None):
         x, y, scale = self._text_origin(text, x, y, max_width)
         path = QPainterPath()
-        path.addText(QPointF(0, 0), make_font(self.st.font_size, self.st.font_weight, self.st.font_family), text)
+        path.addText(QPointF(0, 0), make_font(self.st.font_size, self.st.font_weight, self.st.font_family, self.easy_read), text)
         self.p.save()
         self.p.translate(x, y)
         self.p.scale(scale, 1)
@@ -484,7 +486,7 @@ class SvgCanvas(Canvas):
         where that one isn't installed (most computers, cutting machines' software) it would come out in print."""
         x, y, scale = self._text_origin(text, x, y, max_width)
         path = QPainterPath()
-        path.addText(QPointF(0, 0), make_font(self.st.font_size, self.st.font_weight, self.st.font_family), text)
+        path.addText(QPointF(0, 0), make_font(self.st.font_size, self.st.font_weight, self.st.font_family, self.easy_read), text)
         parts, k, n = [], 0, path.elementCount()
         while k < n:
             e = path.elementAt(k)
@@ -509,9 +511,14 @@ class SvgCanvas(Canvas):
         squeeze = ""
         if max_width and self.measure_text(text) > max_width:
             squeeze = f' textLength="{fx(max_width)}" lengthAdjust="spacingAndGlyphs"'
-        family = ", ".join(f"'{f}'" if " " in f else f for f in ([s.font_family] if s.font_family else []) + FONT_FAMILIES)
+        easy = self.easy_read and not s.font_family
+        first = [s.font_family] if s.font_family else (["Atkinson Hyperlegible"] if easy else [])
+        family = ", ".join(f"'{f}'" if " " in f else f for f in first + FONT_FAMILIES)
+        from .qt import EASY_LETTERS, EASY_WORDS
+        spacing = (f' letter-spacing="{fx(s.font_size * (EASY_LETTERS - 100) / 100)}" '
+                   f'word-spacing="{fx(s.font_size * EASY_WORDS)}"' if easy else "")
         self.out.append(f'<text x="{fx(x)}" y="{fx(y)}" font-family="{family}" font-size="{fx(s.font_size)}" '
-                        f'font-weight="{s.font_weight}" {paint} text-anchor="{anchor}"{baseline}{squeeze}>'
+                        f'font-weight="{s.font_weight}"{spacing} {paint} text-anchor="{anchor}"{baseline}{squeeze}>'
                         f"{_esc(text)}</text>")
 
     def _on_save(self):

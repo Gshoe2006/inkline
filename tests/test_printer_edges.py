@@ -65,18 +65,18 @@ def test_the_default_printer_is_hatched_with_no_warning_inside_the_margin(win):
     assert win.asked[-1][0] == ""                          # nothing printed yet: the default printer
     left, top, right, bottom = win.preview.page.dead
     assert left == pytest.approx(0.125 / 8.5) and top == pytest.approx(0.125 / 11)
-    assert not win.sidebar.margin_hint.isVisibleTo(win)    # ½ in margin, 1/8 in dead strip
+    assert not win.sidebar.shown(win.sidebar.margin_hint)    # ½ in margin, 1/8 in dead strip
 
 
 def test_a_printer_that_reaches_into_the_margin_is_named_with_the_fix(win, tmp_path):
     win._remember_printer("Office")
     assert (tmp_path / "printer.json").read_text().count("Office") == 1
     _redraw(win, margin=0.25)
-    assert win.sidebar.margin_hint.isVisibleTo(win)
+    assert win.sidebar.shown(win.sidebar.margin_hint)
     assert win.sidebar.margin_hint.text() == ("Office can't print the outer 0.6 in of the page, so the design will be cut off. "
                                               "Choose a ¾ in margin or more.")
     _redraw(win, margin=0.75)
-    assert not win.sidebar.margin_hint.isVisibleTo(win)
+    assert not win.sidebar.shown(win.sidebar.margin_hint)
 
 
 def test_no_margin_choice_is_wide_enough(win):
@@ -91,14 +91,14 @@ def test_sheet_orientation_and_the_poster_and_test_page(win):
     assert win.asked[-1][2] == "landscape"                 # fold-and-staple sheets print landscape
     _redraw(win, fold=False, booklet=False, poster=True)
     assert win.preview.page.dead is None                   # a whole poster shows no sheet margins
-    assert win.sidebar.margin_hint.isVisibleTo(win)        # but every sheet would be cut off
+    assert win.sidebar.shown(win.sidebar.margin_hint)        # but every sheet would be cut off
     _redraw(win, poster=False, testpage=True)
-    assert win.preview.page.dead is not None and not win.sidebar.margin_hint.isVisibleTo(win)
+    assert win.preview.page.dead is not None and not win.sidebar.shown(win.sidebar.margin_hint)
 
 
 def test_no_printer_shows_nothing(win):
     win._remember_printer("Gone")
-    assert win.preview.page.dead is None and not win.sidebar.margin_hint.isVisibleTo(win)
+    assert win.preview.page.dead is None and not win.sidebar.shown(win.sidebar.margin_hint)
 
 
 def test_not_remembering_keeps_to_the_default_printer(win, tmp_path):

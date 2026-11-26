@@ -8,17 +8,18 @@ Photo ("Convert a photo"), then Page text, Poster and Paper.
 
 from PySide6.QtCore import QEvent, QPoint, QSize, Qt, QTimer, Signal
 from PySide6.QtGui import QIntValidator, QKeySequence, QPixmap, QShortcut
-from PySide6.QtWidgets import (QAbstractItemView, QFrame, QHBoxLayout, QLabel, QListWidget, QListWidgetItem,
-                               QProgressBar, QScrollArea, QTabBar, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QStackedWidget, QAbstractItemView, QFrame, QHBoxLayout, QLabel, QListWidget, QListWidgetItem,
+                               QProgressBar, QScrollArea, QVBoxLayout, QWidget)
 
 from inkengine import ages, book, cbn, pack, photo
 from inkengine.i18n import tr
 from inkengine.page import PAGE_KEYS, PANELS, SHEETS, has_answer, sheet_gens
-from inkengine.patterns import NAMES, bingo, clock, crossword, fractions, reward, ruled, maths, maze, money, name, spot, trace, words
+from inkengine.patterns import NAMES, bingo, clock, early, crossword, fractions, reward, ruled, maths, maze, money, name, spot, trace, words
 
 from . import jobs, theme, thumbs
 from .jobs import MAX_COPIES
 from .state import BUILTIN_PRESETS
+from .layout import RAIL, Fold, Gallery, Popup, Rail, one_open, recent_patterns
 from .widgets import (Hint, OptionRow, Pager, Pair, Section, SubOptions, button, check, combo, label, line_edit,
                       slider_row)
 
@@ -34,7 +35,8 @@ GEN_OPTIONS = [("mandala", "Mandala (colouring page)"), ("maze", "Maze"), ("truc
                ("symmetry", "Symmetry (shade the mirror half)"),
                ("ruled", "Graph and lined paper"), ("reward", "Reward charts and certificates"),
                ("reading", "Reading comprehension (a passage and questions)"),
-               ("bingo", "Bingo cards (a different card for each child)")]
+               ("bingo", "Bingo cards (a different card for each child)"),
+               ("early", "Early maths with pictures (ten frames, number bonds, tens and ones, counting)")]
 GRID_OPTIONS = [("2x2", "2 × 2"), ("3x3", "3 × 3"), ("4x4", "4 × 4"), ("2x1", "2 across × 1"), ("3x2", "3 across × 2"),
                 ("1x2", "1 across × 2"), ("2x3", "2 across × 3")]
 CBN_PATTERN_NOTE = "Repeated spaces share a number, and spaces side by side get different colours."
@@ -88,28 +90,39 @@ class Sidebar(QFrame):
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(0)
-        outer.addWidget(self._brand(version))
-        scroll = QScrollArea()
-        scroll.setObjectName("sidebarScroll")
-        scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        column = QWidget()
-        column.setMinimumWidth(0)
-        column.setObjectName("sidebarColumn")
-        self.col = QVBoxLayout(column)
-        self.col.setContentsMargins(theme.PAD_X, 14, theme.PAD_X, theme.PAD_X)
-        self.col.setSpacing(theme.SECTION_GAP)
-        scroll.setWidget(column)
-        outer.addWidget(scroll, 1)
-        self._scroll, self._column = scroll, column
+        # 6.0: the rail chooses a page of options; the window puts the rail, the toolbar and the status line round it
+        self.rail = Rail()
+        self.rail.chosen.connect(self._rail_chosen)
+        self.pages = QStackedWidget()
+        self._page_cols, self._scrolls, self._columns = {}, {}, {}
+        for key, _text in RAIL:
+            scroll = QScrollArea()
+            scroll.setObjectName("sidebarScroll")
+            scroll.setWidgetResizable(True)
+            scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            column = QWidget()
+            column.setMinimumWidth(0)
+            column.setObjectName("sidebarColumn")
+            col = QVBoxLayout(column)
+            col.setContentsMargins(theme.PAD_X, 14, theme.PAD_X, theme.PAD_X)
+            col.setSpacing(theme.SECTION_GAP)
+            scroll.setWidget(column)
+            self.pages.addWidget(scroll)
+            self._page_cols[key], self._scrolls[key], self._columns[key] = col, scroll, column
+        outer.addWidget(self.pages, 1)
+        self.brand = self._brand(version)
+        self.col = self._page_cols["make"]
         self._build()
-        self.col.addStretch(1)
-        self._foot = self._footer()
-        outer.addWidget(self._foot)
+        for col in self._page_cols.values():
+            col.addStretch(1)
+        self._scroll, self._column = self._scrolls["make"], self._columns["make"]
+        self.toolbar = self._toolbar()
+        self._foot = self.statusbar = self._footer()
         # the desktop's style (Breeze...) can make the controls wider than Inkline's own: the sidebar widens to fit
         # them rather than cut them off on the right (fit_width)
         self._fit_pending = False
-        column.installEventFilter(self)
+        for column in self._columns.values():
+            column.installEventFilter(self)
         self.load()
         self._fit_later()   # once shown: the widgets' sizes are only right after the stylesheet has polished them
 
@@ -118,8 +131,8 @@ class Sidebar(QFrame):
         self._fit_pending = False
         sc = self._scroll
         bar = sc.verticalScrollBar().sizeHint().width()
-        need = max(self._column.minimumSizeHint().width() + bar + 2 * sc.frameWidth(),
-                   self._foot.minimumSizeHint().width())
+        # the widest page decides, so the sidebar (and the preview) keep their width from page to page
+        need = max(c.minimumSizeHint().width() for c in self._columns.values()) + bar + 2 * sc.frameWidth()
         w = max(theme.SIDEBAR_WIDTH, min(theme.MAX_SIDEBAR_WIDTH, need))
         if w != self.width() or self.minimumWidth() != w:
             self.setFixedWidth(w)
@@ -130,7 +143,7 @@ class Sidebar(QFrame):
             QTimer.singleShot(0, self.fit_width)
 
     def eventFilter(self, obj, ev):
-        if obj is self._column and ev.type() == QEvent.Type.LayoutRequest:   # a part shown or hidden, a restyle
+        if obj in self._columns.values() and ev.type() == QEvent.Type.LayoutRequest:   # a part shown or hidden, a restyle
             self._fit_later()
         return super().eventFilter(obj, ev)
 
@@ -159,31 +172,49 @@ class Sidebar(QFrame):
         lay.addWidget(v, 0, Qt.AlignmentFlag.AlignBaseline)
         return f
 
-    def _footer(self):
+    def _toolbar(self):
+        """Over the preview: Presets, New design and More designs, then Save as PNG, PDF or SVG and Print."""
         f = QFrame()
-        f.setObjectName("footer")
-        lay = QVBoxLayout(f)
-        lay.setContentsMargins(theme.PAD_X, 14, theme.PAD_X, 14)
+        f.setObjectName("toolbar")
+        lay = QHBoxLayout(f)
+        lay.setContentsMargins(14, 8, 14, 8)
         lay.setSpacing(theme.PAIR_GAP)
-        self.print_btn = button("Print…", "primary", "Print (Ctrl+P)")
-        self.print_btn.clicked.connect(self.print_)
-        lay.addWidget(self.print_btn)
-        trio = QHBoxLayout()
-        trio.setSpacing(theme.PAIR_GAP)
+        self.brand.findChild(QLabel, "brandTag").hide()   # the toolbar has room for the name and version
+        self.brand.layout().setContentsMargins(0, 0, 0, 0)
+        lay.addWidget(self.brand)
+        lay.addSpacing(theme.PAD_X)
+        self.presets_btn = Popup("Presets", self.presets_panel)
+        self.presets_btn.setToolTip(tr("Apply, save or delete a preset"))
+        lay.addWidget(self.presets_btn)
+        lay.addWidget(self.new_design)
+        lay.addWidget(self.more_btn)
+        lay.addStretch(1)
         self.png_btn = button("PNG", tip="Save PNG (Ctrl+Shift+E)")
         self.pdf_btn = button("PDF", tip="Save PDF (Ctrl+E)")
         self.svg_btn = button("SVG", tip="Vector lines for Inkscape, Cricut, Silhouette or laser cutters")
-        for b, kind in ((self.png_btn, "png"), (self.pdf_btn, "pdf"), (self.svg_btn, "svg")):
+        for b, kind in ((self.pdf_btn, "pdf"), (self.png_btn, "png"), (self.svg_btn, "svg")):
             b.clicked.connect(lambda _c=False, k=kind: self.save.emit(k))
-            trio.addWidget(b)
-        lay.addLayout(trio)
+            lay.addWidget(b)
+        self.print_btn = button("Print…", "primary", "Print (Ctrl+P)")
+        self.print_btn.clicked.connect(self.print_)
+        lay.addWidget(self.print_btn)
+        return f
+
+    def _footer(self):
+        """Under the preview: what just happened (or the progress of a print or save), and the shortcuts."""
+        f = QFrame()
+        f.setObjectName("footer")
+        lay = QHBoxLayout(f)
+        lay.setContentsMargins(14, 6, 14, 6)
+        lay.setSpacing(theme.PAD_X)
         self.status = label("", "status")
         self.status.setWordWrap(True)
         self.status.setMinimumHeight(18)
-        lay.addWidget(self.status)
+        lay.addWidget(self.status, 1)
         self.progress = QProgressBar()
         self.progress.setTextVisible(False)
         self.progress.setAccessibleName(tr("Saving progress"))
+        self.progress.setMinimumWidth(160)
         # stops a long print or save after the page being drawn (the window wires it up: cancel_job)
         self.cancel_btn = button("Cancel", "mini", "Stop printing or saving (Esc)")
         self.progress_row = QWidget()
@@ -196,21 +227,162 @@ class Sidebar(QFrame):
         lay.addWidget(self.progress_row)
         self.save_format = "pdf"   # what Ctrl+E saves (Edit → Settings; the window keeps it up to date)
         self.keys = keys = label("Ctrl+P print · Ctrl+E PDF · Ctrl+S save project · Ctrl+N new design · ← → pages", "keys")
-        keys.setWordWrap(True)
+        keys.setWordWrap(True)   # a narrow window wraps it rather than being held wide
         lay.addWidget(keys)
         return f
+
+    # --- the rail's pages -------------------------------------------------------------------------------
+    def page_key(self):
+        return RAIL[self.pages.currentIndex()][0]
+
+    def show_page(self, key):
+        """Show a page of options (make, photo, booklet, poster or print), and mark it on the rail."""
+        i = [k for k, _t in RAIL].index(key)
+        if self.pages.currentIndex() != i:
+            self.pages.setCurrentIndex(i)
+            self._scroll, self._column = self._scrolls[key], self._columns[key]
+            self._fit_later()
+        self.rail.show_key(key)
+
+    def _rail_chosen(self, key):
+        if key == "make" and not self.page_editor.isHidden():
+            self.back_to_pages()   # Create's controls go home (they still change the selected page)
+        if key in ("make", "photo"):
+            want = "make" if key == "make" else "convert"
+            if self.state.settings.mode != want:
+                self.mode_changed.emit(want)
+        self.show_page(key)
+
+    def edit_page(self):
+        """A booklet built page by page: the selected page's design (Create's controls) here on the Booklet page."""
+        s = self.state.settings
+        if not (s.booklet and s.page_list) or self.state.book_sel is None:
+            return
+        if self.make_panel.parentWidget() is not self.page_editor:
+            self._editor_lay.addWidget(self.make_panel)
+        self.book_list_view.hide()
+        self.page_editor.show()
+        self._editing_title()
+        self.show_page("booklet")
+
+    def _editing_title(self):
+        s = self.state.settings
+        i = self.state.book_sel or 0
+        gen = (s.page_list[i] if i < len(s.page_list) else {}).get("gen", s.gen)
+        self.page_editing.setText(tr("Page {n}: {name}").format(n=i + 1, name=tr(NAMES.get(gen, gen))).upper())
+
+    def back_to_pages(self):
+        """Create's controls back on Create, and the Booklet page's list again."""
+        if self.make_panel.parentWidget() is self.page_editor:
+            self._page_cols["make"].insertWidget(0, self.make_panel)
+        self.page_editor.hide()
+        self.book_list_view.show()
+
+    def reveal(self, widget):
+        """Show the page a control is on, with its fold open (for the window, and tests)."""
+        for key, scroll in self._scrolls.items():
+            if scroll.isAncestorOf(widget):
+                self.show_page(key)
+                break
+        p = widget
+        while p is not None and p is not self:
+            if isinstance(p, Fold) and not p.is_open():
+                p.set_open(True)
+            p = p.parentWidget()
+
+    def shown(self, widget):
+        """Whether a control is shown once its page is chosen and its fold open: what sync() decided (the rail
+        and the folds only choose what's in view)."""
+        stops = {self, self.toolbar, self.statusbar, self.rail}
+        skip = set(self._scrolls.values()) | {f.body for f in self.findChildren(Fold)} | {self.pages}
+        p = widget
+        while p is not None and p not in stops:
+            if p.isHidden() and p not in skip:
+                return False
+            p = p.parentWidget()
+        return True
+
+    def _match_page(self, s):
+        """The page and the rail follow the mode: Make's page for Make one up, Photo's for a photo."""
+        make = s.mode == "make"
+        self.rail.buttons["booklet"].setEnabled(make)   # a photo book is on the Photo page
+        key = self.page_key()
+        if key in ("make", "photo") or (key == "booklet" and not make):
+            self.show_page("make" if make else "photo")
+        else:
+            self.rail.show_key(key)
+
+    # --- the gallery ---------------------------------------------------------------------------------
+    def note_pattern(self, gen):
+        """A pattern was used: first in the gallery from now on."""
+        self.recent_gens = [gen] + [g for g in self.recent_gens if g != gen]
+
+    def _fill_gallery(self, s):
+        from dataclasses import replace as _replace
+        from inkengine.page import Settings, single_page
+        from inkengine.patterns import GENERATORS
+        gens = recent_patterns(self.recent_gens, GENERATORS)
+        if s.gen in self.gallery.gens and set(self.gallery.gens) == set(gens):
+            gens = self.gallery.gens   # one of these picked: they keep their places, so nothing moves under the cursor
+        if gens == self.gallery.gens and all(not b.icon().isNull() for b in self.gallery.buttons[:len(gens)]):
+            self.gallery.show_gens(gens, s.gen)   # only which one is chosen changes
+            return
+        self.gallery.show_gens(gens, s.gen)
+        base = Settings(seed=20261117)
+        specs = []
+        for g in gens:
+            spec = single_page(_replace(base, gen=g))
+            k = thumbs.key(base, spec)
+            self._gallery_keys[k] = g
+            img = self.gallery_thumbs.get(k)
+            if img is not None:
+                self.gallery.set_picture(g, img)
+            elif k not in self._gallery_asked:   # once: it's being drawn
+                self._gallery_asked.add(k)
+                specs.append(spec)
+        if specs:
+            self.gallery_thumbs.request(base, specs)
+
+    def open_all_patterns(self):
+        """Every pattern as a picture: choosing one uses it, as the Pattern list does."""
+        from .layout import show_all_patterns
+        d = show_all_patterns(self, NAMES, dict(GEN_OPTIONS), self.state.settings.gen, self.gen.set_value)
+        self._all_patterns = d
+        d.exec()
+
+    def _pack_spelling(self, s):
+        return s.pack_theme == "spelling" or s.pack_theme in pack.SIGHT
+
+    def _show_pack_days(self, s):
+        days = pack.days_for(s, self._pack_spelling(s))
+        for c, g in zip(self.pack_day_combos, days):
+            c.blockSignals(True)
+            c.set_value(g)
+            c.blockSignals(False)
+        self.pack_days_reset.setEnabled(pack.chosen_days(s.pack_days) is not None)
+
+    def _pack_day_chosen(self):
+        if self._loading:
+            return
+        s = self.state.settings
+        days = [c.value() for c in self.pack_day_combos]
+        usual = SPELLING_USUAL if self._pack_spelling(s) else pack.DAYS
+        self.state.update(pack_days="" if tuple(days) == tuple(usual) else ",".join(days))
+        self.pack_days_reset.setEnabled(bool(self.state.settings.pack_days))
+        self.changed.emit("pack_days")
+
+    def _pack_days_usual(self):
+        self.state.update(pack_days="")
+        self._show_pack_days(self.state.settings)
+        self.changed.emit("pack_days")
+
+    def _gallery_ready(self, k):
+        if k in self._gallery_keys:
+            self.gallery.set_picture(self._gallery_keys[k], self.gallery_thumbs.get(k))
 
     # --- sections -----------------------------------------------------------------------------------
     def _build(self):
         s = self.state.settings
-        self.tabs = QTabBar()
-        self.tabs.setObjectName("modeTabs")
-        self.tabs.addTab(tr("Make one up"))
-        self.tabs.addTab(tr("Convert a photo"))
-        self.tabs.setExpanding(True)
-        self.tabs.setDrawBase(False)
-        self.tabs.currentChanged.connect(lambda i: None if self._loading else self.mode_changed.emit("make" if i == 0 else "convert"))
-        self.col.addWidget(self.tabs)
 
         # Presets
         sec = Section("Presets")
@@ -227,13 +399,25 @@ class Sidebar(QFrame):
         self.preset_del.clicked.connect(lambda: self.preset_delete.emit(self.preset.value()[2:]))
         save.clicked.connect(lambda: self.preset_save.emit(self.preset_name.text().strip()))
         self.preset_name.returnPressed.connect(save.click)
-        self.col.addWidget(sec)
+        self.presets_panel = sec   # in the toolbar's Presets panel, whose button says Presets: no heading of its own
+        sec.findChild(QLabel).hide()
 
         # Make one up: Design
         self.make_panel = QWidget()
         mk = QVBoxLayout(self.make_panel)
         mk.setContentsMargins(0, 0, 0, 0)
         mk.setSpacing(theme.SECTION_GAP)
+        self.gallery = Gallery(NAMES)
+        self.gallery.picked.connect(lambda gen: self.gen.set_value(gen))
+        self.gallery_thumbs = thumbs.Thumbnails(thumbs.Look(h=64, dpi=14, thicken=1.6, darken=1.6))
+        self.gallery_thumbs.ready.connect(self._gallery_ready)
+        self.recent_gens = []      # the patterns used last, newest first (the window keeps them)
+        self._gallery_keys = {}
+        self._gallery_asked = set()
+        mk.addWidget(self.gallery)
+        self.all_patterns_btn = button("All patterns…", "mini", "Every pattern as a picture, by kind, with a search box")
+        self.all_patterns_btn.clicked.connect(self.open_all_patterns)
+        mk.addWidget(_tools(self.all_patterns_btn))
         sec = Section("Design")
         self.design_note = sec.add(Hint())   # which booklet page the section edits, when it's built page by page
         self.gen = self._combo("gen", GEN_OPTIONS)
@@ -292,6 +476,10 @@ class Sidebar(QFrame):
         self.reward_text = self._text("reward_text", "e.g. reading every day", 60)
         self.reward_opts.add(OptionRow("For", self.reward_text))
         self.reward_opts.add(Hint("With Paper → Names, each child gets one with their name on it."))
+        self.early_opts = SubOptions()
+        self.early_kind = self._combo("early_kind", list(early.KINDS.items()))
+        self.early_opts.add(OptionRow("Pictures", self.early_kind))
+        self.early_opts.add(Hint("Complexity sets the numbers: up to 10, then up to 20 (place value up to 50, then 99)."))
         self.bingo_opts = SubOptions()
         self.bingo_kind = self._combo("bingo_kind", list(bingo.KINDS.items()))
         self.bingo_opts.add(OptionRow("Call out", self.bingo_kind))
@@ -324,7 +512,7 @@ class Sidebar(QFrame):
         self.cross_words_hint = self.cross_opts.add(Hint("Each as word: clue, separated by ; (a word without a clue gets ?)."))
         self.cross_note = self.cross_opts.add(Hint())
         sec.add(self.words_opts, self.maze_opts, self.name_opts, self.spot_opts, self.maths_opts, self.frac_opts, self.ruled_opts,
-                self.reward_opts, self.bingo_opts, self.clock_opts,
+                self.reward_opts, self.bingo_opts, self.early_opts, self.clock_opts,
                 self.trace_opts, self.cross_opts)
         sec.add(self._slider("complexity", "Complexity", 1, 10, lambda v: f"{v} / 10"))
         sec.add(self._slider("weight", "Line weight", 1, 10, lambda v: f"{v / 150 * 25.4:.2f} mm"))
@@ -344,25 +532,36 @@ class Sidebar(QFrame):
         new.setObjectName("newDesign")
         new.clicked.connect(self.reroll)
         self.new_design = new
-        sec.add(_row(self.seed, new, stretch_first=True))
-        more = button("More designs…", "mini", "Choose from six designs (Ctrl+Shift+N)")
+        sec.add(self.seed)
+        more = button("More designs…", tip="Choose from six designs (Ctrl+Shift+N)")
         more.clicked.connect(self.more_designs)
-        self.more_btn = more
-        sec.add(_tools(more))
+        self.more_btn = more   # these two in the toolbar
         mk.addWidget(sec)
 
         # Make one up: Booklet
-        sec = Section("Booklet")
+        pack_fold = sec = Fold("Worksheet pack")
         # a week of worksheets in one go: the theme (or this week's spelling words), then Make
         self.pack_theme = self._combo("pack_theme", list(pack.THEME_NAMES.items()))
         sec.add(OptionRow("Worksheet pack", self.pack_theme))
         self.pack_words = self._text("pack_words", "e.g. because, friend, said, which", 600)
         self.pack_words_row = sec.add(OptionRow("Spelling words", self.pack_words))
+        # the week's five sheets: the usual ones for the theme, or the teacher's choice (pack_days)
+        self.pack_day_combos = []
+        for d in range(5):
+            c = combo([(g, NAMES[g]) for g in pack.DAY_CHOICES])
+            c.setAccessibleName(tr(DAY_NAMES[d]))
+            c.currentIndexChanged.connect(lambda _i: self._pack_day_chosen())
+            self.pack_day_combos.append(c)
+        rows = [OptionRow(DAY_NAMES[d], self.pack_day_combos[d]) for d in range(5)]
+        self.pack_days_reset = button("Usual days", "mini", "The theme's usual sheets for each day")
+        self.pack_days_reset.clicked.connect(self._pack_days_usual)
+        sec.add(Pair(rows[0], rows[1]), Pair(rows[2], rows[3]), Pair(rows[4], _bottom(self.pack_days_reset)))
         self.pack_btn = button("Make a week of worksheets", "mini",
                                "Five worksheets with answers, set for the age under Age (Undo brings back what you had)")
         self.pack_btn.clicked.connect(self.pack_make)
         sec.add(_tools(self.pack_btn))
         self.pack_hint = sec.add(Hint())
+        book_fold = sec = Fold("Booklet", open_=True)
         sec.add(self._check("booklet", "Make a multi-page booklet"))
         self.book_opts = SubOptions()
         self.pages_row = self.book_opts.add(self._slider("pages", "Design pages", 2, 40))
@@ -374,6 +573,9 @@ class Sidebar(QFrame):
         self.pages_quick_btn = button("Back to quick booklet", "mini", "Make the pages from Design pages, "
                                       "Get harder and Mix again (Undo brings your pages back)")
         self.pages_quick_btn.clicked.connect(lambda: self.pages_edit.emit(False))
+        self.page_change_btn = button("Change this page", "mini", "Change the selected page's pattern and options here "
+                                      "(or double-click a page)")
+        self.page_change_btn.clicked.connect(self.edit_page)
         self.book_opts.add(_tools(self.pages_edit_btn, self.pages_quick_btn))
         self.page_count = label("")
         self.page_add = button("Add page", "mini", "Add a page like the last one, with a new design")
@@ -394,8 +596,12 @@ class Sidebar(QFrame):
         self.page_list.setAccessibleName(tr("Booklet pages"))
         self.page_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.page_list.currentRowChanged.connect(lambda i: None if self._loading or i < 0 else self.book_page_selected.emit(i))
+        self.page_list.itemDoubleClicked.connect(lambda _item: self.edit_page())
+        QShortcut(QKeySequence(Qt.Key.Key_Return), self.page_list,
+                  context=Qt.ShortcutContext.WidgetShortcut).activated.connect(self.edit_page)
         self.book_opts.add(self.page_list)
-        self.page_list_hint = self.book_opts.add(Hint("Click a page to change it in Design above, or drag it to move it. "
+        self.page_change_row = self.book_opts.add(_tools(self.page_change_btn))
+        self.page_list_hint = self.book_opts.add(Hint("Double-click a page (or Change this page) to change it here; drag it to move it. "
                                                       "Line weight, border, title and paper apply to every page."))
         self.book_opts.add(self._check("cover", "Cover page"))
         self.book_opts.add(self._check("page_nums", "Page numbers"))
@@ -413,7 +619,27 @@ class Sidebar(QFrame):
         self.book_opts.add(_tools(self.page_new, self.page_orig))
         self.book_opts.add(Hint("PDF and Print use every page, or only those chosen under Paper. PNG and SVG save the page shown."))
         sec.add(self.book_opts)
-        mk.addWidget(sec)
+        # the Booklet page shows its options, or (built page by page) one page's design: Change this page
+        self.book_list_view = QWidget()
+        lv = QVBoxLayout(self.book_list_view)
+        lv.setContentsMargins(0, 0, 0, 0)
+        lv.setSpacing(theme.SECTION_GAP)
+        lv.addWidget(book_fold)
+        lv.addWidget(pack_fold)
+        self._page_cols["booklet"].addWidget(self.book_list_view)
+        self.page_editor = QWidget()   # the Create page's controls come here while a page is being changed
+        ev = QVBoxLayout(self.page_editor)
+        ev.setContentsMargins(0, 0, 0, 0)
+        ev.setSpacing(theme.SECTION_GAP)
+        self.page_back = button("‹ All pages", "mini", "Back to the booklet's page list")
+        self.page_back.clicked.connect(self.back_to_pages)
+        self.page_editing = label("", "legend")
+        ev.addWidget(_row(self.page_editing, self.page_back, stretch_first=True))
+        self._editor_lay = ev
+        self.page_editor.hide()
+        self._page_cols["booklet"].addWidget(self.page_editor)
+        one_open([book_fold, pack_fold])
+        self.book_folds = {"booklet": book_fold, "pack": pack_fold}
         self.col.addWidget(self.make_panel)
 
         # Convert a photo
@@ -494,13 +720,13 @@ class Sidebar(QFrame):
         inv = self._check("invert", "Invert")
         inv_row = OptionRow(" ", inv)
         self.photo_panel.add(Pair(OptionRow("Placement", fit), inv_row))
-        self.col.addWidget(self.photo_panel)
+        self._page_cols["photo"].addWidget(self.photo_panel)
 
         # Page text
-        sec = Section("Page text")
+        text_fold = sec = Fold("Page text")
         sec.add(OptionRow("Title", self._text("title", "e.g. Rainy Day Mazes", 60)))
         sec.add(self._check("name_line", 'Add a "Name ______" line'))
-        self.col.addWidget(sec)
+        sec.add(self._check("easy_read", "Easier to read: a clearer font, with letters and words spaced wider"))
 
         # Poster
         sec = Section("Poster")
@@ -512,10 +738,10 @@ class Sidebar(QFrame):
         self.poster_opts.add(Hint("Each sheet is labelled (A1, A2…) with trim marks. Cut along the marks, then line up "
                                   "neighbouring sheets using the shared overlap strip."))
         sec.add(self.poster_opts)
-        self.col.addWidget(sec)
+        self._page_cols["poster"].addWidget(sec)
 
         # Paper
-        sec = Section("Paper")
+        paper = sec = Fold("Paper", open_=True)
         sec.add(self._check("testpage", "Show the printer test page"))
         self.fold_check = self._check("fold", "Fold-and-staple book (2 pages per sheet)")
         self.fold_hint = Hint()
@@ -529,6 +755,7 @@ class Sidebar(QFrame):
         self.only_hint = sec.add(Hint())
         # Print and Save PDF of a single page: how many (a class set), each with a new design or alike; not a
         # setting either, so it's never remembered
+        copies_fold = sec = Fold("Copies and names")
         self.copies = line_edit(placeholder="1", max_length=3)
         self.copies.setValidator(_CopiesValidator(self.copies))
         self.copies.setAccessibleName(tr("Copies to print or save"))
@@ -579,14 +806,19 @@ class Sidebar(QFrame):
         self.copy_pager.prev.connect(lambda: self.copy_step.emit(-1))
         self.copy_pager.next.connect(lambda: self.copy_step.emit(1))
         sec.add(self.copy_pager)
+        sec = paper
         self.testpage_hint = sec.add(Hint("Print it at 100% (“Actual size”), then check the squares with a ruler. Always portrait."))
         sec.add(Pair(OptionRow("Size", self._combo("paper", [("letter", "Letter"), ("a4", "A4")])),
                      OptionRow("Orientation", self._combo("orient", [("portrait", "Portrait"), ("landscape", "Landscape")]))))
         sec.add(Pair(OptionRow("Margin", self._combo("margin", MARGINS)),
                      OptionRow("Resolution", self._combo("dpi", [(150, "150 dpi (draft)"), (300, "300 dpi")]))))
+        sec.add(self._check("cream", "Cream paper on screen and in PDFs (Print still uses white paper)"))
         self.margin_hint = sec.add(Hint())   # the printer can't reach that far in: set_margin_warning()
         self.margin_hint.setVisible(False)
-        self.col.addWidget(sec)
+        self.folds = {"paper": paper, "text": text_fold, "copies": copies_fold}
+        for f in (paper, text_fold, copies_fold):
+            self._page_cols["print"].addWidget(f)
+        one_open([paper, text_fold, copies_fold])
 
     def copies_typed(self):
         """The number in the Copies field, or None when it's empty."""
@@ -638,7 +870,7 @@ class Sidebar(QFrame):
     def class_set_view(self):
         """The class set Print and Save PDF would make (for the preview's copy pager), or None without one."""
         from .classset import ClassSet
-        if not self.copies_row.isVisibleTo(self):
+        if not self.shown(self.copies_row):
             return None
         names = self.copies_names_list()
         cs = ClassSet(count=len(names) if names else self.copies_count(), vary=self.copies_vary.isChecked(),
@@ -723,7 +955,6 @@ class Sidebar(QFrame):
             s = self.state.settings.to_dict()
             for key, (_control, write) in self._binds.items():
                 write(s[key])
-            self.tabs.setCurrentIndex(0 if self.state.settings.mode == "make" else 1)
             self.load_crop()
         finally:
             self._loading = False
@@ -870,7 +1101,7 @@ class Sidebar(QFrame):
                 btns.addWidget(b)
             btns.addStretch(1)
             lst.setItemWidget(item, row)
-        lst.setFixedHeight(min(260, max(1, len(pl)) * (row_h + 4) + 4))
+        lst.setFixedHeight(min(220, max(1, len(pl)) * (row_h + 4) + 4))   # room under it for Change this page
         lst.setCurrentRow(st.book_sel if pl else -1)
         self.refresh_thumbs()
         n = len(pl)
@@ -953,7 +1184,17 @@ class Sidebar(QFrame):
         make = s.mode == "make"
         self.make_panel.setVisible(make)
         self.photo_panel.setVisible(not make)
+        for b in (self.new_design, self.more_btn):   # in the toolbar: designs are made up, not a photo's
+            b.setEnabled(make)
+        self._match_page(s)
+        if make:
+            self._fill_gallery(s)
         listing = s.booklet and bool(s.page_list)   # built page by page: Design edits the selected page
+        if not self.page_editor.isHidden():
+            if listing and make:
+                self._editing_title()
+            else:   # no page to change any more (back to a quick booklet, a photo): Create's controls go home
+                self.back_to_pages()
         mix_book = s.booklet and s.mix and not listing
         self.words_opts.setVisible(s.gen in ("words", "scramble", "spelltest"))   # unscramble takes its words from the same place
         self.age_hint.setVisible(s.age != "any")
@@ -973,6 +1214,7 @@ class Sidebar(QFrame):
         self.ruled_opts.setVisible(s.gen == "ruled")
         self.reward_opts.setVisible(s.gen == "reward")
         self.bingo_opts.setVisible(s.gen == "bingo")
+        self.early_opts.setVisible(s.gen == "early")
         self.bingo_theme_row.setVisible(s.bingo_kind == "words")
         self.bingo_words_row.setVisible(s.bingo_kind == "words" and s.bingo_theme == "custom")
         self.bingo_note.setText(bingo.note(s))
@@ -986,6 +1228,10 @@ class Sidebar(QFrame):
                    "spelling test, for {age}.") if s.pack_theme in pack.SIGHT else
                 tr("Maths, handwriting, a crossword, a word search and a maze, for {age}."))
         ready = not spelling or bool(pack.spelling_list(s.pack_words))
+        self._show_pack_days(s)
+        if pack.chosen_days(s.pack_days):   # the teacher's own week: say which sheets, in order
+            what = tr("This week: {days}, for {age}.").replace("{days}", ", ".join(
+                tr(NAMES[g]) for g in pack.chosen_days(s.pack_days)))   # as written (German nouns keep capitals)
         self.pack_hint.setText(what.format(age=tr(ages.AGES[s.age if s.age in ages.EXTRAS else pack.DEFAULT_AGE]).lower())
                                if ready else tr("Type this week's spelling words to make the pack."))
         self.pack_btn.setEnabled(ready)
@@ -1026,7 +1272,7 @@ class Sidebar(QFrame):
         self.book_opts.setVisible(s.booklet)
         for w in (self.pages_row, self.ramp_check, self.mix_check, self.pages_edit_btn):
             w.setVisible(not listing)
-        for w in (self.pages_quick_btn, self.page_count_row, self.page_list, self.page_list_hint):
+        for w in (self.pages_quick_btn, self.page_count_row, self.page_list, self.page_list_hint, self.page_change_row):
             w.setVisible(listing)
         self.pbook_opts.setVisible(s.photobook)
         self.pcbn_opts.setVisible(s.style == "cbn")
@@ -1218,6 +1464,8 @@ def _page_detail(gen, p):
         return tr(ruled.KINDS.get(p.get("ruled_kind", "squared"), ""))
     if gen == "reward":
         return tr(reward.KINDS.get(p.get("reward_kind", "chart"), ""))
+    if gen == "early":
+        return tr(early.KINDS.get(p.get("early_kind", "tenframe"), ""))
     if gen == "bingo":
         kind = p.get("bingo_kind", "numbers")
         if kind == "words":
@@ -1278,6 +1526,20 @@ class _Elided(QLabel):
 
     def minimumSizeHint(self):
         return QSize(0, super().minimumSizeHint().height())
+
+
+DAY_NAMES = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+SPELLING_USUAL = pack.SPELLING_DAYS
+
+
+def _bottom(widget):
+    """A widget at the foot of its cell, level with the controls beside it (a button next to a labelled list)."""
+    w = QWidget()
+    lay = QVBoxLayout(w)
+    lay.setContentsMargins(0, 0, 0, 0)
+    lay.addStretch(1)
+    lay.addWidget(widget, 0, Qt.AlignmentFlag.AlignLeft)
+    return w
 
 
 def _tools(*buttons):

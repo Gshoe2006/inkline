@@ -11,7 +11,7 @@ source=('inkline.py' 'inkline.svg' 'inkline.desktop' 'inkline-mime.xml' 'VERSION
 sha256sums=()
 
 package() {
-  for f in $(find inkengine inkapp -name '*.py' -o -name '*.gz' -o -name '*.json' -o -name '*.ttf' -o -name 'OFL.txt' | grep -v __pycache__); do
+  for f in $(find inkengine inkapp -name '*.py' -o -name '*.gz' -o -name '*.json' -o -name '*.ttf' -o -name 'OFL*.txt' | grep -v __pycache__); do
     install -Dm644 "$f" "$pkgdir/usr/share/inkline/$f"
   done
   install -Dm755 inkline.py      "$pkgdir/usr/share/inkline/inkline.py"

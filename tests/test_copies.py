@@ -60,9 +60,9 @@ def _set(w, **kw):
 
 def test_the_field_shows_for_single_pages_and_says_what_will_print(win):
     sb = win.sidebar
-    assert sb.copies_row.isVisibleTo(sb) and not sb.copies_hint.isVisibleTo(sb)
+    assert sb.shown(sb.copies_row) and not sb.shown(sb.copies_hint)
     sb.copies.setText("25")
-    assert sb.copies_vary.isVisibleTo(sb)
+    assert sb.shown(sb.copies_vary)
     assert sb.copies_hint.text() == "Print and Save PDF make 25 copies, each with its own design (the first is the one shown)."
     sb.copies_vary.setChecked(False)
     assert sb.copies_hint.text().endswith("all alike.")
@@ -71,9 +71,9 @@ def test_the_field_shows_for_single_pages_and_says_what_will_print(win):
     QTest.keyClicks(sb.copies, "ab7c")                                     # the field takes digits only
     assert sb.copies.text() == "7" and sb.copies_count() == 7
     _set(win, booklet=True)                                                # a booklet: copies of the booklet
-    assert sb.copies_row.isVisibleTo(sb) and sb.only_row.isVisibleTo(sb)
+    assert sb.shown(sb.copies_row) and sb.shown(sb.only_row)
     _set(win, booklet=False, poster=True)
-    assert not sb.copies_row.isVisibleTo(sb)
+    assert not sb.shown(sb.copies_row)
 
 
 def test_save_pdf_and_print_use_the_copies(win, monkeypatch):
@@ -110,10 +110,10 @@ def test_pages_that_cant_vary_print_alike_and_the_hint_says_when_some_repeat(win
     sb = win.sidebar
     _set(win, gen="name", name_bg="none")
     sb.copies.setText("4")
-    assert not sb.copies_vary.isVisibleTo(sb)                              # nothing to vary: no switch for it
+    assert not sb.shown(sb.copies_vary)                              # nothing to vary: no switch for it
     assert sb.copies_hint.text().startswith("Print and Save PDF make 4 copies, all alike. A name page")
     _set(win, gen="dots")
-    assert sb.copies_vary.isVisibleTo(sb) and "some copies repeat." in sb.copies_hint.text()
+    assert sb.shown(sb.copies_vary) and "some copies repeat." in sb.copies_hint.text()
     sb.copies_vary.setChecked(False)
     assert "all alike." in sb.copies_hint.text() and "repeat" not in sb.copies_hint.text()   # alike anyway
 
@@ -122,12 +122,12 @@ def test_a_number_out_of_range_says_what_will_print_and_is_put_right_on_leaving(
     sb = win.sidebar
     sb.copies.setText("101")
     assert sb.copies_count() == 100
-    assert sb.copies_hint.isVisibleTo(sb) and sb.copies_hint.text().startswith("Copies go from 1 to 100. Print and Save PDF make 100 copies")
+    assert sb.shown(sb.copies_hint) and sb.copies_hint.text().startswith("Copies go from 1 to 100. Print and Save PDF make 100 copies")
     sb.copies.setText("0")
     assert sb.copies_hint.text() == "Copies go from 1 to 100. Print and Save PDF make 1 copy."
     assert sb.copies.validator().fixup("000") == "1" and sb.copies.validator().fixup("250") == "100"
     sb.copies.setText("")
-    assert not sb.copies_hint.isVisibleTo(sb)
+    assert not sb.shown(sb.copies_hint)
 
 
 def test_print_says_copies_and_the_print_dialogs_own_copies(win, monkeypatch):
@@ -185,16 +185,16 @@ def test_alike_copies_share_one_answer_and_pages_without_answers_get_none():
 def test_the_answers_switch_shows_for_puzzles_and_says_what_it_adds(win):
     sb = win.sidebar
     _set(win, gen="maze")
-    assert not sb.copies_answers.isVisibleTo(sb)                           # one copy: no switch
+    assert not sb.shown(sb.copies_answers)                           # one copy: no switch
     sb.copies.setText("5")
-    assert sb.copies_answers.isVisibleTo(sb) and sb.copies_answers.isChecked()
+    assert sb.shown(sb.copies_answers) and sb.copies_answers.isChecked()
     assert sb.copies_hint.text().endswith("Answer pages follow, and each copy is numbered to match them.")
     sb.copies_vary.setChecked(False)
     assert sb.copies_hint.text().endswith("all alike. One answer page follows.")
     sb.copies_answers.setChecked(False)
     assert sb.copies_hint.text().endswith("all alike.")
     _set(win, gen="mandala")
-    assert not sb.copies_answers.isVisibleTo(sb)
+    assert not sb.shown(sb.copies_answers)
 
 
 def test_answer_pages_draw_for_every_kind_of_puzzle():
@@ -274,7 +274,7 @@ def test_a_name_is_written_on_the_line_and_the_design_is_unchanged():
 
 def test_the_names_field_says_what_it_does(win):
     sb = win.sidebar
-    assert sb.copies_names_row.isVisibleTo(sb)
+    assert sb.shown(sb.copies_names_row)
     sb.copies_names.setText("Ana, Ben, Cara")                              # no Name line yet
     assert sb.copies_hint.text().startswith('To write the names on the copies, turn on Page text → Add a "Name ______" line.')
     assert sb.copies.isEnabled()
@@ -326,7 +326,7 @@ def test_cancel_stops_a_pdf_and_deletes_it(win, tmp_path, monkeypatch):
         return real_run(j, device, prog, cancelled)
     monkeypatch.setattr(jobs, "run", slow_run)
     win.save("pdf")
-    assert sb.progress_row.isVisibleTo(sb) and sb.cancel_btn.isEnabled()
+    assert sb.shown(sb.progress_row) and sb.cancel_btn.isEnabled()
     deadline = time.time() + 30
     while win._busy_saving and time.time() < deadline:
         QCoreApplication.processEvents()
@@ -336,7 +336,7 @@ def test_cancel_stops_a_pdf_and_deletes_it(win, tmp_path, monkeypatch):
         time.sleep(0.01)
     assert not win._busy_saving
     assert sb.status.text() == "Save cancelled: the PDF wasn't kept."
-    assert not (tmp_path / "set.pdf").exists() and not sb.progress_row.isVisibleTo(sb)
+    assert not (tmp_path / "set.pdf").exists() and not sb.shown(sb.progress_row)
     win.cancel_job()                                                        # nothing running: nothing happens
     assert sb.status.text() == "Save cancelled: the PDF wasn't kept."
 
@@ -455,7 +455,7 @@ def test_a_single_name_has_no_hidden_answer_page_and_esc_leaves_one_page_alone(w
     sb = win.sidebar
     _set(win, gen="maze", name_line=True)
     sb.copies_names.setText("Ana")
-    assert not sb.copies_answers.isVisibleTo(sb) and sb.copies_answers.isChecked()
+    assert not sb.shown(sb.copies_answers) and sb.copies_answers.isChecked()
     j = win._job(State(replace(win.state.settings)))
     assert j.count == 1 and j.answers == 0                                  # one copy: no answers, as the hint says
     sb.copies_names.setText("")
@@ -539,7 +539,7 @@ def test_the_paper_section_offers_copies_of_a_booklet(win):
     sb = win.sidebar
     _set(win, gen="maze", booklet=True, name_line=True)
     sb.copies.setText("5")
-    assert sb.copies_vary.isVisibleTo(sb) and not sb.copies_answers.isVisibleTo(sb)   # it has its own answers
+    assert sb.shown(sb.copies_vary) and not sb.shown(sb.copies_answers)   # it has its own answers
     assert sb.copies_hint.text() == "Print and Save PDF make 5 booklets, each with its own designs (the first is the one shown)."
     sb.copies_names.setText("Ana, Ben")
     assert sb.copies_hint.text().startswith("Print and Save PDF make 2 booklets, one for each name, each with its own designs")
@@ -575,9 +575,9 @@ def test_the_preview_shows_any_copy_with_its_designs_and_name():
 def test_the_copy_pager_steps_through_the_copies(win):
     sb = win.sidebar
     _set(win, gen="maze", name_line=True)
-    assert not sb.copy_pager.isVisibleTo(sb) and sb.class_set_view() is None
+    assert not sb.shown(sb.copy_pager) and sb.class_set_view() is None
     sb.copies_names.setText("Ana, Ben, Cara")
-    assert sb.copy_pager.isVisibleTo(sb) and sb.class_set_view().count == 3
+    assert sb.shown(sb.copy_pager) and sb.class_set_view().count == 3
     win.step_copy(1)
     win.step_copy(1)
     win.step_copy(1)                                                       # stops at the last
@@ -619,7 +619,7 @@ def test_fixes_from_checking_booklet_class_sets(win, tmp_path):
     _set(win, gen="maze", name_line=True)
     sb.copies_names.setText("Ana")
     one = sb.class_set_view()
-    assert one is not None and one.count == 1 and not sb.copy_pager.isVisibleTo(sb)
+    assert one is not None and one.count == 1 and not sb.shown(sb.copy_pager)
     assert ">Ana<" in jobs.svg(State(win.state.settings, class_set=one))[0]
     # Booklet left on from Make one up doesn't stop a photo's copies showing their names
     p = Settings(mode="convert", booklet=True, name_line=True)
@@ -691,13 +691,13 @@ def test_the_answer_book_folds_on_its_own_and_needs_answer_pages():
 def test_the_answer_book_switch_shows_for_booklet_class_sets(win):
     sb = win.sidebar
     _set(win, gen="maze", booklet=True, key=True, name_line=True)
-    assert not sb.copies_answer_book.isVisibleTo(sb)                      # one booklet: nothing to gather
+    assert not sb.shown(sb.copies_answer_book)                      # one booklet: nothing to gather
     sb.copies_names.setText("Ana, Ben")
-    assert sb.copies_answer_book.isVisibleTo(sb) and not sb.copies_answer_book.isChecked()
+    assert sb.shown(sb.copies_answer_book) and not sb.copies_answer_book.isChecked()
     sb.copies_answer_book.setChecked(True)
     assert "heads its answers in the teacher's book" in sb.copies_hint.text()
     j = win._job(State(win.state.settings))
     assert j.answers > 0
     _set(win, key=False)
-    assert not sb.copies_answer_book.isVisibleTo(sb)
+    assert not sb.shown(sb.copies_answer_book)
     assert win._job(State(win.state.settings)).answers == 0

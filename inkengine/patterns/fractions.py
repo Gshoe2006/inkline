@@ -37,7 +37,7 @@ def decimal(value, places=1):
     text = f"{value:.{places}f}" if places else str(int(round(value)))
     if places and text.endswith("0" * places):
         text = text[: -places - 1]
-    return text.replace(".", ",") if i18n.LANG in ("es", "fr", "pt", "de") else text
+    return text.replace(".", ",") if i18n.LANG in ("es", "fr", "pt", "de", "it", "nl") else text
 
 
 # --- fractions ------------------------------------------------------------------------------------------

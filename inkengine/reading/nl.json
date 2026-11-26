@@ -1,0 +1,1172 @@
+[
+ {
+  "level": 1,
+  "title": "Daan en de vlieger",
+  "text": "Daan heeft een rode vlieger. Hij heeft een lange blauwe staart. Op zaterdag gaat Daan met opa naar het park. Het waait hard. Daan rent zo snel als hij kan en de vlieger gaat omhoog. Hij vliegt hoog boven de bomen. Opa klapt in zijn handen. Daan lacht. Vliegeren vindt hij het allerleukste wat er is.",
+  "questions": [
+   {
+    "q": "Welke kleur heeft de vlieger?",
+    "choices": [
+     "Blauw",
+     "Rood",
+     "Groen"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Met wie gaat Daan naar het park?",
+    "choices": [
+     "Met opa",
+     "Met papa",
+     "Met zijn vriend"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Wat doet opa?",
+    "choices": [
+     "Hij rent",
+     "Hij zingt",
+     "Hij klapt in zijn handen"
+    ],
+    "answer": 2
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Sneeuw!",
+  "text": "Fleur kijkt uit het raam. Alles is wit! Er ligt sneeuw op het gras en op de auto's. Fleur trekt haar jas aan, zet haar muts op en doet haar warme laarzen aan. Samen met haar broer gaat ze naar buiten. Ze maken een grote sneeuwpop. Hij krijgt een wortel als neus en twee steentjes als ogen. Daarna drinken ze binnen warme chocolademelk.",
+  "questions": [
+   {
+    "q": "Wat ligt er op het gras?",
+    "choices": [
+     "Regen",
+     "Bladeren",
+     "Sneeuw"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Wat is de neus van de sneeuwpop?",
+    "choices": [
+     "Een wortel",
+     "Een steentje",
+     "Een takje"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Wat drinken ze binnen?",
+    "choices": [
+     "Sinaasappelsap",
+     "Warme chocolademelk",
+     "Water"
+    ],
+    "answer": 1
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Mijn nieuwe broodtrommel",
+  "text": "Sem heeft een nieuwe broodtrommel. Hij is groen met gele sterren. Vandaag zit er een boterham met kaas in, een appel en wat stukjes komkommer. In de pauze zit Sem naast zijn vriendin Lotte. Lotte is haar appel vergeten. Sem snijdt zijn appel doormidden en geeft de helft aan Lotte. Lotte zegt dank je wel. Samen delen maakt hen allebei blij.",
+  "questions": [
+   {
+    "q": "Wat staat er op de broodtrommel?",
+    "choices": [
+     "Gele sterren",
+     "Rode stippen",
+     "Blauwe vissen"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Wat is Lotte vergeten?",
+    "choices": [
+     "Haar boterham",
+     "Haar drinken",
+     "Haar appel"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Wat geeft Sem aan Lotte?",
+    "choices": [
+     "Een stukje komkommer",
+     "De helft van zijn appel",
+     "Zijn boterham"
+    ],
+    "answer": 1
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Het kleine eendje",
+  "text": "Bij de vijver woont een moedereend met vijf kleine eendjes. Ze zijn geel en pluizig. Elke ochtend zwemmen ze achter hun moeder aan, in een lange rij. Het kleinste eendje heet Pip. Pip zwemt het langzaamst, maar hij geeft nooit op. Op een dag ziet Pip als eerste een stuk brood in het water. Nu is Pip de held van de vijver.",
+  "questions": [
+   {
+    "q": "Hoeveel kleine eendjes zijn er?",
+    "choices": [
+     "Drie",
+     "Vijf",
+     "Vier"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Hoe heet het kleinste eendje?",
+    "choices": [
+     "Pip",
+     "Pim",
+     "Bob"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Wat ziet Pip als eerste in het water?",
+    "choices": [
+     "Een vis",
+     "Een blad",
+     "Een stuk brood"
+    ],
+    "answer": 2
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Een zaadje planten",
+  "text": "Noor wil een zonnebloem kweken. Ze doet aarde in een potje en duwt een zaadje erin. Ze geeft het een beetje water en zet het potje op de vensterbank, in de zon. Elke dag kijkt Noor in het potje. Na een week ziet ze een klein groen plantje. Het groeit en groeit. In de zomer is de zonnebloem groter dan Noor zelf!",
+  "questions": [
+   {
+    "q": "Wat wil Noor kweken?",
+    "choices": [
+     "Een tulp",
+     "Een roos",
+     "Een zonnebloem"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Waar zet Noor het potje?",
+    "choices": [
+     "Op de vensterbank",
+     "In de kast",
+     "In de schuur"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Wanneer ziet Noor een klein plantje?",
+    "choices": [
+     "Na een dag",
+     "Na een week",
+     "Na een maand"
+    ],
+    "answer": 1
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "In de bibliotheek",
+  "text": "Op woensdag gaat Milan met zijn moeder naar de bibliotheek. Er staan heel veel boeken. Milan zoekt een boek over dinosaurussen. De bibliothecaresse helpt hem. Ze vindt een groot boek met mooie plaatjes. Milan mag drie boeken meenemen. Hij kiest ook een boek over treinen en een grappig prentenboek. Thuis leest hij op de bank, lekker onder een dekentje.",
+  "questions": [
+   {
+    "q": "Op welke dag gaat Milan naar de bibliotheek?",
+    "choices": [
+     "Op maandag",
+     "Op woensdag",
+     "Op vrijdag"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Hoeveel boeken mag Milan meenemen?",
+    "choices": [
+     "Drie",
+     "Twee",
+     "Vier"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Waar leest Milan thuis?",
+    "choices": [
+     "In bed",
+     "Op de bank",
+     "Aan tafel"
+    ],
+    "answer": 1
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Een regenachtige dag",
+  "text": "Het regent de hele dag. Julia en haar zus Emma kunnen niet buiten spelen. Ze vervelen zich. Dan heeft Emma een idee. Ze bouwen een hut van dekens en kussens in de kamer. Ze nemen een zaklamp mee en lezen samen een verhaal. Papa brengt ze een koekje. Julia zegt: \"Dit is de leukste regendag ooit!\"",
+  "questions": [
+   {
+    "q": "Waarom kunnen de zussen niet buiten spelen?",
+    "choices": [
+     "Het sneeuwt",
+     "Het regent",
+     "Het is donker"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Waar bouwen ze een hut van?",
+    "choices": [
+     "Van dekens en kussens",
+     "Van dozen",
+     "Van stoelen en takken"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Wat brengt papa?",
+    "choices": [
+     "Een appel",
+     "Thee",
+     "Een koekje"
+    ],
+    "answer": 2
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Sportdag",
+  "text": "Vandaag is het sportdag op school. De zon schijnt. Thijs doet mee met zaklopen. Hij springt zo hard als hij kan, maar halverwege valt hij om. Iedereen moedigt hem aan. Thijs staat op en springt verder. Hij wordt niet eerste, maar hij komt wel over de finish. De juf geeft hem een sticker. \"Goed dat je doorging!\" zegt ze.",
+  "questions": [
+   {
+    "q": "Met welk spel doet Thijs mee?",
+    "choices": [
+     "Hardlopen",
+     "Zaklopen",
+     "Touwtrekken"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Wat gebeurt er halverwege?",
+    "choices": [
+     "Thijs valt om",
+     "Het gaat regenen",
+     "Thijs wint"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Wat krijgt Thijs van de juf?",
+    "choices": [
+     "Een medaille",
+     "Een snoepje",
+     "Een sticker"
+    ],
+    "answer": 2
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Pannenkoeken bakken",
+  "text": "Op zondag bakt Lucas pannenkoeken met zijn vader. Eerst doen ze meel, melk en eieren in een kom. Lucas roert het beslag goed door. Papa giet een beetje beslag in de hete pan. Na een tijdje draait hij de pannenkoek om. Lucas wil stroop op zijn pannenkoek. Zijn vader neemt suiker. Ze eten alles op, tot de laatste hap.",
+  "questions": [
+   {
+    "q": "Wanneer bakken ze pannenkoeken?",
+    "choices": [
+     "Op zondag",
+     "Op zaterdag",
+     "Op maandag"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Wat doet Lucas met het beslag?",
+    "choices": [
+     "Hij giet het in de pan",
+     "Hij proeft het",
+     "Hij roert het door"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Wat wil Lucas op zijn pannenkoek?",
+    "choices": [
+     "Suiker",
+     "Stroop",
+     "Jam"
+    ],
+    "answer": 1
+   }
+  ]
+ },
+ {
+  "level": 1,
+  "title": "Kijken naar de maan",
+  "text": "Het is avond. Lina mag nog even opblijven. Samen met mama kijkt ze uit het raam naar de maan. Vanavond is hij helemaal rond en heel helder. \"Waarom is de maan niet altijd rond?\" vraagt Lina. Mama legt uit dat we soms maar een stukje zien. Lina zwaait naar de maan. Dan gaat ze slapen.",
+  "questions": [
+   {
+    "q": "Wanneer kijkt Lina naar de maan?",
+    "choices": [
+     "'s Avonds",
+     "'s Ochtends",
+     "'s Middags"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Hoe ziet de maan er vanavond uit?",
+    "choices": [
+     "Als een banaan",
+     "Je ziet hem niet",
+     "Helemaal rond"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Wat doet Lina voordat ze gaat slapen?",
+    "choices": [
+     "Ze leest een boek",
+     "Ze zwaait naar de maan",
+     "Ze poetst haar tanden"
+    ],
+    "answer": 1
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Het kwijtgeraakte boek",
+  "text": "Bram vond zijn boek over vulkanen uit de bibliotheek prachtig. Hij had het al drie keer gelezen. Op vrijdag moest het terug, maar Bram kon het nergens vinden. Hij zocht onder zijn bed en in zijn schooltas. Hij keek zelfs in de badkamer. Bram begon zich zorgen te maken. Wat zou meneer De Vries van de bibliotheek zeggen?\n\nToen kwam zijn kleine zusje Evi binnen, met het boek in haar handen. Ze had het geleend om naar de plaatjes van gloeiend hete lava te kijken. Bram lachte opgelucht. Hij bracht het boek net op tijd terug. Meneer De Vries glimlachte en vertelde hem over een nieuw boek over aardbevingen. Bram leende het meteen, en deze keer legde hij het in zijn boekenkast.",
+  "questions": [
+   {
+    "q": "Waar ging het boek van Bram over?",
+    "choices": [
+     "Aardbevingen",
+     "Vulkanen",
+     "Rivieren"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Wie had het boek?",
+    "choices": [
+     "Zijn zusje Evi",
+     "Zijn vader",
+     "Meneer De Vries"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Waar legde Bram het nieuwe boek?",
+    "choices": [
+     "Onder zijn bed",
+     "In zijn schooltas",
+     "In zijn boekenkast"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Waarom begon Bram zich zorgen te maken?",
+    "answer": "Hij kon het boek niet vinden en het moest terug naar de bibliotheek."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Herfstbladeren",
+  "text": "In de herfst verandert het park bij de school van kleur. De bladeren van de bomen worden geel, oranje en rood. Als het waait, dwarrelen ze naar beneden en vormen ze een dik, knisperend tapijt op het pad.\n\nDe klas van juf Anouk gaat naar buiten om bladeren te verzamelen. Yara vindt een groot blad van een kastanjeboom, met vijf punten als een hand. Ruben vindt een eikenblad en een paar eikels. Terug in de klas leggen de kinderen de bladeren tussen dikke boeken om ze plat te drukken. Na een week maken ze er een grote herfstplaat van voor aan de muur. De juf vertelt dat de bomen in de winter rusten en in de lente weer nieuwe bladeren krijgen.",
+  "questions": [
+   {
+    "q": "Welke kleuren krijgen de bladeren?",
+    "choices": [
+     "Blauw en paars",
+     "Geel, oranje en rood",
+     "Wit en grijs"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Wat vindt Ruben?",
+    "choices": [
+     "Een eikenblad en eikels",
+     "Een kastanjeblad",
+     "Een dennenappel"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Waarom leggen de kinderen de bladeren tussen boeken?",
+    "choices": [
+     "Om ze te verstoppen",
+     "Om ze te tellen",
+     "Om ze plat te drukken"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Wat doen de bomen volgens de juf in de winter?",
+    "answer": "Ze rusten, en in de lente krijgen ze nieuwe bladeren."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "De schooltuin",
+  "text": "Achter de school ligt een kleine moestuin. Elke klas heeft een eigen stukje grond. In het voorjaar zaaien de kinderen van groep vier radijsjes, sla en bonen. Ze maken bordjes met de namen van de groenten, zodat ze weten wat waar groeit.\n\nElke week moeten twee kinderen de planten water geven. Ook trekken ze het onkruid eruit. Op een ochtend zien ze dat er gaten in de sla zitten. \"Slakken!\" roept Sanne. Meester Joris legt uit dat slakken ook honger hebben. Samen leggen ze schelpjes rond de sla, waar slakken niet graag overheen kruipen. Na een paar weken zijn de radijsjes klaar. Iedereen mag er eentje proeven. Ze zijn een beetje pittig, maar heel lekker.",
+  "questions": [
+   {
+    "q": "Wat zaaien de kinderen?",
+    "choices": [
+     "Tomaten en wortels",
+     "Radijsjes, sla en bonen",
+     "Aardappels en uien"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Wie maakte de gaten in de sla?",
+    "choices": [
+     "Slakken",
+     "Vogels",
+     "Konijnen"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Hoe smaken de radijsjes?",
+    "choices": [
+     "Heel zoet",
+     "Zuur",
+     "Een beetje pittig"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Waarom maken de kinderen bordjes?",
+    "answer": "Zodat ze weten welke groente waar groeit."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "De taart van oma",
+  "text": "Oma wordt zeventig jaar. Mila en haar vader willen haar verrassen met een zelfgebakken taart. Ze kiezen een aardbeientaart, want daar is oma dol op.\n\nEerst bakken ze een luchtige cakebodem. Terwijl die afkoelt, klopt Mila de slagroom. Ze klopt zo lang dat haar arm er moe van wordt. Daarna snijdt papa de aardbeien in stukjes. Mila smeert de slagroom op de bodem en legt de aardbeien er heel netjes op, in rondjes. Bovenop zet ze zeven kaarsjes: één voor elke tien jaar.\n\nAls oma binnenkomt, zingen ze luid voor haar. Oma blaast alle kaarsjes in één keer uit. \"Dit is de mooiste taart die ik ooit heb gekregen,\" zegt ze.",
+  "questions": [
+   {
+    "q": "Hoe oud wordt oma?",
+    "choices": [
+     "Zestig",
+     "Zeventig",
+     "Tachtig"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Wat doet Mila terwijl de bodem afkoelt?",
+    "choices": [
+     "Ze klopt de slagroom",
+     "Ze snijdt de aardbeien",
+     "Ze zingt een lied"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Hoeveel kaarsjes zet Mila op de taart?",
+    "choices": [
+     "Zeventig",
+     "Tien",
+     "Zeven"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Waarom kiezen ze een aardbeientaart?",
+    "answer": "Omdat oma daar dol op is."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Een dag aan het strand",
+  "text": "Het is een warme dag in juli. Femke gaat met haar ouders en haar broertje Siem naar het strand. Ze nemen een parasol, handdoeken en een koelbox mee.\n\nFemke en Siem bouwen een zandkasteel met torens en een gracht. Als de zee dichterbij komt, loopt de gracht vol met water. Daarna zoeken ze schelpen langs de vloedlijn. Femke vindt een mooie witte schelp met roze strepen. Siem vindt een krab, maar die rent snel weg.\n\nMama roept dat ze zich opnieuw moeten insmeren, want de zon is fel. Aan het eind van de middag eten ze een ijsje. Moe maar blij fietsen ze naar huis. Femke legt haar schelp op haar nachtkastje.",
+  "questions": [
+   {
+    "q": "In welke maand gaan ze naar het strand?",
+    "choices": [
+     "In mei",
+     "In september",
+     "In juli"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Wat vindt Siem?",
+    "choices": [
+     "Een krab",
+     "Een zeester",
+     "Een schelp met strepen"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Waar legt Femke haar schelp?",
+    "choices": [
+     "In de koelbox",
+     "Op haar nachtkastje",
+     "Op de vensterbank"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Waarom loopt de gracht vol met water?",
+    "answer": "Omdat de zee dichterbij komt."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Sint-Maarten",
+  "text": "Op 11 november is het Sint-Maarten. In veel plaatsen lopen kinderen dan 's avonds met een lampion langs de deuren. Ze zingen een liedje en krijgen iets lekkers, zoals een mandarijn of snoep.\n\nJoep maakt zijn lampion zelf, van een oud melkpak. Hij knipt er sterretjes in en plakt er geel vloeipapier achter. Binnenin hangt een klein lampje. Zijn vriendin Nina heeft een lampion in de vorm van een maan.\n\nAls het donker is, gaan ze samen op pad. Bij elk huis bellen ze aan en zingen ze zo mooi als ze kunnen. Een oude meneer geeft ze allebei een appel. Aan het eind van de avond zit Joeps tas vol. Hij deelt zijn snoep met zijn kleine broertje, die nog te jong was om mee te lopen.",
+  "questions": [
+   {
+    "q": "Op welke datum is het Sint-Maarten?",
+    "choices": [
+     "5 december",
+     "11 november",
+     "1 oktober"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Waar maakt Joep zijn lampion van?",
+    "choices": [
+     "Van een melkpak",
+     "Van een glazen pot",
+     "Van karton uit een doos"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Wat krijgen ze van de oude meneer?",
+    "choices": [
+     "Een mandarijn",
+     "Snoep",
+     "Een appel"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Waarom deelt Joep zijn snoep met zijn broertje?",
+    "answer": "Omdat zijn broertje nog te jong was om mee te lopen."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "De voetbalwedstrijd",
+  "text": "Het team van Ayoub speelt op zaterdag een belangrijke wedstrijd. Als ze winnen, worden ze kampioen. Ayoub is de keeper. Hij is zenuwachtig en heeft die nacht slecht geslapen.\n\nIn de eerste helft scoort het andere team meteen. Ayoub baalt, maar zijn trainer roept: \"Kop op, we zijn er nog lang niet!\" Vlak voor de rust maakt zijn vriend Tim de gelijkmaker. In de tweede helft regent het. Het veld wordt glad. Dan schiet een speler van het andere team hard op het doel. Ayoub duikt en houdt de bal tegen.\n\nTwee minuten voor het einde scoort Tim nog een keer. Het wordt 2-1. Het hele team tilt Ayoub op, want zonder zijn redding hadden ze nooit gewonnen.",
+  "questions": [
+   {
+    "q": "Welke plek heeft Ayoub in het team?",
+    "choices": [
+     "Spits",
+     "Verdediger",
+     "Keeper"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Wie maakt de doelpunten voor het team van Ayoub?",
+    "choices": [
+     "Tim",
+     "Ayoub",
+     "De trainer"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Wat is de eindstand?",
+    "choices": [
+     "1-1",
+     "2-1",
+     "2-2"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Waarom tilt het team Ayoub op?",
+    "answer": "Omdat hij een harde bal tegenhield, en zonder die redding hadden ze niet gewonnen."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Een egel in de tuin",
+  "text": "Op een avond hoort Iris geritsel onder de struiken in de tuin. Met een zaklamp gaat ze voorzichtig kijken. Daar zit een egel! Hij snuffelt tussen de bladeren op zoek naar torretjes en wormen.\n\nIris wil de egel helpen. Haar moeder vertelt dat je egels nooit melk moet geven, want daar worden ze ziek van. Een schaaltje water is wel goed. Samen zetten ze water neer en een beetje kattenvoer.\n\nDe volgende avonden komt de egel terug. Iris noemt hem Stekeltje. Haar moeder legt uit dat egels in de winter een winterslaap houden, in een hoop bladeren of takken. Daarom ruimen ze de bladeren in een hoek van de tuin niet op. Zo heeft Stekeltje een warm plekje om te slapen.",
+  "questions": [
+   {
+    "q": "Waar zoekt de egel naar?",
+    "choices": [
+     "Bessen en noten",
+     "Torretjes en wormen",
+     "Brood"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Wat moet je egels nooit geven?",
+    "choices": [
+     "Melk",
+     "Water",
+     "Kattenvoer"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Hoe noemt Iris de egel?",
+    "choices": [
+     "Prikkie",
+     "Bolletje",
+     "Stekeltje"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Waarom ruimen ze de bladeren in de hoek niet op?",
+    "answer": "Zodat de egel een warm plekje heeft voor zijn winterslaap."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Het onweer",
+  "text": "Het is een warme, plakkerige middag. De lucht wordt steeds donkerder. Opeens flitst er een felle bliksemschicht en even later klinkt er een harde donderslag. Kees schrikt en kruipt dicht tegen zijn opa aan.\n\nOpa leert hem een trucje. \"Tel na de bliksem de seconden tot je de donder hoort,\" zegt hij. \"Deel dat getal door drie. Dan weet je ongeveer hoeveel kilometer het onweer van ons af is.\" Bij de volgende flits tellen ze samen tot negen. Het onweer is dus ongeveer drie kilometer ver weg.\n\nEven later tellen ze tot vijftien. Het onweer trekt weg. Kees is niet meer bang. De regen stopt en er verschijnt een regenboog boven de weilanden.",
+  "questions": [
+   {
+    "q": "Wat doet Kees als hij de donder hoort?",
+    "choices": [
+     "Hij kruipt tegen opa aan",
+     "Hij lacht",
+     "Hij rent naar buiten"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Door welk getal moet je de seconden delen?",
+    "choices": [
+     "Door twee",
+     "Door tien",
+     "Door drie"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Wat verschijnt er aan het eind?",
+    "choices": [
+     "De maan",
+     "Een regenboog",
+     "Sneeuw"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Hoe wisten Kees en opa dat het onweer wegtrok?",
+    "answer": "Ze telden steeds meer seconden tussen de bliksem en de donder."
+   }
+  ]
+ },
+ {
+  "level": 2,
+  "title": "Een vogelhuisje bouwen",
+  "text": "Wouter en zijn moeder bouwen een vogelhuisje voor de koolmezen in hun tuin. Ze gebruiken planken die nog in de schuur lagen. Mama zaagt de stukken op maat en Wouter schuurt de randen glad, zodat de vogels zich niet bezeren.\n\nMet spijkers en een hamer zetten ze het huisje in elkaar. Het dak kan open, zodat ze het huisje na de zomer kunnen schoonmaken. Voorin boort mama een rond gat. \"Niet te groot,\" zegt ze, \"anders kunnen grotere vogels de eieren pakken.\"\n\nZe hangen het huisje hoog in de boom, uit de felle zon. Een paar weken later vliegt er een koolmees in en uit met takjes en mos in haar snavel. Ze bouwt een nest!",
+  "questions": [
+   {
+    "q": "Voor welke vogels bouwen ze het huisje?",
+    "choices": [
+     "Voor koolmezen",
+     "Voor merels",
+     "Voor duiven"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Waarom kan het dak open?",
+    "choices": [
+     "Om eten erin te doen",
+     "Om de eieren te tellen",
+     "Om het huisje schoon te maken"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Wat heeft de koolmees in haar snavel?",
+    "choices": [
+     "Een worm",
+     "Takjes en mos",
+     "Een zaadje"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Waarom mag het gat niet te groot zijn?",
+    "answer": "Anders kunnen grotere vogels de eieren pakken."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "Pinguïns op het ijs",
+  "text": "Keizerspinguïns leven op Antarctica, een van de koudste plekken op aarde. In de winter kan het daar kouder worden dan min veertig graden, en harde winden razen over het ijs. Toch hebben deze bijzondere vogels slimme manieren gevonden om te overleven.\n\nKeizerspinguïns hebben een dikke laag vet en dicht op elkaar liggende veren, die kou en water tegenhouden. Als het weer op zijn slechtst is, kruipen honderden pinguïns tegen elkaar aan in een grote groep. Om de beurt staan ze in het midden, waar het het warmst is, en aan de buitenkant, waar het het koudst is. Zo krijgt iedereen de kans om op te warmen.\n\nDe pinguïnvaders hebben een heel belangrijke taak. Nadat de moeder één ei heeft gelegd, geeft ze het aan de vader en loopt ze naar de zee om te eten. De vader houdt het ei op zijn voeten en bedekt het met een warme huidplooi, de broedbuidel. Ongeveer twee maanden zorgt hij ervoor, zonder zelf iets te eten. Als het kuiken uit het ei komt, keert de moeder terug met voedsel in haar maag. Pinguïns kunnen niet vliegen, maar ze zijn uitstekende zwemmers die diep duiken om vis en inktvis te vangen.",
+  "questions": [
+   {
+    "q": "Waar leven keizerspinguïns?",
+    "choices": [
+     "Op de Noordpool",
+     "Op Antarctica",
+     "In Australië",
+     "Op IJsland"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Wie zorgt voor het ei terwijl de moeder eet?",
+    "choices": [
+     "De grootouders",
+     "De andere kuikens",
+     "De vader",
+     "Niemand"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Wat is de broedbuidel?",
+    "choices": [
+     "Een warme huidplooi",
+     "Een nest van stenen",
+     "Een gat in het ijs",
+     "Een soort veer"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Waarom wisselen de pinguïns elkaar af in het midden van de groep?",
+    "answer": "Zodat iedereen de kans krijgt om op te warmen."
+   },
+   {
+    "q": "Hoe lang zorgt de vader voor het ei?",
+    "answer": "Ongeveer twee maanden."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "Hoe een windmolen werkt",
+  "text": "Nederland is beroemd om zijn windmolens. Er staan er nog meer dan duizend, en sommige zijn honderden jaren oud. Vroeger waren windmolens de machines van het land. Ze deden zwaar werk waar anders veel mensen voor nodig waren.\n\nEen windmolen gebruikt de kracht van de wind. Die blaast tegen de grote wieken en laat ze draaien. Binnen in de molen zit een lange as met tandwielen van hout. Die geven de draaiende beweging door aan de machines in de molen. Een korenmolen maalt zo graan tot meel, waar de bakker brood van bakt. Een poldermolen pompt water weg uit laag land, zodat boeren er koeien kunnen houden en gewassen kunnen verbouwen. Bij Kinderdijk staan negentien van zulke molens bij elkaar.\n\nDe molenaar heeft een belangrijke taak. Omdat de wind steeds van richting verandert, moet hij de kap van de molen met de wieken naar de wind draaien. Dat heet kruien. Bij harde storm moet hij de molen juist stilzetten, anders kan hij kapotgaan. Tegenwoordig draaien veel oude molens nog op vrijwilligers, die het vak van molenaar hebben geleerd.",
+  "questions": [
+   {
+    "q": "Wat laat de wieken draaien?",
+    "choices": [
+     "Water",
+     "De wind",
+     "Een motor",
+     "Paarden"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Wat doet een korenmolen?",
+    "choices": [
+     "Hij maalt graan tot meel",
+     "Hij pompt water weg",
+     "Hij zaagt hout",
+     "Hij maakt stroom"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Hoeveel molens staan er bij Kinderdijk?",
+    "choices": [
+     "Tien",
+     "Duizend",
+     "Negentien",
+     "Negen"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Wat betekent kruien?",
+    "answer": "De kap met de wieken naar de wind draaien."
+   },
+   {
+    "q": "Waarom moet de molenaar de molen bij storm stilzetten?",
+    "answer": "Anders kan de molen kapotgaan."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "Hoe bijen honing maken",
+  "text": "Een bijenvolk kan uit wel vijftigduizend bijen bestaan, die samen in een kast of een holle boom wonen. Er is één koningin, die alle eitjes legt. De meeste andere bijen zijn werksters, en zij doen het meeste werk.\n\nOp zonnige dagen vliegen de werksters uit naar bloemen. Met hun lange tong zuigen ze nectar op, een zoet sap. Die bewaren ze in een speciale honingmaag. Terwijl ze van bloem naar bloem vliegen, blijft er stuifmeel aan hun harige lijf hangen. Zo helpen bijen planten om vruchten en zaden te maken.\n\nTerug in de kast geven de werksters de nectar door aan andere bijen. Die stoppen hem in kleine zeshoekige cellen van was. De nectar is nog heel waterig. Daarom wapperen de bijen met hun vleugels, zodat het water verdampt en de nectar dikker wordt. Zo verandert hij langzaam in honing. Als de honing klaar is, sluiten de bijen de cel af met een dekseltje van was.\n\nEén bij maakt in haar hele leven maar een heel klein beetje honing, minder dan een theelepeltje. Voor één pot honing moeten dus duizenden bijen samenwerken.",
+  "questions": [
+   {
+    "q": "Wie legt alle eitjes in het bijenvolk?",
+    "choices": [
+     "De werksters",
+     "De imker",
+     "De darren",
+     "De koningin"
+    ],
+    "answer": 3
+   },
+   {
+    "q": "Waar bewaren bijen de nectar tijdens het vliegen?",
+    "choices": [
+     "In hun honingmaag",
+     "Op hun poten",
+     "In hun vleugels",
+     "In een bloem"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Welke vorm hebben de cellen van was?",
+    "choices": [
+     "Rond",
+     "Zeshoekig",
+     "Vierkant",
+     "Driehoekig"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Waarom wapperen de bijen met hun vleugels boven de nectar?",
+    "answer": "Zodat het water verdampt en de nectar dikker wordt en honing wordt."
+   },
+   {
+    "q": "Hoe helpen bijen planten?",
+    "answer": "Ze brengen stuifmeel van bloem naar bloem, zodat de planten vruchten en zaden kunnen maken."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "De vuurtoren",
+  "text": "Op een klein eiland in de Noordzee staat een hoge, rood-witte vuurtoren. Honderd jaar geleden woonde daar vuurtorenwachter Hendrik met zijn dochter Grietje. Elke avond klom Hendrik de honderdtwintig treden op om de grote lamp aan te steken. Het licht draaide rond en was tot ver op zee te zien. Zo wisten schippers waar het gevaarlijke ondiepe water lag.\n\nOp een stormachtige nacht werd Hendrik ziek. Hij had hoge koorts en kon niet uit bed komen. Buiten loeide de wind en de golven sloegen tegen de rotsen. Grietje wist dat er die nacht een vissersboot terug zou komen. Zonder licht zou de boot op de zandbanken kunnen lopen.\n\nGrietje pakte de lantaarn en klom trede voor trede naar boven. Haar benen trilden, maar ze ging door. Boven deed ze precies wat ze haar vader zo vaak had zien doen. Ze vulde de olie bij, maakte het glas schoon en stak de lamp aan. Het licht begon te draaien.\n\nDe volgende ochtend lag de vissersboot veilig in de haven. De vissers kwamen Grietje bedanken. Haar vader was trots, en vanaf toen hielp Grietje hem elke avond.",
+  "questions": [
+   {
+    "q": "Welke kleuren heeft de vuurtoren?",
+    "choices": [
+     "Blauw en wit",
+     "Rood en wit",
+     "Zwart en geel",
+     "Groen en wit"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Waarom kon Hendrik de lamp niet aansteken?",
+    "choices": [
+     "Hij was op zee",
+     "De lamp was kapot",
+     "Hij was ziek",
+     "Hij sliep"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Hoeveel treden had de vuurtoren?",
+    "choices": [
+     "Honderdtwintig",
+     "Vijftig",
+     "Honderd",
+     "Tweehonderd"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Waarom was het licht van de vuurtoren belangrijk?",
+    "answer": "Zo wisten schippers waar het gevaarlijke ondiepe water lag."
+   },
+   {
+    "q": "Wat deed Grietje boven in de vuurtoren?",
+    "answer": "Ze vulde de olie bij, maakte het glas schoon en stak de lamp aan."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "Reis naar Mars",
+  "text": "Mars wordt ook wel de rode planeet genoemd. Die kleur komt van ijzer in de bodem dat is gaan roesten, net als een oude fiets die te lang buiten heeft gestaan. Mars is kleiner dan de aarde en staat verder van de zon, dus het is er veel kouder.\n\nEr wonen geen mensen op Mars, maar er rijden wel robotwagentjes rond. Ze maken foto's, boren in stenen en sturen hun metingen terug naar de aarde. Daardoor weten we dat er heel lang geleden rivieren en meren op Mars waren. Nu is het er droog en stoffig, met grote stofstormen die soms weken duren. Op Mars staat ook de hoogste vulkaan die we kennen, Olympus Mons. Hij is bijna drie keer zo hoog als de Mount Everest.\n\nWetenschappers dromen ervan om ooit mensen naar Mars te sturen. Dat is niet makkelijk. De reis duurt ongeveer zeven maanden. De lucht op Mars is heel dun en bestaat vooral uit koolstofdioxide, dus astronauten zouden altijd een ruimtepak moeten dragen. Ze zouden eten, water en zuurstof moeten meenemen of zelf moeten maken. Een dag op Mars duurt trouwens bijna even lang als op aarde: iets meer dan vierentwintig uur.",
+  "questions": [
+   {
+    "q": "Waar komt de rode kleur van Mars vandaan?",
+    "choices": [
+     "Van lava",
+     "Van roestend ijzer in de bodem",
+     "Van rode planten",
+     "Van de zon"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Hoe heet de hoogste vulkaan op Mars?",
+    "choices": [
+     "Mount Everest",
+     "Etna",
+     "Vesuvius",
+     "Olympus Mons"
+    ],
+    "answer": 3
+   },
+   {
+    "q": "Hoe lang duurt de reis naar Mars ongeveer?",
+    "choices": [
+     "Zeven maanden",
+     "Drie dagen",
+     "Twee weken",
+     "Tien jaar"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Hoe weten we dat er vroeger water op Mars was?",
+    "answer": "Robotwagentjes doen metingen en sturen die naar de aarde; daaruit blijkt dat er rivieren en meren waren."
+   },
+   {
+    "q": "Waarom zouden astronauten op Mars altijd een ruimtepak moeten dragen?",
+    "answer": "Omdat de lucht er heel dun is en vooral uit koolstofdioxide bestaat."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "Het plan voor het nachtfeestje",
+  "text": "Op het schoolkamp sliepen Zoë, Hanna, Mees en Olivier in dezelfde kamer. Op de laatste avond hadden ze een geheim plan: om middernacht wilden ze een nachtfeestje houden. Iedereen had iets lekkers meegenomen. Zoë had chips, Hanna een zak spekjes, Mees koekjes en Olivier vier pakjes appelsap.\n\nOm tien uur deed meester Ruud het licht uit. \"Slaap lekker, en geen gekke dingen,\" zei hij met een knipoog. De kinderen deden alsof ze sliepen. Mees had zijn horloge op de wekker gezet, onder zijn kussen, zodat de anderen het piepje niet zouden horen.\n\nMaar het was een drukke dag geweest. Ze hadden een speurtocht door het bos gedaan en uren buiten gespeeld. Een voor een vielen ze in slaap. Om middernacht piepte het horloge zacht onder het kussen, maar Mees sliep zo diep dat hij niets hoorde.\n\nToen ze wakker werden, scheen de zon al. Even waren ze teleurgesteld. Toen begon Hanna te lachen. \"Dan houden we toch een ontbijtfeestje!\" Meester Ruud keek verbaasd toen ze aan tafel kwamen met chips en spekjes, maar hij mocht een koekje meeproeven.",
+  "questions": [
+   {
+    "q": "Wat had Olivier meegenomen?",
+    "choices": [
+     "Chips",
+     "Spekjes",
+     "Appelsap",
+     "Koekjes"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Waar had Mees zijn horloge gelegd?",
+    "choices": [
+     "In zijn tas",
+     "Onder zijn kussen",
+     "Op tafel",
+     "Bij de deur"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Hoe laat deed meester Ruud het licht uit?",
+    "choices": [
+     "Om tien uur",
+     "Om acht uur",
+     "Om negen uur",
+     "Om middernacht"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Waarom werd niemand om middernacht wakker?",
+    "answer": "Ze waren heel moe van de drukke dag en sliepen diep, en Mees hoorde het piepje niet."
+   },
+   {
+    "q": "Wat deden de kinderen in plaats van een nachtfeestje?",
+    "answer": "Ze hielden een ontbijtfeestje."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "De eerste fietsen",
+  "text": "In Nederland zijn meer fietsen dan mensen. Kinderen fietsen naar school en volwassenen naar hun werk. Maar de fiets zoals wij die kennen, bestaat nog niet zo lang.\n\nDe eerste fiets werd in 1817 bedacht door de Duitser Karl Drais. Hij was van hout en had geen trappers. Je zat erop en duwde jezelf met je voeten vooruit over de weg. Men noemde hem een loopfiets.\n\nOngeveer vijftig jaar later kwamen er trappers aan het voorwiel. Hoe groter het voorwiel, hoe sneller je kon gaan. Daarom kregen sommige fietsen een enorm voorwiel en een heel klein achterwiel. Ze waren snel, maar ook gevaarlijk. Je zat zo hoog dat je hard kon vallen als je ergens tegenaan reed.\n\nRond 1885 kwam de veiligheidsfiets. Die had twee wielen van dezelfde grootte en een ketting die de trappers met het achterwiel verbond. Later kwamen er luchtbanden bij, zodat je niet meer zo hard over de stenen hobbelde. Die fiets lijkt al veel op de fiets van nu. Sindsdien is er nog veel bijgekomen, zoals versnellingen, verlichting en zelfs elektrische hulpmotoren.",
+  "questions": [
+   {
+    "q": "Waar was de eerste fiets van gemaakt?",
+    "choices": [
+     "Van ijzer",
+     "Van plastic",
+     "Van hout",
+     "Van riet"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Hoe kwam je vooruit op een loopfiets?",
+    "choices": [
+     "Met trappers",
+     "Door met je voeten te duwen",
+     "Met een motor",
+     "Met een ketting"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Wanneer kwam de veiligheidsfiets?",
+    "choices": [
+     "Rond 1885",
+     "In 1817",
+     "In 1950",
+     "Rond 1700"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Waarom waren fietsen met een enorm voorwiel gevaarlijk?",
+    "answer": "Je zat zo hoog dat je hard kon vallen als je ergens tegenaan reed."
+   },
+   {
+    "q": "Wat verbond de ketting van de veiligheidsfiets met elkaar?",
+    "answer": "De trappers en het achterwiel."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "Leven in een koraalrif",
+  "text": "Een koraalrif lijkt op een kleurrijke onderwatertuin, maar koraal is geen plant. Het bestaat uit heel veel kleine diertjes, poliepen genoemd. Elke poliep maakt een hard skeletje van kalk. Na honderden of zelfs duizenden jaren groeien al die skeletjes samen tot een enorm rif.\n\nHet grootste koraalrif ter wereld is het Groot Barrièrerif bij Australië. Het is zo groot dat je het vanuit de ruimte kunt zien. In koraalriffen leven ontzettend veel soorten dieren: vissen in alle kleuren, zeeschildpadden, kreeften, zeesterren en inktvissen. De anemoonvis, die oranje met witte strepen is, woont tussen de prikkende tentakels van een zeeanemoon. Hij heeft een slijmlaagje, waardoor hij zelf niet geprikt wordt. Zo is hij veilig voor grotere vissen.\n\nKoraalriffen zijn kwetsbaar. Als het zeewater te warm wordt, verliest het koraal zijn kleur en wordt het wit. Dat heet koraalverbleking. Blijft het water lang te warm, dan kan het koraal doodgaan. Ook afval en vervuiling zijn slecht voor het rif. Daarom werken wetenschappers en duikers samen om koraalriffen te beschermen, zodat ze ook in de toekomst vol leven blijven.",
+  "questions": [
+   {
+    "q": "Wat is koraal?",
+    "choices": [
+     "Een plant",
+     "Een soort steen",
+     "Een groep kleine diertjes",
+     "Een vis"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Waar ligt het Groot Barrièrerif?",
+    "choices": [
+     "Bij Australië",
+     "Bij Nederland",
+     "Bij IJsland",
+     "Bij Brazilië"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Wat gebeurt er met koraal als het water te warm wordt?",
+    "choices": [
+     "Het groeit sneller",
+     "Het wordt wit",
+     "Het wordt rood",
+     "Het gaat zwemmen"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Waarom wordt de anemoonvis niet geprikt door de zeeanemoon?",
+    "answer": "Hij heeft een slijmlaagje dat hem beschermt."
+   },
+   {
+    "q": "Noem twee dingen die slecht zijn voor een koraalrif.",
+    "answer": "Te warm zeewater en afval of vervuiling."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "Het weerstation van de school",
+  "text": "Groep zes wilde weten of het weer echt zo vaak verandert als iedereen zegt. Daarom bouwden ze op het schoolplein een eigen weerstation. Elke ochtend om negen uur zouden twee kinderen het weer meten en opschrijven.\n\nZe hingen een thermometer in de schaduw aan de muur, want in de zon geeft een thermometer een te hoge temperatuur aan. Van een lege fles maakten ze een regenmeter: ze knipten de bovenkant eraf en zetten er een liniaal naast. Op het dak van de schuur zette de conciërge een windvaan, die liet zien uit welke richting de wind kwam.\n\nEen maand lang hielden ze alles bij in een groot schrift. Daarna maakten ze er grafieken van. Ze ontdekten dat de wind meestal uit het zuidwesten kwam. De warmste ochtend was negentien graden en de koudste maar acht. Op twaalf dagen was er regen gevallen, en één keer zelfs zoveel dat de fles bijna overstroomde.\n\nJuf Sara was trots. \"Echte meteorologen doen precies hetzelfde,\" zei ze, \"alleen met nog meer metingen.\" De klas besloot het weerstation het hele jaar te houden.",
+  "questions": [
+   {
+    "q": "Hoe laat werd het weer elke dag gemeten?",
+    "choices": [
+     "Om acht uur",
+     "Om twaalf uur",
+     "Om drie uur",
+     "Om negen uur"
+    ],
+    "answer": 3
+   },
+   {
+    "q": "Waarvan maakten de kinderen een regenmeter?",
+    "choices": [
+     "Van een lege fles",
+     "Van een emmer",
+     "Van een beker",
+     "Van een doos"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Uit welke richting kwam de wind meestal?",
+    "choices": [
+     "Uit het noorden",
+     "Uit het zuidwesten",
+     "Uit het oosten",
+     "Uit het zuiden"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Waarom hingen ze de thermometer in de schaduw?",
+    "answer": "In de zon geeft een thermometer een te hoge temperatuur aan."
+   },
+   {
+    "q": "Op hoeveel dagen viel er regen?",
+    "answer": "Op twaalf dagen."
+   }
+  ]
+ },
+ {
+  "level": 3,
+  "title": "De kameel in de woestijn",
+  "text": "Een woestijn is een van de moeilijkste plekken om te leven. Overdag is het er gloeiend heet, 's nachts kan het flink afkoelen, en water is er bijna niet. Toch voelt de dromedaris, een kameel met één bult, zich er prima thuis.\n\nVeel mensen denken dat er water in de bult zit, maar dat klopt niet. De bult zit vol vet. Als er weinig eten is, kan de dromedaris dat vet gebruiken als voorraad. Dromedarissen kunnen ook dagenlang zonder drinken. Als ze dan eindelijk water vinden, kunnen ze in korte tijd wel honderd liter opdrinken.\n\nOok de rest van hun lichaam is gemaakt voor de woestijn. Ze hebben lange wimpers en kunnen hun neusgaten dichtdoen, zodat er bij een zandstorm geen zand in hun ogen en neus komt. Hun brede voeten zakken niet weg in het mulle zand. En hun dikke vacht beschermt hen niet alleen tegen de kou van de nacht, maar ook tegen de felle zon.\n\nAl duizenden jaren werken mensen met dromedarissen. Ze dragen zware vrachten door de woestijn en geven melk. Niet voor niets worden ze ook wel de schepen van de woestijn genoemd.",
+  "questions": [
+   {
+    "q": "Hoeveel bulten heeft een dromedaris?",
+    "choices": [
+     "Geen",
+     "Eén",
+     "Twee",
+     "Drie"
+    ],
+    "answer": 1
+   },
+   {
+    "q": "Wat zit er in de bult?",
+    "choices": [
+     "Water",
+     "Lucht",
+     "Vet",
+     "Melk"
+    ],
+    "answer": 2
+   },
+   {
+    "q": "Waarom zakken dromedarissen niet weg in het zand?",
+    "choices": [
+     "Ze hebben brede voeten",
+     "Ze zijn heel licht",
+     "Ze lopen heel snel",
+     "Ze springen"
+    ],
+    "answer": 0
+   },
+   {
+    "q": "Hoe beschermt een dromedaris zijn ogen en neus tegen zand?",
+    "answer": "Met lange wimpers, en hij kan zijn neusgaten dichtdoen."
+   },
+   {
+    "q": "Waarom worden dromedarissen de schepen van de woestijn genoemd?",
+    "answer": "Omdat ze al duizenden jaren zware vrachten door de woestijn dragen."
+   }
+  ]
+ }
+]

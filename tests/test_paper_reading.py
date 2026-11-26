@@ -78,7 +78,7 @@ def test_names_put_each_childs_name_on_their_certificate():
     assert seen == ["Ana", "Ben"]
 
 
-@pytest.mark.parametrize("lang", ["en", "es", "fr", "pt", "de"])
+@pytest.mark.parametrize("lang", ["en", "es", "fr", "pt", "de", "it", "nl"])
 def test_every_language_has_the_passages_and_their_answers_are_sound(lang):
     path = os.path.join(ROOT, "inkengine", "reading", f"{lang}.json")
     data = json.load(open(path, encoding="utf-8"))
@@ -113,7 +113,7 @@ def test_a_long_passage_shrinks_to_fit_the_page():
     assert out["size"] < small["size"]
 
 
-@pytest.mark.parametrize("lang", ["en", "es", "fr", "pt", "de"])
+@pytest.mark.parametrize("lang", ["en", "es", "fr", "pt", "de", "it", "nl"])
 def test_sight_words_in_every_language_and_a_sight_word_week(lang):
     i18n.set_language(lang)
     try:

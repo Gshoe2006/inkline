@@ -17,7 +17,7 @@ from inkengine import i18n
 from inkengine.i18n import tr
 
 from . import config, theme, update_schedule
-from .widgets import Hint, OptionRow, Pair, Section, button, combo
+from .widgets import Hint, OptionRow, Pair, Section, button, check, combo
 
 PAPERS = [("letter", "Letter"), ("a4", "A4")]
 ORIENTS = [("portrait", "Portrait"), ("landscape", "Landscape")]
@@ -91,7 +91,24 @@ class SettingsDialog(QDialog):
         self.use_now.setAutoDefault(False)   # Enter closes the dialog; it doesn't press these
         printing.add(self.use_now)
         left.addWidget(printing)
-        left.addStretch(1)
+
+        looks = Section("Appearance")
+        self.theme = combo([])
+        looks.add(OptionRow("Theme", self.theme))
+        self.desktop = check("Use my desktop's style", window.act_desktop.isChecked())
+        self.desktop.setEnabled(window.act_desktop.isEnabled())
+        self.desktop.setToolTip(window.act_desktop.toolTip())
+        self.desktop.toggled.connect(lambda on: window.act_desktop.isChecked() != on and window.act_desktop.trigger())
+        looks.add(self.desktop)
+        looks.add(Hint("More themes to choose from:"))
+        self.extra = {}
+        for key in theme.EXTRA_THEMES:
+            c = check(theme.THEME_NAMES[key], key in window.themes_offered())
+            c.toggled.connect(lambda on, k=key: self._offer(k, on))
+            looks.add(c)
+            self.extra[key] = c
+        self._fill_themes()
+        self.theme.currentIndexChanged.connect(self._theme_picked)
 
         saving = Section("Saving")
         self.format = combo(list(FORMATS.items()), save_format(prefs))
@@ -121,7 +138,9 @@ class SettingsDialog(QDialog):
             self.language.setItemText(i, name)
         language.add(OptionRow("Language", self.language))
         language.add(Hint("Inkline uses it from the next start."))
-        right.addWidget(language)
+        left.addWidget(language)
+        left.addStretch(1)
+        right.addWidget(looks)
         right.addStretch(1)
 
         row = QHBoxLayout()
@@ -142,10 +161,28 @@ class SettingsDialog(QDialog):
         self.check_now.clicked.connect(lambda: window.updates.check(asked=True))
         self.language.currentIndexChanged.connect(lambda _i: window._choose_language(self.language.value()))
         if not window.remember:   # nothing can be kept: say so rather than seem to keep it
-            for c in (self.paper, self.orient, self.margin, self.dpi, self.format, self.schedule, self.language):
+            for c in (self.paper, self.orient, self.margin, self.dpi, self.format, self.schedule, self.language,
+                      *self.extra.values()):
                 c.setEnabled(False)
         self.setMinimumWidth(640)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+
+    def _fill_themes(self):
+        """The Theme list: following the system, light, dark, and the extras turned on, the one in use chosen."""
+        self.theme.blockSignals(True)
+        self.theme.clear()
+        for key in theme.offered(self.window.themes_offered()):
+            self.theme.addItem(tr(theme.THEME_NAMES[key]), key)
+        self.theme.set_value(theme.CHOSEN["name"])
+        self.theme.blockSignals(False)
+
+    def _theme_picked(self, _i):
+        if self.theme.value() and self.theme.value() != theme.CHOSEN["name"]:
+            self.window.set_theme(self.theme.value())
+
+    def _offer(self, key, on):
+        self.window.offer_theme(key, on)
+        self._fill_themes()
 
     def _default(self, key, value):
         prefs = config.read("preferences.json")

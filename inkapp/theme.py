@@ -28,6 +28,19 @@ LIGHT = Tokens(bg="#eceff2", panel="#ffffff", ink="#16181d", muted="#5b626e", li
                accent="#0b7ea6", accent_ink="#ffffff", table="#d9dee4", field="#f5f7f9")
 DARK = Tokens(bg="#121418", panel="#1a1d22", ink="#e7e9ed", muted="#9aa2ad", line="#2d323a",
               accent="#4dc2e6", accent_ink="#06222c", table="#0b0d10", field="#22262c")
+# more looks, under Edit → Settings → Appearance (each turned on there to be offered); every text colour on its
+# background is at least 4.5:1 (WCAG AA), High contrast's at least 10:1
+CONTRAST = Tokens(bg="#ffffff", panel="#ffffff", ink="#000000", muted="#2b2b2b", line="#000000",
+                  accent="#003f8a", accent_ink="#ffffff", table="#c8c8c8", field="#ededed")
+WARM = Tokens(bg="#efe7da", panel="#fbf7f0", ink="#2b2219", muted="#62564a", line="#d8cbb6",
+              accent="#9a4a12", accent_ink="#ffffff", table="#e2d6c3", field="#f6efe4")
+SLATE = Tokens(bg="#18202b", panel="#202a37", ink="#e6ebf2", muted="#a3afbf", line="#364357",
+               accent="#7db3ff", accent_ink="#0a1830", table="#111821", field="#283444")
+THEMES = {"light": LIGHT, "dark": DARK, "contrast": CONTRAST, "warm": WARM, "slate": SLATE}
+THEME_NAMES = {"system": "Follow the system", "light": "Light", "dark": "Dark", "contrast": "High contrast",
+               "warm": "Warm paper", "slate": "Slate"}
+EXTRA_THEMES = ("contrast", "warm", "slate")   # offered only once turned on in Settings
+CHOSEN = {"name": "system"}                    # the theme in use: a THEMES key, or "system" (light or dark as it is)
 
 FONT_UI = ["Inter", "Cantarell", "Noto Sans", "Segoe UI", "sans-serif"]
 FONT_HEAD = ["Space Grotesk", "Inter", "Cantarell", "Noto Sans", "sans-serif"]
@@ -62,7 +75,28 @@ def is_dark():
 
 
 def tokens(dark=None):
+    """The colours to use: dark or light when asked (the self-test), else the theme chosen, else the system's."""
+    if dark is None and CHOSEN["name"] in THEMES:
+        return THEMES[CHOSEN["name"]]
     return DARK if (is_dark() if dark is None else dark) else LIGHT
+
+
+def offered(shown=()):
+    """The themes to choose from: following the system, light and dark, then the extras turned on, in order."""
+    return ["system", "light", "dark"] + [k for k in EXTRA_THEMES if k in (shown or ())]
+
+
+def restore(prefs):
+    """At start: the theme chosen last time, if it's still offered (an extra turned off since goes back to the
+    system's)."""
+    name = prefs.get("theme")
+    CHOSEN["name"] = name if name in offered(prefs.get("themes_offered") or ()) else "system"
+
+
+def use_theme(app, name):
+    """Switch to a theme (a THEME_NAMES key) and restyle."""
+    CHOSEN["name"] = name if name in THEME_NAMES else "system"
+    return apply(app)
 
 
 def palette(t):
@@ -122,6 +156,33 @@ QFrame#brand, QFrame#footer {{ background: {t.panel}; }}
 QFrame#brand {{ border-bottom: 1px solid {t.line}; }}
 QFrame#footer {{ border-top: 1px solid {t.line}; }}
 QLabel#brandName {{ font-family: {head}; font-size: 20px; font-weight: 700; }}
+QFrame#toolbar {{ background: {t.panel}; border-bottom: 1px solid {t.line}; }}
+QFrame#toolbar QFrame#brand {{ border: 0; background: transparent; }}
+QFrame#rail {{ background: {t.panel}; border-right: 1px solid {t.line}; }}
+QFrame#railLine {{ background: {t.line}; border: 0; }}
+QToolButton#railButton {{ background: transparent; border: 1px solid transparent; border-radius: 8px; color: {t.muted};
+  font-size: 12px; font-weight: 600; padding: 4px; }}
+QToolButton#railButton:hover {{ border-color: {t.line}; color: {t.ink}; }}
+QToolButton#railButton:checked {{ background: {t.field}; border-color: {t.accent}; color: {t.accent}; }}
+QToolButton#railButton:focus {{ border: 2px solid {t.ink}; padding: 3px; }}
+QToolButton#railButton:disabled {{ color: {t.muted}; }}
+QToolButton#galleryItem {{ background: {t.field}; border: 1px solid {t.line}; border-radius: 8px; font-size: 11px;
+  padding: 4px; }}
+QToolButton#galleryItem:hover {{ border-color: {t.accent}; }}
+QToolButton#galleryItem:checked {{ border: 2px solid {t.accent}; background: {t.panel}; padding: 3px; }}
+QToolButton#galleryItem:focus {{ border: 2px solid {t.ink}; padding: 3px; }}
+QToolButton#foldHead {{ background: transparent; border: 0; color: {t.muted}; font-size: 11px; font-weight: 600;
+  letter-spacing: 1px; padding: 2px 0; text-align: left; }}
+QToolButton#foldHead:hover {{ color: {t.ink}; }}
+QToolButton#foldHead:focus {{ color: {t.accent}; text-decoration: underline; }}
+QFrame#tourCard {{ background: {t.panel}; border: 1px solid {t.accent}; border-radius: 10px; }}
+QFrame#tourOutline {{ background: transparent; border: 3px solid {t.accent}; border-radius: 10px; }}
+QLabel#tourTitle {{ font-family: {head}; font-size: 16px; font-weight: 700; }}
+QFrame#popupPanel {{ background: {t.panel}; border: 1px solid {t.line}; border-radius: 8px; }}
+QToolButton#toolbarMenu {{ font-size: 13px; font-weight: 600; background: {t.field}; border: 1px solid {t.line};
+  border-radius: 6px; padding: 7px 9px; }}
+QToolButton#toolbarMenu:hover {{ border-color: {t.accent}; }}
+QToolButton#toolbarMenu:focus {{ border: 2px solid {t.accent}; padding: 6px 8px; }}
 QLabel#brandTag {{ color: {t.muted}; font-size: 12px; }}
 QLabel#brandVersion {{ color: {t.muted}; font-family: {mono}; font-size: 11px; }}
 
@@ -141,7 +202,6 @@ QPushButton:hover, QComboBox:hover {{ border-color: {t.accent}; }}
 QPushButton:focus, QComboBox:focus, QLineEdit:focus {{ border: 2px solid {t.accent}; padding: 6px 8px; }}
 QCheckBox:focus {{ border: 2px solid {t.accent}; border-radius: 4px; }}
 QSlider::handle:horizontal:focus {{ border: 2px solid {t.ink}; }}
-QTabBar#modeTabs:focus {{ border: 2px solid {t.accent}; }}
 QComboBox::drop-down {{ border: 0; width: 22px; }}
 QComboBox::down-arrow {{ image: url("{_arrow(t.muted)}"); width: 10px; height: 6px; margin-right: 8px; }}
 QPushButton:disabled {{ color: {t.muted}; border-color: {t.line}; }}
@@ -158,10 +218,6 @@ QSlider::handle:horizontal {{ background: {t.accent}; width: 14px; height: 14px;
 QProgressBar {{ background: {t.field}; border: 0; border-radius: 3px; max-height: 6px; }}
 QProgressBar::chunk {{ background: {t.accent}; border-radius: 3px; }}
 
-QTabBar#modeTabs {{ background: {t.field}; border: 1px solid {t.line}; border-radius: 8px; }}
-QTabBar#modeTabs::tab {{ background: transparent; color: {t.muted}; font-size: 13px; font-weight: 600; padding: 8px;
-  margin: 3px; border-radius: 6px; }}
-QTabBar#modeTabs::tab:selected {{ background: {t.panel}; color: {t.ink}; }}
 
 QListWidget#photoList, QListWidget#pageList {{ background: {t.panel}; border: 0; font-size: 12px; }}
 QListWidget#photoList::item, QListWidget#pageList::item {{ border: 1px solid {t.line}; border-radius: 6px; padding: 4px; margin-bottom: 4px; }}

@@ -64,7 +64,7 @@ def test_the_preset_makes_the_pack_for_the_age_chosen_and_undoes_in_one_step(win
     assert [p["gen"] for p in s.page_list] == list(pack.DAYS) and s.age == "4-6" and s.booklet
     assert win.history.undoText() == f"“{PRESET}”"
     assert "ages 4–6" in win.sidebar.status.text() and "animals" in win.sidebar.status.text()
-    assert not win.sidebar.pack_words_row.isVisibleTo(win)
+    assert not win.sidebar.shown(win.sidebar.pack_words_row)
     assert win.sidebar.page_list.count() == 5   # the page list shows the five pages to change
     win.history.undo()
     assert win.state.settings.page_list == before.page_list and not win.state.settings.booklet
@@ -111,7 +111,7 @@ def test_the_booklet_section_makes_a_pack_from_its_own_controls(win):
     sb.load()
     sb.pack_theme.set_value("spelling")
     QApplication.processEvents()
-    assert sb.pack_words_row.isVisibleTo(win) and not sb.pack_btn.isEnabled()   # no words yet, and it says so
+    assert win.sidebar.shown(sb.pack_words_row) and not sb.pack_btn.isEnabled()   # no words yet, and it says so
     assert sb.pack_hint.text() == "Type this week's spelling words to make the pack."
     sb.pack_words.setText("rain, cloud, thunder")
     sb.pack_words.editingFinished.emit()
@@ -123,3 +123,38 @@ def test_the_booklet_section_makes_a_pack_from_its_own_controls(win):
     assert [p["gen"] for p in s.page_list][-2:] == ["scramble", "spelltest"]
     assert s.page_list[2]["ws_words"] == "rain, cloud, thunder"
     assert win.history.undoText() == "Make a week of worksheets"
+
+
+def test_a_week_of_the_teachers_own_days():
+    s = Settings(age="4-6", pack_days="early,trace,bingo,clock,reading")
+    w = pack.week(s, list(range(5)))
+    assert [p["gen"] for p in w["page_list"]] == ["early", "trace", "bingo", "clock", "reading"]
+    assert all(p["complexity"] == ages.COMPLEXITY[p["gen"]]["4-6"] for p in w["page_list"])
+    sp = pack.week(Settings(pack_days="maths,trace,words,maze,spelltest", pack_theme="spelling", pack_words="sun, rain"),
+                   list(range(5)))
+    assert [p["gen"] for p in sp["page_list"]] == ["maths", "trace", "words", "maze", "spelltest"]
+    assert sp["page_list"][2]["ws_words"] == "sun, rain"      # the word sheets still use the spelling words
+    for bad in ("maths,trace", "maths,trace,words,maze,mandala", "", "a,b,c,d,e"):
+        assert pack.chosen_days(bad) is None
+        assert [p["gen"] for p in pack.week(Settings(pack_days=bad), list(range(5)))["page_list"]] == list(pack.DAYS)
+
+
+def test_choosing_the_days_in_the_booklet_section(win):
+    sb = win.sidebar
+    assert [c.value() for c in sb.pack_day_combos] == list(pack.DAYS) and not sb.pack_days_reset.isEnabled()
+    sb.pack_day_combos[4].set_value("bingo")                 # Friday: bingo
+    QApplication.processEvents()
+    assert win.state.settings.pack_days == "maths,trace,crossword,words,bingo"
+    assert "This week:" in sb.pack_hint.text() and "Bingo" in sb.pack_hint.text() and sb.pack_days_reset.isEnabled()
+    assert win.state.preset_values()["pack_days"] == "maths,trace,crossword,words,bingo"   # kept in presets
+    sb.pack_btn.click()
+    settle(win)
+    assert [p["gen"] for p in win.state.settings.page_list][-1] == "bingo"
+    sb.pack_theme.set_value("spelling")                      # the teacher's days stay, whatever the theme
+    QApplication.processEvents()
+    assert sb.pack_day_combos[4].value() == "bingo"
+    sb.pack_days_reset.click()                               # Usual days: the spelling week's own
+    QApplication.processEvents()
+    assert win.state.settings.pack_days == "" and [c.value() for c in sb.pack_day_combos] == list(pack.SPELLING_DAYS)
+    sb.pack_day_combos[0].set_value("trace")                 # choosing the usual day again isn't a choice
+    assert win.state.settings.pack_days == ""

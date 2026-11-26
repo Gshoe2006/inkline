@@ -19,13 +19,13 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FOLDERS = ("inkapp", "inkengine")
 # helper: positions of its translated text arguments (and keyword names)
-HELPERS = {"label": ([0], []), "button": ([0, 2], ["tip"]), "check": ([0], []), "Hint": ([0], []),
+HELPERS = {"label": ([0], []), "button": ([0, 2], ["tip"]), "check": ([0], []), "Hint": ([0], []), "Fold": ([0], []), "Popup": ([0], []),
            "OptionRow": ([0], []), "Section": ([0], []), "slider_row": ([0], []), "_check": ([1], []),
            "_slider": ([1], []), "_text": ([1], []), "act": ([1], []), "line_edit": ([1], ["placeholder"]), "tr": ([0], [])}
 # module-level tables whose texts are shown: their values (dicts), or each tuple's second item (lists of pairs)
 TABLES = {"NAMES", "THEME_NAMES", "KINDS", "TASKS", "CURRENCIES", "LETTERS", "HANDS", "SOURCES", "AGES", "SHEETS", "STYLE_NAMES", "BACKGROUNDS", "SHAPE_NAMES",
           "BASES", "STEP_NAMES", "GEN_OPTIONS", "GRID_OPTIONS", "MARGINS", "PATTERN_COLOURS", "CRAYONS",
-          "BUILTIN_PRESETS", "SCHEDULES", "FORMATS", "PRINTER_DEFAULT", "INSTRUCTIONS", "CBN_PATTERN_NOTE", "IMAGE_FILTER", "FILTER", "MESSAGES"}
+          "BUILTIN_PRESETS", "RAIL", "DAY_NAMES", "TOUR_TITLES", "TOUR_TEXTS", "GROUP_NAMES", "SCHEDULES", "FORMATS", "PRINTER_DEFAULT", "INSTRUCTIONS", "CBN_PATTERN_NOTE", "IMAGE_FILTER", "FILTER", "MESSAGES"}
 
 
 def _name(func):

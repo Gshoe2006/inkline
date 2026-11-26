@@ -86,11 +86,11 @@ def _set(w, **kw):
 
 def test_the_field_shows_for_books_and_says_what_will_print(win):
     sb = win.sidebar
-    assert not sb.only_row.isVisibleTo(sb)                                  # a single page
+    assert not sb.shown(sb.only_row)                                  # a single page
     _set(win, booklet=True, pages=10, gen="maze")
-    assert sb.only_row.isVisibleTo(sb) and not sb.only_hint.isVisibleTo(sb)
+    assert sb.shown(sb.only_row) and not sb.shown(sb.only_hint)
     sb.only_pages.setText("3-5, 8")
-    assert sb.only_hint.isVisibleTo(sb) and sb.only_hint.text() == "Prints and saves pages 3–5 and 8 of 14."
+    assert sb.shown(sb.only_hint) and sb.only_hint.text() == "Prints and saves pages 3–5 and 8 of 14."
     sb.only_pages.setText("30")
     assert sb.only_hint.text() == "There's no page 30: this book has 14 pages."
     _set(win, fold=True)

@@ -6,9 +6,11 @@ A desktop app for Linux and Windows that converts photos to, or generates, black
 - **Convert a photo:** Floyd–Steinberg, Atkinson and ordered dithering, halftone dots, engraving lines and stippling dots (both also save as SVG), solid black & white, a line drawing (colouring page), colour by number (regions of similar colour, each numbered, with a key naming the crayon to use; also saves as SVG), or a nonogram puzzle that reveals the photo (always solvable by logic alone), with rotate, zoom and pan to crop.
 - **Photo books:** turn several photos into one colouring-book PDF, one page each with its own crop, plus an optional cover, title, name line and page numbers.
 - **Fold-and-staple books:** booklets and photo books can print two half-size pages per side, double-sided, so the sheets fold and staple into a real little book in page order.
-- **Worksheet packs:** *Booklet → Worksheet pack* makes a booklet of five worksheets, one for each school day, set for the age chosen under *Age*, with a cover, name line and answer pages. On a theme (animals, food, space, ocean, weather or sports) it's a maths drill, handwriting, a crossword, a word search and a maze; on this week's spelling words it's a maths drill and the words four ways: traced, in a crossword whose clues are the words' letters mixed up, in a word search and to unscramble. With *Paper → Copies* or *Names* it makes a pack for every child, and the answers can go in one teacher's book.
+- **Worksheet packs:** *Booklet → Worksheet pack* makes a booklet of five worksheets, one for each school day, set for the age chosen under *Age*, with a cover, name line and answer pages. On a theme (animals, food, space, ocean, weather or sports) it's a maths drill, handwriting, a crossword, a word search and a maze; on this week's spelling words it's a maths drill and the words four ways: traced, in a crossword whose clues are the words' letters mixed up, in a word search and to unscramble. With *Paper → Copies* or *Names* it makes a pack for every child, and the answers can go in one teacher's book. Choose each day's sheet yourself (Monday to Friday, from maths, early maths, handwriting, puzzles, clocks, reading, bingo and more); the week you choose is kept with your presets.
 - **Classroom worksheets:** maths drills (adding, taking away, times tables, number bonds, sharing, missing numbers, money), fractions of shapes, number lines and times grids, telling the time (clock faces to read, or to draw the hands on), symmetry (shade the mirror half), handwriting to trace, crosswords, unscramble sheets, spelling tests and reading comprehension (an original passage for the age with questions), each with an answer page. Word searches, crosswords and worksheet packs have seasonal themes (autumn, Halloween, winter, spring, summer) as well as animals, food, space, ocean, weather and sports, and word searches, unscramble sheets, spelling tests and worksheet packs can use sight words for three stages of early reading.
 - **Classroom paper and rewards:** squared, dot and isometric grid paper, lined paper, handwriting lines and music staves at any spacing; sticker charts and certificates, with each child's name from *Paper → Names*.
+- **Easier to read:** *Print → Page text → Easier to read* sets the worksheets' text in Atkinson Hyperlegible (made for readers with low vision, and recommended for dyslexia), with letters and words spaced wider; *Paper → Cream paper* tints the page on screen and in PDFs, while Print still uses white paper.
+- **Early maths with pictures:** ten frames to count, number bonds to complete, tens rods and ones cubes, and shapes to count, for ages 4–6, with the answers on an answer page.
 - **Bingo:** number (1–75 under B I N G O, or smaller cards for younger children), word (any theme, sight words, or your own list) and sums bingo, a different card for every child with *Paper → Copies* or *Names*, and a caller's sheet on the answer page.
 - **Booklets:** turn any pattern (or every pattern but name pages, mixed) into a multi-page PDF with a cover, a title and name line, page numbers, difficulty that ramps up page by page, a *New design for this page* button to swap any single page (answers follow), and answer pages for mazes, dot-to-dots, sudoku, word search, nonograms, spot the difference and kakuro. Or build a booklet page by page: *Edit pages one by one* lists its pages, each with a small picture and its own pattern, options and complexity (so each word search page can have its own words, and each name page its own name), to add, drag into order, duplicate (with a new design) or remove.
 - **Projects:** *File → Save project* (Ctrl+S) keeps everything you're making in one `.inkline` file, with the photos inside it, so it opens again later or on another computer even if the original pictures have moved. *File → Open project…* (Ctrl+Shift+O) and *Open recent project* bring it back; the window title shows the project's name and whether it has unsaved changes. Installed from a package, project files get their own icon in your file manager and open in Inkline with a double-click; `python3 inkline.py book.inkline` does the same from a terminal. If Inkline closes unexpectedly, the next start offers to bring back the work you hadn't saved: while there's unsaved work, a copy is kept in the settings folder at most once a minute.
@@ -17,7 +19,7 @@ A desktop app for Linux and Windows that converts photos to, or generates, black
 - **Printer test page:** true-size squares and rulers, edge-margin marks, every dither style and dot size, and every line weight, to check your printer at a glance.
 - **Print-ready output:** Letter or A4 at 150/300 dpi, with Print, Save PNG and Save PDF at true paper size. Booklets and photo books can print or save only some pages (*Paper → Print or save only*, e.g. `3-5, 8, cover`). The preview hatches the edge your printer can't reach and warns if the design runs into it.
 - **Posters:** print any design or photo big across 2×1 up to 4×4 sheets, with overlap strips, trim marks and sheet labels (A1, A2…) for assembly.
-- **English, Spanish, French, Portuguese and German:** Inkline uses your system's language, or choose one under *View → Language*. The window and everything printed are translated; word searches, crosswords and handwriting sheets use words and an alphabet in that language.
+- **English, Spanish, French, Portuguese, German, Italian and Dutch:** Inkline uses your system's language, or choose one under *View → Language*. The window and everything printed are translated; word searches, crosswords and handwriting sheets use words and an alphabet in that language.
 - **SVG export:** generated designs save as true vector lines at real paper size, for Inkscape, Cricut/Silhouette cutting machines and laser cutters.
 
 ## Install
@@ -32,10 +34,19 @@ Each [release](https://github.com/Gshoe2006/inkline/releases) has a package for 
 | Any distro, sandboxed | `inkline-<version>.flatpak` | `flatpak install --user inkline-<version>.flatpak` |
 | Any distro, your own Python | `inkline-<version>.run` | `sh inkline-<version>.run` |
 | Windows 10 or 11 (64-bit) | `inkline-<version>-windows-setup.exe` | Run it; no administrator needed |
+| macOS 12 or later, Apple silicon (M1 and later) | `inkline-<version>-macos.dmg` | Open it and drag Inkline to Applications |
 
 The Windows installer isn't signed yet, so Windows SmartScreen may warn that it's from an unknown publisher: choose **More info → Run anyway**. It adds Inkline to the Start menu, opens `.inkline` projects with a double-click, and uninstalls from Settings → Apps. Settings are kept in `%APPDATA%\Inkline`.
 
+The macOS app isn't signed with an Apple Developer ID or notarized yet, so the first time you open it macOS says it can't check it: Control-click Inkline in Applications and choose **Open** (or open it from System Settings → Privacy & Security → **Open Anyway**). It's built for Apple silicon; on an Intel Mac, run it from source. Help → Check for updates installs a newer version in place of the app, and checking while Inkline is closed uses a launchd agent of your own (`~/Library/LaunchAgents/io.github.gshoe2006.Inkline.update.plist`); its notification has no button, so Inkline offers the update when you next open it.
+
 The `.deb` brings its own PySide6 (Debian and Ubuntu don't package a new enough one) and uses the system's Python and numpy. The AppImage brings everything, Python included; for it to appear in your app menu and open `.inkline` projects with a double-click, use an AppImage manager such as Gear Lever or AppImageLauncher.
+
+## The window
+
+Since 6.0 the options come a page at a time. The rail on the left chooses what you're working on: **Create** (a pattern made up for you, chosen from pictures of the patterns you used last, or from the full list) or **Photo** (converting one), then **Booklet**, **Poster** and **Print** (paper, page text, copies and names). **Ctrl+1** to **Ctrl+5** choose them from the keyboard. Each page fits without scrolling, and its sections take turns: opening one closes the others. **All patterns…** shows every pattern as a picture, by kind, with a search box; and a booklet built page by page has its pages changed right on the Booklet page (double-click one, or **Change this page**). **Presets**, **New design**, **More designs…**, the PDF, PNG and SVG saves and **Print…** are in the toolbar over the preview, and what just happened shows under it.
+
+The first time 6.0 opens, a short tour points at the rail, the gallery, the toolbar, the sections and Settings in turn (Back, Next, Skip, or Escape); **Help → Tour of the window** shows it again.
 
 ## Settings
 
@@ -45,6 +56,7 @@ The `.deb` brings its own PySide6 (Debian and Ubuntu don't package a new enough 
 - **Saving:** what **Ctrl+E** saves: PDF (the default), PNG or SVG. The other formats stay in the File menu and under the preview, and Ctrl+Shift+E saves PNG (or PDF, when PNG has Ctrl+E).
 - **Updates:** when Inkline checks for a new version, as **Help → Check for updates automatically**, and **Check now**.
 - **Language:** as **View → Language**, from the next start.
+- **Appearance:** the theme: following the system's light or dark look, Light, Dark, or the extra themes you turn on there (High contrast, Warm paper, Slate); every theme's text is at least 4.5:1 against its background, and High contrast's at least 10:1. **View → Theme** switches between the ones offered. **Use my desktop's style** is here too.
 
 ## Updates
 
@@ -94,6 +106,8 @@ python3 packaging/check_selftest.py /tmp/inkline-test
 
 The self-test opens the window, then writes every pattern, the photo styles, the printer test page, a booklet (plain and folded), two posters and a photo book through the app's own save code, and exits non-zero if anything fails. The unit tests (`python3 -m pip install pytest && QT_QPA_PLATFORM=offscreen python3 -m pytest -q tests`) check the engine against recordings of what Inkline 2.5 drew. GitHub runs both commands on every pull request (`.github/workflows/selftest.yml`) and keeps the rendered files for 7 days.
 
+
+[docs/manual-tests.md](docs/manual-tests.md) lists what CI can't check (a real desktop, notifications, the update timer, a printer), to run on a release candidate; `inkline --check-updates --demo` shows the update notification at once.
 ## Command line
 
 Everything the window makes can also be made from the command line, with the same engine:
@@ -150,7 +164,7 @@ python packaging/windows/build.py         # dist/Inkline/ and dist/inkline-<vers
 
 ## Translations
 
-Inkline is in English, Spanish (`es`), French (`fr`), Brazilian Portuguese (`pt`) and German (`de`). Each translation is `inkengine/locale/<code>.json`: the
+Inkline is in English, Spanish (`es`), French (`fr`), Brazilian Portuguese (`pt`), German (`de`), Italian (`it`) and Dutch (`nl`). Each translation is `inkengine/locale/<code>.json`: the
 English text as written in the code, and its translation. Word search themes, crossword words and clues, and the
 default handwriting words are written in each language in `inkengine/patterns/words.py`, `crossword.py` and
 `trace.py`.

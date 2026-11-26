@@ -23,7 +23,7 @@ from .state import State
 
 SEED = 20261117
 PATTERNS = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "words", "nonogram", "spot", "kakuro",
-            "maths", "trace", "crossword", "clock", "scramble", "spelltest", "fractions", "symmetry", "ruled", "reward", "reading", "bingo"]
+            "maths", "trace", "crossword", "clock", "scramble", "spelltest", "fractions", "symmetry", "ruled", "reward", "reading", "bingo", "early"]
 
 
 def _pdf(path, state):

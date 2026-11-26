@@ -105,14 +105,14 @@ def win(tmp_path, monkeypatch):
 
 def test_the_sheet_controls(win):
     sb = win.sidebar
-    assert sb.sheet_row.isVisibleTo(sb) and not sb.sheet_opts.isVisibleTo(sb)
+    assert sb.shown(sb.sheet_row) and not sb.shown(sb.sheet_opts)
     sb.sheet.set_value("banner")
-    assert win.state.settings.sheet == "banner" and sb.sheet_opts.isVisibleTo(sb)
-    assert [row.isVisibleTo(sb) for row, _c in sb.panel_combos] == [True, True, False]
+    assert win.state.settings.sheet == "banner" and sb.shown(sb.sheet_opts)
+    assert [sb.shown(row) for row, _c in sb.panel_combos] == [True, True, False]
     sb.panel_combos[1][1].set_value("crossword")
     assert sheet_gens(win.state.settings)[2] == "crossword"
     assert win.history.undoText() == "Undo Designs on the sheet" or "sheet" in win.history.undoText().lower()
     win.state.update(booklet=True)
     win.sidebar.load()
     win._changed("booklet")
-    assert not sb.sheet_row.isVisibleTo(sb)
+    assert not sb.shown(sb.sheet_row)

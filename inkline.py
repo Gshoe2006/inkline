@@ -10,6 +10,7 @@ everything with Qt and Python.
     python3 inkline.py --version           prints the version
     python3 inkline.py --check-updates     no window: looks for a new version and says so in a notification
                                            (what Help → Check for updates automatically runs while Inkline is closed)
+    python3 inkline.py --check-updates --demo   the notification at once, for a made-up next version (to see it)
     python3 inkline.py --update            the app, with its update box open (that notification's button)
 """
 
@@ -72,10 +73,12 @@ def main():
             app.installTranslator(qt_words)
     if "--check-updates" in sys.argv[1:]:
         from inkapp import update_check
-        sys.exit(update_check.main(app_version()))
+        sys.exit(update_check.main(app_version(), demo="--demo" in sys.argv[1:]))
     from inkapp.window import Window
     theme.remember_desktop(app)   # the desktop's own look, for View → Use my desktop's style
-    theme.DESKTOP["on"] = bool(theme.desktop_style_name()) and config.read("preferences.json").get("desktop_style") is True
+    prefs = config.read("preferences.json")
+    theme.DESKTOP["on"] = bool(theme.desktop_style_name()) and prefs.get("desktop_style") is True
+    theme.restore(prefs)   # Edit → Settings → Appearance
     theme.apply(app)
     win = Window(app_version())
     win.show()
@@ -83,6 +86,7 @@ def main():
     path = startup_project(sys.argv[1:])
     if not recovered and not path:
         win.offer_whats_new()          # the first start after an update (not when opening a project): what's changed
+        win.offer_tour()               # the first start of 6.0: a short tour of the window
         win.updates.at_start()   # ask once whether to check for updates; then at most once a day, in the background
     if path and not recovered:   # recovered work isn't put aside for the project named: it can be opened next
         win.open_project(path)

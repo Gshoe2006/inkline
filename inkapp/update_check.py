@@ -121,6 +121,22 @@ def notify_windows(title, body, wait=WAIT):
     return bool(clicked)
 
 
+# --- macOS: Notification Centre, through AppleScript (no button: Inkline offers the update when it next opens) --------
+def notify_macos(title, body, run=subprocess.run):
+    def q(text):
+        return '"' + text.replace("\\", "\\\\").replace('"', '\\"') + '"'
+    run(["osascript", "-e", f"display notification {q(body)} with title {q(title)}"], timeout=30)
+    return False
+
+
+def notify(title, body, button):
+    if sys.platform == "win32":
+        return notify_windows(title, body)
+    if sys.platform == "darwin":
+        return notify_macos(title, body)
+    return notify_linux(title, body, button)
+
+
 def open_update(kind=None):
     """Start Inkline with its update box open."""
     cmd = update_schedule.command(kind) + ["--update"]
@@ -128,14 +144,28 @@ def open_update(kind=None):
     subprocess.Popen(cmd, close_fds=True, **kw)
 
 
-def main(version):
-    """The whole check: returns 0 (nothing to say is not a failure)."""
+def demo_version(version):
+    """A version just after this one, for --demo: "5.8.0" → "5.8.1" ("dev" → "99.0.0")."""
+    v = updater.parse_version(version)
+    return f"{v[0]}.{v[1]}.{v[2] + 1}" if v else "99.0.0"
+
+
+def main(version, demo=False):
+    """The whole check: returns 0 (nothing to say is not a failure). With demo, the notification is shown at once
+    for a made-up next version, whatever the settings and with nothing fetched or remembered (to see how it looks
+    on a desktop; docs/manual-tests.md)."""
+    if demo:
+        title, body, button = texts(demo_version(version), version)
+        pressed = notify(title, body, button)
+        if pressed:
+            open_update()
+        return 0
     release = find(version, config.read("preferences.json"))
     remember_found(release)
     if not release:
         return 0
     title, body, button = texts(release["version"], version)
-    pressed = notify_windows(title, body) if sys.platform == "win32" else notify_linux(title, body, button)
+    pressed = notify(title, body, button)
     if pressed:
         open_update()
     return 0

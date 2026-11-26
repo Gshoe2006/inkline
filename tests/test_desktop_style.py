@@ -84,6 +84,7 @@ def test_a_style_with_wider_controls_widens_the_sidebar_instead_of_cutting_them_
     theme.apply(app, dark=False)
     w = win()
     sb = w.sidebar
+    sb.reveal(sb.class_list_row)   # a page with buttons side by side (a saved list and Delete)
     app.processEvents()
     assert sb.width() == theme.SIDEBAR_WIDTH
     w.act_desktop.trigger()

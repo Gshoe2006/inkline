@@ -43,7 +43,7 @@ STEP_NAMES = {"gen": "Pattern", "complexity": "Complexity", "weight": "Line weig
               "pages": "Design pages", "ramp": "Get harder", "mix": "Mix every pattern", "cover": "Cover page",
               "page_nums": "Page numbers", "key": "Answer pages", "maze_shape": "Maze shape", "maze_word": "Word or name", "spot_base": "Picture",
               "ws_theme": "Words from", "ws_words": "Your words", "name_text": "Name or word", "name_bg": "Around the letters",
-              "maths_kind": "Sums", "money": "Money", "clock_task": "Clocks", "frac_kind": "Worksheet", "ruled_kind": "Paper", "reward_kind": "Reward", "reward_text": "Reward for", "bingo_kind": "Bingo", "bingo_theme": "Bingo words from", "bingo_words": "Your bingo words", "pack_theme": "Worksheet pack", "pack_words": "Spelling words", "trace_source": "Trace", "trace_style": "Letters", "trace_hand": "Handwriting style", "trace_text": "Words to trace",
+              "maths_kind": "Sums", "money": "Money", "clock_task": "Clocks", "frac_kind": "Worksheet", "ruled_kind": "Paper", "reward_kind": "Reward", "reward_text": "Reward for", "bingo_kind": "Bingo", "early_kind": "Early maths", "bingo_theme": "Bingo words from", "bingo_words": "Your bingo words", "pack_theme": "Worksheet pack", "pack_words": "Spelling words", "pack_days": "Worksheet pack days", "easy_read": "Easier to read", "cream": "Cream paper", "trace_source": "Trace", "trace_style": "Letters", "trace_hand": "Handwriting style", "trace_text": "Words to trace",
               "cbn_maths": "Colour by maths", "age": "Age", "sheet": "On the sheet", "panel_gens": "Designs on the sheet", "cross_theme": "Crossword words", "cross_words": "Crossword words and clues",
               "mode": "Mode", "style": "Style", "brightness": "Brightness", "contrast": "Contrast", "threshold": "Threshold",
               "dot": "Dot size", "fit": "Placement", "invert": "Invert", "pnono_size": "Squares across",
@@ -184,8 +184,20 @@ class Window(QMainWindow):
         lay.setSpacing(0)
         self.sidebar = Sidebar(self.state, version)
         self.preview = Preview()
+        # 6.0: the rail, the options it chooses, then the toolbar, the preview and the status line
+        lay.addWidget(self.sidebar.rail)
         lay.addWidget(self.sidebar)
-        lay.addWidget(self.preview, 1)
+        right = QVBoxLayout()
+        right.setContentsMargins(0, 0, 0, 0)
+        right.setSpacing(0)
+        right.addWidget(self.sidebar.toolbar)
+        right.addWidget(self.preview, 1)
+        right.addWidget(self.sidebar.statusbar)
+        lay.addLayout(right, 1)
+        if self.remember:   # the gallery's patterns: those used last
+            used = config.read("preferences.json").get("recent_patterns")
+            self.sidebar.recent_gens = [g for g in used if isinstance(g, str)] if isinstance(used, list) else []
+            self.sidebar._fill_gallery(self.state.settings)
         self.setCentralWidget(central)
         self.sidebar.fill_presets(self.saved_presets)
 
@@ -222,6 +234,11 @@ class Window(QMainWindow):
         self.updates = update_ui.Updates(self, version)
         self._menus()
         self.apply_save_format()
+        # Ctrl+1 to Ctrl+5: the rail's Create, Photo, Booklet, Poster and Print, as clicking them does
+        from .layout import RAIL
+        for i, (key, _text) in enumerate(RAIL):
+            sc = QShortcut(QKeySequence(f"Ctrl+{i + 1}"), self)
+            sc.activated.connect(lambda k=key: self._rail_key(k))
         QApplication.instance().installEventFilter(self)
         theme.follow_system(QApplication.instance(), self.preview.page.update)
         if self.state.settings.mode == "convert" and not self.state.photos:
@@ -241,7 +258,7 @@ class Window(QMainWindow):
         sb.changed.connect(self._changed)
         sb.cancel_btn.clicked.connect(self.cancel_job)
         esc = QShortcut(QKeySequence(Qt.Key.Key_Escape), self)
-        esc.activated.connect(self.cancel_job)
+        esc.activated.connect(self._escape)
         sb.mode_changed.connect(self._set_mode)
         sb.reroll.connect(self.new_design)
         sb.more_designs.connect(self.more_designs)
@@ -347,6 +364,9 @@ class Window(QMainWindow):
             a.setChecked(code == i18n.LANG)
             a.triggered.connect(lambda _on=False, code=code: self._choose_language(code))
             self.lang_actions[code] = a
+        self.theme_menu = v.addMenu(tr("T&heme"))   # the themes turned on in Edit → Settings → Appearance
+        self.theme_menu.aboutToShow.connect(self._fill_theme_menu)
+        self._fill_theme_menu()
         self.act_desktop = act(v, "Use my &desktop's style", self._toggle_desktop_style)
         self.act_desktop.setCheckable(True)
         self.act_desktop.setChecked(theme.DESKTOP["on"])
@@ -361,6 +381,7 @@ class Window(QMainWindow):
         v.setToolTipsVisible(True)
         h = mb.addMenu(tr("&Help"))
         act(h, "&What's new", lambda: self.show_whats_new())
+        act(h, "T&our of the window", lambda: self.show_tour())
         act(h, "Check for &updates…", lambda: self.updates.check(asked=True))
         self.updates.add_menu(h.addMenu(tr("Check for updates au&tomatically")))
         act(h, "&About Inkline", self._about)
@@ -372,6 +393,11 @@ class Window(QMainWindow):
         self._typed = control if isinstance(control, QLineEdit) and control.hasFocus() else None
         st = self.state
         s = st.settings
+        if key == "gen":   # the gallery shows the patterns used last
+            self.sidebar.note_pattern(s.gen)
+            if self.remember:
+                config.write("preferences.json", {**config.read("preferences.json"),
+                                                  "recent_patterns": self.sidebar.recent_gens[:12]}, "Preferences")
         # one multi-page mode at a time, and the pager starts again where 2.x restarted it
         if key == "booklet":
             st.page = 0
@@ -724,6 +750,58 @@ class Window(QMainWindow):
             for a, b in ((self.act_pdf, sb.pdf_btn), (self.act_png, sb.png_btn), (self.act_svg, sb.svg_btn)):
                 a.setEnabled(b.isEnabled())
                 a.setToolTip(b.toolTip())
+
+    def _rail_key(self, key):
+        b = self.sidebar.rail.buttons[key]
+        if b.isEnabled():
+            b.click()
+        else:   # Booklet with a photo: say why nothing happened
+            self._msg(tr("A photo book is made on the Photo page (Ctrl+2)."))
+
+    # --- themes ----------------------------------------------------------------------------------------
+    def themes_offered(self):
+        shown = config.read("preferences.json").get("themes_offered") if self.remember else None
+        return [k for k in theme.EXTRA_THEMES if isinstance(shown, list) and k in shown]
+
+    def _fill_theme_menu(self):
+        """View → Theme: following the system, light, dark, and the extras turned on in Settings."""
+        self.theme_menu.clear()
+        self.theme_actions = {}
+        for key in theme.offered(self.themes_offered()):
+            a = self.theme_menu.addAction(tr(theme.THEME_NAMES[key]))
+            a.setCheckable(True)
+            a.setChecked(key == theme.CHOSEN["name"])
+            a.triggered.connect(lambda _on=False, k=key: self.set_theme(k))
+            self.theme_actions[key] = a
+
+    def set_theme(self, key):
+        """Use a theme now, and from the next start."""
+        theme.use_theme(QApplication.instance(), key)
+        self.preview.page.update()
+        for k, a in getattr(self, "theme_actions", {}).items():
+            a.setChecked(k == key)
+        if self.remember:
+            err = config.write("preferences.json", {**config.read("preferences.json"), "theme": key}, "Preferences")
+            if err:
+                self._msg(err)
+        self._msg(tr("Using the {theme} theme.").format(theme=tr(theme.THEME_NAMES[key])) if key != "system" else
+                  tr("Following the system's light or dark look."))
+        if theme.DESKTOP["on"]:
+            self._msg(tr("Your desktop's style is on, so the theme only colours the preview. Turn it off under View to "
+                         "see the theme everywhere."))
+
+    def offer_theme(self, key, on):
+        """Turn an extra theme on or off in the theme lists; turning off the one in use goes back to the system's."""
+        shown = [k for k in self.themes_offered() if k != key] + ([key] if on else [])
+        if self.remember:
+            err = config.write("preferences.json", {**config.read("preferences.json"),
+                                                    "themes_offered": [k for k in theme.EXTRA_THEMES if k in shown]},
+                               "Preferences")
+            if err:
+                self._msg(err)
+        if not on and theme.CHOSEN["name"] == key:
+            self.set_theme("system")
+        self._fill_theme_menu()
 
     def _toggle_desktop_style(self, on):
         theme.use_desktop(QApplication.instance(), on)
@@ -1315,6 +1393,7 @@ class Window(QMainWindow):
     def _save_preset(self, name):
         if not name:
             self._msg(tr("Type a name for the preset first."))
+            self.sidebar.presets_btn.open()   # the panel the name is typed in
             self.sidebar.preset_name.setFocus()
             return
         if name in BUILTIN_PRESETS:
@@ -1336,6 +1415,7 @@ class Window(QMainWindow):
         names = self.sidebar.copies_names.text().strip()
         if not jobs.parse_names(names):
             self._msg(tr("Type or paste the names first, then save them as a list."))
+            self.sidebar.reveal(self.sidebar.copies_names)
             self.sidebar.copies_names.setFocus()
             return
         name, ok = QInputDialog.getText(self, tr("Save class list"), tr("Name for this list:"), text=chosen)
@@ -1452,17 +1532,18 @@ class Window(QMainWindow):
         """What Print and Save PDF produce, with the Paper section's choice of pages; None (and why, in the status
         line) when that choice doesn't make sense."""
         sb = self.sidebar
-        only = sb.only_pages.text() if sb.only_row.isVisibleTo(sb) else ""
-        copies = sb.copies_count() if sb.copies_row.isVisibleTo(sb) else 1
+        only = sb.only_pages.text() if sb.shown(sb.only_row) else ""
+        copies = sb.copies_count() if sb.shown(sb.copies_row) else 1
         try:
-            names = sb.copies_names_list() if sb.copies_row.isVisibleTo(sb) else []
+            names = sb.copies_names_list() if sb.shown(sb.copies_row) else []
             # a switch that isn't shown doesn't count (one copy has no answer pages)
-            answers = sb.copies_answers.isVisibleTo(sb) and sb.copies_answers.isChecked()
-            book = sb.copies_answer_book.isVisibleTo(sb) and sb.copies_answer_book.isChecked()
+            answers = sb.shown(sb.copies_answers) and sb.copies_answers.isChecked()
+            book = sb.shown(sb.copies_answer_book) and sb.copies_answer_book.isChecked()
             return jobs.job(snap, only, copies, sb.copies_vary.isChecked(), answers, names, book)
         except ValueError as why:
             self._msg(tr("{why} Fix the pages under Paper → Print or save only, or clear it to use every page.").format(
                 why=why))
+            self.sidebar.reveal(self.sidebar.only_pages)   # Print is in the toolbar: the field may be out of view
             self.sidebar.only_pages.setFocus()
             return None
 
@@ -1470,7 +1551,8 @@ class Window(QMainWindow):
         if self._busy_saving:
             return
         st = self.state
-        snap = State(replace(st.settings), [replace(p) for p in st.photos], st.sel, st.page)
+        # cream paper is for screens and PDFs: a printer gets white (no ink spent colouring the page)
+        snap = State(replace(st.settings, cream=False), [replace(p) for p in st.photos], st.sel, st.page)
         j = self._job(snap)
         if j is None:
             return
@@ -1578,6 +1660,14 @@ class Window(QMainWindow):
             QTimer.singleShot(0, lambda: bar.setValue(i + 1))
         self.worker.submit(lambda: ("job", jobs.run(j, device, progress, cancel.is_set), done, failed))
 
+    def _escape(self):
+        """Esc: closes the tour if it's showing, else cancels a print or save."""
+        t = getattr(self, "_tour", None)
+        if t is not None and t.isVisible():
+            t.finish()
+            return
+        self.cancel_job()
+
     def cancel_job(self):
         """Cancel (or Esc): stop the print or save after the page being drawn."""
         # only a job with a Cancel button: a single page is done in a moment (and a PNG or SVG save can't stop)
@@ -1659,6 +1749,23 @@ class Window(QMainWindow):
         self._history_view.show()
         self._history_view.raise_()
         self._history_view.activateWindow()
+
+    def show_tour(self, first=False):
+        """The window's tour; the first time, finishing or skipping it is remembered."""
+        from . import tour
+        if getattr(self, "_tour", None) is not None and self._tour.isVisible():
+            return self._tour
+        self._tour = tour.Tour(self, done=(tour.mark_seen if first and self.remember else None))
+        self._tour.start()
+        return self._tour
+
+    def offer_tour(self):
+        """At start: the tour, the first time 6.0 opens."""
+        from . import tour
+        if tour.due(self.remember):
+            self.show_tour(first=True)
+            return True
+        return False
 
     def offer_whats_new(self):
         """At start: the first time after an update, what's changed since the version used last."""
