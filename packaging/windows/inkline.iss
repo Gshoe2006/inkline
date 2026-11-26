@@ -1,5 +1,5 @@
 ; Inkline's Windows installer (Inno Setup 6). packaging/windows/build.py runs it with /DVERSION, /DAPPDIR (the app
-; folder PyInstaller built), /DOUTDIR, /DICON and /DLICENSE.
+; folder PyInstaller built), /DOUTDIR, /DICON and /DLICENSE, and when signing /DSIGNTOOL.
 
 #ifndef VERSION
   #error Run this through packaging/windows/build.py
@@ -36,6 +36,12 @@ WizardStyle=modern
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 ChangesAssociations=yes
+#ifdef SIGNTOOL
+; build.py passes /DSIGNTOOL and /Sinkline=<command> when INKLINE_SIGN_CMD is set (docs/code-signing.md): Inno Setup
+; then signs this installer and the uninstaller it writes
+SignTool=inkline
+SignedUninstaller=yes
+#endif
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
