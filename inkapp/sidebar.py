@@ -152,7 +152,7 @@ class Sidebar(QFrame):
     def _fit_later(self):
         if not self._fit_pending:
             self._fit_pending = True
-            QTimer.singleShot(0, self.fit_width)
+            QTimer.singleShot(0, self, self.fit_width)   # not after the sidebar is gone (a closed window)
 
     def eventFilter(self, obj, ev):
         if obj in self._columns.values() and ev.type() == QEvent.Type.LayoutRequest:   # a part shown or hidden, a restyle
