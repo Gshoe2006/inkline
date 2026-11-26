@@ -522,3 +522,9 @@ def test_check_install_kind(tmp_path):
     assert run("deb").returncode == 0
     bad = run("arch")
     assert bad.returncode != 0 and "'deb', expected 'arch'" in bad.stderr
+
+
+def test_android_offers_the_release_page():
+    from inkapp import update_ui
+    assert updater.install_kind(env={}, frozen=False, platform="android") == "android"
+    assert "android" in update_ui.NOTIFY_ONLY and updater.asset_name("android", "1.2.3") is None

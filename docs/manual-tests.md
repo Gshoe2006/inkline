@@ -66,6 +66,20 @@ Start Inkline from the package you're testing, not from the source checkout, unl
       `Inkline\Inkline.exe` on a PC where it's never been installed: it starts, and Update now downloads the new .zip
       and opens its folder.
 
+## Android (a phone and a tablet)
+
+- [ ] Install `inkline-<version>-android-aarch64.apk` (allow installs from this source when asked): Inkline starts in
+      a minute or less, in the one-column layout on a phone, the rail layout on a tablet held sideways.
+- [ ] **Touch:** every button, list and slider is easy to hit with a finger; the bottom bar switches pages; Preview
+      shows the page; turning the tablet switches layouts without losing what you'd typed.
+- [ ] **Menu:** the Menu button opens File, Edit, View, Help; on a phone it has Presets too.
+- [ ] **Files:** Open image picks a photo from the gallery or Files; Save PDF and Save PNG save where you choose, and
+      the file opens in another app.
+- [ ] **Print:** Print opens Android's print dialog; Save as PDF there writes the pages; a Wi-Fi printer (or the
+      Mopria plugin) prints them in grey, a fold-and-staple booklet double-sided.
+- [ ] **Speed:** a 10-page booklet and a photo conversion finish in reasonable time on an older phone.
+- [ ] **Update:** with an older APK installed, Check for updates offers the release page.
+
 ## Printing
 
 - [ ] Edit → Settings → Printer: choose a printer; File → Print… starts with it. Its dead edges show on the preview

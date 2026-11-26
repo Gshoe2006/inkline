@@ -99,3 +99,35 @@ def test_the_apk_carries_print_and_ci_checks_the_dialog_opens():
     assert "DUPLEX_MODE_SHORT_EDGE" in src and "COLOR_MODE_MONOCHROME" in src
     test = open(os.path.join(ROOT, "packaging", "android", "emulator-test.sh"), encoding="utf-8").read()
     assert "inkline-printtest" in test and "printspooler" in test
+
+
+def test_release_apks_are_signed_and_added_after_a_release():
+    flow = open(os.path.join(ROOT, ".github", "workflows", "android-release.yml"), encoding="utf-8").read()
+    assert "workflows: [Release]" in flow and "--release" in flow and "apksigner\" verify" in flow
+    for s in ("ANDROID_KEYSTORE", "ANDROID_KEYSTORE_PASSWORD", "ANDROID_KEY_ALIAS", "ANDROID_KEY_PASSWORD"):
+        assert f"secrets.{s}" in flow and s in open(os.path.join(ROOT, "docs", "android-signing.md"), encoding="utf-8").read()
+    assert "gh release upload" in flow and "fetch-wheels.sh" in flow
+    deploy = open(os.path.join(ROOT, "packaging", "android", "deploy.py"), encoding="utf-8").read()
+    assert 'build("release")' in deploy and "trim(" in deploy
+
+
+def test_the_trim_follows_what_the_kept_modules_load(tmp_path):
+    ns = {"PySideRecipe": type("R", (), {"build_arch": lambda s, a: None}), "info": print}
+    exec(open(os.path.join(ROOT, "packaging", "android", "prune.py"), encoding="utf-8").read(), ns)
+    assert ns["INKLINE_MODULES"] == {"QtCore", "QtGui", "QtWidgets", "QtPrintSupport"}
+    import sys
+    core = os.path.join(os.path.dirname(sys.modules["PySide6"].__file__), "QtCore.abi3.so")
+    if os.path.exists(core):   # a Linux PySide6: its ELF files are read the same way
+        assert any(n.startswith("libQt6Core") for n in ns["_inkline_needed"](core))
+    pyside, libs = tmp_path / "PySide6", tmp_path / "libs"
+    (pyside / "Qt" / "qml").mkdir(parents=True)
+    (pyside / "Qt" / "plugins" / "platforms").mkdir(parents=True)
+    (pyside / "Qt" / "plugins" / "multimedia").mkdir(parents=True)
+    libs.mkdir()
+    for f in ("QtCore.abi3.so", "QtQuick.abi3.so", "QtQuick.pyi"):
+        (pyside / f).write_bytes(b"x")
+    (libs / "libQt6Quick_x86_64.so").write_bytes(b"x" * 10)
+    ns["inkline_prune"](str(pyside), str(libs))
+    assert (pyside / "QtCore.abi3.so").exists() and not (pyside / "QtQuick.abi3.so").exists()
+    assert not (pyside / "Qt" / "qml").exists() and not (pyside / "Qt" / "plugins" / "multimedia").exists()
+    assert (pyside / "Qt" / "plugins" / "platforms").exists() and not (libs / "libQt6Quick_x86_64.so").exists()

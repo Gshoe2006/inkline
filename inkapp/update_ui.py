@@ -19,7 +19,7 @@ from inkengine.i18n import tr
 
 from . import config, update_schedule, updater, whatsnew
 
-NOTIFY_ONLY = ("flatpak", "snap", "source")
+NOTIFY_ONLY = ("flatpak", "snap", "android", "source")
 
 
 class Updates(QObject):
@@ -194,7 +194,9 @@ class Updates(QObject):
         name = updater.asset_name(self.kind, version)
         can = self.kind not in NOTIFY_ONLY and name in release["assets"]
         if not can:
-            box.setInformativeText(tr("This copy of Inkline is updated by Flatpak, Snap or from its source code, not "
+            box.setInformativeText(tr("Download the new APK from the release page, then open it to install it.")
+                                   if self.kind == "android" else
+                                   tr("This copy of Inkline is updated by Flatpak, Snap or from its source code, not "
                                       "by itself. The release page has the new version.") if self.kind in NOTIFY_ONLY
                                    else tr("The release doesn't have a package for this copy of Inkline yet. The "
                                            "release page has the new version."))

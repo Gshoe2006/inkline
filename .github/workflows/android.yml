@@ -61,23 +61,7 @@ jobs:
           restore-keys: gradle-${{ runner.os }}-
 
       - name: Fetch Qt's PySide6 6.12.0 Android wheels
-        run: |
-          mkdir -p wheels
-          for pkg in pyside6 shiboken6; do
-            base="https://download.qt.io/official_releases/QtForPython/$pkg/"
-            curl -fsSL "$base" -o "$pkg.html"
-            name=$(grep -oiE "href=\"[^\"]*6\.12\.0[^\"]*android_${{ matrix.arch }}\.whl\"" "$pkg.html" | head -1 | sed 's/^href="//; s/"$//')
-            if [ -z "$name" ]; then
-              echo "::error::No 6.12.0 Android ${{ matrix.arch }} wheel for $pkg at $base. Android wheels there:"
-              grep -oiE "href=\"[^\"]*android[^\"]*\"" "$pkg.html" | head -40
-              exit 1
-            fi
-            case "$name" in http*) url="$name" ;; *) url="$base$name" ;; esac
-            echo "$pkg: $url"
-            curl -fsSL -o "wheels/$(basename "$name")" "$url"
-            echo "WHEEL_$(echo "$pkg" | tr a-z A-Z)=$PWD/wheels/$(basename "$name")" >> "$GITHUB_ENV"
-          done
-          ls -l wheels
+        run: sh packaging/android/fetch-wheels.sh ${{ matrix.arch }} wheels >> "$GITHUB_ENV"
 
       - name: Build the APK
         run: |
@@ -120,7 +104,7 @@ jobs:
           arch: x86_64
           target: google_apis
           disable-animations: true
-          script: sh packaging/android/emulator-test.sh dist/inkline-*-android-x86_64.apk android-test
+          script: sh packaging/android/emulator-test.sh dist/inkline-*-android-x86_64-debug.apk android-test
 
       - name: Check the files the self-test wrote on Android
         run: python3 packaging/check_selftest.py android-test/selftest

@@ -10,6 +10,8 @@ How each copy updates (install_kind):
 - run-user  (the .run installer, for one person): run the new .run, then start Inkline again.
 - run-system, deb, rpm, arch (installed for everyone): the same with an administrator password, through pkexec; without
   pkexec, the file is downloaded and its folder opened, with the command to install it.
+- android (the APK): say there's an update, and open the release page for the new APK (an app can't install one
+  without a permission Inkline doesn't ask for)
 - flatpak, snap, source: say there's an update, and open the release page (Flatpak and Snap update the app
   themselves).
 
@@ -40,7 +42,7 @@ PAGE = f"https://github.com/{REPO}/releases/latest"
 DAY = 24 * 3600
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 INSTALL_KINDS = ("windows", "windows-portable", "macos", "appimage", "run-user", "run-system", "deb", "rpm", "arch",
-                 "flatpak", "snap", "source")
+                 "flatpak", "snap", "android", "source")
 NEEDS_ADMIN = ("run-system", "deb", "rpm", "arch")
 
 
@@ -49,6 +51,8 @@ def install_kind(env=None, frozen=None, root=ROOT, platform=None):
     env = os.environ if env is None else env
     frozen = getattr(sys, "frozen", False) if frozen is None else frozen
     platform = platform or sys.platform
+    if platform == "android":
+        return "android"
     if frozen and os.name == "nt" or frozen == "windows":   # the portable .zip has a "portable" file beside Inkline.exe
         exe_dir = os.path.dirname(os.path.abspath(sys.executable))
         return "windows-portable" if os.path.exists(os.path.join(exe_dir, "portable")) else "windows"

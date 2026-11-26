@@ -71,13 +71,15 @@ def main(argv):
     p.add_argument("--arch", choices=("aarch64", "x86_64"), required=True)
     p.add_argument("--wheel-pyside", required=True)
     p.add_argument("--wheel-shiboken", required=True)
+    p.add_argument("--release", action="store_true", help="a signed release APK (the key: see deploy.py)")
     p.add_argument("--ndk")
     p.add_argument("--sdk")
     a = p.parse_args(argv)
     if not sys.platform.startswith("linux"):
         raise SystemExit("build.py: build the Android app on Linux")
     app = stage(a.arch)
-    cmd = [sys.executable, os.path.join(HERE, "deploy.py"), "--version", version(), "--",
+    cmd = [sys.executable, os.path.join(HERE, "deploy.py"), "--version", version(), *(["--release"] if a.release else []),
+           "--",
            "--name", "Inkline", "--force", "--verbose", "--keep-deployment-files",
            "--wheel-pyside", os.path.abspath(a.wheel_pyside), "--wheel-shiboken", os.path.abspath(a.wheel_shiboken)]
     if a.ndk:
@@ -89,7 +91,7 @@ def main(argv):
     if not built:
         raise SystemExit("build.py: the deploy tool made no .apk (see its output above)")
     os.makedirs(DIST, exist_ok=True)
-    out = os.path.join(DIST, f"inkline-{version()}-android-{a.arch}.apk")
+    out = os.path.join(DIST, f"inkline-{version()}-android-{a.arch}{'' if a.release else '-debug'}.apk")
     shutil.copyfile(built[-1], out)
     print("built", out)
 
