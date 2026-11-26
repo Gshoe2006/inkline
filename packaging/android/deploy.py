@@ -4,6 +4,7 @@ in the staged app folder):
     python3 deploy.py --version X.Y.Z -- <pyside6-android-deploy's own options>
 
 - numpy (a python-for-android recipe): the tool asks buildozer only for Python, shiboken6 and PySide6
+- Print: pyjnius, and the Java class (java/…/PdfPrint.java) that hands a PDF to Android's print service
 - Inkline's data files (translations and reading passages as .json, fonts, the icon, VERSION, LICENSE): buildozer
   packs only the file types it's told
 - its Android identity: io.github.gshoe2006.inkline, called Inkline, at Inkline's version
@@ -16,6 +17,7 @@ import sys
 import PySide6
 
 SCRIPTS = os.path.join(os.path.dirname(PySide6.__file__), "scripts")
+JAVA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "java")   # Print's Java side
 
 
 def main(argv):
@@ -29,7 +31,8 @@ def main(argv):
 
     def inkline_config(self, spec_file, pysidedeploy_config):
         original(self, spec_file, pysidedeploy_config)
-        self.set_value("app", "requirements", "python3,shiboken6,PySide6,numpy")
+        self.set_value("app", "requirements", "python3,shiboken6,PySide6,numpy,pyjnius")
+        self.set_value("app", "android.add_src", JAVA, raise_warning=False)
         exts = self.get_value("app", "source.include_exts", ignore_fail=True) or "py"
         self.set_value("app", "source.include_exts", f"{exts},json,ttf,svg,md,txt", raise_warning=False)
         self.set_value("app", "source.include_patterns", "VERSION,LICENSE", raise_warning=False)

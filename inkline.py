@@ -93,6 +93,9 @@ def main():
         win.updates.at_start()   # ask once whether to check for updates; then at most once a day, in the background
     if path and not recovered:   # recovered work isn't put aside for the project named: it can be opened next
         win.open_project(path)
+    if os.environ.get("INKLINE_PRINT_TEST") == "1":   # the Android build's CI check: Print, once the window is up
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(8000, win.print_)
     if "--update" in sys.argv[1:]:   # from the update notification's button
         win.updates.check(asked=True)
     sys.exit(app.exec())

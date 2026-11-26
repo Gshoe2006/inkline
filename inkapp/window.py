@@ -27,7 +27,7 @@ from inkengine.i18n import tr
 from inkengine.page import PAGE_KEYS, Settings, clean_page, design_box, geometry, single_page
 from inkengine.patterns import NAMES
 
-from . import config, jobs, project, recovery, settings, theme, update_ui, whatsnew
+from . import android_print, config, jobs, project, recovery, settings, theme, update_ui, whatsnew
 from .layout import BottomBar, MenuButton
 from .preview import Preview
 from .render import PREVIEW_DPI, Renderer, render_view, view
@@ -1689,6 +1689,8 @@ class Window(QMainWindow):
         j = self._job(snap)
         if j is None:
             return
+        if android_print.available():   # no Qt print dialog on Android: a PDF, for Android's own
+            return self._print_android(j, snap)
         printer = QPrinter(QPrinter.PrinterMode.HighResolution)
         printer.setPageLayout(jobs.page_layout(snap.settings, j.orient))
         printer.setFullPage(True)
@@ -1715,6 +1717,27 @@ class Window(QMainWindow):
             done = tr("Sent {what} to the printer.").format(what=sent) if j.count > 1 else tr("Sent to the printer.")
         self._start(j, printer, done, tr("The printer didn't accept the job. Check that it's connected."),
                     stopped=tr("Printing cancelled: nothing was sent to the printer."))
+
+    def _print_android(self, j, snap):
+        """Write the job as a PDF (as Save PDF does), then open Android's print dialog for it."""
+        path = android_print.job_path(j.name)
+        dev = QPdfWriter(path)
+        dev.setPageLayout(jobs.page_layout(snap.settings, j.orient))
+        dev.setResolution(j.geometry.dpi)
+        dev.setTitle(j.name)
+        dev.setCreator("Inkline")
+
+        def opened():
+            try:
+                android_print.print_pdf(path, j.name, duplex=j.duplex)
+            except OSError as e:
+                self._msg(tr("Android's print dialog didn't open ({why}). Save a PDF and print it from another app.").format(
+                    why=e))
+                return
+            self._msg(tr("Choose a printer in Android's print dialog."))
+        self._start(j, dev, tr("Opening Android's print dialog…"),
+                    tr("Couldn't write {path}. Check the folder permissions.").format(path=path),
+                    stopped=tr("Printing cancelled: nothing was sent to the printer."), path=path, then=opened)
 
     # --- Edit → Settings ------------------------------------------------------------------------------
     def show_settings(self):
@@ -1767,10 +1790,11 @@ class Window(QMainWindow):
                 self._msg(err)
         self._show_printer_edges()
 
-    def _start(self, j, device, done, failed, stopped="", path=None):
+    def _start(self, j, device, done, failed, stopped="", path=None, then=None):
         """Draw a print or PDF job on the worker. stopped: the status line if it's cancelled; path: the PDF being
-        written, deleted then."""
+        written, deleted then; then(): what to do once it's written (Android: open its print dialog)."""
         self._device = device   # kept alive while the worker draws on it
+        self._job_then = then
         self._cancel.clear()
         self._job_path, self._job_stopped = path, stopped or tr("Cancelled.")
         sb = self.sidebar
@@ -1829,6 +1853,9 @@ class Window(QMainWindow):
                     pass
             self._job_path = None
             self._busy(False, message)
+            then, self._job_then = getattr(self, "_job_then", None), None
+            if ok and then is not None:
+                then()
             return
         _k, data, name = r
         k, ext, filt = self._pending_save

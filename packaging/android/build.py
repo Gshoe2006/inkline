@@ -11,7 +11,8 @@ python-for-android; needs JDK 17, the Android SDK and NDK r28c (or it uses ~/.py
 usual build tools. deploy.py adds what the tool doesn't know Inkline needs: numpy, and its data files.
 
 On the device, a file named "inkline-selftest" in the app's private folder makes it run the self-test into
-selftest/ there instead of opening the window (CI does this on an emulator, with adb run-as).
+selftest/ there instead of opening the window, and one named "inkline-printtest" makes it press Print a few seconds
+after it opens (CI does both on an emulator, with adb run-as, and checks Android's print dialog appears).
 """
 
 import argparse
@@ -37,6 +38,8 @@ if os.path.exists(os.path.join(PRIVATE, "inkline-selftest")):   # CI: the self-t
     os.makedirs(out, exist_ok=True)
     sys.stdout = sys.stderr = open(os.path.join(out, "selftest.log"), "w", encoding="utf-8", buffering=1)
     sys.argv = [sys.argv[0], "--selftest", out]   # on Android's own display: the APK has no "offscreen" plugin
+if os.path.exists(os.path.join(PRIVATE, "inkline-printtest")):   # CI: press Print once the window is up
+    os.environ["INKLINE_PRINT_TEST"] = "1"
 import inkline  # noqa: E402
 
 inkline.main()
