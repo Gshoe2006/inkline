@@ -89,6 +89,7 @@
  "Autumn": "Outono",
  "Back to original": "Voltar ao original",
  "Back to quick booklet": "Voltar ao livreto rápido",
+ "Back to the booklet's page list": "Voltar à lista de páginas do livreto",
  "Bingo": "Bingo",
  "Bingo cards (a different card for each child)": "Cartões de bingo (um diferente para cada criança)",
  "Bingo needs at least {need} words, so every card can be different (you have {have}).": "O bingo precisa de pelo menos {need} palavras para cada cartão ser diferente (você tem {have}).",
@@ -114,6 +115,8 @@
  "Cancelling after this page…": "Cancelando depois desta página…",
  "Capital letters": "Letras maiúsculas",
  "Certificate": "Certificado",
+ "Change the selected page's pattern and options here (or double-click a page)": "Mudar aqui o modelo e as opções da página escolhida (ou clique duas vezes em uma página)",
+ "Change this page": "Mudar esta página",
  "Changes": "Alterações",
  "Check for &updates…": "Procurar at&ualizações…",
  "Check for updates": "Procurar atualizações",
@@ -130,7 +133,6 @@
  "Classroom": "Sala de aula",
  "Classroom maze worksheet": "Atividade de labirinto para a turma",
  "Click a design to use it for {what}.": "Clique em um desenho para usá-lo em {what}.",
- "Click a page, then change it under Create; or drag it to move it. Line weight, border, title and paper apply to every page.": "Clique em uma página e mude-a em Criar; ou arraste-a para movê-la. Espessura da linha, borda, título e papel valem para todas as páginas.",
  "Click a photo to crop it; each photo keeps its own crop. PDF and Print use every page, or only those chosen under Paper.": "Clique em uma foto para recortá-la; cada foto guarda seu próprio recorte. PDF e Imprimir usam todas as páginas, ou só as escolhidas em Papel.",
  "Clocks": "Relógios",
  "Close": "Fechar",
@@ -210,6 +212,7 @@
  "Dot-to-dot": "Ligue os pontos",
  "Dot-to-dot booklet with answers": "Livreto de ligue os pontos com respostas",
  "Dot-to-dot has only a handful of pictures, so some copies repeat.": "Ligue os pontos tem poucas figuras, então algumas cópias se repetem.",
+ "Double-click a page (or Change this page) to change it here; drag it to move it. Line weight, border, title and paper apply to every page.": "Clique duas vezes em uma página (ou Mudar esta página) para mudá-la aqui; arraste-a para movê-la. Espessura da linha, borda, título e papel valem para todas as páginas.",
  "Down": "Verticais",
  "Downloading Inkline {version}…": "Baixando o Inkline {version}…",
  "Drag the preview to move the photo; scroll over it to zoom.": "Arraste a prévia para mover a foto; role a roda do mouse sobre ela para dar zoom.",
@@ -429,6 +432,7 @@
  "Page preview": "Prévia da página",
  "Page text": "Texto da página",
  "Page {i} of {n}": "Página {i} de {n}",
+ "Page {n}: {name}": "Página {n}: {name}",
  "Page {text}": "Página {text}",
  "Pages": "Páginas",
  "Paper": "Papel",
@@ -831,5 +835,6 @@
  "— Built-in —": "— Incluídas —",
  "— Saved —": "— Salvas —",
  "“{name}”": "“{name}”",
- "“{token}” isn't a page. Use page numbers, ranges like 3-5, “cover” or “answers”.": "“{token}” não é uma página. Use números de página, intervalos como 3-5, “capa” ou “respostas”."
+ "“{token}” isn't a page. Use page numbers, ranges like 3-5, “cover” or “answers”.": "“{token}” não é uma página. Use números de página, intervalos como 3-5, “capa” ou “respostas”.",
+ "‹ All pages": "‹ Todas as páginas"
 }

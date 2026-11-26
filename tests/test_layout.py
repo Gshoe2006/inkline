@@ -239,3 +239,52 @@ def test_searching_in_another_language():
         assert not layout.matches("maze", "sudoku", names, {})
     finally:
         i18n.set_language("en")
+
+
+def test_changing_a_booklet_page_on_the_booklet_page(make_win):
+    w = make_win()
+    sb = w.sidebar
+    w.state.update(booklet=True, pages=4)
+    sb.load()
+    w._changed("booklet")
+    sb.pages_edit.emit(True)
+    sb.reveal(sb.page_list)
+    assert sb.shown(sb.page_change_btn)
+    sb.page_list.setCurrentRow(2)
+    spin()
+    sb.page_change_btn.click()
+    assert sb.page_key() == "booklet" and sb.page_editor.isVisibleTo(sb) and not sb.book_list_view.isVisibleTo(sb)
+    assert sb.page_editor.isAncestorOf(sb.gen) and "PAGE 3" in sb.page_editing.text()
+    sb.gen.set_value("words")                                # changes page 3, here on the Booklet page
+    spin()
+    assert w.state.settings.page_list[2]["gen"] == "words" and "WORD SEARCH" in sb.page_editing.text()
+    assert sb._columns["booklet"].sizeHint().height() <= sb._scrolls["booklet"].viewport().height()
+    sb.page_back.click()                                     # the list again; Create's controls go home
+    assert sb.book_list_view.isVisibleTo(sb) and sb._columns["make"].isAncestorOf(sb.gen)
+    sb.edit_page()
+    sb.rail.buttons["make"].click()                          # Create while changing a page: its controls follow
+    assert sb._columns["make"].isAncestorOf(sb.gen) and sb.page_editor.isHidden()
+    sb.edit_page()
+    sb.pages_edit.emit(False)                                # back to a quick booklet: nothing to change
+    spin()
+    assert sb._columns["make"].isAncestorOf(sb.gen) and sb.page_editor.isHidden()
+
+
+def test_double_click_or_enter_changes_the_page(make_win):
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    w = make_win()
+    sb = w.sidebar
+    w.state.update(booklet=True, pages=3)
+    sb.load()
+    w._changed("booklet")
+    sb.pages_edit.emit(True)
+    sb.reveal(sb.page_list)
+    sb.page_list.setFocus()
+    QTest.keyClick(sb.page_list, Qt.Key.Key_Down)            # arrows only move through the list
+    assert sb.page_editor.isHidden()
+    QTest.keyClick(sb.page_list, Qt.Key.Key_Return)
+    assert not sb.page_editor.isHidden()
+    sb.back_to_pages()
+    sb.page_list.itemDoubleClicked.emit(sb.page_list.item(0))
+    assert not sb.page_editor.isHidden()

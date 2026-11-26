@@ -244,11 +244,38 @@ class Sidebar(QFrame):
         self.rail.show_key(key)
 
     def _rail_chosen(self, key):
+        if key == "make" and not self.page_editor.isHidden():
+            self.back_to_pages()   # Create's controls go home (they still change the selected page)
         if key in ("make", "photo"):
             want = "make" if key == "make" else "convert"
             if self.state.settings.mode != want:
                 self.mode_changed.emit(want)
         self.show_page(key)
+
+    def edit_page(self):
+        """A booklet built page by page: the selected page's design (Create's controls) here on the Booklet page."""
+        s = self.state.settings
+        if not (s.booklet and s.page_list) or self.state.book_sel is None:
+            return
+        if self.make_panel.parentWidget() is not self.page_editor:
+            self._editor_lay.addWidget(self.make_panel)
+        self.book_list_view.hide()
+        self.page_editor.show()
+        self._editing_title()
+        self.show_page("booklet")
+
+    def _editing_title(self):
+        s = self.state.settings
+        i = self.state.book_sel or 0
+        gen = (s.page_list[i] if i < len(s.page_list) else {}).get("gen", s.gen)
+        self.page_editing.setText(tr("Page {n}: {name}").format(n=i + 1, name=tr(NAMES.get(gen, gen))).upper())
+
+    def back_to_pages(self):
+        """Create's controls back on Create, and the Booklet page's list again."""
+        if self.make_panel.parentWidget() is self.page_editor:
+            self._page_cols["make"].insertWidget(0, self.make_panel)
+        self.page_editor.hide()
+        self.book_list_view.show()
 
     def reveal(self, widget):
         """Show the page a control is on, with its fold open (for the window, and tests)."""
@@ -504,6 +531,9 @@ class Sidebar(QFrame):
         self.pages_quick_btn = button("Back to quick booklet", "mini", "Make the pages from Design pages, "
                                       "Get harder and Mix again (Undo brings your pages back)")
         self.pages_quick_btn.clicked.connect(lambda: self.pages_edit.emit(False))
+        self.page_change_btn = button("Change this page", "mini", "Change the selected page's pattern and options here "
+                                      "(or double-click a page)")
+        self.page_change_btn.clicked.connect(self.edit_page)
         self.book_opts.add(_tools(self.pages_edit_btn, self.pages_quick_btn))
         self.page_count = label("")
         self.page_add = button("Add page", "mini", "Add a page like the last one, with a new design")
@@ -524,8 +554,12 @@ class Sidebar(QFrame):
         self.page_list.setAccessibleName(tr("Booklet pages"))
         self.page_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.page_list.currentRowChanged.connect(lambda i: None if self._loading or i < 0 else self.book_page_selected.emit(i))
+        self.page_list.itemDoubleClicked.connect(lambda _item: self.edit_page())
+        QShortcut(QKeySequence(Qt.Key.Key_Return), self.page_list,
+                  context=Qt.ShortcutContext.WidgetShortcut).activated.connect(self.edit_page)
         self.book_opts.add(self.page_list)
-        self.page_list_hint = self.book_opts.add(Hint("Click a page, then change it under Create; or drag it to move it. "
+        self.page_change_row = self.book_opts.add(_tools(self.page_change_btn))
+        self.page_list_hint = self.book_opts.add(Hint("Double-click a page (or Change this page) to change it here; drag it to move it. "
                                                       "Line weight, border, title and paper apply to every page."))
         self.book_opts.add(self._check("cover", "Cover page"))
         self.book_opts.add(self._check("page_nums", "Page numbers"))
@@ -543,8 +577,25 @@ class Sidebar(QFrame):
         self.book_opts.add(_tools(self.page_new, self.page_orig))
         self.book_opts.add(Hint("PDF and Print use every page, or only those chosen under Paper. PNG and SVG save the page shown."))
         sec.add(self.book_opts)
-        self._page_cols["booklet"].addWidget(book_fold)
-        self._page_cols["booklet"].addWidget(pack_fold)
+        # the Booklet page shows its options, or (built page by page) one page's design: Change this page
+        self.book_list_view = QWidget()
+        lv = QVBoxLayout(self.book_list_view)
+        lv.setContentsMargins(0, 0, 0, 0)
+        lv.setSpacing(theme.SECTION_GAP)
+        lv.addWidget(book_fold)
+        lv.addWidget(pack_fold)
+        self._page_cols["booklet"].addWidget(self.book_list_view)
+        self.page_editor = QWidget()   # the Create page's controls come here while a page is being changed
+        ev = QVBoxLayout(self.page_editor)
+        ev.setContentsMargins(0, 0, 0, 0)
+        ev.setSpacing(theme.SECTION_GAP)
+        self.page_back = button("‹ All pages", "mini", "Back to the booklet's page list")
+        self.page_back.clicked.connect(self.back_to_pages)
+        self.page_editing = label("", "legend")
+        ev.addWidget(_row(self.page_editing, self.page_back, stretch_first=True))
+        self._editor_lay = ev
+        self.page_editor.hide()
+        self._page_cols["booklet"].addWidget(self.page_editor)
         one_open([book_fold, pack_fold])
         self.book_folds = {"booklet": book_fold, "pack": pack_fold}
         self.col.addWidget(self.make_panel)
@@ -1095,6 +1146,11 @@ class Sidebar(QFrame):
         if make:
             self._fill_gallery(s)
         listing = s.booklet and bool(s.page_list)   # built page by page: Design edits the selected page
+        if not self.page_editor.isHidden():
+            if listing and make:
+                self._editing_title()
+            else:   # no page to change any more (back to a quick booklet, a photo): Create's controls go home
+                self.back_to_pages()
         mix_book = s.booklet and s.mix and not listing
         self.words_opts.setVisible(s.gen in ("words", "scramble", "spelltest"))   # unscramble takes its words from the same place
         self.age_hint.setVisible(s.age != "any")
@@ -1167,7 +1223,7 @@ class Sidebar(QFrame):
         self.book_opts.setVisible(s.booklet)
         for w in (self.pages_row, self.ramp_check, self.mix_check, self.pages_edit_btn):
             w.setVisible(not listing)
-        for w in (self.pages_quick_btn, self.page_count_row, self.page_list, self.page_list_hint):
+        for w in (self.pages_quick_btn, self.page_count_row, self.page_list, self.page_list_hint, self.page_change_row):
             w.setVisible(listing)
         self.pbook_opts.setVisible(s.photobook)
         self.pcbn_opts.setVisible(s.style == "cbn")

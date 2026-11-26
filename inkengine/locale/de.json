@@ -89,6 +89,7 @@
  "Autumn": "Herbst",
  "Back to original": "Zurück zum Original",
  "Back to quick booklet": "Zurück zum einfachen Heft",
+ "Back to the booklet's page list": "Zurück zur Seitenliste des Hefts",
  "Bingo": "Bingo",
  "Bingo cards (a different card for each child)": "Bingokarten (für jedes Kind eine andere)",
  "Bingo needs at least {need} words, so every card can be different (you have {have}).": "Bingo braucht mindestens {need} Wörter, damit jede Karte anders ist (du hast {have}).",
@@ -114,6 +115,8 @@
  "Cancelling after this page…": "Abbruch nach dieser Seite…",
  "Capital letters": "Großbuchstaben",
  "Certificate": "Urkunde",
+ "Change the selected page's pattern and options here (or double-click a page)": "Art und Optionen der gewählten Seite hier ändern (oder auf eine Seite doppelklicken)",
+ "Change this page": "Diese Seite ändern",
  "Changes": "Änderungen",
  "Check for &updates…": "Nach &Updates suchen…",
  "Check for updates": "Nach Updates suchen",
@@ -130,7 +133,6 @@
  "Classroom": "Unterricht",
  "Classroom maze worksheet": "Labyrinth-Arbeitsblatt für die Klasse",
  "Click a design to use it for {what}.": "Klicke auf ein Design, um es für {what} zu verwenden.",
- "Click a page, then change it under Create; or drag it to move it. Line weight, border, title and paper apply to every page.": "Klicke auf eine Seite und ändere sie unter Gestalten; oder ziehe sie, um sie zu verschieben. Linienstärke, Rahmen, Titel und Papier gelten für alle Seiten.",
  "Click a photo to crop it; each photo keeps its own crop. PDF and Print use every page, or only those chosen under Paper.": "Klicke auf ein Foto, um es zuzuschneiden; jedes Foto behält seinen Zuschnitt. PDF und Drucken nutzen alle Seiten oder nur die unter Papier gewählten.",
  "Clocks": "Uhren",
  "Close": "Schließen",
@@ -210,6 +212,7 @@
  "Dot-to-dot": "Punkt zu Punkt",
  "Dot-to-dot booklet with answers": "Punkt-zu-Punkt-Heft mit Lösungen",
  "Dot-to-dot has only a handful of pictures, so some copies repeat.": "Punkt zu Punkt hat nur wenige Bilder, darum wiederholen sich manche Exemplare.",
+ "Double-click a page (or Change this page) to change it here; drag it to move it. Line weight, border, title and paper apply to every page.": "Doppelklicke auf eine Seite (oder Diese Seite ändern), um sie hier zu ändern; ziehe sie, um sie zu verschieben. Linienstärke, Rahmen, Titel und Papier gelten für alle Seiten.",
  "Down": "Senkrecht",
  "Downloading Inkline {version}…": "Inkline {version} wird heruntergeladen…",
  "Drag the preview to move the photo; scroll over it to zoom.": "Ziehe die Vorschau, um das Foto zu verschieben; scrolle darüber zum Zoomen.",
@@ -429,6 +432,7 @@
  "Page preview": "Seitenvorschau",
  "Page text": "Seitentext",
  "Page {i} of {n}": "Seite {i} von {n}",
+ "Page {n}: {name}": "Seite {n}: {name}",
  "Page {text}": "Seite {text}",
  "Pages": "Seiten",
  "Paper": "Papier",
@@ -831,5 +835,6 @@
  "— Built-in —": "— Eingebaut —",
  "— Saved —": "— Gespeichert —",
  "“{name}”": "„{name}“",
- "“{token}” isn't a page. Use page numbers, ranges like 3-5, “cover” or “answers”.": "„{token}“ ist keine Seite. Nutze Seitenzahlen, Bereiche wie 3-5, „Deckblatt“ oder „Lösungen“."
+ "“{token}” isn't a page. Use page numbers, ranges like 3-5, “cover” or “answers”.": "„{token}“ ist keine Seite. Nutze Seitenzahlen, Bereiche wie 3-5, „Deckblatt“ oder „Lösungen“.",
+ "‹ All pages": "‹ Alle Seiten"
 }
