@@ -13,7 +13,7 @@
 
 from PySide6.QtCore import QEvent, QObject, QSize, Qt, Signal
 from PySide6.QtGui import QAction, QIcon, QPixmap
-from PySide6.QtWidgets import QFrame, QGridLayout, QHBoxLayout, QMenu, QToolButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QFrame, QGridLayout, QHBoxLayout, QMenu, QScrollArea, QToolButton, QVBoxLayout, QWidget
 
 from inkengine.i18n import tr
 
@@ -193,11 +193,21 @@ class ArrowKeys(QObject):
 
     def __init__(self, parent, buttons, above=None, scroll=None):
         super().__init__(parent)
-        self.buttons, self.above, self.scroll = list(buttons), above, scroll
+        self.buttons, self.above, self._scroll = list(buttons), above, scroll
         for b in self.buttons:
             b.installEventFilter(self)
         if above is not None:
             above.installEventFilter(self)
+
+    @property
+    def scroll(self):
+        """The scroll area given, else the one the buttons sit in (the gallery, in the sidebar's), if any."""
+        if self._scroll is None and self.buttons:
+            w = self.buttons[0].parentWidget()
+            while w is not None and not isinstance(w, QScrollArea):
+                w = w.parentWidget()
+            return w
+        return self._scroll
 
     def first(self):
         """The first button shown, in reading order (the top left one)."""

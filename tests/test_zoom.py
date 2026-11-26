@@ -142,3 +142,45 @@ def test_view_menu_zooms_the_preview(tmp_path, monkeypatch):
     acts["Ctrl++"].trigger()
     acts["Ctrl+0"].trigger()
     assert not page.zoomed()
+
+
+def test_a_double_click_or_tap_zooms_in_when_the_whole_page_shows(page, finger):
+    QTest.mouseDClick(page, Qt.MouseButton.LeftButton, pos=QPoint(200, 250))
+    assert page.view_zoom == pytest.approx(2)
+    page.reset_view()
+    for _ in range(2):
+        QTest.touchEvent(page, finger).press(0, QPoint(200, 250)).commit()
+        QTest.touchEvent(page, finger).release(0, QPoint(200, 250)).commit()
+    assert page.view_zoom == pytest.approx(2)
+
+
+def _set(w, **kw):
+    for key, value in kw.items():
+        w.state.update(**{key: value})
+        w.sidebar.load()
+        w._changed(key)
+
+
+def test_another_pattern_shows_the_whole_page_and_page_down_still_turns(tmp_path, monkeypatch):
+    monkeypatch.setenv("INKLINE_CONFIG_DIR", str(tmp_path))
+    from PySide6.QtGui import QKeyEvent
+    from PySide6.QtCore import QEvent
+    from inkapp.window import Window
+    from conftest import settle
+    w = Window("6.0.0", remember=False)
+    w.show()
+    settle(w)
+    page = w.preview.page
+    page.zoom_to(3)
+    _set(w, gen="maze")
+    settle(w)
+    assert not page.zoomed()
+    _set(w, booklet=True)
+    settle(w)
+    page.zoom_to(3)
+    page.setFocus()
+    before = w.state.page
+    for key in (Qt.Key.Key_Right, Qt.Key.Key_PageDown):
+        QApplication.sendEvent(page, QKeyEvent(QEvent.Type.KeyPress, key, Qt.KeyboardModifier.NoModifier))
+    assert w.state.page == before + 1   # Right moved the zoomed view; Page Down turned the page
+    w.close()

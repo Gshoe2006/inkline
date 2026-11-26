@@ -484,7 +484,8 @@ class Window(QMainWindow):
                     and not isinstance(obj, (QMenu, QMenuBar)) and not isinstance(
                         focus, (QLineEdit, QComboBox, QAbstractSlider, QAbstractSpinBox, QAbstractItemView, QMenuBar))
                     and not (focus is not None and focus.objectName() == "galleryItem")   # its arrows: layout.ArrowKeys
-                    and not (focus is self.preview.page and self.preview.page.zoomed())   # they move the zoomed view
+                    and not (focus is self.preview.page and self.preview.page.zoomed()   # the arrows move the zoomed
+                             and e.key() in (Qt.Key.Key_Left, Qt.Key.Key_Right))      # view; Page Up/Down still turn
                     and self.step_page(d)):
                 return True   # taken only when there were pages to turn; menus keep their arrow keys
         return super().eventFilter(obj, e)
@@ -1497,6 +1498,10 @@ class Window(QMainWindow):
             return
         self.state.page = r.view.index
         self.state.copy = r.view.copy
+        what = (self.state.settings.mode, self.state.settings.gen, self.project_path)
+        if what != getattr(self, "_zoomed_on", what):   # another mode, pattern or project: the whole page again
+            self.preview.page.reset_view()
+        self._zoomed_on = what
         self.preview.page.set_image(r.image, r.poster)
         self.preview.page.set_pannable(self.state.settings.mode == "convert" and bool(self.state.photos)
                                        and r.view.kind not in ("fold", "testpage"))

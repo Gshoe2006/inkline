@@ -262,8 +262,16 @@ class Page(QWidget):
         self._release()
 
     def mouseDoubleClickEvent(self, e):
-        if e.button() == Qt.MouseButton.LeftButton and self.zoomed():
+        if e.button() == Qt.MouseButton.LeftButton:
+            self.toggle_zoom(e.position())
+
+    def toggle_zoom(self, where):
+        """A double click or tap: the whole page again when zoomed, else twice as close there (as a trackpad's
+        two-finger double tap does)."""
+        if self.zoomed():
             self.reset_view()
+        else:
+            self.zoom_to(2.0, where)
 
     def wheelEvent(self, e):
         """Ctrl+wheel zooms the view at the pointer; the wheel zooms the photo (with one open), else moves the
@@ -334,7 +342,7 @@ class Page(QWidget):
                 if (last and now - last[0] <= QApplication.doubleClickInterval() / 1000
                         and (where - last[1]).manhattanLength() <= 4 * TAP_SLOP):
                     self._tapped = None
-                    self.reset_view()
+                    self.toggle_zoom(where)
                 else:
                     self._tapped = (now, where)
 
