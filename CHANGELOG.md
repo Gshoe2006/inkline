@@ -6,6 +6,63 @@ To release a new version, add a section headed `## <version>` (the same text as 
 pull request that bumps `VERSION`. When it merges, `.github/workflows/release.yml` builds the packages
 and publishes a GitHub Release with that section as its notes.
 
+## 6.0.0 - 2026-11-26
+
+Inkline 6.0 has a new window: one place to pick a design, short pages instead of a long side panel, and themes to choose from. It also comes to the Mac, speaks Italian and Dutch, and adds early maths with pictures and an easier-to-read option.
+
+### What's new
+
+- **A new window.** A rail down the left switches between **Create**, **Photo**, **Booklet**, **Poster** and **Print** (Ctrl+1 to Ctrl+5), and each shows only its own settings, in sections that open one at a time. A toolbar across the top has **Presets**, **New design**, **More designs**, saving as PDF, PNG or SVG, and **Print**.
+- **Pick a pattern by its picture.** **Create** starts with the six patterns you used last; **All patterns** shows every one, grouped (art, puzzles, maths, literacy, classroom), with a search box that finds them by name or description.
+- **Themes.** **View → Theme** and **Edit → Settings → Appearance** offer Light, Dark, High contrast, Warm paper and Slate (or following the system), and Settings chooses which of them the menu shows.
+- **A tour.** The first time Inkline opens, a short tour points out the rail, the gallery, the toolbar and the preview. **Help → Tour of the window** shows it again.
+- **Edit booklet pages where they are.** On the **Booklet** page, double-click a page (or press Enter) to change its pattern and settings there, then go back to the list.
+- **Early maths with pictures.** **Early maths** (under maths in **All patterns**), for ages 4–6: ten frames, number bonds, tens and ones as rods and cubes, and shapes to count, each with a box to write in, and the answers on the answer page.
+- **Choose the worksheet pack's days.** Each day of the **Worksheet pack** can be any of 16 sheets, not only the usual week.
+- **Easier to read.** **Print → Page text → Easier to read** sets the text in Atkinson Hyperlegible, spaced wider, for children who find reading hard; **Print → Paper → Cream paper** tints the page on screen and in PDFs (printing stays white).
+- **Italian and Dutch.** Inkline is now also in Italiano and Nederlands: the window, reading passages, word searches, crosswords, bingo, sight words and handwriting (with Italian and Dutch school handwriting), with euros and decimal commas.
+- **Inkline for macOS.** A disk image for Macs with Apple silicon (M1 and later, macOS 12 or newer). It updates itself like the other packages and can check for updates while it's closed.
+
+### Upgrading
+
+Nothing changes in what Inkline needs. Your presets, settings, projects, recent files and printer carry over; the new window opens on **Create**. If you have 5.6 or later, Inkline offers this update itself (**Help → Check for updates…**); from 5.5 or earlier, install it as below.
+
+**Windows**
+Run `inkline-6.0.0-windows-setup.exe`.
+
+**macOS**
+Open `inkline-6.0.0-macos.dmg` and drag Inkline to Applications. It isn't signed by Apple yet, so the first time, Control-click Inkline and choose **Open** (or **System Settings → Privacy & Security → Open Anyway**).
+
+**Debian / Ubuntu / Linux Mint / Pop!_OS**
+```sh
+sudo apt install ./inkline_6.0.0-1_amd64.deb
+```
+
+**Arch / CachyOS / Manjaro**
+```sh
+sudo pacman -U inkline-6.0.0-1-any.pkg.tar.zst
+```
+
+**Any distro, nothing installed**
+```sh
+chmod +x inkline-6.0.0-x86_64.AppImage && ./inkline-6.0.0-x86_64.AppImage
+```
+
+**Any other distro**
+```sh
+sh inkline-6.0.0.run            # or --system for every user
+```
+
+**Flatpak**
+```sh
+flatpak install --user inkline-6.0.0.flatpak     # if a .flatpak file is attached to this release
+sh packaging/flatpak/build.sh                    # or build it from a copy of the source
+```
+
+### Found a problem?
+
+Please open an issue saying what you did, what you expected, and what happened. Include your system (distro, Windows or macOS version), and the printer if it's about printing.
+
 ## 5.8.0 - 2026-11-26
 
 Inkline 5.8 adds a Settings window, and can check for updates while it's closed.
