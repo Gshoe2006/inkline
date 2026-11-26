@@ -150,7 +150,7 @@ def test_the_trim_drops_plugins_of_unused_kinds_and_what_only_they_load(tmp_path
 def test_pyjnius_gets_its_jni_environment_from_qt():
     recipe = open(os.path.join(ROOT, "packaging", "android", "pyjnius_recipe.py"), encoding="utf-8").read()
     assert "_ZN17QtAndroidPrivate6javaVMEv" in recipe and "AttachCurrentThread" in recipe   # Qt's Java VM
-    assert 'dlsym(qt, "_ZN17QtAndroidPrivate6javaVMEv")' in recipe and "libQt6Core_x86_64.so" in recipe
+    assert '"_ZN15QJniEnvironment6javaVMEv", "_ZN17QtAndroidPrivate6javaVMEv"' in recipe and "libQt6Core_x86_64.so" in recipe
     deploy = open(os.path.join(ROOT, "packaging", "android", "deploy.py"), encoding="utf-8").read()
     assert '"pyjnius_recipe.py"' in deploy
     src = open(os.path.join(ROOT, "inkapp", "android_print.py"), encoding="utf-8").read()

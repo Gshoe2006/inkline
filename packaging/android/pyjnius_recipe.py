@@ -14,18 +14,30 @@ cdef extern from *:
     """
     #include <jni.h>
     #include <dlfcn.h>
-    /* QtAndroidPrivate::javaVM(), looked up in Qt's core library (loaded by the time Python runs) rather than
-       linked: the APK names it libQt6Core_<abi>.so */
+    #include <android/log.h>
+    /* Qt's Java VM, looked up in Qt's core library (loaded before Python starts) rather than linked: the APK names it
+       libQt6Core_<abi>.so. QJniEnvironment::javaVM() is Qt's public call; QtAndroidPrivate::javaVM() the older one. */
     static JavaVM *inkline_qt_javavm(void) {
-        static const char *names[] = {"libQt6Core_arm64-v8a.so", "libQt6Core_x86_64.so",
-                                      "libQt6Core_armeabi-v7a.so", "libQt6Core_x86.so", NULL};
-        for (int i = 0; names[i]; i++) {
-            void *qt = dlopen(names[i], RTLD_NOW);
-            if (qt) {
-                JavaVM *(*java_vm)(void) = (JavaVM *(*)(void)) dlsym(qt, "_ZN17QtAndroidPrivate6javaVMEv");
-                if (java_vm) return java_vm();
+        static const char *libs[] = {"libQt6Core_arm64-v8a.so", "libQt6Core_x86_64.so",
+                                     "libQt6Core_armeabi-v7a.so", "libQt6Core_x86.so", NULL};
+        static const char *calls[] = {"_ZN15QJniEnvironment6javaVMEv", "_ZN17QtAndroidPrivate6javaVMEv", NULL};
+        for (int i = 0; libs[i]; i++) {
+            void *qt = dlopen(libs[i], RTLD_NOW | RTLD_NOLOAD);
+            if (!qt) qt = dlopen(libs[i], RTLD_NOW);
+            if (!qt) continue;
+            for (int k = 0; calls[k]; k++) {
+                JavaVM *(*java_vm)(void) = (JavaVM *(*)(void)) dlsym(qt, calls[k]);
+                JavaVM *vm = java_vm ? java_vm() : NULL;
+                __android_log_print(ANDROID_LOG_INFO, "python", "inkline: %s %s: %s", libs[i], calls[k],
+                                    vm ? "found the Java VM" : (java_vm ? "returned no Java VM" : dlerror()));
+                if (vm) return vm;
             }
         }
+        for (int k = 0; calls[k]; k++) {   /* already loaded under another name */
+            JavaVM *(*java_vm)(void) = (JavaVM *(*)(void)) dlsym(RTLD_DEFAULT, calls[k]);
+            if (java_vm && java_vm()) return java_vm();
+        }
+        __android_log_print(ANDROID_LOG_INFO, "python", "inkline: Qt's core library wasn't found: %s", dlerror());
         return NULL;
     }
     """
