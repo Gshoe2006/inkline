@@ -24,16 +24,33 @@ modules:
     buildsystem: simple
     build-commands:
       - pip3 install --no-index --no-deps --no-compile --prefix=/app *.whl
+    # PyPI's own wheels, each pinned by its sha256 (nothing is downloaded while building), for each processor
+    # Flathub builds for: x86-64 and ARM64
     sources:
       - type: file
+        only-arches: [x86_64]
         url: https://files.pythonhosted.org/packages/7b/3c/7597d8dcb36aa8315427635ec6ec9d850ffbad4ce78b9118ac854889f2d3/pyside6_essentials-6.12.0-cp310-abi3-manylinux_2_34_x86_64.whl
         sha256: 16f4b5e41daf49235ae048458243da9efe5f3d8040f9cc5aa454ce69893d3bd9
       - type: file
+        only-arches: [x86_64]
         url: https://files.pythonhosted.org/packages/49/c2/a04fa003b4360e99d8e3fc2829abacf37396ace63ea1cd616402209ec7c6/shiboken6-6.12.0-cp310-abi3-manylinux_2_34_x86_64.whl
         sha256: 3bde565bb0890044b5c7f63808adddede5abc241e9395a2bfed61919884d6240
       - type: file
+        only-arches: [x86_64]
         url: https://files.pythonhosted.org/packages/a4/1f/fcdce1061fba2bfb2e9bfda01fbd8132d5f7522a4f7c8e2b2f629d54ee38/numpy-2.5.5-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
         sha256: c48960d420e90cf305cb1fde0d4e6082cc90512cda87a9acf0b6e04e91cf4abe
+      - type: file
+        only-arches: [aarch64]
+        url: https://files.pythonhosted.org/packages/5e/4e/f4fd4c016719be832ec49d3c87940459e87fd666179a0a199a3998d07916/pyside6_essentials-6.12.0-cp310-abi3-manylinux_2_39_aarch64.whl
+        sha256: 08c5841063fc1df69b7fa1ee405f539e66576a83fc48004be3e2c5e35ccbfa69
+      - type: file
+        only-arches: [aarch64]
+        url: https://files.pythonhosted.org/packages/97/ca/a4415e6218e0dff764fe2b2d30db2fc8f499a08ace07634232ade3f73adc/shiboken6-6.12.0-cp310-abi3-manylinux_2_39_aarch64.whl
+        sha256: ff72a72b3277b418902d562b987b33a6f6818bed9fe40a49d634d09bc67f620e
+      - type: file
+        only-arches: [aarch64]
+        url: https://files.pythonhosted.org/packages/26/5b/5cd4b88a64bb57ca6d3bd6a9e057db445544a2179a2ebf985660e0454648/numpy-2.5.5-cp314-cp314-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl
+        sha256: cc6eb7502facce90349b4097a26821af224aaa0ab36e78304711cdb544352882
 
   - name: inkline
     buildsystem: simple

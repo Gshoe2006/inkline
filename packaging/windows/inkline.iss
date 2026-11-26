@@ -22,9 +22,10 @@ VersionInfoDescription=Inkline installer
 DefaultDirName={autopf}\Inkline
 DefaultGroupName=Inkline
 DisableProgramGroupPage=yes
-; installs for the current user without asking for an administrator; "Install for all users" is offered too
+; installs for the current user without asking for an administrator; "Install for all users" is offered too, and
+; /ALLUSERS or /CURRENTUSER choose on the command line (winget uses them: packaging/stores/winget)
 PrivilegesRequired=lowest
-PrivilegesRequiredOverridesAllowed=dialog
+PrivilegesRequiredOverridesAllowed=commandline dialog
 LicenseFile={#LICENSE}
 OutputDir={#OUTDIR}
 OutputBaseFilename=inkline-{#VERSION}-windows-setup
