@@ -6,6 +6,72 @@ To release a new version, add a section headed `## <version>` (the same text as 
 pull request that bumps `VERSION`. When it merges, `.github/workflows/release.yml` builds the packages
 and publishes a GitHub Release with that section as its notes.
 
+## 6.1.0 - 2026-11-26
+
+Inkline 6.1 comes in sixteen packages: on Fedora and openSUSE, on Intel Macs, on Raspberry Pi and other ARM computers, as a Snap and as a portable Windows app. It adds a layout for touch screens, and fixes a rare crash.
+
+### What's new
+
+- **More ways to install.** Each release now has a Fedora / openSUSE `.rpm` (x86-64 and ARM64), a Snap (x86-64 and ARM64), a `.deb` and an AppImage for ARM64 (Raspberry Pi 4 and 5, ARM laptops: Ubuntu 24.04, Debian 13, Raspberry Pi OS 13 or newer), and a portable Windows `.zip` that runs from a folder or a USB stick without installing.
+- **Every Mac.** `inkline-<version>-macos.dmg` is now one app for both Apple silicon and Intel Macs; `-macos-arm64.dmg` and `-macos-intel.dmg` are smaller, each for one kind. Inkline needs macOS 14 (Sonoma) or newer (6.0 said 12, wrongly: the Qt it's built on needs 14).
+- **Touch screens.** **Edit → Settings → Appearance → Touch-screen layout** makes every control big enough for a finger and puts the menus in a **Menu** button; in a narrow window (a tablet held upright), the options and the preview take turns over a bar along the bottom.
+- **Updates** install the right package for each of these (with `dnf` or `zypper` for the `.rpm`, the ARM64 package on ARM64), and point the Snap and the portable app to the release page.
+- **App stores.** Each release now writes what Flathub, winget, Homebrew and the AUR need ([docs/publishing.md](https://github.com/Gshoe2006/inkline/blob/main/docs/publishing.md)).
+
+### Fixed
+
+- A rare crash when a window closed while its page pictures were being drawn.
+- Settings fits a small screen again in every language.
+
+### Upgrading
+
+Nothing changes in what Inkline needs on Windows and Linux; on a Mac, macOS 14 or newer. Your presets, settings, projects, recent files and printer carry over. If you have 5.6 or later, Inkline offers this update itself (**Help → Check for updates…**); otherwise, install it as below.
+
+**Windows**
+Run `inkline-6.1.0-windows-setup.exe`, or unzip `inkline-6.1.0-windows-portable.zip` and run `Inkline\Inkline.exe`.
+
+**macOS**
+Open `inkline-6.1.0-macos.dmg` and drag Inkline to Applications. It isn't signed by Apple yet, so the first time, Control-click Inkline and choose **Open**.
+
+**Debian / Ubuntu / Linux Mint / Pop!_OS / Raspberry Pi OS**
+```sh
+sudo apt install ./inkline_6.1.0-1_amd64.deb     # or _arm64.deb on ARM64
+```
+
+**Fedora / openSUSE**
+```sh
+sudo dnf install ./inkline-6.1.0-1.x86_64.rpm    # or .aarch64.rpm; openSUSE: sudo zypper install --allow-unsigned-rpm …
+```
+
+**Arch / CachyOS / Manjaro**
+```sh
+sudo pacman -U inkline-6.1.0-1-any.pkg.tar.zst
+```
+
+**Snap**
+```sh
+sudo snap install --dangerous ./inkline_6.1.0_amd64.snap   # or _arm64.snap
+```
+
+**Any distro, nothing installed**
+```sh
+chmod +x inkline-6.1.0-x86_64.AppImage && ./inkline-6.1.0-x86_64.AppImage   # or -aarch64.AppImage
+```
+
+**Any other distro**
+```sh
+sh inkline-6.1.0.run            # or --system for every user
+```
+
+**Flatpak**
+```sh
+flatpak install --user inkline-6.1.0.flatpak
+```
+
+### Found a problem?
+
+Please open an issue saying what you did, what you expected, and what happened. Include your system (distro, Windows or macOS version), and the printer if it's about printing.
+
 ## 6.0.0 - 2026-11-26
 
 Inkline 6.0 has a new window: one place to pick a design, short pages instead of a long side panel, and themes to choose from. It also comes to the Mac, speaks Italian and Dutch, and adds early maths with pictures and an easier-to-read option.
