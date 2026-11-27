@@ -22,10 +22,7 @@ HEADINGS = ("Look and say", "Cover and write", "Write again", "Write again")
 def sheet_words(rnd, c, theme="animals", own=""):
     """The words in the order they're printed: your own list as typed (without repeats), else a theme's pick."""
     if theme == "custom":
-        mine = []
-        for w in re.split(r"[\s,;]+", own or ""):
-            if w and any(ch.isalpha() for ch in w) and w.lower() not in (x.lower() for x in mine):
-                mine.append(w)
+        mine = own_words(own)
         if mine:
             return mine[:MAX_OWN]
     themes = THEMES_BY_LANGUAGE.get(i18n.LANG, THEMES)
@@ -34,6 +31,25 @@ def sheet_words(rnd, c, theme="animals", own=""):
         j = pick(rnd, i + 1)
         pool[i], pool[j] = pool[j], pool[i]
     return pool[:6 + (max(1, c) - 1) * 6 // 9]
+
+
+def own_words(text):
+    """Your own words, as typed (separated by spaces, commas or semicolons), without repeats: all of them."""
+    mine = []
+    for w in re.split(r"[\s,;]+", text or ""):
+        if w and any(ch.isalpha() for ch in w) and w.lower() not in (x.lower() for x in mine):
+            mine.append(w)
+    return mine
+
+
+def note(settings):
+    """What the sidebar says when your own list is longer than a sheet holds, or ""."""
+    if getattr(settings, "ws_theme", "") != "custom":
+        return ""
+    n = len(own_words(getattr(settings, "ws_words", "")))
+    if n > MAX_OWN:
+        return tr("A sheet holds {most} words: the last {n} aren't on it.").format(most=MAX_OWN, n=n - MAX_OWN)
+    return ""
 
 
 def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, solve=False, **_opts):
@@ -82,7 +98,7 @@ def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, solve=False, **_opts)
     # the word column's writing: as big as the longest word allows
     ctx.set_font(100, 600)
     widest = max(ctx.measure_text(w) for w in words) / 100
-    wfs = min(rh * 0.55, (word_w * 0.86) / max(widest, 0.01))
+    wfs = min(rh * 0.55, (word_w * 0.8) / max(widest, 0.01))   # clear of the fold line
     ctx.line_width = max(1.0, lw * 0.9)
     ctx.stroke_rect(box.x, y - head_h, box.w, head_h + rows * rh)
     ctx.line_width = max(1.0, lw * 0.5)

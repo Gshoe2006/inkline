@@ -223,9 +223,37 @@ def test_speed_test_page_has_a_time_and_score_box_and_answers():
     assert "Time:" in texts and "Score:" in texts and "/ 50" in texts and "My progress" in texts
     solved, out2 = _draw("speed", speed_count=50, speed_chart=True, solve=True)
     assert out2["facts"] == out["facts"]
-    answers = [op[1] for op in solved.ops if op[0] == "text" and op[4] == "#666"]   # written in grey
+    answers = [op[1] for op in solved.ops if op[0] == "text" and op[4] == "#666" and op[5] == 500]   # written in grey
     assert answers == [str(f[3]) for f in out["facts"]]
-    assert "My progress" not in _texts(solved)
+    numbers = [op[1] for op in ctx.ops if op[0] == "text" and op[4] == "#666" and op[5] == 400]   # numbered as drills are
+    assert numbers == [f"{k + 1}." for k in range(50)]
+    assert "My progress" in _texts(solved)   # the answer is the sheet: the same layout
+
+
+@pytest.mark.parametrize("count,chart,orient", [(50, True, "portrait"), (100, False, "portrait"), (100, True, "landscape"),
+                                                (25, False, "portrait")])
+def test_the_speed_answer_page_is_the_sheet_scaled_down(count, chart, orient):
+    s = Settings(gen="speed", speed_count=count, speed_chart=chart, orient=orient, dpi=60, title="T", name_line=True)
+    g = geometry(s)
+    spec = single_page(s)
+    sheet = draw_page(RecordingCanvas(), g, spec, s)
+    key = PageSpec(kind="answers", header=True, title="Answers", items=[spec])
+    ctx = RecordingCanvas()
+    draw_page(ctx, g, key, s)
+    assert any(op[0] == "transform" for op in ctx.ops)
+    texts = [op[1] for op in ctx.ops if op[0] == "text"]
+    assert texts.count("Time:") == 1 and str(sheet["facts"][-1][3]) in texts
+    # the same columns as the sheet, drawn from the sheet's own box
+    box = design_box(g, spec, s)
+    again = GENERATORS["speed"](RecordingCanvas(), box, mulberry32(spec.seed), spec.c, s, lw=1, dpi=g.dpi, solve=True)
+    assert again["columns"] == sheet["columns"]
+
+
+def test_a_few_facts_are_centred_in_their_columns():
+    ctx, out = _draw("speed", speed_count=25)
+    xs = [op[2] for op in ctx.ops if op[0] == "text" and op[5] == 400 and op[1].endswith(".")]
+    right = max(op[3] for op in ctx.ops if op[0] == "extent")
+    assert min(xs) > 2400 * 0.05 and 2400 - right < 2400 * 0.2 and out["columns"] >= 2
 
 
 # --- draw what you read --------------------------------------------------------------------------------------------------
@@ -325,6 +353,10 @@ def test_your_own_pairs():
     assert memory.own_pairs("cat: chat; dog = chien\n sun ;;") == [("cat", "chat"), ("dog", "chien"), ("sun", "sun")]
     (cols, rows), cards = memory.make_cards(mulberry32(1), 10, Settings(memory_kind="custom", memory_words="a: b; c: d"))
     assert (cols, rows) == (2, 4) and len(cards) == 4   # few pairs: the smallest grid, bigger cards
+    ten = "; ".join(f"w{k}: v{k}" for k in range(10))   # your pairs set the grid, whatever the complexity
+    (cols, rows), cards = memory.make_cards(mulberry32(1), 1, Settings(memory_kind="custom", memory_words=ten))
+    assert len(cards) == 20 and cols * rows >= 20
+    assert memory.note(Settings(memory_kind="custom", memory_words=ten)) == ""
     assert memory.note(Settings(memory_kind="custom")) != ""
     many = "; ".join(f"w{k}: v{k}" for k in range(20))
     assert "12" in memory.note(Settings(memory_kind="custom", memory_words=many))
@@ -429,6 +461,10 @@ def test_the_sidebar_shows_each_ones_options(win):
     _set(win, speed_tables="none")
     assert sb.shown(sb.speed_note)
     assert win.history.undoText() == "Tables"
+    sb.speed_op.set_value("both")
+    assert win.history.undoText() == "Times or sharing"   # the undo step is called what the control is
+    sb.speed_count.set_value(25)
+    assert win.history.undoText() == "How many facts"
     _set(win, gen="drawread")
     assert sb.shown(sb.draw_opts) and not sb.shown(sb.draw_text_row)
     _set(win, draw_source="custom")
@@ -441,6 +477,80 @@ def test_the_sidebar_shows_each_ones_options(win):
     assert sb.shown(sb.memory_opts) and not sb.shown(sb.memory_words_row) and not sb.shown(sb.memory_backs_hint)
     _set(win, memory_kind="custom", memory_backs=True)
     assert sb.shown(sb.memory_words_row) and sb.shown(sb.memory_note) and sb.shown(sb.memory_backs_hint)
+    assert sb.shown(sb.memory_own_hint) and not sb.shown(sb.memory_hint)
+    assert sb.memory_backs_check.isEnabled() and not sb.shown(sb.memory_no_backs_hint)
+    for where in ({"booklet": True}, {"sheet": "halves"}, {"poster": True}):   # backs never print there: say so
+        _set(win, **where)
+        assert not sb.memory_backs_check.isEnabled() and sb.shown(sb.memory_no_backs_hint), where
+        assert not sb.shown(sb.memory_backs_hint)
+        _set(win, **{k: {"booklet": False, "sheet": "one", "poster": False}[k] for k in where})
+    assert sb.memory_backs_check.isEnabled()
+    _set(win, gen="lscwc", ws_theme="custom", ws_words=" ".join(f"word{chr(97 + k % 26)}{k}" for k in range(23)))
+    assert sb.shown(sb.lscwc_note) and "3" in sb.lscwc_note.text()
+    _set(win, gen="coords", coord_kind="plot")
+    assert sb.shown(sb.coord_answer_check)
+    _set(win, coord_kind="battle")
+    assert not sb.shown(sb.coord_answer_check)
+
+
+def test_missing_letters_is_called_missing_letters():
+    from inkengine import book
+    from inkengine.page import pattern_name
+    assert pattern_name("scramble", Settings(scramble_kind="missing")) == "Missing letters"
+    assert pattern_name("scramble", Settings()) == "Unscramble"
+    week = pack.week(Settings(pack_theme="spelling", pack_words="because, friend, said"), [1, 2, 3, 4, 5])
+    pages = book.book_pages(replace(Settings(), **week))
+    labels = [p.label for p in pages if p.kind == "design"]
+    assert labels[2] == "Missing letters 3"
+    key = [p for p in pages if p.kind == "answers"]
+    assert any(d.label == "Missing letters 3" for p in key for d in p.items)
+    assert pack.day_name("scramble", True) == "Missing letters" and pack.day_name("scramble", False) == "Unscramble"
+    one = book.book_pages(Settings(gen="scramble", scramble_kind="missing", booklet=True, pages=2))
+    ctx = RecordingCanvas()
+    draw_page(ctx, geometry(Settings()), one[0], Settings(gen="scramble", scramble_kind="missing", booklet=True, pages=2))
+    texts = _texts(ctx)
+    assert any(t.startswith("2 missing letters pages") for t in texts)
+
+
+def test_the_pack_days_say_missing_letters_in_a_spelling_week(win):
+    sb = win.sidebar
+    at = pack.DAY_CHOICES.index("scramble")
+    _set(win, pack_theme="spelling", pack_words="sun, rain")
+    assert sb.pack_day_combos[2].itemText(at) == "Missing letters" and sb.pack_day_combos[2].value() == "scramble"
+    _set(win, pack_days="maths,trace,scramble,words,maze")
+    assert "Missing letters" in sb.pack_hint.text()
+    _set(win, pack_theme="animals")
+    assert sb.pack_day_combos[2].itemText(at) == "Unscramble" and "Unscramble" in sb.pack_hint.text()
+
+
+def test_look_say_cover_says_when_words_are_left_out():
+    many = " ".join(f"w{k}x" for k in range(25))
+    assert lscwc.note(Settings(ws_theme="custom", ws_words=many)) == "A sheet holds 20 words: the last 5 aren't on it."
+    assert lscwc.note(Settings(ws_theme="custom", ws_words="a b c")) == "" and lscwc.note(Settings()) == ""
+
+
+def test_the_coordinate_grid_can_show_its_picture_and_the_gallery_does():
+    from inkapp import thumbs
+    plain, _ = _draw("coords", 5, 3)
+    shown, _ = _draw("coords", 5, 3, coord_answer=True)
+    assert len([op for op in shown.ops if op[0] == "L"]) > len([op for op in plain.ops if op[0] == "L"])
+    spec = thumbs.gallery_spec(Settings(seed=1), "coords")
+    assert spec.opts == {"coord_answer": True} and thumbs.gallery_spec(Settings(seed=1), "maze").opts == {}
+
+
+def test_four_quadrant_corner_numbers_dont_touch():
+    ctx, _ = _draw("coords", 9, 3)
+    lows = [op for op in ctx.ops if op[0] == "extent" and op[1] == "−5"]
+    assert len(lows) == 2
+    (a, b) = lows
+    size = [op for op in ctx.ops if op[0] == "text" and op[1] == "−5"][0][6]
+    across, up = (a, b) if a[4] > b[4] else (b, a)   # along the bottom (hung from its top), and up the side (centred)
+    assert across[2] > up[3] or across[4] > up[4] + size * 0.35   # beside it, or wholly below it
+
+
+def test_upright_battleships_use_the_page():
+    _ctx, out = _draw("coords", 10, coord_kind="battle", box=Box(0, 0, 2250, 2900))
+    assert out["grids"][0][2] > 2250 * 0.5
 
 
 def test_the_gallery_finds_them_by_kind():
@@ -510,3 +620,26 @@ def test_speed_test_never_repeats_a_fact_from_overlapping_tables():
         facts = speed.make_facts(random.Random(seed).random, 5, S())
         keys = [tuple(sorted((a, b))) for a, _s, b, _r in facts]
         assert len(keys) == len(set(keys)), seed
+
+
+@pytest.mark.parametrize("family", ["DejaVu Sans", "DejaVu Sans Mono"])
+def test_each_page_fits_in_wider_fonts(family, monkeypatch):
+    """Text is measured in the font the page is drawn in: DejaVu Sans (Linux machines without Inter or Cantarell, as
+    CI's) and a wider one still fit."""
+    from PySide6.QtGui import QFontDatabase
+    from inkengine import qt
+    if family not in QFontDatabase.families():
+        pytest.skip(f"{family} isn't installed")
+    monkeypatch.setattr(qt, "FONT_FAMILIES", [family])
+    for gen, extra in VARIANTS:
+        for paper in ("letter", "a4"):
+            for orient in ("portrait", "landscape"):
+                for c in (1, 8):
+                    s = Settings(gen=gen, complexity=c, seed=c * 5, paper=paper, orient=orient, dpi=100, title="T",
+                                 name_line=True, **extra)
+                    g = geometry(s)
+                    spec = single_page(s)
+                    box = design_box(g, spec, s)
+                    ctx = Measuring()
+                    GENERATORS[gen](ctx, box, mulberry32(spec.seed), c, s, lw=2, seed=spec.seed, dpi=g.dpi)
+                    assert _outside(ctx, box, 2) is None, (gen, extra, paper, orient, c, _outside(ctx, box, 2))
