@@ -187,7 +187,8 @@ jobs:
       # the optional Rust module, for this processor, needing no newer glibc than the package asks for
       - name: Build inkline_fast
         run: |
-          pipx install "maturin>=1.5,<2"
+          pipx install "maturin>=1.5,<2" || python3 -m pip install --user --break-system-packages "maturin>=1.5,<2"
+          export PATH="$HOME/.local/bin:$PATH"
           python3 packaging/build_fast.py --out "$RUNNER_TEMP/wheels" --max-glibc ${{ matrix.arch == 'amd64' && '2.34' || '2.39' }}
           echo "INKLINE_FAST_WHEEL=$(ls "$RUNNER_TEMP"/wheels/inkline_fast-*.whl)" >> "$GITHUB_ENV"
 
@@ -228,7 +229,8 @@ jobs:
 
       - name: Build inkline_fast
         run: |
-          pipx install "maturin>=1.5,<2"
+          pipx install "maturin>=1.5,<2" || python3 -m pip install --user --break-system-packages "maturin>=1.5,<2"
+          export PATH="$HOME/.local/bin:$PATH"
           python3 packaging/build_fast.py --out "$RUNNER_TEMP/wheels" --max-glibc ${{ matrix.arch == 'x86_64' && '2.35' || '2.39' }}
           echo "INKLINE_FAST_WHEEL=$(ls "$RUNNER_TEMP"/wheels/inkline_fast-*.whl)" >> "$GITHUB_ENV"
 
