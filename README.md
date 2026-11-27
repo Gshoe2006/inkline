@@ -207,12 +207,17 @@ default handwriting words are written in each language in `inkengine/patterns/wo
 `trace.py`.
 
 **Check a translation.** The translations were written without a native speaker's review, so corrections are
-very welcome. Open a [translation fix](https://github.com/Gshoe2006/inkline/issues/new?template=translation.yml)
-issue for a single string, or check the lot in a spreadsheet:
+very welcome: see [docs/translating.md](docs/translating.md) (also *Help → Help translate Inkline…*). Open a
+[Suggest a better translation](https://github.com/Gshoe2006/inkline/issues/new?template=translation.yml) issue,
+or check the lot on a web page or in a spreadsheet:
 
 ```sh
-python3 packaging/translation_sheet.py fr      # writes inkline-fr-review.csv: English, French, Better wording, Comment
+python3 packaging/translation_sheet.py all inkline-review.html   # every language: search, filter, type better wording
+python3 packaging/translation_sheet.py fr --needs-review         # inkline-fr-review.csv: what nobody has checked yet
+python3 packaging/translations/apply.py suggestions.csv          # maintainers: put suggestions in, mark them reviewed
 ```
+
+Which strings a native speaker has checked is kept in `packaging/translations/review.json`.
 
 **Add a language.**
 

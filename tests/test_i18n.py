@@ -312,8 +312,8 @@ def test_the_review_sheet_lists_every_string_and_the_word_lists(code, tmp_path):
     path = tmp_path / "sheet.csv"
     translation_sheet.main(["translation_sheet.py", code, str(path)])
     rows = list(csv.reader(open(path, encoding="utf-8-sig")))
-    assert rows[0] == ["Where", "English", i18n.LANGUAGES[code], "Better wording", "Comment"]
+    assert rows[0] == ["Where", "English", i18n.LANGUAGES[code], "Needs review", "Better wording", "Comment", "Key"]
     catalog = i18n.catalog(code)
     assert {r[1] for r in rows[1:] if r[0] in ("window", "page", "page and window")} == set(catalog)
     assert any(r[0].startswith("word search") for r in rows) and any(r[0].startswith("crossword") for r in rows)
-    assert all(r[3] == r[4] == "" for r in rows[1:])
+    assert all(r[4] == r[5] == "" for r in rows[1:])

@@ -13,8 +13,8 @@ import os
 import time
 from dataclasses import replace
 
-from PySide6.QtCore import QEvent, QMimeData, QTimer, Qt, Signal
-from PySide6.QtGui import QAction, QGuiApplication, QImage, QKeySequence, QShortcut, QUndoCommand, QUndoStack
+from PySide6.QtCore import QEvent, QMimeData, QTimer, Qt, QUrl, Signal
+from PySide6.QtGui import QAction, QDesktopServices, QGuiApplication, QImage, QKeySequence, QShortcut, QUndoCommand, QUndoStack
 from PySide6.QtPrintSupport import QAbstractPrintDialog, QPrintDialog, QPrinter
 from PySide6.QtWidgets import (QAbstractItemView, QAbstractSlider, QAbstractSpinBox, QApplication, QComboBox, QDialog,
                                QFileDialog, QHBoxLayout, QInputDialog, QLineEdit, QMainWindow, QMenu, QMenuBar, QMessageBox,
@@ -37,6 +37,7 @@ from .state import BUILTIN_PRESETS, State, new_seed
 
 IMAGE_FILTER = "Images (*.png *.jpg *.jpeg *.webp *.bmp *.gif *.tif *.tiff)"
 MAX_RECENT = 10      # File → Open recent lists this many photos
+TRANSLATE_URL = "https://github.com/Gshoe2006/inkline/blob/main/docs/translating.md"   # Help → Help translate Inkline
 
 # What Edit → Undo says for a change to each setting ("Undo Complexity"); others use the setting's name.
 STEP_NAMES = {"gen": "Pattern", "complexity": "Complexity", "weight": "Line weight", "frame": "Border", "cbn": "Colour by number",
@@ -416,6 +417,7 @@ class Window(QMainWindow):
         act(h, "T&our of the window", lambda: self.show_tour())
         act(h, "Check for &updates…", lambda: self.updates.check(asked=True))
         self.updates.add_menu(h.addMenu(tr("Check for updates au&tomatically")))
+        self.act_translate = act(h, "Help t&ranslate Inkline…", self._help_translate)
         act(h, "&About Inkline", self._about)
 
     # --- state changes -------------------------------------------------------------------------------
@@ -2010,6 +2012,10 @@ class Window(QMainWindow):
             return False
         whatsnew.WhatsNew(self, self.version, text).exec()
         return True
+
+    def _help_translate(self):
+        """The guide to checking and improving the translations, on GitHub, in the browser."""
+        QDesktopServices.openUrl(QUrl(TRANSLATE_URL))
 
     def _about(self):
         QMessageBox.about(self, tr("About Inkline"), f"<b>Inkline {self.version}</b><br>" + tr(

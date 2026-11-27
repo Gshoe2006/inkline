@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{TITLE}}</title>
+<!-- Written by packaging/translation_sheet.py. Everything is in this file: it works offline. -->
+<style>
+:root { --bg: #fbfaf7; --fg: #1d1b18; --muted: #6b665e; --line: #e2ddd4; --card: #ffffff; --accent: #2f6db5;
+        --warn-bg: #fff2d6; --warn-fg: #7a4d00; --ok-bg: #e3f3e6; --ok-fg: #1f6b33; --input: #ffffff; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #1a1916; --fg: #ece8e1; --muted: #a39d93; --line: #3a3732; --card: #23211d; --accent: #7fb0ec;
+          --warn-bg: #4a3a12; --warn-fg: #f5d28a; --ok-bg: #1d3a24; --ok-fg: #9fd9ad; --input: #2b2925; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+header { padding: 20px 16px 8px; max-width: 1400px; margin: 0 auto; }
+h1 { font-size: 22px; margin: 0 0 6px; }
+p { margin: 6px 0; color: var(--muted); max-width: 75ch; }
+.controls { position: sticky; top: 0; z-index: 2; background: var(--bg); border-bottom: 1px solid var(--line);
+            padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+.controls input[type=search] { flex: 1 1 240px; min-width: 0; }
+input, select, textarea, button { font: inherit; color: var(--fg); }
+input[type=search], input[type=text], select, textarea { background: var(--input); border: 1px solid var(--line);
+            border-radius: 6px; padding: 6px 8px; }
+button { background: var(--accent); color: #fff; border: 0; border-radius: 6px; padding: 7px 12px; cursor: pointer; }
+button.plain { background: transparent; color: var(--accent); border: 1px solid var(--line); }
+#count { color: var(--muted); }
+main { padding: 8px 16px 40px; max-width: 1400px; margin: 0 auto; }
+table { width: 100%; border-collapse: collapse; background: var(--card); table-layout: fixed; }
+th, td { text-align: left; vertical-align: top; padding: 7px 8px; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+th { font-size: 13px; color: var(--muted); font-weight: 600; }
+td.where { color: var(--muted); font-size: 13px; }
+td input { width: 100%; }
+.badge { display: inline-block; font-size: 12px; border-radius: 10px; padding: 1px 8px; }
+.need { background: var(--warn-bg); color: var(--warn-fg); }
+.ok { background: var(--ok-bg); color: var(--ok-fg); }
+.lang { font-size: 12px; color: var(--muted); }
+#out { width: 100%; min-height: 120px; margin-top: 8px; display: none; font-family: ui-monospace, monospace; font-size: 13px; }
+.wide { width: 21%; } .narrow { width: 11%; } .status { width: 12%; }
+@media (max-width: 760px) {
+  table, thead, tbody, tr, td { display: block; width: auto; }
+  thead { display: none; }
+  tr { border-bottom: 1px solid var(--line); padding: 6px 0; }
+  td { border: 0; padding: 3px 8px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>{{TITLE}}</h1>
+  <p>Each row is something Inkline shows in its window or prints on a page, in English and in translation.
+     Rows marked <span class="badge need">needs review</span> haven't been checked by a native speaker yet.
+     If one sounds wrong or unnatural, type a better wording beside it. Keep anything in {curly brackets} as it is,
+     and keep one &amp; in menu items (it marks the letter for the keyboard shortcut).</p>
+  <p>When you're done, press <b>Copy my suggestions</b> and paste them into a
+     <a href="https://github.com/Gshoe2006/inkline/issues/new?template=translation.yml">Suggest a better translation</a>
+     issue. What you type is kept in this browser until you clear it.</p>
+</header>
+<div class="controls">
+  <input type="search" id="q" placeholder="Search English or translation" aria-label="Search">
+  <select id="lang" aria-label="Language"></select>
+  <select id="where" aria-label="Where it appears">
+    <option value="">Everywhere</option>
+    <option value="window">In the window</option>
+    <option value="page">On printed pages</option>
+    <option value="lists">Word lists and sayings</option>
+  </select>
+  <label><input type="checkbox" id="needs"> Only what needs review</label>
+  <label><input type="checkbox" id="mine"> Only my suggestions</label>
+  <span id="count"></span>
+  <button id="copy">Copy my suggestions</button>
+  <button id="clear" class="plain">Clear my suggestions</button>
+</div>
+<main>
+  <textarea id="out" readonly aria-label="Your suggestions"></textarea>
+  <table>
+    <thead><tr><th class="narrow">Where</th><th class="wide">English</th><th class="wide">Translation</th>
+      <th class="status">Status</th><th class="wide">Better wording</th><th class="narrow">Why (optional)</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+</main>
+<script type="application/json" id="data">{{DATA}}</script>
+<script>
+(function () {
+  "use strict";
+  var DATA = JSON.parse(document.getElementById("data").textContent);
+  var STORE = "inkline-translation-suggestions";
+  var LIMIT = 400;   // rows drawn at once; search or filter to see others
+  var saved = {};
+  try { saved = JSON.parse(localStorage.getItem(STORE) || "{}") || {}; } catch (e) { saved = {}; }
+  function persist() { try { localStorage.setItem(STORE, JSON.stringify(saved)); } catch (e) {} }
+
+  var $ = function (id) { return document.getElementById(id); };
+  var codes = Object.keys(DATA.languages);
+  var langSel = $("lang");
+  if (codes.length > 1) {
+    langSel.appendChild(new Option("All languages", ""));
+  } else {
+    langSel.style.display = "none";
+  }
+  codes.forEach(function (c) { langSel.appendChild(new Option(DATA.languages[c], c)); });
+  if (codes.length > 1) langSel.value = "";
+
+  function id(r) { return r[0] + "\u0001" + r[5] + "\u0001" + r[3]; }   // language, key, current text
+  function isList(r) { return r[5].charAt(0) === "@"; }
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+
+  function matches(r, q, lang, where, needs, mine) {
+    if (lang && r[0] !== lang) return false;
+    if (needs && !r[4]) return false;
+    if (mine && !saved[id(r)]) return false;
+    if (where === "lists" && !isList(r)) return false;
+    if ((where === "window" || where === "page") && (isList(r) || r[1].indexOf(where) < 0)) return false;
+    if (q) {
+      var hay = (r[1] + "\n" + r[2] + "\n" + r[3]).toLowerCase();
+      if (hay.indexOf(q) < 0) return false;
+    }
+    return true;
+  }
+
+  function draw() {
+    var q = $("q").value.trim().toLowerCase(), lang = langSel.value, where = $("where").value;
+    var needs = $("needs").checked, mine = $("mine").checked;
+    var body = $("rows"), shown = 0, total = 0;
+    body.textContent = "";
+    var frag = document.createDocumentFragment();
+    DATA.rows.forEach(function (r) {
+      if (!matches(r, q, lang, where, needs, mine)) return;
+      total += 1;
+      if (shown >= LIMIT) return;
+      shown += 1;
+      var tr = el("tr");
+      var w = el("td", "where", r[1]);
+      if (codes.length > 1) { w.appendChild(el("div", "lang", DATA.languages[r[0]])); }
+      tr.appendChild(w);
+      tr.appendChild(el("td", "", r[2]));
+      tr.appendChild(el("td", "", r[3]));
+      var st = el("td");
+      st.appendChild(r[4] ? el("span", "badge need", "needs review · " + r[4]) : el("span", "badge ok", "checked"));
+      tr.appendChild(st);
+      var s = saved[id(r)] || {};
+      ["text", "why"].forEach(function (field) {
+        var td = el("td"), inp = el("input");
+        inp.type = "text";
+        inp.value = s[field] || "";
+        inp.setAttribute("aria-label", field === "text" ? "Better wording for: " + r[3] : "Why");
+        inp.addEventListener("input", function () {
+          var cur = saved[id(r)] || {};
+          cur[field] = inp.value;
+          if (!cur.text && !cur.why) { delete saved[id(r)]; } else { saved[id(r)] = cur; }
+          persist();
+        });
+        td.appendChild(inp);
+        tr.appendChild(td);
+      });
+      frag.appendChild(tr);
+    });
+    body.appendChild(frag);
+    $("count").textContent = total > shown ? ("showing " + shown + " of " + total + " — search to narrow")
+                                           : (total + (total === 1 ? " row" : " rows"));
+  }
+
+  function csvCell(v) { v = String(v); return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+
+  $("copy").addEventListener("click", function () {
+    var lines = ["key,language,new_text,current_text,comment"];
+    DATA.rows.forEach(function (r) {
+      var s = saved[id(r)];
+      if (s && (s.text || s.why)) lines.push([r[5], r[0], s.text || "", r[3], s.why || ""].map(csvCell).join(","));
+    });
+    var out = $("out");
+    if (lines.length === 1) { out.style.display = "block"; out.value = "No suggestions yet: type a better wording beside a row first."; return; }
+    var text = lines.join("\n") + "\n";
+    out.style.display = "block";
+    out.value = text;
+    out.focus();
+    out.select();
+    var done = function () { $("copy").textContent = "Copied " + (lines.length - 1) + " — paste into the issue"; };
+    try {
+      if (navigator.clipboard) { navigator.clipboard.writeText(text).then(done, function () { document.execCommand("copy"); done(); }); }
+      else { document.execCommand("copy"); done(); }
+    } catch (e) { /* the text is selected in the box: copy it by hand */ }
+  });
+  $("clear").addEventListener("click", function () {
+    if (!confirm("Clear every better wording you've typed on this page?")) return;
+    saved = {};
+    persist();
+    $("out").style.display = "none";
+    draw();
+  });
+  ["q", "lang", "where", "needs", "mine"].forEach(function (k) {
+    $(k).addEventListener(k === "q" ? "input" : "change", draw);
+  });
+  draw();
+})();
+</script>
+</body>
+</html>
