@@ -28,7 +28,8 @@ def _page_seed(s, key, default):
     return default
 
 
-WORKSHEETS = {"maths", "trace", "clock", "scramble", "spelltest", "fractions", "symmetry", "reading"}   # a booklet with these among other kinds is a set of worksheets
+WORKSHEETS = {"maths", "trace", "clock", "scramble", "spelltest", "fractions", "symmetry", "reading", "lscwc", "speed", "drawread",
+              "coords"}   # a booklet with these among other kinds is a set of worksheets
 
 
 def calendar_months(s, n):

@@ -359,12 +359,17 @@ GROUP_NAMES = {"art": "Colouring and art", "puzzles": "Puzzles", "maths": "Maths
 GROUPS = [("art", ["mandala", "truchet", "contour", "flow", "name", "symmetry"]),
           ("puzzles", ["maze", "dots", "words", "crossword", "sudoku", "kakuro", "nonogram", "spot", "scramble", "logic",
                        "cryptogram"]),
-          ("maths", ["maths", "early", "clock", "fractions"]),
-          ("literacy", ["trace", "spelltest", "reading", "ladder"]),
-          ("classroom", ["bingo", "reward", "ruled", "calendar"])]
+          ("maths", ["maths", "speed", "early", "clock", "fractions", "coords"]),
+          ("literacy", ["trace", "spelltest", "lscwc", "reading", "drawread", "ladder"]),
+          ("classroom", ["bingo", "memory", "reward", "ruled", "calendar"])]
 # more words a search finds a pattern by, besides its name and description (in this language or in English)
 KEYWORDS = {"logic": "Einstein, reasoning, deduction, clues", "cryptogram": "Secret code, cipher, decode, quote, proverb",
-            "ladder": "Words, spelling, letters, doublets", "calendar": "Month, week, planner, diary, schedule, dates"}
+            "ladder": "Words, spelling, letters, doublets", "calendar": "Month, week, planner, diary, schedule, dates",
+            "lscwc": "Spelling words, learn, practise, fold, copy",
+            "speed": "Times tables, multiplication, division, timed, quick, facts, test, minute",
+            "drawread": "Reading, drawing, sentences, comprehension, picture, understanding",
+            "coords": "Coordinates, plot, points, axes, graph, Battleships, ships, game, quadrants",
+            "memory": "Pairs, matching, concentration, pelmanism, cards, game, cut out, numbers, dots"}
 
 
 def _plain(text):

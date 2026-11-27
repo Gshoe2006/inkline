@@ -85,8 +85,15 @@ def _walk_states(w):
         sb.sync(render.view(State(st.settings, st.photos, st.sel, st.page, copy=st.copy, class_set=sb.class_set_view())))
     for gen in ("mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "name", "words", "nonogram",
                 "spot", "kakuro", "maths", "trace", "crossword", "clock", "scramble", "spelltest", "fractions", "symmetry",
-                "ruled", "reward", "reading", "bingo", "early", "logic", "cryptogram", "ladder", "calendar"):
+                "ruled", "reward", "reading", "bingo", "early", "logic", "cryptogram", "ladder", "calendar", "lscwc", "speed",
+                "drawread", "coords", "memory"):
         go(gen=gen)
+    go(gen="speed", speed_tables="x", speed_chart=True)
+    go(gen="drawread", draw_source="custom", draw_text="")
+    go(gen="coords", coord_kind="battle")
+    go(gen="memory", memory_kind="custom", memory_words="", memory_backs=True)
+    go(memory_words="; ".join(f"a{k}: b{k}" for k in range(14)))
+    go(gen="scramble", scramble_kind="missing")
     go(gen="cryptogram", crypto_code="symbols", crypto_source="custom", crypto_text="")
     go(crypto_text="Hola")
     go(gen="ladder", ladder_kind="marked")
@@ -194,7 +201,11 @@ def test_the_window_in_each_language_asks_for_nothing_untranslated(language, tmp
                   *[Settings(gen=g, dpi=36, complexity=c) for g in ("logic", "cryptogram", "ladder") for c in (2, 6, 9)],
                   Settings(gen="cryptogram", crypto_code="symbols", dpi=36), Settings(gen="ladder", ladder_kind="marked", dpi=36),
                   Settings(gen="calendar", dpi=36), Settings(gen="calendar", cal_kind="week", cal_art="flow", dpi=36),
-                  Settings(gen="calendar", cal_month=5, cal_year=2027, orient="landscape", dpi=36)):
+                  Settings(gen="calendar", cal_month=5, cal_year=2027, orient="landscape", dpi=36),
+                  *[Settings(gen=g, dpi=36, complexity=c) for g in ("lscwc", "speed", "drawread", "coords", "memory") for c in (2, 9)],
+                  Settings(gen="speed", speed_chart=True, dpi=36), Settings(gen="coords", coord_kind="battle", dpi=36),
+                  Settings(gen="memory", memory_kind="words", memory_backs=True, dpi=36),
+                  Settings(gen="memory", memory_kind="dots", dpi=36), Settings(gen="scramble", scramble_kind="missing", dpi=36)):
             j = jobs.job(State(s), copies=2, answers=True)
             for i in range(j.count):
                 j.draw(RecordingCanvas(), i)

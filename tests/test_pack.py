@@ -89,16 +89,16 @@ def test_the_cover_says_worksheets():
     assert book.book_pages(Settings(**{**out, "title": "Week 3"}))[0].title == "Week 3"
 
 
-def test_a_spelling_week_uses_the_words_four_ways():
+def test_a_spelling_week_uses_the_words_every_day():
     out = pack.week(Settings(age="7-9", pack_theme="spelling", pack_words="because, Friend; said\nsaid which"), [1, 2, 3, 4, 5])
     pages = out["page_list"]
-    assert [p["gen"] for p in pages] == ["trace", "crossword", "words", "scramble", "spelltest"]
+    # Monday look-say-cover-write-check, Tuesday word search, Wednesday missing letters, Thursday crossword, Friday's test
+    assert [p["gen"] for p in pages] == ["lscwc", "words", "scramble", "crossword", "spelltest"]
+    assert pages[2]["scramble_kind"] == "missing"
     listed = "because, Friend, said, which"
-    assert pages[0]["trace_source"] == "words" and pages[0]["trace_text"] == listed
-    assert pages[2]["ws_theme"] == pages[3]["ws_theme"] == pages[4]["ws_theme"] == "custom"
-    assert pages[2]["ws_words"] == pages[4]["ws_words"] == listed
+    assert all(p["ws_theme"] == "custom" and p["ws_words"] == listed for p in pages)
     from inkengine.patterns import crossword
-    clues = crossword.parse_entries(pages[1]["cross_words"])
+    clues = crossword.parse_entries(pages[3]["cross_words"])
     assert [w for w, _c in clues] == ["BECAUSE", "FRIEND", "SAID", "WHICH"]
     for w, clue in clues:
         letters = clue.split(": ", 1)[1].replace(" ", "")
@@ -116,11 +116,11 @@ def test_the_booklet_section_makes_a_pack_from_its_own_controls(win):
     sb.pack_words.setText("rain, cloud, thunder")
     sb.pack_words.editingFinished.emit()
     QApplication.processEvents()
-    assert sb.pack_btn.isEnabled() and "unscramble" in sb.pack_hint.text() and "10 and up" in sb.pack_hint.text()
+    assert sb.pack_btn.isEnabled() and "missing letters" in sb.pack_hint.text() and "10 and up" in sb.pack_hint.text()
     sb.pack_btn.click()
     settle(win)
     s = win.state.settings
-    assert [p["gen"] for p in s.page_list][-2:] == ["scramble", "spelltest"]
+    assert [p["gen"] for p in s.page_list][-2:] == ["crossword", "spelltest"]
     assert s.page_list[2]["ws_words"] == "rain, cloud, thunder"
     assert win.history.undoText() == "Make a week of worksheets"
 
@@ -156,5 +156,5 @@ def test_choosing_the_days_in_the_booklet_section(win):
     sb.pack_days_reset.click()                               # Usual days: the spelling week's own
     QApplication.processEvents()
     assert win.state.settings.pack_days == "" and [c.value() for c in sb.pack_day_combos] == list(pack.SPELLING_DAYS)
-    sb.pack_day_combos[0].set_value("trace")                 # choosing the usual day again isn't a choice
+    sb.pack_day_combos[0].set_value("lscwc")                 # choosing the usual day again isn't a choice
     assert win.state.settings.pack_days == ""

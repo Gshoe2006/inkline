@@ -12,13 +12,13 @@ speaker's review (and the release it was written for: the newest first with --ne
 columns, "Better wording" and "Comment", for the reviewer to fill in, and the key that
 packaging/translations/apply.py uses to put a better wording in. After the interface, the sheet lists the word
 search themes, the crossword words and clues, the logic puzzle's names and things, the cryptogram's sayings, the
-word ladder's words and the handwriting words, which are written in the language rather than translated from
+word ladder's words, the handwriting words, the draw-what-you-read sentences and the memory cards' picture words, which are written in the language rather than translated from
 English, so they're checked too. The CSV is UTF-8 with a byte order mark, so Excel, LibreOffice and Google Sheets
 open the accents correctly. The web page needs nothing else (no internet either): open it in any browser, type
 better wordings into it, and copy them into a "Suggest a better translation" issue.
 
 To use a reviewed sheet: python3 packaging/translations/apply.py SHEET.csv (see docs/translating.md). The word
-lists are in inkengine/patterns/words.py, crossword.py, logic.py, cryptogram.py, ladder.py and trace.py, and are
+lists are in inkengine/patterns/words.py, crossword.py, logic.py, cryptogram.py, ladder.py, trace.py, drawread.py and inkengine/pictures.py, and are
 edited by hand; keep every {placeholder} and the & of a menu item.
 """
 
@@ -78,6 +78,13 @@ def rows(code):
     from inkengine.patterns import trace
     if code in trace.DEFAULT_WORDS:
         out.append(("handwriting: words", " ".join(trace.DEFAULT_WORDS["en"]), " ".join(trace.DEFAULT_WORDS[code])))
+    from inkengine import pictures
+    from inkengine.patterns import drawread
+    for level, (en_list, items) in enumerate(zip(drawread.READ_SENTENCES["en"], drawread.READ_SENTENCES.get(code, []))):
+        for en, text in zip(en_list, items):
+            out.append((f"draw what you read: level {level + 1}", en, text))
+    for name, word in pictures.WORDS.get(code, {}).items():
+        out.append(("memory cards: picture words", pictures.WORDS["en"][name], word))
     return out
 
 
