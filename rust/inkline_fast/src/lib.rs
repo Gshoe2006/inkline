@@ -341,26 +341,33 @@ fn engrave_band<'py>(
 fn blur(src: &[f32], w: usize, h: usize, k: &[f64]) -> Vec<f32> {
     // tap by tap, left to right, each product rounded then added in 64 bits, edges clamped: the same sums as
     // photo.py's numpy version (and the JavaScript), so the same 32-bit results
-    let r = (k.len() / 2) as i64;
-    let (wi, hi) = (w as i64, h as i64);
+    // (each output's taps are still added in order; looping over the taps outside lets the compiler vectorise
+    // across the row, which changes nothing in any one sum)
+    let r = k.len() / 2;
+    let hi = h as i64;
     let mut tmp = vec![0f32; w * h];
+    let mut pad = vec![0f64; w + 2 * r];
+    let mut acc = vec![0f64; w];
     for y in 0..h {
         let row = &src[y * w..(y + 1) * w];
-        for x in 0..wi {
-            let mut a = 0.0f64;
-            for (n, &kn) in k.iter().enumerate() {
-                let xx = (x + n as i64 - r).clamp(0, wi - 1) as usize;
-                a += row[xx] as f64 * kn;
+        for (j, p) in pad.iter_mut().enumerate() {
+            *p = row[j.saturating_sub(r).min(w - 1)] as f64;   // clamped edges
+        }
+        acc.iter_mut().for_each(|v| *v = 0.0);
+        for (n, &kn) in k.iter().enumerate() {
+            for (a, &v) in acc.iter_mut().zip(&pad[n..n + w]) {
+                *a += v * kn;
             }
-            tmp[y * w + x as usize] = a as f32;
+        }
+        for (t, &a) in tmp[y * w..(y + 1) * w].iter_mut().zip(&acc) {
+            *t = a as f32;
         }
     }
     let mut out = vec![0f32; w * h];
-    let mut acc = vec![0f64; w];
     for y in 0..hi {
         acc.iter_mut().for_each(|v| *v = 0.0);
         for (n, &kn) in k.iter().enumerate() {
-            let yy = (y + n as i64 - r).clamp(0, hi - 1) as usize;
+            let yy = (y + n as i64 - r as i64).clamp(0, hi - 1) as usize;
             let row = &tmp[yy * w..(yy + 1) * w];
             for (a, &v) in acc.iter_mut().zip(row) {
                 *a += v as f64 * kn;
