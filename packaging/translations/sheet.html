@@ -39,6 +39,7 @@ td input { width: 100%; }
 #out { width: 100%; min-height: 120px; margin-top: 8px; display: none; font-family: ui-monospace, monospace; font-size: 13px; }
 .wide { width: 21%; } .narrow { width: 11%; } .status { width: 12%; }
 @media (max-width: 760px) {
+  .controls { position: static; }
   table, thead, tbody, tr, td { display: block; width: auto; }
   thead { display: none; }
   tr { border-bottom: 1px solid var(--line); padding: 6px 0; }
@@ -149,6 +150,7 @@ td input { width: 100%; }
         var td = el("td"), inp = el("input");
         inp.type = "text";
         inp.value = s[field] || "";
+        inp.placeholder = field === "text" ? "Better wording" : "Why (optional)";
         inp.setAttribute("aria-label", field === "text" ? "Better wording for: " + r[3] : "Why");
         inp.addEventListener("input", function () {
           var cur = saved[id(r)] || {};
