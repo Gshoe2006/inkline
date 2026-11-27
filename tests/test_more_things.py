@@ -620,3 +620,26 @@ def test_speed_test_never_repeats_a_fact_from_overlapping_tables():
         facts = speed.make_facts(random.Random(seed).random, 5, S())
         keys = [tuple(sorted((a, b))) for a, _s, b, _r in facts]
         assert len(keys) == len(set(keys)), seed
+
+
+@pytest.mark.parametrize("family", ["DejaVu Sans", "DejaVu Sans Mono"])
+def test_each_page_fits_in_wider_fonts(family, monkeypatch):
+    """Text is measured in the font the page is drawn in: DejaVu Sans (Linux machines without Inter or Cantarell, as
+    CI's) and a wider one still fit."""
+    from PySide6.QtGui import QFontDatabase
+    from inkengine import qt
+    if family not in QFontDatabase.families():
+        pytest.skip(f"{family} isn't installed")
+    monkeypatch.setattr(qt, "FONT_FAMILIES", [family])
+    for gen, extra in VARIANTS:
+        for paper in ("letter", "a4"):
+            for orient in ("portrait", "landscape"):
+                for c in (1, 8):
+                    s = Settings(gen=gen, complexity=c, seed=c * 5, paper=paper, orient=orient, dpi=100, title="T",
+                                 name_line=True, **extra)
+                    g = geometry(s)
+                    spec = single_page(s)
+                    box = design_box(g, spec, s)
+                    ctx = Measuring()
+                    GENERATORS[gen](ctx, box, mulberry32(spec.seed), c, s, lw=2, seed=spec.seed, dpi=g.dpi)
+                    assert _outside(ctx, box, 2) is None, (gen, extra, paper, orient, c, _outside(ctx, box, 2))

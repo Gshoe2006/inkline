@@ -181,8 +181,10 @@ def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, solve=False, **_opts)
     out_of = f"/ {len(facts)}"
     x = box.x + hfs * 0.6
     ctx.fill_text(time_label, x, base)
-    line_w = (box.w - hfs * 3 - ctx.measure_text(time_label) - ctx.measure_text(score_label) - ctx.measure_text(out_of)) / 2
-    line_w = max(hfs * 2, line_w - hfs * 0.8)
+    # a line as long as both halves of the box leave, measured in the font the page uses (wider in some)
+    left_room = box.w / 2 - hfs * 1.4 - ctx.measure_text(time_label)
+    right_room = box.w / 2 - hfs * 1.6 - ctx.measure_text(score_label) - ctx.measure_text(out_of)
+    line_w = max(hfs, min(left_room, right_room))
     lx = x + ctx.measure_text(time_label) + hfs * 0.3
     ctx.line_width = max(1.0, lw * 0.6)
     ctx.begin_path()

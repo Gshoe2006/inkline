@@ -246,7 +246,8 @@ def _battle_upright(ctx, box, n, fleet, lw, dpi):
     and the fleet in a column beside them, a ship's name over its squares."""
     fs = min(dpi * 0.2, box.h / 32)
     head = fs * 3.6     # a grid's title and letters
-    side = fs * 1.6     # its numbers
+    ctx.set_font(fs, 600)   # its numbers, measured in the page's font (wider in some), with room to spare
+    side = max(fs * 1.6, ctx.measure_text(str(n)) + fs * 0.6)
     gap = fs * 1.6      # between the grids and the column
     size = min((box.h - 2 * head - fs) / 2, box.w * 0.62 - side)
     gx = box.x + side
@@ -310,7 +311,8 @@ def _battle(ctx, box, c, lw, dpi):
         return _battle_upright(ctx, box, n, fleet, lw, dpi)
     fs = min(dpi * 0.2, box.h / 32)
     head = fs * 3.6     # a grid's title and letters
-    side = fs * 1.6     # its numbers
+    ctx.set_font(fs, 600)   # its numbers, measured in the page's font (wider in some), with room to spare
+    side = max(fs * 1.6, ctx.measure_text(str(n)) + fs * 0.6)
     cell = fs * 0.9     # a ship's square
     sunk = tr("Sunk")
     right = box.x + box.w
