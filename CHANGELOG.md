@@ -6,6 +6,75 @@ To release a new version, add a section headed `## <version>` (the same text as 
 pull request that bumps `VERSION`. When it merges, `.github/workflows/release.yml` builds the packages
 and publishes a GitHub Release with that section as its notes.
 
+## 6.2.0 - 2026-11-27
+
+Inkline 6.2 adds five new things to make (logic puzzles, cryptograms, word ladders, calendars and photo dot-to-dots), zoom for the preview, a better layout for tablets, and works better with screen readers and the keyboard. It also gets ready for Google Play and for signed Windows and Mac apps.
+
+### What's new
+
+- **Logic puzzle.** Einstein-style grids for children: three to five children, pets, colours, fruit or sports, and clues to work out who has what. Each puzzle has exactly one answer and can be solved with ticks and crosses; the answer page fills the grid.
+- **Cryptogram.** A saying (or your own text) in a secret code of numbers or symbols, with a few letters given in the key; fewer as it gets harder.
+- **Word ladder.** Change one letter at a time to get from one word to another (CAT → DOG), in all seven languages; optionally marks the letter that changes.
+- **Calendar.** A month to colour in, with a mandala, woven tiles, flow lines or contours above it, or a weekly planner with lines to write on. Weeks start on Monday or Sunday; a booklet steps through the months, so twelve pages make a year.
+- **Photo dot-to-dot.** A photo style that turns the outline of a photo's subject into 20–150 numbered dots, with the joined line as its answer.
+- **Zoom the preview.** Pinch it, use a trackpad, Ctrl+scroll wheel, or **View → Zoom in / Zoom out / Whole page** (Ctrl++ / Ctrl+- / Ctrl+0). Drag to look around; double-click or double-tap to zoom in or show the whole page again. The page itself doesn't change.
+- **Tablets.** Held sideways, the options get more room and the page is drawn larger; More designs appears in the touch toolbar when it fits.
+- **Screen readers and the keyboard.** Every list, slider and field is read out with its label; the preview can be reached with Tab and says which page it shows; the gallery and All patterns work with the arrow keys and Enter; the photo list has Delete and Alt+↑/↓ like the page list; focused lists and the preview show an outline.
+- **Three new presets:** Logic puzzle booklet with answers, Calendar for next month, Photo dot-to-dot.
+- **For packagers and app stores:** an Android App Bundle for Google Play (when the signing key is set up), signed Windows and notarized Mac apps (once their certificates are added), corrected winget, Flathub and Homebrew files, and `inkline.py --benchmark` to time every pattern ([docs/performance.md](https://github.com/Gshoe2006/inkline/blob/main/docs/performance.md)).
+
+### Fixed
+
+- The Android app's launcher icon, and its target Android version (API 36, as Google Play asks).
+
+### Upgrading
+
+Nothing changes in what Inkline needs. Your presets, settings, projects, recent files and printer carry over. If you have 5.6 or later, Inkline offers this update itself (**Help → Check for updates…**); otherwise, install it as below.
+
+**Windows**
+Run `inkline-6.2.0-windows-setup.exe`, or unzip `inkline-6.2.0-windows-portable.zip` and run `Inkline\Inkline.exe`.
+
+**macOS**
+Open `inkline-6.2.0-macos.dmg` and drag Inkline to Applications. It isn't signed by Apple yet, so the first time, Control-click Inkline and choose **Open**.
+
+**Debian / Ubuntu / Linux Mint / Pop!_OS / Raspberry Pi OS**
+```sh
+sudo apt install ./inkline_6.2.0-1_amd64.deb     # or _arm64.deb on ARM64
+```
+
+**Fedora / openSUSE**
+```sh
+sudo dnf install ./inkline-6.2.0-1.x86_64.rpm    # or .aarch64.rpm; openSUSE: sudo zypper install --allow-unsigned-rpm …
+```
+
+**Arch / CachyOS / Manjaro**
+```sh
+sudo pacman -U inkline-6.2.0-1-any.pkg.tar.zst
+```
+
+**Snap**
+```sh
+sudo snap install --dangerous ./inkline_6.2.0_amd64.snap   # or _arm64.snap
+```
+
+**Any distro, nothing installed**
+```sh
+chmod +x inkline-6.2.0-x86_64.AppImage && ./inkline-6.2.0-x86_64.AppImage   # or -aarch64.AppImage
+```
+
+**Any other distro**
+```sh
+sh inkline-6.2.0.run            # or --system for every user
+```
+
+**Flatpak**
+```sh
+flatpak install --user inkline-6.2.0.flatpak
+```
+
+### Found a problem?
+
+Please open an issue saying what you did, what you expected, and what happened. Include your system (distro, Windows or macOS version), and the printer if it's about printing.
 ## 6.1.0 - 2026-11-26
 
 Inkline 6.1 comes in sixteen packages: on Fedora and openSUSE, on Intel Macs, on Raspberry Pi and other ARM computers, as a Snap and as a portable Windows app. It adds a layout for touch screens, and fixes a rare crash.
