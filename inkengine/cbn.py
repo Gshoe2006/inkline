@@ -26,6 +26,11 @@ from PySide6.QtGui import QColor, QImage, QPainter
 from .box import Box
 from .i18n import tr
 
+try:   # optional: the chamfer passes in Rust (rust/inkline_fast); the numpy code below gives the same distances
+    import inkline_fast
+except ImportError:
+    inkline_fast = None
+
 CBN_DPI, CBN_PAT_DPI = 150, 100
 CRAYONS = [("White", 255, 255, 255), ("Light grey", 200, 200, 200), ("Grey", 128, 128, 128), ("Black", 30, 30, 30),
            ("Red", 210, 40, 45), ("Pink", 245, 160, 190), ("Orange", 245, 135, 40), ("Peach", 250, 205, 160),
@@ -204,6 +209,8 @@ def distance(label, w, h):
     d = np.where(inside, np.where(edge, 1, 1e9), 0).astype(np.float32).reshape(-1)
     if h < 2 or w < 3:
         return d
+    if inkline_fast is not None:   # the same passes cell by cell, as the JavaScript's loops
+        return inkline_fast.chamfer(d, w, h)
     key = (w, h)
     if key not in _wave_cache:
         # forward: (y, x) needs (y, x-1) and the row above at x-1, x, x+1, all with a smaller 2y + x

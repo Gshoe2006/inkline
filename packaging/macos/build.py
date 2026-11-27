@@ -12,6 +12,9 @@ installer) and a universal2 numpy (PyPI has only one processor's in each wheel: 
 delocate-merge; PySide6's wheels are universal2 already). The universal one is what Inkline's updater installs.
 PySide6 6.12 needs macOS 14 (Sonoma) or newer.
 
+The optional Rust module (faster photo styles) goes in when it's installed in that Python: packaging/build_fast.py
+--install builds it for this Mac, or with --target universal2-apple-darwin for the universal app.
+
 Signing (docs/code-signing.md): with MACOS_SIGN_IDENTITY set (a Developer ID Application identity in a keychain;
 MACOS_KEYCHAIN names the keychain if it isn't the default one), packaging/macos/sign.py signs everything in the app
 inside out with the hardened runtime, then signs, notarizes and staples the disk image (when it finds Apple's
@@ -87,6 +90,8 @@ def app(arch="arm64"):
            "--icon", icns, "--osx-bundle-identifier", BUNDLE_ID, "--target-arch", ARCHES[arch][0],
            "--distpath", DIST, "--workpath", BUILD, "--specpath", BUILD,
            "--collect-submodules", "inkengine", "--collect-submodules", "inkapp",
+           # the optional Rust module, when it's installed (packaging/build_fast.py --install); only a warning if not
+           "--hidden-import", "inkline_fast",
            "--exclude-module", "tkinter", "--exclude-module", "unittest", "--exclude-module", "pydoc"]
     for d in data:
         cmd += ["--add-data", d]

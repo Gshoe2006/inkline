@@ -2,8 +2,8 @@
 # page at 300 dpi, PDFs, photo styles, a 30-page booklet). Each machine keeps its numbers as an artifact
 # benchmark-<os>; the summary job puts them side by side in one table on the run's page.
 #
-# The rust job is a trial for 8.0: it builds the optional Rust module (rust/inkline_fast) and runs the benchmark
-# without and then with it on the same machine. The module isn't in any release package.
+# The rust job builds the optional Rust module (rust/inkline_fast) and runs the benchmark without and then with it
+# on the same machine. Most release packages ship the module (docs/performance.md says which).
 # Android isn't timed here: see docs/performance.md for doing it by hand.
 name: Benchmark
 
@@ -94,7 +94,7 @@ jobs:
           python -c "import inkline_fast; print('inkline_fast', inkline_fast.__file__)"
 
       - name: Same output with and without it
-        run: python -m pytest -q tests/test_inkline_fast.py tests/test_noise_patterns.py tests/test_photo.py
+        run: python -m pytest -q tests/test_inkline_fast.py tests/test_noise_patterns.py tests/test_photo.py tests/test_cbn.py tests/test_cbn_fast.py tests/test_spot.py tests/test_stipple_fill.py tests/test_fast_packaging.py
 
       - name: Benchmark with the Rust module
         env:

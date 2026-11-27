@@ -108,8 +108,11 @@ def test_the_flathub_manifest_is_the_flatpak_one_pinned_to_the_release():
     out = mm.flathub(V, "f" * 40)
     fh, local = yaml.safe_load(out), yaml.safe_load(_flatpak_manifest())
     assert "type: dir" not in out and out.startswith("# Inkline for Flathub")
-    assert fh["modules"][-1]["sources"] == [{"type": "git", "url": "https://github.com/Gshoe2006/inkline.git",
-                                             "tag": V, "commit": "f" * 40}]
+    assert fh["modules"][-1]["sources"][0] == {"type": "git", "url": "https://github.com/Gshoe2006/inkline.git",
+                                                "tag": V, "commit": "f" * 40}
+    # after Inkline's own source, the Rust crates for inkline_fast, as in the local manifest
+    assert fh["modules"][-1]["sources"][1:] == local["modules"][-1]["sources"][1:]
+    assert all(x["type"] in ("archive", "inline") for x in fh["modules"][-1]["sources"][1:])
     for key in ("id", "runtime", "runtime-version", "sdk", "command", "finish-args"):
         assert fh[key] == local[key], key
     assert "--share=network" not in fh["finish-args"] and "--filesystem=host" not in fh["finish-args"]

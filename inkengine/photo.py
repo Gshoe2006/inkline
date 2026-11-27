@@ -20,8 +20,9 @@ resamples a little differently from Chromium's, so a whole photo can differ from
 
 Dithers spread each pixel's error to the next, so they run pixel by pixel in plain Python: about
 1.6 s for a Letter page at 300 dpi and the default dot size. Previews draw at screen resolution.
-When the optional Rust module inkline_fast is installed (rust/inkline_fast, a trial), it runs that loop
-instead, with exactly the same result.
+When the optional Rust module inkline_fast is installed (rust/inkline_fast; most packages ship it), it
+runs the slow loops instead (the dithers, stipple's dot placement, engraving's lines, the blur and
+despeckle of line drawings), with exactly the same result. tests/test_inkline_fast.py compares them.
 """
 
 import itertools
@@ -39,7 +40,7 @@ from .patterns import nonogram
 from .qt import ensure_app
 from .i18n import tr
 
-try:   # optional: the same dither loop in Rust (rust/inkline_fast); the Python below gives the same bytes
+try:   # optional: the slow loops in Rust (rust/inkline_fast); the Python below gives the same results
     import inkline_fast
 except ImportError:
     inkline_fast = None
@@ -120,6 +121,7 @@ def _stipple_f():
 
 
 STIPPLE_F = _stipple_f()
+_STIPPLE_F32 = np.array(STIPPLE_F, np.float32)   # for inkline_fast.stipple_sites
 
 
 def _imul(a, b):
@@ -132,6 +134,16 @@ def stipple_nudge(i, k):
     h = _imul(h ^ (h >> 13), 1274126177)
     h ^= h >> 16
     return h / 2147483648 - 1
+
+
+def _stipple_nudges(idx, k):
+    """stipple_nudge for a whole array of sites at once (the same 32-bit arithmetic, so the same numbers)."""
+    m = np.uint64(0xFFFFFFFF)
+    i = np.asarray(idx, np.uint64)
+    h = ((i * np.uint64(374761393)) & m) ^ np.uint64(_imul(k, 668265263))
+    h = ((h ^ (h >> np.uint64(13))) * np.uint64(1274126177)) & m
+    h ^= h >> np.uint64(16)
+    return h.astype(np.float64) / 2147483648 - 1
 
 
 # --- photos and cropping ------------------------------------------------------------------------------
@@ -214,6 +226,8 @@ def gauss_blur(src, w, h, sigma):
     for e in ex:
         total += e
     k = (np.array(ex, np.float32).astype(np.float64) / total).astype(np.float32).astype(np.float64)
+    if inkline_fast is not None and src.dtype == np.float32 and w > 0 and h > 0:
+        return inkline_fast.gauss_blur(np.ascontiguousarray(src).reshape(-1), w, h, k)
     img = np.pad(src.reshape(h, w).astype(np.float64), ((0, 0), (r, r)), mode="edge")   # clamped edges
     a = np.zeros((h, w))
     for n in range(2 * r + 1):                       # tap by tap, left to right, as the JavaScript summed
@@ -227,6 +241,9 @@ def gauss_blur(src, w, h, sigma):
 
 def despeckle(img, w, h, min_size):
     """Turn black blobs smaller than min_size pixels (8-connected) white, in place (img: bytearray)."""
+    if inkline_fast is not None:
+        img[:] = inkline_fast.despeckle(bytes(img), w, h, min_size)
+        return
     seen = bytearray(w * h)
     for i in range(w * h):
         if img[i] != 0 or seen[i]:
@@ -562,54 +579,71 @@ def _draw_halftone(ctx, box, e, inv, view):
 def _draw_engraving(ctx, box, e, inv, view):
     """Parallel wavy lines, ENGRAVE_PITCH work pixels apart, that swell where the photo is dark; each
     line's half-width is darkness x pitch / 2, so the ink covers exactly that share of its band."""
-    ww, wh, lum, mask = e.ww, e.wh, e.lum.astype(np.float64), e.mask
+    ww, wh = e.ww, e.wh
     sx, sy, P = box.w / ww, box.h / wh, ENGRAVE_PITCH
-    X = lambda x: box.x + x * sx
-    Y = lambda y: box.y + y * sy
+    if inkline_fast is not None:
+        lum, mask = np.ascontiguousarray(e.lum, np.float32), np.ascontiguousarray(e.mask, np.uint8)
+    else:
+        lum, mask = e.lum.astype(np.float64), e.mask
     ctx.save()
     ctx.begin_path()
     ctx.rect(box.x, box.y, box.w, box.h)
     ctx.clip()
     ctx.fill_style = "#000"
-
-    def flush(seg):   # one stretch of line: along its top edge, back along its bottom edge
-        if len(seg) < 2:
-            return
-        ctx.begin_path()
-        ctx.move_to(X(seg[0][0]), Y(seg[0][1] - seg[0][2]))
-        for x, cy, hw in seg:
-            ctx.line_to(X(x), Y(cy - hw))
-        for x, cy, hw in reversed(seg):
-            ctx.line_to(X(x), Y(cy + hw))
-        ctx.close_path()
-        ctx.fill()
-
     band = 0
     while band * P < wh:
         y0, y1 = band * P, min(wh, band * P + P)
-        mid = (y0 + y1) / 2
-        if view and (Y(y1) < view.y or Y(y0) > view.y + view.h):   # poster sheets skip lines off the sheet
+        if view and (box.y + y1 * sy < view.y or box.y + y0 * sy > view.y + view.h):   # poster sheets skip lines off the sheet
             band += 1
             continue
-        seg = []
-        for x in range(0, ww + 1, ENGRAVE_STEP):
-            xi = min(ww - 1, x)
-            dark, n = 0.0, 0
-            for yy in range(y0, y1):
-                i = yy * ww + xi
-                if mask[i]:
-                    dark += _darkness(lum[i], inv)
-                n += 1
-            hw = (dark / n) * (y1 - y0) / 2
-            cy = mid + math.sin(x * 0.11 + band * 0.04) * P * 0.22   # the same phase on neighbouring lines
-            if hw > 0.04:
-                seg.append((x, cy, hw))
-            else:
-                flush(seg)
-                seg = []
-        flush(seg)
+        if inkline_fast is not None:
+            pts, lens = inkline_fast.engrave_band(lum, mask, ww, wh, bool(inv), band, P, ENGRAVE_STEP)
+            segs = np.split(pts, np.cumsum(lens)[:-1]) if len(lens) else []
+        else:
+            segs = [np.array(s, np.float64) for s in _engrave_band(lum, mask, ww, wh, inv, band)]
+        for seg in segs:   # one stretch of line: along its top edge, back along its bottom edge
+            xs = (box.x + seg[:, 0] * sx).tolist()
+            top = (box.y + (seg[:, 1] - seg[:, 2]) * sy).tolist()
+            bottom = (box.y + (seg[:, 1] + seg[:, 2]) * sy).tolist()
+            ctx.begin_path()
+            ctx.move_to(xs[0], top[0])
+            line_to = ctx.line_to
+            for x, y in zip(xs, top):
+                line_to(x, y)
+            for x, y in zip(reversed(xs), reversed(bottom)):
+                line_to(x, y)
+            ctx.close_path()
+            ctx.fill()
         band += 1
     ctx.restore()
+
+
+def _engrave_band(lum, mask, ww, wh, inv, band):
+    """The stretches of one engraving line that have two points or more: lists of (x, centre y, half-width) in
+    work pixels. lum is float64. inkline_fast.engrave_band does the same in Rust."""
+    P = ENGRAVE_PITCH
+    y0, y1 = band * P, min(wh, band * P + P)
+    mid = (y0 + y1) / 2
+    segs, seg = [], []
+    for x in range(0, ww + 1, ENGRAVE_STEP):
+        xi = min(ww - 1, x)
+        dark, n = 0.0, 0
+        for yy in range(y0, y1):
+            i = yy * ww + xi
+            if mask[i]:
+                dark += _darkness(lum[i], inv)
+            n += 1
+        hw = (dark / n) * (y1 - y0) / 2
+        cy = mid + math.sin(x * 0.11 + band * 0.04) * P * 0.22   # the same phase on neighbouring lines
+        if hw > 0.04:
+            seg.append((x, cy, hw))
+        else:
+            if len(seg) >= 2:
+                segs.append(seg)
+            seg = []
+    if len(seg) >= 2:
+        segs.append(seg)
+    return segs
 
 
 def stipple_sites(e, inv):
@@ -618,6 +652,12 @@ def stipple_sites(e, inv):
     if inv in e.stipple:
         return e.stipple[inv]
     ww, wh, mask = e.ww, e.wh, e.mask
+    if inkline_fast is not None:
+        sites = inkline_fast.stipple_sites(np.ascontiguousarray(e.lum, np.float32).ravel(),
+                                           np.ascontiguousarray(mask, np.uint8).ravel(), ww, wh, bool(inv),
+                                           _STIPPLE_F32).tolist()
+        e.stipple[inv] = sites
+        return sites
     lum = e.lum.astype(np.float64)
     L = array("f", bytes(4 * ww * wh))
     for i in np.nonzero(mask)[0].tolist():
@@ -652,20 +692,23 @@ def _draw_stipple(ctx, box, e, inv, view):
     ctx.rect(box.x, box.y, box.w, box.h)
     ctx.clip()
     ctx.fill_style = "#000"
+    idx = np.asarray(sites, np.int64)
+    ys, xs = np.divmod(idx, ww)
+    # the dots' centres, worked out for all of them at once in the same order of operations as one by one
+    cxs = (box.x + ((xs + 0.5) + _stipple_nudges(idx, 1) * J) * sx).tolist()
+    cys = (box.y + ((ys + 0.5) + _stipple_nudges(idx, 2) * J) * sy).tolist()
+    move_to, arc, tau = ctx.move_to, ctx.arc, math.pi * 2
     row = -1
-    for i in sites:   # one filled shape per row of dots keeps the SVG small
-        y, x = divmod(i, ww)
+    for y, cx, cy in zip(ys.tolist(), cxs, cys):   # one filled shape per row of dots keeps the SVG small
         if y != row:
             if row >= 0:
                 ctx.fill()
             ctx.begin_path()
             row = y
-        cx = box.x + (x + 0.5 + stipple_nudge(i, 1) * J) * sx
-        cy = box.y + (y + 0.5 + stipple_nudge(i, 2) * J) * sy
         if view and (cx + r < view.x or cx - r > view.x + view.w or cy + r < view.y or cy - r > view.y + view.h):
             continue
-        ctx.move_to(cx + r, cy)
-        ctx.arc(cx, cy, r, 0, math.pi * 2)
+        move_to(cx + r, cy)
+        arc(cx, cy, r, 0, tau)
     if row >= 0:
         ctx.fill()
     ctx.restore()

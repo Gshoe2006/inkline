@@ -1,7 +1,8 @@
 # Inkline as a Snap, for the Snap Store and Ubuntu's App Center. Built by the release (snapcore/action-build) for
 # x86-64 and ARM64; by hand: snapcraft, in the repository's top folder (needs LXD or Multipass).
 #
-# Its own Python packages (PySide6's Essentials and numpy, from PyPI) in a virtual environment on core24's Python;
+# Its own Python packages (PySide6's Essentials and numpy, from PyPI, and the optional Rust module rust/inkline_fast)
+# in a virtual environment on core24's Python;
 # the desktop libraries Qt needs come from the gnome extension. A Snap updates itself from the Store, so Inkline
 # only says when there's a new version (updater.install_kind is "snap").
 name: inkline
@@ -55,6 +56,24 @@ parts:
       - libxkbcommon-x11-0
       - libegl1
       - libgl1
+
+  # the optional Rust module (rust/inkline_fast: faster photo styles), beside numpy in the same site-packages. A PyO3
+  # extension is the library cargo builds, named as Python looks for it. Rust comes from rustup, as core24's own is
+  # too old for the crate's Cargo.lock.
+  fast:
+    after: [deps]
+    plugin: nil
+    source: rust/inkline_fast
+    build-packages: [curl, gcc, python3]
+    override-build: |
+      curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable
+      . "$HOME/.cargo/env"
+      cargo build --release --locked
+      PYV=$(python3 -c 'import sys; print("%d.%d" % sys.version_info[:2])')
+      install -Dm755 target/release/libinkline_fast.so \
+        "$CRAFT_PART_INSTALL/lib/python$PYV/site-packages/inkline_fast.abi3.so"
+    prime:
+      - lib/python3*/site-packages/inkline_fast.abi3.so
 
   app:
     plugin: dump
