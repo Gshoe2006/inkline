@@ -29,7 +29,7 @@ from inkengine.patterns import NAMES
 
 from . import android_print, config, jobs, project, recovery, settings, theme, update_ui, whatsnew
 from .layout import BottomBar, MenuButton
-from .preview import Preview
+from .preview import ZOOM_STEP, Preview
 from .render import PREVIEW_DPI, Renderer, render_view, view
 from .sample import sample_photo
 from .sidebar import MARGINS, MAX_BOOK_PAGES, MAX_PHOTOS, Sidebar
@@ -44,11 +44,11 @@ STEP_NAMES = {"gen": "Pattern", "complexity": "Complexity", "weight": "Line weig
               "pages": "Design pages", "ramp": "Get harder", "mix": "Mix every pattern", "cover": "Cover page",
               "page_nums": "Page numbers", "key": "Answer pages", "maze_shape": "Maze shape", "maze_word": "Word or name", "spot_base": "Picture",
               "ws_theme": "Words from", "ws_words": "Your words", "name_text": "Name or word", "name_bg": "Around the letters",
-              "maths_kind": "Sums", "money": "Money", "clock_task": "Clocks", "frac_kind": "Worksheet", "ruled_kind": "Paper", "reward_kind": "Reward", "reward_text": "Reward for", "bingo_kind": "Bingo", "early_kind": "Early maths", "bingo_theme": "Bingo words from", "bingo_words": "Your bingo words", "pack_theme": "Worksheet pack", "pack_words": "Spelling words", "pack_days": "Worksheet pack days", "easy_read": "Easier to read", "cream": "Cream paper", "trace_source": "Trace", "trace_style": "Letters", "trace_hand": "Handwriting style", "trace_text": "Words to trace",
+              "maths_kind": "Sums", "money": "Money", "clock_task": "Clocks", "frac_kind": "Worksheet", "ruled_kind": "Paper", "reward_kind": "Reward", "reward_text": "Reward for", "bingo_kind": "Bingo", "early_kind": "Early maths", "bingo_theme": "Bingo words from", "bingo_words": "Your bingo words", "crypto_code": "Code", "crypto_source": "Put in code", "crypto_text": "Text in code", "ladder_kind": "Ladder help", "cal_kind": "Calendar", "cal_month": "Month", "cal_year": "Year", "cal_start": "Week starts on", "cal_art": "Picture", "pack_theme": "Worksheet pack", "pack_words": "Spelling words", "pack_days": "Worksheet pack days", "easy_read": "Easier to read", "cream": "Cream paper", "trace_source": "Trace", "trace_style": "Letters", "trace_hand": "Handwriting style", "trace_text": "Words to trace",
               "cbn_maths": "Colour by maths", "age": "Age", "sheet": "On the sheet", "panel_gens": "Designs on the sheet", "cross_theme": "Crossword words", "cross_words": "Crossword words and clues",
               "mode": "Mode", "style": "Style", "brightness": "Brightness", "contrast": "Contrast", "threshold": "Threshold",
               "dot": "Dot size", "fit": "Placement", "invert": "Invert", "pnono_size": "Squares across",
-              "pnono_answer": "Show the answer", "pcbn_colours": "Colours", "photobook": "Photo book", "pcover": "Cover page",
+              "pnono_answer": "Show the answer", "pdots_n": "Dots", "pdots_answer": "Show the answer", "pcbn_colours": "Colours", "photobook": "Photo book", "pcover": "Cover page",
               "ppage_nums": "Page numbers", "title": "Title", "name_line": "Name line", "poster": "Poster", "grid": "Sheets",
               "overlap": "Overlap", "testpage": "Printer test page", "fold": "Fold-and-staple", "paper": "Paper size",
               "orient": "Orientation", "margin": "Margin", "dpi": "Resolution", "page_list": "Pages"}
@@ -243,6 +243,13 @@ class Window(QMainWindow):
         self.menu_btn = MenuButton(self._top_menus)
         self.menu_btn.presets.triggered.connect(lambda: self.sidebar.presets_btn.open(under=self.menu_btn))
         self.sidebar.toolbar.layout().addWidget(self.menu_btn)
+        # Tab: the rail, the options, then the toolbar left to right and the preview (New design and More designs
+        # are made with the options: put them where they're shown)
+        sb = self.sidebar
+        tab = [sb.presets_btn, sb.new_design, sb.more_btn, sb.pdf_btn, sb.png_btn, sb.svg_btn, sb.print_btn,
+               self.menu_btn, self.preview.page]
+        for a, b in zip(tab, tab[1:]):
+            QWidget.setTabOrder(a, b)
         self.sidebar.page_shown.connect(self._page_shown)
         self.sidebar.synced.connect(self._match_bottom)
         self._narrow = False   # built wide, above
@@ -370,6 +377,13 @@ class Window(QMainWindow):
         act(v, "Pre&vious page\t←", lambda: self.step_page(-1))
         act(v, "Ne&xt page\t→", lambda: self.step_page(1))
         v.addSeparator()
+        # the preview's own zoom, to look closer (pinching it, or Ctrl+wheel, does the same)
+        page = self.preview.page
+        zoom_in = act(v, "Zoom &in", lambda: page.zoom_by(ZOOM_STEP), "Ctrl++")
+        zoom_in.setShortcuts([QKeySequence("Ctrl++"), QKeySequence("Ctrl+=")])   # + is shifted on most keyboards
+        act(v, "Zoom &out", lambda: page.zoom_by(1 / ZOOM_STEP), "Ctrl+-")
+        act(v, "&Whole page", page.reset_view, "Ctrl+0")
+        v.addSeparator()
         self.act_test = act(v, "Printer &test page", self._toggle_test_page)
         self.act_test.setCheckable(True)
         v.addSeparator()
@@ -469,6 +483,9 @@ class Window(QMainWindow):
             if (d and mods == Qt.KeyboardModifier.NoModifier and QApplication.activePopupWidget() is None
                     and not isinstance(obj, (QMenu, QMenuBar)) and not isinstance(
                         focus, (QLineEdit, QComboBox, QAbstractSlider, QAbstractSpinBox, QAbstractItemView, QMenuBar))
+                    and not (focus is not None and focus.objectName() == "galleryItem")   # its arrows: layout.ArrowKeys
+                    and not (focus is self.preview.page and self.preview.page.zoomed()   # the arrows move the zoomed
+                             and e.key() in (Qt.Key.Key_Left, Qt.Key.Key_Right))      # view; Page Up/Down still turn
                     and self.step_page(d)):
                 return True   # taken only when there were pages to turn; menus keep their arrow keys
         return super().eventFilter(obj, e)
@@ -789,8 +806,14 @@ class Window(QMainWindow):
         else:
             self.setMinimumSize(900, 600)
         theme.apply(QApplication.instance())
+        self.preview.set_pad(theme.TOUCH_STAGE_PAD if on else theme.STAGE_PAD)
         self.preview.page.update()
+        if self.state.photos:   # the lists' rows as tall as their buttons now are
+            self.sidebar.fill_photos()
+        if self.state.listing:
+            self.sidebar.fill_pages()
         self._arrange(bool(on) and self.width() < theme.ONE_COLUMN_WIDTH)
+        self._fit_tablet()
         self._fit_toolbar()
         if save and self.remember:
             err = config.write("preferences.json", {**config.read("preferences.json"), "touch": bool(on)}, "Preferences")
@@ -803,6 +826,8 @@ class Window(QMainWindow):
             narrow = self.width() < theme.ONE_COLUMN_WIDTH
             if narrow != self._narrow:
                 self._arrange(narrow)
+            self._fit_tablet()
+            self._fit_toolbar()
 
     def _arrange(self, narrow):
         """Put the same rail, options, toolbar, preview and status line in the wide layout (rail | page | preview)
@@ -869,6 +894,26 @@ class Window(QMainWindow):
         self.menu_btn.presets.setVisible(phone)
         m = 8 if touch and self._narrow else 14
         sb.toolbar.layout().setContentsMargins(m, 8, m, 8)
+        if touch and not phone:   # a tablet: More designs too, when the toolbar has room for it
+            room = self.width() - sb.rail.width() - sb.width()
+            sb.toolbar.layout().invalidate()   # measured without it (hidden above)
+            sb.more_btn.setVisible(sb.toolbar.sizeHint().width() + theme.PAIR_GAP + sb.more_btn.sizeHint().width() <= room)
+
+    def _fit_tablet(self):
+        """Touch, wide (a tablet held sideways): a portrait page is as tall as the window lets it be, so the room
+        beside it that it can't use goes to the options, up to theme.TOUCH_SIDEBAR_WIDTH; a landscape page keeps it."""
+        sb, page = self.sidebar, self.preview.page
+        least = theme.SIDEBAR_WIDTH
+        if theme.TOUCH["on"] and not self._narrow:
+            img = page.image
+            aspect = img.width() / img.height() if img is not None and img.height() else 8.5 / 11
+            pad = self.preview.pad()
+            needs = page.height() * aspect + 2 * pad   # the preview's width that shows the page as tall as it can be
+            spare = self.width() - sb.rail.width() - theme.SIDEBAR_WIDTH - needs
+            least += int(max(0, min(theme.TOUCH_SIDEBAR_WIDTH - theme.SIDEBAR_WIDTH, spare)))
+        if sb.least != least:
+            sb.least = least
+            sb.fit_width()
 
     def _bottom_chosen(self, key):
         if key == "preview":
@@ -1453,16 +1498,39 @@ class Window(QMainWindow):
             return
         self.state.page = r.view.index
         self.state.copy = r.view.copy
+        what = (self.state.settings.mode, self.state.settings.gen, self.project_path)
+        if what != getattr(self, "_zoomed_on", what):   # another mode, pattern or project: the whole page again
+            self.preview.page.reset_view()
+        self._zoomed_on = what
         self.preview.page.set_image(r.image, r.poster)
         self.preview.page.set_pannable(self.state.settings.mode == "convert" and bool(self.state.photos)
                                        and r.view.kind not in ("fold", "testpage"))
         self.preview.set_info(r.info)
+        self.preview.page.setAccessibleDescription(self._page_description(r.view))
+        if theme.TOUCH["on"]:   # a page of another shape: the room beside it changes
+            self._fit_tablet()
+            self._fit_toolbar()
         self.preview.set_busy("")
         self.sidebar.ws_note.setText(r.note)
         self.sidebar.cross_note.setText(r.note)
         self.sidebar.sync(r.view)
         self._view = r.view
         self._show_printer_edges()
+
+    def _page_description(self, v):
+        """What a screen reader says the preview shows: "Page 2 of 10: Maze", or the design's (or photo's) name."""
+        s, ph = self.state.settings, self.state.photo
+        if v.kind == "testpage":
+            return tr("Printer test page")
+        if v.kind in ("booklet", "photobook") and v.pages:
+            p = v.pages[v.index]
+            what = (os.path.basename(getattr(p.photo, "name", "")) if p.kind == "photo"
+                    else tr(NAMES.get(p.gen, p.gen)) if p.kind == "design" else "")   # a cover's label says so
+            return tr("{page}: {what}").format(page=v.label, what=what) if what else v.label
+        if v.kind == "fold":
+            return v.label
+        what = os.path.basename(ph.name) if s.mode == "convert" and ph else tr(NAMES.get(s.gen, s.gen))
+        return tr("{page}: {what}").format(page=tr("Poster"), what=what) if v.kind == "poster" else what
 
     def _show_printer_edges(self):
         """Hatch what the printer can't reach, and say so when the design runs into it."""

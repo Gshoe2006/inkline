@@ -15,6 +15,11 @@ import numpy as np
 
 from ..noise import Noise
 
+try:   # optional: marching squares in Rust (rust/inkline_fast); the numpy code below gives the same segments
+    import inkline_fast
+except ImportError:
+    inkline_fast = None
+
 # For each corner pattern (top-left, top-right, bottom-right, bottom-left above the level = 8, 4, 2, 1):
 # which cell edges the line crosses, as pairs of Top, Right, Bottom, Left.
 _SEGMENTS = {1: [("L", "B")], 2: [("B", "R")], 3: [("L", "R")], 4: [("T", "R")], 5: [("T", "R"), ("L", "B")],
@@ -48,6 +53,13 @@ def draw(ctx, box, rnd, c, settings=None, lw=1.0, seed=0, dpi=300, **_opts):
             L = lo + (hi - lo) * (k + 0.5) / levels
             ctx.line_width = lw * 2 if k % 5 == 4 else lw   # index contours, like a real topo map
             ctx.begin_path()
+            if inkline_fast is not None:
+                for x0, y0, x1, y1 in inkline_fast.contour_level(F, L, float(box.x), float(box.y), step).tolist():
+                    ctx.move_to(x0, y0)
+                    ctx.line_to(x1, y1)
+                    segments += 1
+                ctx.stroke()
+                continue
             idx = (A > L) * 8 | (B > L) * 4 | (C > L) * 2 | (D > L) * 1
             js, is_ = np.nonzero((idx != 0) & (idx != 15))   # row by row, as the JavaScript loops
             if len(js):

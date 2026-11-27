@@ -1,5 +1,5 @@
 ; Inkline's Windows installer (Inno Setup 6). packaging/windows/build.py runs it with /DVERSION, /DAPPDIR (the app
-; folder PyInstaller built), /DOUTDIR, /DICON and /DLICENSE.
+; folder PyInstaller built), /DOUTDIR, /DICON and /DLICENSE, and when signing /DSIGNTOOL.
 
 #ifndef VERSION
   #error Run this through packaging/windows/build.py
@@ -22,9 +22,10 @@ VersionInfoDescription=Inkline installer
 DefaultDirName={autopf}\Inkline
 DefaultGroupName=Inkline
 DisableProgramGroupPage=yes
-; installs for the current user without asking for an administrator; "Install for all users" is offered too
+; installs for the current user without asking for an administrator; "Install for all users" is offered too, and
+; /ALLUSERS or /CURRENTUSER choose on the command line (winget uses them: packaging/stores/winget)
 PrivilegesRequired=lowest
-PrivilegesRequiredOverridesAllowed=dialog
+PrivilegesRequiredOverridesAllowed=commandline dialog
 LicenseFile={#LICENSE}
 OutputDir={#OUTDIR}
 OutputBaseFilename=inkline-{#VERSION}-windows-setup
@@ -36,6 +37,12 @@ WizardStyle=modern
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 ChangesAssociations=yes
+#ifdef SIGNTOOL
+; build.py passes /DSIGNTOOL and /Sinkline=<command> when INKLINE_SIGN_CMD is set (docs/code-signing.md): Inno Setup
+; then signs this installer and the uninstaller it writes
+SignTool=inkline
+SignedUninstaller=yes
+#endif
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked

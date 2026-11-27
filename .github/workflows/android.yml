@@ -1,6 +1,9 @@
-# Android, a first test (not part of releases yet): builds Inkline's window as it is into an APK with Qt's
-# pyside6-android-deploy (packaging/android/build.py), for ARM64 phones and tablets and for x86-64, then starts the
-# x86-64 one on an emulator: a screenshot of the window, then the self-test, whose files are checked as on desktop.
+# Android: builds Inkline's window into a debug APK with Qt's pyside6-android-deploy (packaging/android/build.py), for
+# ARM64 phones and tablets and for x86-64, checks what Google Play checks (16 KB page alignment of every native
+# library, the target API level, the versionCode), then starts the x86-64 one on a phone emulator: a screenshot of the
+# window, the self-test, whose files are checked as on desktop, Print, and screenshots for the Play listing
+# (play-screenshots; a tablet emulator's are play-screenshots-tablet, if it manages). The Play listing's icon and
+# feature graphic are the play-graphics download. (Signed release APKs and the Play bundle: android-release.yml.)
 # Run it from the Actions tab (Run workflow), or it runs on pull requests that change packaging/android.
 name: Android
 
@@ -38,12 +41,13 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends git zip unzip autoconf automake libtool pkg-config \
-            zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev build-essential lld ccache libltdl-dev libtool-bin
+            zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev build-essential lld ccache libltdl-dev libtool-bin \
+            libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3   # Qt, offscreen: build.py draws the icons
           python -m pip install --upgrade pip
           python -m pip install PySide6-Essentials==6.12.0 shiboken6==6.12.0 jinja2 pkginfo tqdm packaging==24.1
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$NDK_VERSION" "platforms;android-35" \
-            "build-tools;35.0.0" "platform-tools" > /dev/null
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$NDK_VERSION" "platforms;android-36" \
+            "build-tools;36.0.0" "platform-tools" > /dev/null
           # buildozer and python-for-android look for sdkmanager in the old place, <sdk>/tools/bin
           rm -rf "$ANDROID_HOME/tools"
           mkdir -p "$ANDROID_HOME/tools"
@@ -70,6 +74,36 @@ jobs:
             --ndk "$ANDROID_HOME/ndk/$NDK_VERSION" --sdk "$ANDROID_HOME"
           ls -l dist
 
+      - name: Check it as Google Play would (16 KB pages, target API, versionCode)
+        run: |
+          APK=$(ls dist/inkline-*-android-${{ matrix.arch }}-debug.apk)
+          python3 packaging/android/check_16kb.py "$APK"
+          "$ANDROID_HOME/build-tools/36.0.0/zipalign" -c -P 16 -v 4 "$APK" | tail -3
+          "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$APK" > badging.txt
+          grep -iE "^package:|sdkVersion|application-label:|application-icon|uses-permission" badging.txt   # (the permissions: for the Data safety form)
+          CODE=$(python3 -c "import sys; sys.path.insert(0, 'packaging/android'); import build; print(build.version_code(build.version(), '${{ matrix.arch }}'))")
+          grep -q "versionCode='$CODE'" badging.txt || { echo "::error::versionCode isn't $CODE"; exit 1; }
+          grep -q "targetSdkVersion:'36'" badging.txt || { echo "::error::targetSdkVersion isn't 36"; exit 1; }
+          # the minimum Android version, from the manifest itself (aapt2's summary leaves the sdkVersion line out)
+          "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump xmltree "$APK" --file AndroidManifest.xml > manifest.txt
+          grep -iE "(min|target)SdkVersion" manifest.txt || true
+          MIN=$(grep -oE "minSdkVersion\([^)]*\)=[0-9]+" manifest.txt | grep -oE "[0-9]+$" | head -1)
+          [ "$MIN" = 28 ] || { echo "::error::minSdkVersion is '${MIN:-missing}', not 28"; exit 1; }
+          grep -q "name='io.github.gshoe2006.inkline'" badging.txt || { echo "::error::wrong package name"; exit 1; }
+
+      - name: Draw the Play listing's icon and feature graphic
+        if: matrix.arch == 'aarch64'
+        run: |
+          python -m pip install numpy   # the feature graphic draws a maze and a mandala with inkengine
+          python packaging/android/play/make_graphics.py play-graphics
+
+      - uses: actions/upload-artifact@v7
+        if: matrix.arch == 'aarch64'
+        with:
+          name: play-graphics
+          path: play-graphics/
+          retention-days: 30
+
       - uses: actions/upload-artifact@v7
         with:
           name: android-${{ matrix.arch }}
@@ -79,6 +113,19 @@ jobs:
 
   emulator:
     needs: apk
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # a 16:9 phone: Play takes screenshots whose long side is at most twice the short one (not 20:9 phones')
+          - device: phone
+            profile: pixel_2
+            optional: false
+          # a tablet, for the listing's tablet screenshots only; it doesn't hold up the run if the emulator struggles
+          - device: tablet
+            profile: pixel_tablet
+            optional: true
+    continue-on-error: ${{ matrix.optional }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -97,21 +144,34 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends poppler-utils
 
-      - name: Start Inkline on an emulator, then run its self-test there
+      - name: Start Inkline on an emulator, run its self-test there, then take the Play screenshots
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
           arch: x86_64
           target: google_apis
+          profile: ${{ matrix.profile }}
           disable-animations: true
-          script: sh packaging/android/emulator-test.sh dist/inkline-*-android-x86_64-debug.apk android-test
+          script: |
+            if [ "${{ matrix.device }}" = phone ]; then sh packaging/android/emulator-test.sh dist/inkline-*-android-x86_64-debug.apk android-test; fi
+            sh packaging/android/screenshots.sh dist/inkline-*-android-x86_64-debug.apk play-screenshots
 
       - name: Check the files the self-test wrote on Android
+        if: matrix.device == 'phone'
         run: python3 packaging/check_selftest.py android-test/selftest
 
       - uses: actions/upload-artifact@v7
-        if: always()
+        if: always() && matrix.device == 'phone'
         with:
           name: android-emulator-test
           path: android-test/
           retention-days: 14
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: ${{ matrix.device == 'phone' && 'play-screenshots' || 'play-screenshots-tablet' }}
+          path: |
+            play-screenshots/
+            play-screenshots-logcat.txt
+          retention-days: 30

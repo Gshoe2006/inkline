@@ -12,6 +12,8 @@ How each copy updates (install_kind):
   pkexec, the file is downloaded and its folder opened, with the command to install it.
 - android (the APK): say there's an update, and open the release page for the new APK (an app can't install one
   without a permission Inkline doesn't ask for)
+- android-play (installed from Google Play): Play updates it, and Play's rules don't let an app send people elsewhere
+  for updates, so Inkline doesn't check at all
 - flatpak, snap, source: say there's an update, and open the release page (Flatpak and Snap update the app
   themselves).
 
@@ -42,17 +44,38 @@ PAGE = f"https://github.com/{REPO}/releases/latest"
 DAY = 24 * 3600
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 INSTALL_KINDS = ("windows", "windows-portable", "macos", "appimage", "run-user", "run-system", "deb", "rpm", "arch",
-                 "flatpak", "snap", "android", "source")
+                 "flatpak", "snap", "android", "android-play", "source")
 NEEDS_ADMIN = ("run-system", "deb", "rpm", "arch")
 
 
-def install_kind(env=None, frozen=None, root=ROOT, platform=None):
+def android_installer():
+    """The package that installed this Android app ("com.android.vending" for Google Play), or "" (an APK opened
+    from a download, or Android can't say)."""
+    try:
+        from jnius import autoclass
+        try:
+            activity = autoclass("org.kivy.android.PythonActivity").mActivity
+        except Exception:
+            activity = autoclass("org.qtproject.qt.android.QtNative").activity()
+        pm, name = activity.getPackageManager(), activity.getPackageName()
+        if autoclass("android.os.Build$VERSION").SDK_INT >= 30:
+            return pm.getInstallSourceInfo(name).getInstallingPackageName() or ""
+        return pm.getInstallerPackageName(name) or ""
+    except Exception:   # no pyjnius (a test, the desktop), or Android refused: treat it as a downloaded APK
+        return ""
+
+
+PLAY_STORE = "com.android.vending"
+
+
+def install_kind(env=None, frozen=None, root=ROOT, platform=None, installer=None):
     """How this copy of Inkline was installed (one of INSTALL_KINDS)."""
     env = os.environ if env is None else env
     frozen = getattr(sys, "frozen", False) if frozen is None else frozen
     platform = platform or sys.platform
     if platform == "android":
-        return "android"
+        installer = android_installer() if installer is None else installer
+        return "android-play" if installer == PLAY_STORE else "android"
     if frozen and os.name == "nt" or frozen == "windows":   # the portable .zip has a "portable" file beside Inkline.exe
         exe_dir = os.path.dirname(os.path.abspath(sys.executable))
         return "windows-portable" if os.path.exists(os.path.join(exe_dir, "portable")) else "windows"

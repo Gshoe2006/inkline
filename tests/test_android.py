@@ -155,3 +155,258 @@ def test_pyjnius_gets_its_jni_environment_from_qt():
     assert '"pyjnius_recipe.py"' in deploy
     src = open(os.path.join(ROOT, "inkapp", "android_print.py"), encoding="utf-8").read()
     assert "org.qtproject.qt.android.QtNative" in src   # Qt's activity, if python-for-android's isn't set
+
+
+# --- Google Play: the bundle, versionCode, API levels, 16 KB pages, icons, listing graphics, screenshots ---------
+def _load(name, *path):
+    spec = importlib.util.spec_from_file_location(name, os.path.join(ROOT, *path))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_the_version_code_rises_with_every_release_and_tells_the_abis_apart():
+    import pytest
+    build = _build()
+    assert build.version_code("6.1.0", "aarch64") == 1000601001
+    assert build.version_code("6.1.0", "x86_64") == 1000601002
+    assert build.version_code("6.1.0", "aarch64") > 102860100   # what python-for-android gave 6.1.0's APKs
+    order = ["6.1.0", "6.1.1", "6.1.10", "6.2.0", "6.10.0", "6.99.99", "7.0.0", "10.0.0", "100.0.0"]
+    codes = [build.version_code(v, "aarch64") for v in order]
+    assert codes == sorted(codes) and len(set(codes)) == len(codes)
+    assert build.version_code("6.1.1", "aarch64") > build.version_code("6.1.0", "x86_64")
+    assert build.version_code("10999.99.99", "x86_64") <= 2_100_000_000   # Play's largest versionCode
+    for bad in ("6.1", "6.1.0.1", "6.100.0", "6.1.100", "v6.1.0", "6.1.0-rc1"):
+        with pytest.raises(ValueError):
+            build.version_code(bad, "aarch64")
+
+
+def test_the_outputs_are_named_for_the_release():
+    import pytest
+    build = _build()
+    assert build.outputs("6.1.0", "x86_64") == ("inkline-6.1.0-android-x86_64-debug.apk", None)
+    assert build.outputs("6.1.0", "aarch64", release=True) == ("inkline-6.1.0-android-aarch64.apk", None)
+    assert build.outputs("6.1.0", "aarch64", True, True) == ("inkline-6.1.0-android-aarch64.apk",
+                                                            "inkline-6.1.0-android.aab")
+    assert build.outputs("6.1.0", "x86_64", True, True)[1] == "inkline-6.1.0-android-x86_64.aab"
+    with pytest.raises(SystemExit):   # a bundle only from a release build
+        build.main(["--arch", "aarch64", "--wheel-pyside", "a", "--wheel-shiboken", "b", "--aab"])
+
+
+def test_deploy_sets_play_api_levels_the_version_code_icons_and_apk_or_aab():
+    import pytest
+    deploy = _load("android_deploy", "packaging", "android", "deploy.py")
+    icons = deploy.icon_paths("/i")
+    assert icons == {"icon": "/i/icon.png", "foreground": "/i/icon_fg.png", "background": "/i/icon_bg.png"}
+    s = dict(deploy.inkline_settings("6.1.0", 1000601001, icons, "py,png,qml"))
+    assert s["android.api"] == "36" and s["android.minapi"] == "28" and s["android.ndk_api"] == "28"
+    assert s["android.numeric_version"] == "1000601001" and s["version"] == "6.1.0"
+    assert s["android.release_artifact"] == "apk" and s["android.debug_artifact"] == "apk"   # buildozer's default: aab
+    assert s["source.include_exts"] == "py,png,qml,json,ttf,svg,md,txt"
+    assert s["icon.filename"] == "/i/icon.png"
+    assert not any(k.startswith("icon.adaptive") for k in s)   # the Qt bootstrap can't take an adaptive icon
+    assert s["package.domain"] + "." + s["package.name"] == "io.github.gshoe2006.inkline" and s["title"] == "Inkline"
+    assert "icon.filename" not in dict(deploy.inkline_settings("6.1.0", 1, None))
+    assert dict(deploy.inkline_settings("6.1.0", 1, api="36"))["android.api"] == "36"
+    ours, theirs = deploy.parse(["--version", "6.1.0", "--numeric-version", "7", "--release", "--aab", "--",
+                                 "--name", "Inkline"])
+    assert ours.aab and ours.release and ours.numeric_version == 7 and theirs == ["--name", "Inkline"]
+    with pytest.raises(SystemExit):
+        deploy.parse(["--version", "6.1.0", "--numeric-version", "7", "--aab", "--"])
+
+
+def _elf(aligns, is64=True, types=None, big=False):
+    """A minimal ELF file: a header and one program header per alignment (PT_LOAD unless types says)."""
+    import struct
+    e = ">" if big else "<"
+    types = types or [1] * len(aligns)
+    ident = b"\x7fELF" + bytes([2 if is64 else 1, 2 if big else 1, 1]) + bytes(9)
+    if is64:
+        head = ident + struct.pack(e + "HHIQQQIHHHHHH", 3, 183, 1, 0, 64, 0, 0, 64, 56, len(aligns), 64, 0, 0)
+        ph = b"".join(struct.pack(e + "IIQQQQQQ", t, 5, 0, 0, 0, 0, 0, a) for t, a in zip(types, aligns))
+    else:
+        head = ident + struct.pack(e + "HHIIIIIHHHHHH", 3, 40, 1, 0, 52, 0, 0, 52, 32, len(aligns), 40, 0, 0)
+        ph = b"".join(struct.pack(e + "IIIIIIII", t, 0, 0, 0, 0, 0, 5, a) for t, a in zip(types, aligns))
+    return head + ph
+
+
+def test_16kb_check_reads_each_load_segments_alignment(tmp_path):
+    import zipfile
+    import pytest
+    check = _load("check_16kb", "packaging", "android", "check_16kb.py")
+    assert check.load_alignments(_elf([0x4000, 0x4000])) == [0x4000, 0x4000]
+    assert check.load_alignments(_elf([0x4000, 8, 0x1000], types=[1, 2, 1])) == [0x4000, 0x1000]   # PT_DYNAMIC skipped
+    assert check.load_alignments(_elf([0x10000], is64=False)) == [0x10000]
+    assert check.load_alignments(_elf([0x4000], big=True)) == [0x4000]
+    assert check.load_alignments(b"not an elf file at all, a tar of the stdlib" * 2) is None
+    apk = tmp_path / "a.apk"
+    with zipfile.ZipFile(apk, "w") as z:
+        z.writestr("lib/arm64-v8a/libgood.so", _elf([0x4000, 0x4000]))
+        z.writestr("lib/arm64-v8a/libpybundle.so", b"a tar, not ELF" * 10)
+        z.writestr("lib/armeabi-v7a/libold.so", _elf([0x1000]))   # 32-bit: not Play's concern
+        z.writestr("assets/private.tar", b"x")
+    said = []
+    assert check.check([str(apk)], out=said.append) == []
+    assert any("libpybundle.so: not ELF" in s for s in said) and not any("armeabi" in s for s in said)
+    aab = tmp_path / "inkline.aab"
+    with zipfile.ZipFile(aab, "w") as z:
+        z.writestr("base/lib/x86_64/libgood.so", _elf([0x4000]))
+        z.writestr("base/lib/arm64-v8a/libbad.so", _elf([0x4000, 0x1000]))
+    assert check.check([str(aab)], out=said.append) == ["inkline.aab: base/lib/arm64-v8a/libbad.so (4096)"]
+    empty = tmp_path / "empty.apk"
+    with zipfile.ZipFile(empty, "w") as z:
+        z.writestr("classes.dex", b"x")
+    assert check.check([str(empty)], out=said.append)   # no libraries at all is a failure too
+    folder = tmp_path / "libs" / "lib" / "x86_64"
+    folder.mkdir(parents=True)
+    (folder / "libok.so").write_bytes(_elf([0x4000]))
+    assert check.check([str(tmp_path / "libs")], out=said.append) == []
+    with pytest.raises(SystemExit):
+        check.main([str(aab)])
+
+
+def test_the_icons_and_listing_graphics_are_play_sized(tmp_path):
+    import pytest
+    from PySide6.QtGui import QImage
+    graphics = _load("make_graphics", "packaging", "android", "play", "make_graphics.py")
+    shots = _load("check_screenshots", "packaging", "android", "play", "check_screenshots.py")
+    made = graphics.listing_graphics(str(tmp_path / "play"))
+    assert shots.png_info(made["icon"]) == (512, 512, True)
+    assert shots.png_info(made["feature"]) == (1024, 500, False)   # Play refuses a feature graphic with alpha
+    feature = QImage(made["feature"])
+    assert feature.pixelColor(20, 20).lightness() < 80 and feature.pixelColor(960, 60).lightness() > 240
+    icons = graphics.app_icons(str(tmp_path / "icons"))
+    assert shots.png_info(icons["icon"])[:2] == (512, 512)
+    fg, bg = QImage(icons["foreground"]), QImage(icons["background"])
+    assert fg.width() == fg.height() == bg.width() == 432
+    assert fg.pixelColor(0, 0).alpha() == 0 and bg.pixelColor(0, 0).alpha() == 255   # the shape, then its backdrop
+    assert fg.pixelColor(216, 216).alpha() == 255
+    safe = 432 * 33 / 108   # the foreground stays inside the middle 66 of 108 dp, which every launcher's mask shows
+    for x in range(0, 432, 4):
+        for y in range(0, 432, 4):
+            if (x - 216) ** 2 + (y - 216) ** 2 > safe ** 2:
+                assert fg.pixelColor(x, y).alpha() < 100, (x, y)   # at most the page's faint shadow
+    with pytest.raises(SystemExit):
+        graphics.main([])
+
+
+def test_screenshots_are_checked_against_plays_size_rules(tmp_path):
+    from PySide6.QtGui import QImage
+    shots = _load("check_screenshots", "packaging", "android", "play", "check_screenshots.py")
+    assert shots.problem(1080, 1920) == "" and shots.problem(2560, 1600) == ""   # a 16:9 phone, a tablet
+    assert "twice" in shots.problem(1080, 2400) and "320" in shots.problem(300, 500) and shots.problem(4000, 3000)
+    assert shots.check(str(tmp_path)) == ["(none)"]
+    QImage(1080, 1920, QImage.Format.Format_RGB32).save(str(tmp_path / "1-create.png"))
+    assert shots.check(str(tmp_path), out=lambda _s: None) == []
+    QImage(1080, 2400, QImage.Format.Format_RGB32).save(str(tmp_path / "2-preview.png"))
+    assert shots.check(str(tmp_path), out=lambda _s: None) == ["2-preview.png"]
+
+
+def test_the_screenshot_pass_shows_each_page_and_waits_for_each_picture(tmp_path, monkeypatch):
+    import json
+    import time
+    from PySide6.QtWidgets import QApplication
+    screens = _load("inkline_screens", "packaging", "android", "screens.py")
+    monkeypatch.setenv("INKLINE_CONFIG_DIR", str(tmp_path))   # (for monkeypatch to put back)
+    folder = str(tmp_path / "s")
+    cfg = screens.fresh_settings(folder)
+    assert os.environ["INKLINE_CONFIG_DIR"] == cfg
+    prefs = json.load(open(os.path.join(cfg, "preferences.json"), encoding="utf-8"))
+    assert prefs == {"tour_seen": True, "update_check": False}   # no tour, no "Check for updates?" box
+    assert [n for n, _a in screens.STEPS] == ["1-create", "2-preview", "3-booklet", "4-print-options",
+                                               "5-print-dialog"]
+    done = []
+    steps = [("a", lambda w: done.append("a")), ("b", lambda w: done.append("b")),
+             ("c", lambda w: 1 / 0)]   # a step that fails still gets its turn
+    d = screens.Driver(object(), folder, steps, settle=5, wait=20000, poll=5)
+    d.start()
+    now, ack = os.path.join(folder, "now"), os.path.join(folder, "ack")
+    end = time.time() + 20
+    while time.time() < end:
+        QApplication.processEvents()
+        current = open(now, encoding="utf-8").read().strip() if os.path.exists(now) else ""
+        if current == "done":
+            break
+        if current == "b":
+            d.deadline = 0   # the script never answers b: its wait runs out
+        elif current:
+            with open(ack, "w", encoding="utf-8") as f:
+                f.write(current)
+        time.sleep(0.005)
+    assert done == ["a", "b"] and d.shown == [("a", True), ("b", False), ("c", True)]
+    assert open(now, encoding="utf-8").read().strip() == "done"
+
+
+def test_the_print_dialog_step_is_announced_before_it_opens(tmp_path):
+    """Android's print dialog pauses Inkline behind it, timers too: the last step is named before it runs."""
+    screens = _load("inkline_screens", "packaging", "android", "screens.py")
+    folder = str(tmp_path / "screens")
+    seen = []
+    steps = [("a", lambda w: None),
+             ("z-print", lambda w: seen.append(open(os.path.join(folder, "now"), encoding="utf-8").read().strip()))]
+    d = screens.Driver(object(), folder, steps, settle=5, wait=20000, poll=5)
+    d.i = 1
+    d._next()
+    assert seen == ["z-print"]
+    sh = open(os.path.join(ROOT, "packaging", "android", "screenshots.sh"), encoding="utf-8").read()
+    assert '[ "$taken" -ge 5 ] && break' in sh
+
+
+def test_the_screenshot_pass_drives_the_real_window(tmp_path, monkeypatch):
+    from inkapp import window
+    screens = _load("inkline_screens", "packaging", "android", "screens.py")
+    monkeypatch.setenv("INKLINE_CONFIG_DIR", str(tmp_path))
+    w = window.Window("6.1.0", remember=False)
+    w.show()
+    for _name, act in screens.STEPS[:-1]:   # each page the steps show (not Print: it opens a dialog)
+        act(w)
+    assert w.sidebar.rail.buttons["print"].isChecked()
+    show = window.Window.show
+    try:
+        drivers = screens.install(str(tmp_path / "screens"))
+        assert os.environ["INKLINE_CONFIG_DIR"] == str(tmp_path / "screens" / "config")
+        w2 = window.Window("6.1.0", remember=False)
+        w2.show()
+        w2.show()
+        assert len(drivers) == 1 and drivers[0].w is w2   # one pass, for the first window shown
+    finally:
+        window.Window.show = show
+
+
+def test_the_apk_can_run_the_screenshot_pass_and_ci_takes_the_play_screenshots():
+    build = _build()
+    assert '"inkline-screens"' in build.MAIN and "inkline_screens.install" in build.MAIN
+    shot = open(os.path.join(ROOT, "packaging", "android", "screenshots.sh"), encoding="utf-8").read()
+    assert "inkline-screens" in shot and "screens/ack" in shot and "printspooler" in shot
+    assert "check_screenshots.py" in shot and "screencap" in shot
+    flow = open(os.path.join(ROOT, ".github", "workflows", "android.yml"), encoding="utf-8").read()
+    assert "screenshots.sh" in flow and "play-screenshots" in flow and "profile: pixel_tablet" in flow
+    assert "check_16kb.py" in flow and 'zipalign" -c -P 16' in flow and "targetSdkVersion:'36'" in flow
+    assert "build.version_code(" in flow and "make_graphics.py play-graphics" in flow
+
+
+def test_release_adds_the_signed_play_bundle():
+    flow = open(os.path.join(ROOT, ".github", "workflows", "android-release.yml"), encoding="utf-8").read()
+    assert "matrix.arch == 'aarch64' && '--aab'" in flow and "inkline-$V-android.aab" in flow
+    assert "jarsigner -verify" in flow and 'check_16kb.py "$AAB"' in flow
+    signing = open(os.path.join(ROOT, "docs", "android-signing.md"), encoding="utf-8").read()
+    assert "upload key" in signing and "Play App Signing" in signing
+    publishing = open(os.path.join(ROOT, "docs", "publishing.md"), encoding="utf-8").read()
+    for words in ("$25", "12 testers", "14 days", "data safety", "content rating", "listing.md", "play-screenshots",
+                  "arm64"):
+        assert words.lower() in publishing.lower(), words
+
+
+def test_the_play_listing_fits_plays_limits():
+    import re
+    text = open(os.path.join(ROOT, "packaging", "android", "play", "listing.md"), encoding="utf-8").read()
+
+    def section(name):
+        m = re.search(r"^## " + name + r"[^\n]*\n(.*?)(?=^## |\Z)", text, re.S | re.M)
+        assert m, name
+        return m.group(1).strip()
+    assert 0 < len(section("Title")) <= 30
+    assert 0 < len(section("Short description")) <= 80
+    assert 500 < len(section("Full description")) <= 4000
+    privacy = open(os.path.join(ROOT, "packaging", "android", "play", "privacy.md"), encoding="utf-8").read()
+    assert "api.github.com" in privacy and "collect" in privacy

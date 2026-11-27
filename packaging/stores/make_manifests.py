@@ -7,7 +7,9 @@
 - Homebrew: a cask for the universal macOS disk image (for a tap of Inkline's own: homebrew/cask takes only apps
   signed by Apple's Developer ID)
 - AUR (Arch User Repository): a PKGBUILD that builds from the release's source tarball, and its .SRCINFO
-- Flathub: the Flathub manifest, pinned to the release's tag and commit
+- Flathub: the Flathub manifest, made from packaging/flatpak's own, pinned to the release's tag and commit
+
+Each store's README in packaging/stores/ says how to submit what's written here.
 
 The checksums come from the release itself: each file's SHA-256 digest from GitHub's API, and the source tarball's
 by downloading it. Nothing is uploaded anywhere. The CI runs this after each release (stores.yml) and keeps the
@@ -43,25 +45,42 @@ def tarball_url(version):
 
 
 # --- winget ---------------------------------------------------------------------------------------------------
+WINGET_ID = "Gshoe2006.Inkline"
+WINGET_SCHEMA = "1.6.0"
+# Inno Setup's uninstall key for the installer's AppId (packaging/windows/inkline.iss): how winget sees it's installed
+INNO_PRODUCT_CODE = "{6F1B7F0A-3C2E-4E9B-9C55-1D2B7A4E8C31}_is1"
+
+
+def yq(text):
+    """A YAML double-quoted string (JSON's quoting is valid YAML): a plain one can't hold ": " or start with "{"."""
+    return json.dumps(text, ensure_ascii=False)
+
+
 def winget(version, setup_sha):
-    pid, mv = "Gshoe2006.Inkline", "1.6.0"
+    pid, mv = WINGET_ID, WINGET_SCHEMA
     head = f"# yaml-language-server: $schema=https://aka.ms/winget-manifest.{{}}.{mv}.schema.json\n\n"
+    url = download_url(version, f"inkline-{version}-windows-setup.exe")
     files = {}
     files[f"{pid}.yaml"] = head.format("version") + (
         f"PackageIdentifier: {pid}\nPackageVersion: {version}\nDefaultLocale: en-US\nManifestType: version\n"
         f"ManifestVersion: {mv}\n")
+    # the one installer, for one person (as it installs by default) or, with /ALLUSERS, for everyone (as an admin)
+    installers = "".join(
+        f"  - Architecture: x64\n    Scope: {scope}\n    InstallerUrl: {url}\n    InstallerSha256: {setup_sha.upper()}\n"
+        f"    InstallerSwitches:\n      Custom: {switch}\n"
+        for scope, switch in (("user", "/CURRENTUSER"), ("machine", "/ALLUSERS")))
     files[f"{pid}.installer.yaml"] = head.format("installer") + (
-        f"PackageIdentifier: {pid}\nPackageVersion: {version}\nInstallerType: inno\nScope: user\n"
-        "InstallModes:\n  - interactive\n  - silent\nUpgradeBehavior: install\n"
+        f"PackageIdentifier: {pid}\nPackageVersion: {version}\nInstallerType: inno\n"
+        "InstallModes:\n  - interactive\n  - silent\n  - silentWithProgress\nUpgradeBehavior: install\n"
+        f"ProductCode: {yq(INNO_PRODUCT_CODE)}\n"
         "FileExtensions:\n  - inkline\n"
-        "Installers:\n  - Architecture: x64\n"
-        f"    InstallerUrl: {download_url(version, f'inkline-{version}-windows-setup.exe')}\n"
-        f"    InstallerSha256: {setup_sha.upper()}\n"
+        f"Installers:\n{installers}"
         f"ManifestType: installer\nManifestVersion: {mv}\n")
     files[f"{pid}.locale.en-US.yaml"] = head.format("defaultLocale") + (
         f"PackageIdentifier: {pid}\nPackageVersion: {version}\nPackageLocale: en-US\nPublisher: Inkline\n"
-        f"PublisherUrl: {HOMEPAGE}\nPackageName: Inkline\nPackageUrl: {HOMEPAGE}\nLicense: GPL-3.0-or-later\n"
-        f"LicenseUrl: {HOMEPAGE}/blob/main/LICENSE\nShortDescription: {SUMMARY}\nDescription: {DESCRIPTION}\n"
+        f"PublisherUrl: {HOMEPAGE}\nPublisherSupportUrl: {HOMEPAGE}/issues\nPackageName: Inkline\n"
+        f"PackageUrl: {HOMEPAGE}\nLicense: GPL-3.0-or-later\nLicenseUrl: {HOMEPAGE}/blob/main/LICENSE\n"
+        f"ShortDescription: {yq(SUMMARY)}\nDescription: {yq(DESCRIPTION)}\n"
         "Moniker: inkline\nTags:\n  - colouring\n  - printing\n  - puzzles\n  - worksheets\n  - education\n"
         f"ReleaseNotesUrl: {HOMEPAGE}/releases/tag/{version}\n"
         f"ManifestType: defaultLocale\nManifestVersion: {mv}\n")
@@ -69,14 +88,29 @@ def winget(version, setup_sha):
 
 
 # --- Homebrew ---------------------------------------------------------------------------------------------------
-def homebrew(version, dmg_sha):
+CASK_DESC = "Make colouring pages, puzzles and black-and-white photo prints"   # brew audit: 80 characters at most
+BUNDLE_ID = "io.github.gshoe2006.Inkline"
+
+
+UNSIGNED_CAVEAT = '''
+  caveats <<~EOS
+    Until Inkline is signed with an Apple Developer ID and notarized, macOS asks before
+    opening it the first time: Control-click Inkline in Applications and choose Open, or
+    use System Settings > Privacy & Security > Open Anyway.
+  EOS
+'''
+
+
+def homebrew(version, dmg_sha, notarized=False):
+    """The cask. Until the disk image is notarized (docs/code-signing.md) it says how to open the app the first time."""
+    caveat = "" if notarized else UNSIGNED_CAVEAT
     return f'''cask "inkline" do
   version "{version}"
   sha256 "{dmg_sha}"
 
   url "https://github.com/{REPO}/releases/download/#{{version}}/inkline-#{{version}}-macos.dmg"
   name "Inkline"
-  desc "{SUMMARY}"
+  desc "{CASK_DESC}"
   homepage "{HOMEPAGE}"
 
   livecheck do
@@ -88,11 +122,16 @@ def homebrew(version, dmg_sha):
 
   app "Inkline.app"
 
+  # the update check Inkline sets up when asked to check while it's closed (Help > Check for updates)
+  uninstall launchctl: "{BUNDLE_ID}.update"
+
   zap trash: [
     "~/.config/inkline",
-    "~/Library/LaunchAgents/io.github.gshoe2006.Inkline.update.plist",
+    "~/Library/LaunchAgents/{BUNDLE_ID}.update.plist",
+    "~/Library/Preferences/{BUNDLE_ID}.plist",
+    "~/Library/Saved Application State/{BUNDLE_ID}.savedState",
   ]
-end
+{caveat}end
 '''
 
 
@@ -155,17 +194,30 @@ pkgname = inkline
 
 
 # --- Flathub ----------------------------------------------------------------------------------------------------
+FLATPAK_MANIFEST = os.path.join(ROOT, "packaging", "flatpak", "io.github.gshoe2006.Inkline.yml")
+FLATHUB_HEAD = """# Inkline for Flathub (https://github.com/flathub/flathub), written by packaging/stores/make_manifests.py from
+# packaging/flatpak/io.github.gshoe2006.Inkline.yml: the same build, with Inkline's source taken from GitHub at the
+# release's tag, pinned to its commit. PySide6 and numpy are PyPI's wheels, pinned by sha256, so nothing is
+# downloaded while it builds. packaging/stores/flathub/README.md says how to submit it.
+"""
+
+
 def flathub(version, commit, manifest=None):
-    """The Flathub manifest with Inkline's source pinned to this release's tag and commit."""
+    """The Flathub manifest: the local Flatpak manifest (so the two never drift apart), with Inkline's source
+    (there the repository folder) replaced by its git repository at this release's tag and commit."""
     if manifest is None:
-        with open(os.path.join(ROOT, "packaging", "flatpak", "flathub", "io.github.gshoe2006.Inkline.yml"),
-                  encoding="utf-8") as f:
+        with open(FLATPAK_MANIFEST, encoding="utf-8") as f:
             manifest = f.read()
-    out, n = re.subn(r"(url: https://github\.com/Gshoe2006/inkline\.git\n\s+tag: )\S+(\n\s+commit: )\S+",
-                     lambda m: f"{m.group(1)}{version}{m.group(2)}{commit}", manifest)
+    if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) or not re.fullmatch(r"[0-9a-f]{40}", commit):
+        raise SystemExit(f"make_manifests.py: '{version}' / '{commit}' isn't a release tag and its full commit hash")
+    body = manifest[manifest.index("\nid: ") + 1:] if "\nid: " in manifest else manifest
+    source = (f"      - type: git\n        url: https://github.com/{REPO}.git\n"
+              f"        tag: {version}\n        commit: {commit}\n")
+    out, n = re.subn(r"      - type: dir\n        path: \.\./\.\.\n(?:        .*\n)*", lambda m: source,
+                     body)
     if n != 1:
-        raise SystemExit("make_manifests.py: the Flathub manifest's Inkline source (git url, tag, commit) wasn't found")
-    return out
+        raise SystemExit("make_manifests.py: the Flatpak manifest's own source (type: dir, path: ../..) wasn't found")
+    return FLATHUB_HEAD + out
 
 
 # --- the release's checksums -------------------------------------------------------------------------------------
@@ -190,15 +242,7 @@ def tarball_digest(version, opener=urllib.request.urlopen):
     return h.hexdigest()
 
 
-def write_all(out, version, commit, digests, tarball_sha):
-    need = {"setup": f"inkline-{version}-windows-setup.exe", "dmg": f"inkline-{version}-macos.dmg"}
-    missing = [n for n in need.values() if n not in digests]
-    if missing:
-        raise SystemExit(f"make_manifests.py: the release has no SHA-256 digest for {', '.join(missing)}")
-    files = {f"winget/{k}": v for k, v in winget(version, digests[need["setup"]]).items()}
-    files["homebrew/inkline.rb"] = homebrew(version, digests[need["dmg"]])
-    files.update({f"aur/{k}": v for k, v in aur(version, tarball_sha).items()})
-    files["flathub/io.github.gshoe2006.Inkline.yml"] = flathub(version, commit)
+def _write(out, files):
     for rel, text in files.items():
         path = os.path.join(out, rel)
         os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -207,15 +251,39 @@ def write_all(out, version, commit, digests, tarball_sha):
     return sorted(files)
 
 
+FLATHUB_FILE = "flathub/io.github.gshoe2006.Inkline.yml"
+
+
+def write_all(out, version, commit, digests, tarball_sha, macos_notarized=False):
+    need = {"setup": f"inkline-{version}-windows-setup.exe", "dmg": f"inkline-{version}-macos.dmg"}
+    missing = [n for n in need.values() if n not in digests]
+    if missing:
+        raise SystemExit(f"make_manifests.py: the release has no SHA-256 digest for {', '.join(missing)}")
+    files = {f"winget/{k}": v for k, v in winget(version, digests[need["setup"]]).items()}
+    files["homebrew/inkline.rb"] = homebrew(version, digests[need["dmg"]], notarized=macos_notarized)
+    files.update({f"aur/{k}": v for k, v in aur(version, tarball_sha).items()})
+    files[FLATHUB_FILE] = flathub(version, commit)
+    return _write(out, files)
+
+
 def main(argv):
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     p.add_argument("version")
     p.add_argument("--commit", help="the tag's commit (default: git rev-list -n 1 <version>)")
     p.add_argument("--out", default="store-manifests")
+    p.add_argument("--flathub-only", action="store_true",
+                   help="only the Flathub manifest (needs no network: for checking it with flatpak-builder-lint)")
+    p.add_argument("--macos-notarized", action="store_true",
+                   help="the macOS disk image is notarized: the cask needn't say how to open an unsigned app")
     a = p.parse_args(argv)
     commit = a.commit or subprocess.run(["git", "rev-list", "-n", "1", a.version], cwd=ROOT, check=True,
                                         capture_output=True, text=True).stdout.strip()
-    for rel in write_all(a.out, a.version, commit, release_digests(a.version), tarball_digest(a.version)):
+    if a.flathub_only:
+        written = _write(a.out, {FLATHUB_FILE: flathub(a.version, commit)})
+    else:
+        written = write_all(a.out, a.version, commit, release_digests(a.version), tarball_digest(a.version),
+                            macos_notarized=a.macos_notarized)
+    for rel in written:
         print(os.path.join(a.out, rel))
 
 

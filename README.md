@@ -3,7 +3,7 @@
 A desktop app for Linux and Windows that converts photos to, or generates, black & white images for printing.
 
 - **Make one up:** mandala colouring pages, mazes (rectangular, or shaped like a heart, star, fish, house or any word or name), dot-to-dots, sudoku and nonograms (each with exactly one solution), spot the difference (two copies of a mandala, woven tiles or contours, 5 to 10 changes to find), kakuro (cross sums, with a few starter numbers and exactly one solution), word search (themes or your own words, each word hidden exactly once), name pages in bubble letters, woven tiles, topographic contours, flow lines; mandalas, woven tiles, contours and name pages can also be colour-by-number, with repeated spaces sharing a number, a crayon key, and shaded answer pages in booklets.
-- **Convert a photo:** Floyd–Steinberg, Atkinson and ordered dithering, halftone dots, engraving lines and stippling dots (both also save as SVG), solid black & white, a line drawing (colouring page), colour by number (regions of similar colour, each numbered, with a key naming the crayon to use; also saves as SVG), or a nonogram puzzle that reveals the photo (always solvable by logic alone), with rotate, zoom and pan to crop.
+- **Convert a photo:** Floyd–Steinberg, Atkinson and ordered dithering, halftone dots, engraving lines and stippling dots (both also save as SVG), solid black & white, a line drawing (colouring page), colour by number (regions of similar colour, each numbered, with a key naming the crayon to use; also saves as SVG), a nonogram puzzle that reveals the photo (always solvable by logic alone), or a dot-to-dot of the photo's main outline (20–150 numbered dots, with the joined-up answer), with rotate, zoom and pan to crop.
 - **Photo books:** turn several photos into one colouring-book PDF, one page each with its own crop, plus an optional cover, title, name line and page numbers.
 - **Fold-and-staple books:** booklets and photo books can print two half-size pages per side, double-sided, so the sheets fold and staple into a real little book in page order.
 - **Worksheet packs:** *Booklet → Worksheet pack* makes a booklet of five worksheets, one for each school day, set for the age chosen under *Age*, with a cover, name line and answer pages. On a theme (animals, food, space, ocean, weather or sports) it's a maths drill, handwriting, a crossword, a word search and a maze; on this week's spelling words it's a maths drill and the words four ways: traced, in a crossword whose clues are the words' letters mixed up, in a word search and to unscramble. With *Paper → Copies* or *Names* it makes a pack for every child, and the answers can go in one teacher's book. Choose each day's sheet yourself (Monday to Friday, from maths, early maths, handwriting, puzzles, clocks, reading, bingo and more); the week you choose is kept with your presets.
@@ -12,9 +12,11 @@ A desktop app for Linux and Windows that converts photos to, or generates, black
 - **Easier to read:** *Print → Page text → Easier to read* sets the worksheets' text in Atkinson Hyperlegible (made for readers with low vision, and recommended for dyslexia), with letters and words spaced wider; *Paper → Cream paper* tints the page on screen and in PDFs, while Print still uses white paper.
 - **Early maths with pictures:** ten frames to count, number bonds to complete, tens rods and ones cubes, and shapes to count, for ages 4–6, with the answers on an answer page.
 - **Bingo:** number (1–75 under B I N G O, or smaller cards for younger children), word (any theme, sight words, or your own list) and sums bingo, a different card for every child with *Paper → Copies* or *Names*, and a caller's sheet on the answer page.
+- **Logic puzzles, cryptograms and word ladders:** grid logic puzzles (who has which pet, colour, fruit or sport: 3, 4 or 5 of each, with just enough clues for one answer), cryptograms (a saying, or your own text, with each letter as a number or a symbol and a few letters given in the key) and word ladders (change one letter at a time, every step a real word), each with an answer page and words in every language Inkline speaks.
+- **Calendars and planners:** a month calendar for any month (next month to start with), weeks starting on Monday or Sunday, or a weekly planner with lines for each day, with a mandala, woven tiles, flow lines or contours to colour above it.
 - **Booklets:** turn any pattern (or every pattern but name pages, mixed) into a multi-page PDF with a cover, a title and name line, page numbers, difficulty that ramps up page by page, a *New design for this page* button to swap any single page (answers follow), and answer pages for mazes, dot-to-dots, sudoku, word search, nonograms, spot the difference and kakuro. Or build a booklet page by page: *Edit pages one by one* lists its pages, each with a small picture and its own pattern, options and complexity (so each word search page can have its own words, and each name page its own name), to add, drag into order, duplicate (with a new design) or remove.
 - **Projects:** *File → Save project* (Ctrl+S) keeps everything you're making in one `.inkline` file, with the photos inside it, so it opens again later or on another computer even if the original pictures have moved. *File → Open project…* (Ctrl+Shift+O) and *Open recent project* bring it back; the window title shows the project's name and whether it has unsaved changes. Installed from a package, project files get their own icon in your file manager and open in Inkline with a double-click; `python3 inkline.py book.inkline` does the same from a terminal. If Inkline closes unexpectedly, the next start offers to bring back the work you hadn't saved: while there's unsaved work, a copy is kept in the settings folder at most once a minute.
-- **Presets:** twenty-one built-in starting points (start fresh, a week's worksheet pack, colouring page, name page, maze worksheet, maze booklet, name maze, word search booklet, sudoku booklet, nonogram booklet, dot-to-dot booklet, spot the difference booklet, kakuro booklet, colour-by-number mandala, halftone photo, engraved photo, stippled photo, colour-by-number photo, photo nonogram, photo colouring page, wall poster) plus your own saved settings.
+- **Presets:** twenty-four built-in starting points (start fresh, a week's worksheet pack, colouring page, name page, maze worksheet, maze booklet, name maze, word search booklet, sudoku booklet, nonogram booklet, dot-to-dot booklet, spot the difference booklet, logic puzzle booklet, kakuro booklet, calendar for next month, colour-by-number mandala, halftone photo, engraved photo, stippled photo, colour-by-number photo, photo dot-to-dot, photo nonogram, photo colouring page, wall poster) plus your own saved settings.
 - **Picks up where you left off:** settings and the current design are restored on the next start (*Presets → Start fresh* resets them). Shortcuts: Ctrl+P print, Ctrl+S save project, Ctrl+Shift+S save project as, Ctrl+E save PDF, Ctrl+Shift+E save PNG, Ctrl+O open image, Ctrl+Shift+O open project, Ctrl+N new design, Ctrl+Shift+N more designs (six to choose from), Ctrl+Z undo, Ctrl+Shift+Z redo, Ctrl+H undo history, ←/→ booklet pages. Recently opened photos are under *File → Open recent image*.
 - **Printer test page:** true-size squares and rulers, edge-margin marks, every dither style and dot size, and every line weight, to check your printer at a glance.
 - **Print-ready output:** Letter or A4 at 150/300 dpi, with Print, Save PNG and Save PDF at true paper size. Booklets and photo books can print or save only some pages (*Paper → Print or save only*, e.g. `3-5, 8, cover`). The preview hatches the edge your printer can't reach and warns if the design runs into it.
@@ -56,6 +58,18 @@ The `.deb` brings its own PySide6 (Debian and Ubuntu don't package a new enough 
 Since 6.0 the options come a page at a time. The rail on the left chooses what you're working on: **Create** (a pattern made up for you, chosen from pictures of the patterns you used last, or from the full list) or **Photo** (converting one), then **Booklet**, **Poster** and **Print** (paper, page text, copies and names). **Ctrl+1** to **Ctrl+5** choose them from the keyboard. Each page fits without scrolling, and its sections take turns: opening one closes the others. **All patterns…** shows every pattern as a picture, by kind, with a search box; and a booklet built page by page has its pages changed right on the Booklet page (double-click one, or **Change this page**). **Presets**, **New design**, **More designs…**, the PDF, PNG and SVG saves and **Print…** are in the toolbar over the preview, and what just happened shows under it.
 
 The first time 6.0 opens, a short tour points at the rail, the gallery, the toolbar, the sections and Settings in turn (Back, Next, Skip, or Escape); **Help → Tour of the window** shows it again.
+
+To look closer at the page, pinch the preview (a touch screen or a trackpad), use **Ctrl+wheel**, or **View → Zoom in** / **Zoom out** (Ctrl++ and Ctrl+-). While it's zoomed, drag it (one finger, or the mouse) to look round; a double tap, a double click or **View → Whole page** (Ctrl+0) shows the whole page again. The zoom only changes the view: what's printed stays the same, and with a photo open the wheel still zooms the photo.
+
+With the touch-screen layout (always on Android, or **Edit → Settings → Appearance**), a window narrower than 1000 px shows one column with a bottom bar; a tablet held sideways keeps the rail, gives the page the window's height and the options the room beside it, and shows **More designs…** in the toolbar when there's room.
+
+## Accessibility
+
+- **Screen readers** (Orca, NVDA, VoiceOver, TalkBack): every button, list, slider and check box has a name, in your language, and a tooltip that explains a button is read as its description. Lists are named by their labels; the rail's, the toolbar's and the booklet page list's buttons by what they do ("Move up", "Remove"); the preview says which page it shows ("Page 2 of 10: Maze"). A test (`tests/test_accessibility.py`) checks every control in the window, Settings and All patterns.
+- **Keyboard:** Tab goes from the rail through the options to the toolbar and the preview, and the focused control is outlined in every theme. Ctrl+1 to Ctrl+5 choose the rail's pages, ← → turn a booklet's pages. In the gallery and **All patterns…** the arrow keys move between the pictures and Enter chooses one (Down from the search box goes into them; Enter there chooses the first match). In the booklet's page list and the photo book's list, Delete removes the selected one and Alt+↑ / Alt+↓ move it (Ctrl+D duplicates a page, Enter changes it). With the preview focused, + and - zoom it, 0 fits it and the arrow keys move round it.
+- **High contrast:** turn on **High contrast** in **Edit → Settings → Appearance** and choose it: black on white, its text at least 10:1. Every theme's text is at least 4.5:1, and **Follow the system** follows your desktop's light or dark setting. Inkline draws its own colours, so it doesn't take a system high-contrast scheme (Windows' contrast themes) by itself: choose High contrast in Inkline too.
+- **Larger text and touch-sized controls:** the touch-screen layout (Edit → Settings → Appearance) makes every control at least 48 px tall and its text a step larger, on any computer. The whole window also follows the system's display scaling (125%, 150%, 200%).
+- **Easier-to-read pages:** *Print → Page text → Easier to read* prints in Atkinson Hyperlegible (recommended for dyslexia), with wider letter and word spacing, and *Cream paper* tints the page.
 
 ## Settings
 
@@ -119,6 +133,8 @@ python3 packaging/check_selftest.py /tmp/inkline-test
 
 The self-test opens the window, then writes every pattern, the photo styles, the printer test page, a booklet (plain and folded), two posters and a photo book through the app's own save code, and exits non-zero if anything fails. The unit tests (`python3 -m pip install pytest && QT_QPA_PLATFORM=offscreen python3 -m pytest -q tests`) check the engine against recordings of what Inkline 2.5 drew. GitHub runs both commands on every pull request (`.github/workflows/selftest.yml`) and keeps the rendered files for 7 days.
 
+
+How fast it is: `python3 inkline.py --benchmark` times start-up, every pattern and the photo styles without opening a window; [docs/performance.md](docs/performance.md) has the numbers and a Rust trial.
 
 [docs/manual-tests.md](docs/manual-tests.md) lists what CI can't check (a real desktop, notifications, the update timer, a printer), to run on a release candidate; `inkline --check-updates --demo` shows the update notification at once.
 ## Command line
@@ -215,13 +231,14 @@ python3 packaging/translation_sheet.py fr      # writes inkline-fr-review.csv: E
 
 | Path | What it is |
 | --- | --- |
-| `inkline.py` | Starts the app (with a project: `inkline.py FILE.inkline`; or `--selftest DIR`) |
+| `inkline.py` | Starts the app (with a project: `inkline.py FILE.inkline`; or `--selftest DIR`, `--benchmark`) |
 | `inkapp/` | The window: sidebar, preview, menus, saving and printing, presets, project files (Qt Widgets) |
 | `inkengine/` | The drawing engine: every pattern, photo style, booklet and poster, as PNG, PDF and SVG (also a command line) |
 | `tests/` | Tests for `inkengine/`, with recordings of what Inkline 2.5 drew to match |
 | `inkline.svg`, `icons/` | App icon; regenerate with `python3 packaging/make_icon.py` |
 | `inkline.desktop` | Application menu entry |
 | `inkline-mime.xml` | The `.inkline` project file type, so file managers open projects in Inkline |
+| `rust/inkline_fast/` | A trial: two inner loops in Rust, used when installed ([docs/performance.md](docs/performance.md)) |
 | `packaging/` | Build script, Arch PKGBUILD, self-extracting installer stub, release notes script |
 | `CHANGELOG.md` | What changed in each release; each section becomes that release's notes |
 | `VERSION` | App version used by both installers |
@@ -244,16 +261,24 @@ For a packaging-only change, bump `pkgrel` in `packaging/arch/PKGBUILD`, run `pa
 
 Free code signing provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org).
 
-This covers the Windows installer (`inkline-<version>-windows-setup.exe`). It's signed from the first release
-after SignPath Foundation accepts Inkline; until then the installer is unsigned, and Windows SmartScreen may
-say it's from an unknown publisher.
+**Today the Windows installer and the macOS app are unsigned.** Windows SmartScreen may say the installer is from
+an unknown publisher, and macOS asks before opening the app the first time (see [Install](#install)). The release
+workflow signs them as soon as signing is set up for the repository, and until then says in each run that it
+built them unsigned:
+
+- **Windows** (`inkline-<version>-windows-setup.exe`, and `Inkline.exe` in it and in the portable zip): signed
+  through SignPath Foundation from the first release after it accepts Inkline (only the installer), or with Azure
+  Trusted Signing or a code signing certificate if one of those is set up instead.
+- **macOS** (the `.dmg` disk images and `Inkline.app` in them): signed with an Apple Developer ID and notarized by
+  Apple once a Developer ID certificate is set up. Until then the app is signed ad hoc only.
 
 - Committers and reviewers: [Gshoe2006](https://github.com/Gshoe2006)
 - Approvers: [Gshoe2006](https://github.com/Gshoe2006)
 
-Every installer is built from this repository's source by the release workflow
-(`.github/workflows/release.yml`) on GitHub's own runners, and each release is approved for signing by hand.
-How it's set up: [docs/code-signing.md](docs/code-signing.md).
+Every installer and disk image is built from this repository's source by the release workflow
+(`.github/workflows/release.yml`) on GitHub's own runners. Releases signed through SignPath are each approved for
+signing by hand. The options, their costs, the secrets each one needs and how to check a signed file:
+[docs/code-signing.md](docs/code-signing.md).
 
 **Privacy:** this program will not transfer any information to other networked systems unless specifically
 requested by the user or the person installing or operating it. The only network request it makes on its own is the daily

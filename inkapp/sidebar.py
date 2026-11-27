@@ -14,7 +14,8 @@ from PySide6.QtWidgets import (QStackedWidget, QAbstractItemView, QFrame, QHBoxL
 from inkengine import ages, book, cbn, pack, photo
 from inkengine.i18n import tr
 from inkengine.page import PAGE_KEYS, PANELS, SHEETS, has_answer, sheet_gens
-from inkengine.patterns import NAMES, bingo, clock, early, crossword, fractions, reward, ruled, maths, maze, money, name, spot, trace, words
+from inkengine.patterns import (NAMES, bingo, clock, early, crossword, cryptogram, fractions, ladder, planner, reward, ruled, maths, maze,
+                                money, name, spot, trace, words)
 
 from . import jobs, theme, thumbs
 from .jobs import MAX_COPIES
@@ -36,7 +37,11 @@ GEN_OPTIONS = [("mandala", "Mandala (colouring page)"), ("maze", "Maze"), ("truc
                ("ruled", "Graph and lined paper"), ("reward", "Reward charts and certificates"),
                ("reading", "Reading comprehension (a passage and questions)"),
                ("bingo", "Bingo cards (a different card for each child)"),
-               ("early", "Early maths with pictures (ten frames, number bonds, tens and ones, counting)")]
+               ("early", "Early maths with pictures (ten frames, number bonds, tens and ones, counting)"),
+               ("logic", "Logic puzzle (clues and a grid: who has what)"),
+               ("cryptogram", "Cryptogram (a saying in secret code to crack)"),
+               ("ladder", "Word ladder (change one letter at a time)"),
+               ("calendar", "Calendar or weekly planner")]
 GRID_OPTIONS = [("2x2", "2 × 2"), ("3x3", "3 × 3"), ("4x4", "4 × 4"), ("2x1", "2 across × 1"), ("3x2", "3 across × 2"),
                 ("1x2", "1 across × 2"), ("2x3", "2 across × 3")]
 CBN_PATTERN_NOTE = "Repeated spaces share a number, and spaces side by side get different colours."
@@ -85,6 +90,7 @@ class Sidebar(QFrame):
         self.state = state
         self.setObjectName("sidebar")
         self.setFixedWidth(theme.SIDEBAR_WIDTH)
+        self.least = theme.SIDEBAR_WIDTH   # the narrowest it gets (wider on a tablet: the window's _fit_tablet)
         self._loading = False
         self.thumbs = thumbs.Thumbnails()   # the booklet page list's pictures
         self.thumbs.ready.connect(self._thumb_ready)
@@ -145,7 +151,7 @@ class Sidebar(QFrame):
         bar = sc.verticalScrollBar().sizeHint().width()
         # the widest page decides, so the sidebar (and the preview) keep their width from page to page
         need = max(c.minimumSizeHint().width() for c in self._columns.values()) + bar + 2 * sc.frameWidth()
-        w = max(theme.SIDEBAR_WIDTH, min(theme.MAX_SIDEBAR_WIDTH, need))
+        w = max(self.least, min(theme.MAX_SIDEBAR_WIDTH, need))
         if w != self.width() or self.minimumWidth() != w:
             self.setFixedWidth(w)
 
@@ -503,6 +509,35 @@ class Sidebar(QFrame):
         self.bingo_note = self.bingo_opts.add(Hint())
         self.bingo_opts.add(Hint("Complexity sets the card: 3 × 3, 4 × 4 or 5 × 5. With Paper → Copies or Names, every "
                                  "card is different; Answer pages adds the caller's sheet."))
+        self.logic_opts = SubOptions()
+        self.logic_opts.add(Hint("Complexity sets the grid: 3, 4 or 5 of each thing, and how many clues there are."))
+        self.crypto_opts = SubOptions()
+        self.crypto_code = self._combo("crypto_code", list(cryptogram.KINDS.items()))
+        self.crypto_opts.add(OptionRow("Code", self.crypto_code))
+        self.crypto_source = self._combo("crypto_source", list(cryptogram.SOURCES.items()))
+        self.crypto_opts.add(OptionRow("Put in code", self.crypto_source))
+        self.crypto_text = self._text("crypto_text", "e.g. Happy birthday, Grandma!", cryptogram.MAX_TEXT)
+        self.crypto_text_row = self.crypto_opts.add(OptionRow("Your text", self.crypto_text))
+        self.crypto_note = self.crypto_opts.add(Hint())
+        self.crypto_hint = self.crypto_opts.add(Hint("Complexity sets how long the saying is and how few letters the key "
+                                                     "gives away."))
+        self.crypto_own_hint = self.crypto_opts.add(Hint("Complexity sets how few letters the key gives away."))
+        self.ladder_opts = SubOptions()
+        self.ladder_kind = self._combo("ladder_kind", list(ladder.KINDS.items()))
+        self.ladder_opts.add(OptionRow("Clue", self.ladder_kind))
+        self.ladder_note = self.ladder_opts.add(Hint())
+        self.ladder_opts.add(Hint("Complexity sets the words (3, 4 or 5 letters) and how many steps each ladder takes."))
+        self.cal_opts = SubOptions()
+        self.cal_kind = self._combo("cal_kind", list(planner.KINDS.items()))
+        self.cal_opts.add(OptionRow("Make", self.cal_kind))
+        self.cal_month = self._combo("cal_month", planner.MONTH_CHOICES)
+        self.cal_year = self._combo("cal_year", planner.year_choices())
+        self.cal_date_row = self.cal_opts.add(Pair(OptionRow("Month", self.cal_month), OptionRow("Year", self.cal_year)))
+        self.cal_start = self._combo("cal_start", list(planner.WEEK_STARTS.items()))
+        self.cal_opts.add(OptionRow("Week starts on", self.cal_start))
+        self.cal_art = self._combo("cal_art", list(planner.BACKGROUNDS.items()))
+        self.cal_opts.add(OptionRow("Picture", self.cal_art))
+        self.cal_opts.add(Hint("Complexity sets how detailed the picture is."))
         self.clock_opts = SubOptions()
         self.clock_task = self._combo("clock_task", list(clock.TASKS.items()))
         self.clock_opts.add(OptionRow("Clocks", self.clock_task))
@@ -525,7 +560,8 @@ class Sidebar(QFrame):
         self.cross_words_hint = self.cross_opts.add(Hint("Each as word: clue, separated by ; (a word without a clue gets ?)."))
         self.cross_note = self.cross_opts.add(Hint())
         sec.add(self.words_opts, self.maze_opts, self.name_opts, self.spot_opts, self.maths_opts, self.frac_opts, self.ruled_opts,
-                self.reward_opts, self.bingo_opts, self.early_opts, self.clock_opts,
+                self.reward_opts, self.bingo_opts, self.early_opts, self.logic_opts, self.crypto_opts, self.ladder_opts,
+                self.cal_opts, self.clock_opts,
                 self.trace_opts, self.cross_opts)
         sec.add(self._slider("complexity", "Complexity", 1, 10, lambda v: f"{v} / 10"))
         sec.add(self._slider("weight", "Line weight", 1, 10, lambda v: f"{v / 150 * 25.4:.2f} mm"))
@@ -681,7 +717,12 @@ class Sidebar(QFrame):
         self.pbook_opts.add(_row(self.photo_count, add, stretch_first=True))
         self.photo_list = QListWidget()
         self.photo_list.setObjectName("photoList")
+        self.photo_list.setAccessibleName(tr("Photo book"))
         self.photo_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        # with the photo list focused, the selected photo: remove, move (as its row's buttons do; the page list's keys)
+        for key, d in ((QKeySequence(Qt.Key.Key_Delete), 0), (QKeySequence("Alt+Up"), -1), (QKeySequence("Alt+Down"), 1)):
+            QShortcut(key, self.photo_list, context=Qt.ShortcutContext.WidgetShortcut).activated.connect(
+                lambda d=d: self._photo_key(d))
         self.photo_list.currentRowChanged.connect(lambda i: None if self._loading or i < 0 else self.photo_selected.emit(i))
         self.pbook_opts.add(self.photo_list)
         self.pbook_opts.add(self._check("pcover", "Cover page"))
@@ -724,7 +765,12 @@ class Sidebar(QFrame):
         self.pnono_opts.add(self._check("pnono_answer", "Show the answer"))
         self.pnono_opts.add(Hint("Threshold sets which squares are shaded. Where logic alone can't finish the picture, "
                                  "a few squares are changed, or shaded to start you off."))
-        self.photo_panel.add(self.pcbn_opts, self.pnono_opts)
+        self.pdots_opts = SubOptions()
+        self.pdots_opts.add(self._slider("pdots_n", "Dots", 20, 150))
+        self.pdots_opts.add(self._check("pdots_answer", "Show the answer"))
+        self.pdots_opts.add(Hint("Threshold picks the outline: the biggest dark shape in the photo (or light, with "
+                                 "Invert). Each number sits outside the line."))
+        self.photo_panel.add(self.pcbn_opts, self.pnono_opts, self.pdots_opts)
         self.photo_panel.add(self._slider("brightness", "Brightness", -100, 100, lambda v: f"+{v}" if v > 0 else str(v)))
         self.photo_panel.add(self._slider("contrast", "Contrast", 20, 300, lambda v: f"{v}%"))
         self.photo_panel.add(self._slider("threshold", "Threshold / detail", 1, 254))
@@ -1028,17 +1074,19 @@ class Sidebar(QFrame):
             nm = _Elided(f"{i + 1}. {ph.name}")
             nm.setObjectName("photoName")
             rl.addWidget(nm, 1)
-            for txt, tip, fn, off in (("↑", "Move up", lambda _c=False, i=i: self.photo_moved.emit(i, -1), i == 0),
-                                      ("↓", "Move down", lambda _c=False, i=i: self.photo_moved.emit(i, 1), i == len(st.photos) - 1),
-                                      ("✕", "Remove", lambda _c=False, i=i: self.photo_removed.emit(i), len(st.photos) < 2)):
-                b = button(txt, "mini", tip)
+            for txt, tip, key, fn, off in (
+                    ("↑", "Move up", "Alt+↑", lambda _c=False, i=i: self.photo_moved.emit(i, -1), i == 0),
+                    ("↓", "Move down", "Alt+↓", lambda _c=False, i=i: self.photo_moved.emit(i, 1), i == len(st.photos) - 1),
+                    ("✕", "Remove", "Delete", lambda _c=False, i=i: self.photo_removed.emit(i), len(st.photos) < 2)):
+                b = button(txt, "mini")
+                b.setToolTip(f"{tr(tip)} ({key})")   # as the page list's
                 b.setAccessibleName(tr(tip))
                 b.setEnabled(not off)
                 b.clicked.connect(fn)
+                b.clicked.connect(lambda _c=False: self.photo_list.setFocus())   # the keys work straight after
                 rl.addWidget(b)
             lst.setItemWidget(item, row)
-        # as tall as its photos, up to 260 px (2.x's list), then it scrolls
-        lst.setFixedHeight(min(260, max(1, len(st.photos)) * (row_h + 4) + 4))
+        _fit_rows(lst, row_h, 260)   # as tall as its photos, up to 260 px (2.x's list), then it scrolls
         lst.setCurrentRow(st.sel)
         n = len(st.photos)
         self.photo_count.setText(tr("1 photo") if n == 1 else tr("{n} photos").format(n=n))
@@ -1114,7 +1162,7 @@ class Sidebar(QFrame):
                 btns.addWidget(b)
             btns.addStretch(1)
             lst.setItemWidget(item, row)
-        lst.setFixedHeight(min(220, max(1, len(pl)) * (row_h + 4) + 4))   # room under it for Change this page
+        _fit_rows(lst, row_h, 220)   # room under it for Change this page
         lst.setCurrentRow(st.book_sel if pl else -1)
         self.refresh_thumbs()
         n = len(pl)
@@ -1139,6 +1187,18 @@ class Sidebar(QFrame):
         elif what == "remove" and len(pl) > 1:
             self.book_page_removed.emit(i)
         self.page_list.setFocus()   # the list is filled again: keep the keys working on the page that moved
+
+    def _photo_key(self, d):
+        """A photo-list shortcut on the selected photo: remove it (d = 0) or move it up or down (where its row's
+        button would)."""
+        n, i = len(self.state.photos), self.photo_list.currentRow()
+        if not 0 <= i < n:
+            return
+        if d == 0 and n > 1:
+            self.photo_removed.emit(i)
+        elif d and 0 <= i + d < n:
+            self.photo_moved.emit(i, d)
+        self.photo_list.setFocus()
 
     def show_selected_page(self):
         """Highlight the page being edited, without filling the list again (a drag may be starting on it)."""
@@ -1232,6 +1292,25 @@ class Sidebar(QFrame):
         self.bingo_words_row.setVisible(s.bingo_kind == "words" and s.bingo_theme == "custom")
         self.bingo_note.setText(bingo.note(s))
         self.bingo_note.setVisible(bool(self.bingo_note.text()))
+        self.logic_opts.setVisible(s.gen == "logic")
+        self.crypto_opts.setVisible(s.gen == "cryptogram")
+        self.crypto_text_row.setVisible(s.crypto_source == "custom")
+        self.crypto_hint.setVisible(s.crypto_source != "custom")
+        self.crypto_own_hint.setVisible(s.crypto_source == "custom")
+        self.crypto_note.setText(cryptogram.note(s) if s.gen == "cryptogram" else "")
+        self.crypto_note.setVisible(bool(self.crypto_note.text()))
+        self.ladder_opts.setVisible(s.gen == "ladder")
+        self.ladder_note.setText(ladder.note(s) if s.gen == "ladder" else "")
+        self.ladder_note.setVisible(bool(self.ladder_note.text()))
+        self.cal_opts.setVisible(s.gen == "calendar")
+        self.cal_date_row.setVisible(s.cal_kind == "month")
+        if self.cal_year.findData(s.cal_year) < 0 and planner.FIRST_YEAR <= s.cal_year <= planner.LAST_YEAR:
+            was, self._loading = self._loading, True   # a year saved earlier, before this year's list: listed too
+            self.cal_year.clear()
+            for value, text in planner.year_choices(keep=s.cal_year):
+                self.cal_year.addItem(tr(text), value)
+            self.cal_year.set_value(s.cal_year)
+            self._loading = was
         self.money_row.setVisible(s.maths_kind == "money")
         self.pack_words_row.setVisible(s.pack_theme == "spelling")
         spelling = s.pack_theme == "spelling"
@@ -1290,6 +1369,7 @@ class Sidebar(QFrame):
         self.pbook_opts.setVisible(s.photobook)
         self.pcbn_opts.setVisible(s.style == "cbn")
         self.pnono_opts.setVisible(s.style == "nono")
+        self.pdots_opts.setVisible(s.style == "dots")
         self.poster_opts.setVisible(s.poster)
         if s.poster:
             from inkengine.poster import size_note
@@ -1433,6 +1513,7 @@ class Sidebar(QFrame):
         tips = {"engrave": tr("Engraving lines save as vector paths, for laser engravers and plotters"),
                 "stipple": tr("Stippling dots save as vector circles, for laser engravers and plotters"),
                 "nono": tr("Photo nonograms save as vector lines and text, for editing in Inkscape"),
+                "dots": tr("Photo dot-to-dots save as vector dots and numbers, for editing in Inkscape"),
                 "cbn": tr("Colour-by-number outlines save as vector lines, for editing in Inkscape")}
         tip = tips[s.style] if vector else tr("Vector lines for Inkscape, Cricut, Silhouette or laser cutters"
                                               if make else "Photos are made of pixels; choose Engraving, Stippling, "
@@ -1492,6 +1573,12 @@ def _page_detail(gen, p):
         return tr(trace.SOURCES.get(p.get("trace_source", "upper"), ""))
     if gen == "crossword":
         return tr("Your words") if p.get("cross_theme") == "custom" else tr(crossword.THEME_NAMES.get(p.get("cross_theme"), ""))
+    if gen == "cryptogram":
+        return tr("Your text") if p.get("crypto_source") == "custom" else tr(cryptogram.KINDS.get(p.get("crypto_code", "numbers"), ""))
+    if gen == "ladder":
+        return tr(ladder.KINDS.get(p.get("ladder_kind", "plain"), ""))
+    if gen == "calendar":
+        return tr(planner.KINDS.get(p.get("cal_kind", "month"), ""))
     return ""
 
 
@@ -1543,6 +1630,15 @@ class _Elided(QLabel):
 
 DAY_NAMES = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
 SPELLING_USUAL = pack.SPELLING_DAYS
+
+
+def _fit_rows(lst, row_h, most):
+    """A list's rows row_h tall, or as tall as their buttons need (a finger's, on a touch screen), and the list as
+    tall as its rows, up to most."""
+    h = max([row_h] + [lst.itemWidget(lst.item(i)).sizeHint().height() for i in range(lst.count())])
+    for i in range(lst.count()):
+        lst.item(i).setSizeHint(QSize(0, h))
+    lst.setFixedHeight(min(most, max(1, lst.count()) * (h + 4) + 4 + 2 * lst.frameWidth()))
 
 
 def _bottom(widget):

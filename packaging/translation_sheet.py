@@ -6,12 +6,13 @@
 
 Columns: where it appears (window or printed page), the English, the translation, then two empty columns,
 "Better wording" and "Comment", for the reviewer to fill in. After the interface, the sheet lists the word
-search themes and the crossword words and clues, which are written in the language rather than translated
-from English, so they're checked too. The file is UTF-8 with a byte order mark, so Excel, LibreOffice and
+search themes, the crossword words and clues, the logic puzzle's names and things, the cryptogram's sayings and
+the word ladder's words, which are written in the language rather than translated from English, so they're
+checked too. The file is UTF-8 with a byte order mark, so Excel, LibreOffice and
 Google Sheets open the accents correctly.
 
 To use a reviewed sheet: copy each "Better wording" into inkengine/locale/<code>.json (or the word lists in
-inkengine/patterns/words.py and crossword.py), keeping every {placeholder} and the & of a menu item.
+inkengine/patterns/words.py, crossword.py, logic.py, cryptogram.py and ladder.py), keeping every {placeholder} and the & of a menu item.
 """
 
 import csv
@@ -56,6 +57,17 @@ def rows(code):
         for entry in (e.strip() for e in text.split(";")):   # as written, accents and all
             if entry:
                 out.append((f"crossword: {crossword.THEME_NAMES.get(theme, theme)}", "", entry))
+    from inkengine.patterns import cryptogram, ladder, logic
+    for kind, items in logic.WORDS.get(code, {}).items():   # in the grid, then in a clue
+        en = logic.WORDS["en"][kind]
+        if kind == "child":
+            out.append(("logic puzzle: names", en, items))
+        else:
+            for (word, said), (en_word, en_said) in zip(items, en):
+                out.append((f"logic puzzle: {logic.HEADINGS[kind]}", f"{en_word} ({en_said})", f"{word} ({said})"))
+    for saying in cryptogram.SAYINGS.get(code, []):
+        out.append(("cryptogram: sayings", "", saying))
+    out.append(("word ladder: words", "", " ".join(ladder.WORDS.get(code, "").split())))
     return out
 
 

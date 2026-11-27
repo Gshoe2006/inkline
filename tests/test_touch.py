@@ -51,12 +51,52 @@ def test_wide_touch_keeps_the_rail_with_the_menus_in_the_toolbar(make_win):
     assert not w.menuBar().isVisible() and w.menu_btn.isVisible() and w.turns is None
     assert sb.rail.isVisible() and w.preview.isVisible() and w.bottom.isHidden()
     assert [a.menu() for a in w.menu_btn.panel.actions() if a.menu()] == w._top_menus   # the menu bar's own menus
-    for b in (sb.png_btn, sb.svg_btn, sb.more_btn, sb.brand):   # in the File and View menus instead
+    for b in (sb.png_btn, sb.svg_btn, sb.brand):   # in the File and View menus instead
         assert b.isHidden()
+    assert sb.more_btn.isVisible()   # 1280 px: the toolbar has room for it
     assert sb.pdf_btn.isVisible() and sb.presets_btn.isVisible() and sb.print_btn.isVisible() and sb.keys.isHidden()
     w.set_touch(False, save=False)
     QApplication.processEvents()
     assert w.menuBar().isVisible() and w.menu_btn.isHidden() and sb.png_btn.isVisible() and sb.keys.isVisible()
+
+
+@pytest.mark.parametrize("size", [(1024, 600), (1280, 800), (1366, 1024)])
+def test_a_tablet_sideways_gives_the_page_its_height_and_the_options_the_room_beside_it(make_win, size):
+    w = make_win()
+    w.set_touch(True, save=False)
+    w.resize(*size)
+    from conftest import settle
+    settle(w)
+    QApplication.processEvents()
+    sb, page = w.sidebar, w.preview.page
+    assert w.turns is None and sb.rail.isVisible()
+    assert theme.SIDEBAR_WIDTH < sb.width() <= theme.TOUCH_SIDEBAR_WIDTH   # a portrait page leaves room beside it
+    assert w.preview.pad() == theme.TOUCH_STAGE_PAD
+    r = page.page_rect()
+    assert abs(r.height() - page.height()) < 1   # the page as tall as the preview lets it be
+    for b in (sb.presets_btn, sb.new_design, sb.pdf_btn, sb.print_btn, w.menu_btn):   # nothing cut off
+        assert b.isVisible() and b.width() >= b.sizeHint().width(), b.text()
+    toolbar = sb.toolbar
+    assert toolbar.sizeHint().width() <= toolbar.width()
+    for b in sb.rail.buttons.values():   # the rail's labels whole
+        assert b.fontMetrics().horizontalAdvance(b.text()) <= b.width()
+    assert sb.more_btn.isVisible() == (size[0] >= 1280)   # More designs when there's room
+
+
+def test_a_landscape_page_keeps_the_width_on_a_tablet(make_win):
+    w = make_win()
+    w.set_touch(True, save=False)
+    w.resize(1024, 600)
+    from conftest import settle
+    w.state.update(orient="landscape")
+    w.sidebar.load()
+    w._changed("orient")
+    settle(w)
+    QApplication.processEvents()
+    assert w.sidebar.width() < theme.TOUCH_SIDEBAR_WIDTH   # the page needs the room
+    w.set_touch(False, save=False)
+    QApplication.processEvents()
+    assert w.sidebar.width() == theme.SIDEBAR_WIDTH and w.preview.pad() == theme.STAGE_PAD
 
 
 def test_a_phone_takes_turns_between_the_page_and_the_preview(make_win):

@@ -23,7 +23,26 @@ from .state import State
 
 SEED = 20261117
 PATTERNS = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "words", "nonogram", "spot", "kakuro",
-            "maths", "trace", "crossword", "clock", "scramble", "spelltest", "fractions", "symmetry", "ruled", "reward", "reading", "bingo", "early"]
+            "maths", "trace", "crossword", "clock", "scramble", "spelltest", "fractions", "symmetry", "ruled", "reward", "reading", "bingo", "early",
+            "logic", "cryptogram", "ladder", "calendar"]
+
+
+def _silhouette():
+    """A photo of one dark shape (a cat's head) on a pale background, for the photo dot-to-dot."""
+    from PySide6.QtCore import QPointF
+    from PySide6.QtGui import QPolygonF
+    from inkengine.photo import Photo
+    img = QImage(1200, 900, QImage.Format.Format_ARGB32)
+    img.fill(QColor("#e8e2d6"))
+    p = QPainter(img)
+    p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+    p.setPen(QColor("#2a2a2a"))
+    p.setBrush(QColor("#2a2a2a"))
+    p.drawEllipse(QPointF(600, 520), 270, 240)
+    for ear in ([(370, 420), (400, 120), (560, 300)], [(830, 420), (800, 120), (640, 300)]):
+        p.drawPolygon(QPolygonF([QPointF(x, y) for x, y in ear]))
+    p.end()
+    return Photo(img, name="cat.png")
 
 
 def _pdf(path, state):
@@ -82,6 +101,8 @@ def run(window, outdir, app):
     for style in ("engrave", "stipple", "cbn"):
         step(style, lambda style=style: page(style, replace(photo_s, style=style), sample))
     step("nonophoto", lambda: page("nonophoto", replace(photo_s, style="nono"), sample))
+    # a dot-to-dot needs a photo with one clear shape in it (the sample is a landscape): a cat's head on a pale wall
+    step("dotsphoto", lambda: page("dotsphoto", replace(photo_s, style="dots"), _silhouette()))
 
     def testpage():
         s = replace(base, testpage=True)

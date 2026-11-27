@@ -327,6 +327,20 @@ jobs:
     if: needs.check.outputs.build == 'true'
     runs-on: windows-2022
     timeout-minutes: 90   # signing waits for someone to approve the release in SignPath (see docs/code-signing.md)
+    # Code signing (docs/code-signing.md) is optional, and the first one set up is used:
+    #   azure     Azure Trusted Signing: secrets AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET and variables
+    #             TRUSTED_SIGNING_ENDPOINT, TRUSTED_SIGNING_ACCOUNT, TRUSTED_SIGNING_PROFILE
+    #   pfx       a certificate file: secrets WINDOWS_CERT_PFX (base64) and WINDOWS_CERT_PASSWORD, signed with signtool
+    #   signpath  SignPath (only the installer, only for a release): variable SIGNPATH_ORGANIZATION_ID and secret
+    #             SIGNPATH_API_TOKEN
+    # azure and pfx sign Inkline.exe before it goes into the installer and the zip, then the installer. With none of
+    # them, everything is built unsigned, as before, and the run says so.
+    env:
+      SIGN_WITH: >-
+        ${{ (secrets.AZURE_CLIENT_ID != '' && vars.TRUSTED_SIGNING_ACCOUNT != '') && 'azure'
+        || secrets.WINDOWS_CERT_PFX != '' && 'pfx'
+        || (vars.SIGNPATH_ORGANIZATION_ID != '' && needs.check.outputs.publish == 'true') && 'signpath'
+        || 'none' }}
     steps:
       - uses: actions/checkout@v7
 
@@ -340,11 +354,93 @@ jobs:
           python -m pip install PySide6-Essentials==6.12.0 shiboken6==6.12.0 numpy==2.3.5 pyinstaller
           choco install innosetup -y --no-progress
 
-      - name: Build the app and its installer
+      - name: How is it signed?
         run: |
-          python packaging/windows/build.py
+          switch ($env:SIGN_WITH) {
+            "azure"    { "::notice::Signing Inkline.exe and the installer with Azure Trusted Signing." }
+            "pfx"      { "::notice::Signing Inkline.exe and the installer with the WINDOWS_CERT_PFX certificate." }
+            "signpath" { "::notice::Sending the installer to SignPath for signing." }
+            default    { "::notice::No Windows code signing is set up, so the installer and Inkline.exe are unsigned (see docs/code-signing.md)." }
+          }
+
+      # the certificate goes in this runner's certificate store, so signtool picks it by thumbprint and its password
+      # is never on a command line
+      - name: Set up the signing certificate
+        if: env.SIGN_WITH == 'pfx'
+        env:
+          WINDOWS_CERT_PFX: ${{ secrets.WINDOWS_CERT_PFX }}
+          WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+        run: |
+          $pfx = Join-Path $env:RUNNER_TEMP "inkline-cert.pfx"
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINDOWS_CERT_PFX))
+          $pw = ConvertTo-SecureString $env:WINDOWS_CERT_PASSWORD -AsPlainText -Force
+          $cert = Import-PfxCertificate -FilePath $pfx -CertStoreLocation Cert:\CurrentUser\My -Password $pw
+          Remove-Item $pfx
+          $cert = $cert | Where-Object { $_.HasPrivateKey } | Select-Object -First 1
+          if (-not $cert) { Write-Error "WINDOWS_CERT_PFX holds no certificate with its private key"; exit 1 }
+          "Certificate: $($cert.Subject), until $($cert.NotAfter)"
+          "WINDOWS_CERT_THUMBPRINT=$($cert.Thumbprint)" >> $env:GITHUB_ENV
+          "INKLINE_SIGN_CMD=$(python packaging/windows/build.py --signtool-template $cert.Thumbprint)" >> $env:GITHUB_ENV
+
+      - name: Build the app
+        run: python packaging/windows/build.py --stage app
+
+      - name: Sign Inkline.exe (Azure Trusted Signing)
+        if: env.SIGN_WITH == 'azure'
+        uses: azure/trusted-signing-action@v0.5.0
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: ${{ vars.TRUSTED_SIGNING_ENDPOINT }}
+          trusted-signing-account-name: ${{ vars.TRUSTED_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ vars.TRUSTED_SIGNING_PROFILE }}
+          files-folder: ${{ github.workspace }}\dist\Inkline
+          files-folder-filter: exe
+          files-folder-recurse: false
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Build its installer and the portable zip
+        run: |
+          python packaging/windows/build.py --stage package
           if (-not (Test-Path "dist/inkline-${{ needs.check.outputs.version }}-windows-setup.exe")) { exit 1 }
           if ((Get-Content dist/Inkline/_internal/VERSION).Trim() -ne "${{ needs.check.outputs.version }}") { exit 1 }
+
+      - name: Sign the installer (Azure Trusted Signing)
+        if: env.SIGN_WITH == 'azure'
+        uses: azure/trusted-signing-action@v0.5.0
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: ${{ vars.TRUSTED_SIGNING_ENDPOINT }}
+          trusted-signing-account-name: ${{ vars.TRUSTED_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ vars.TRUSTED_SIGNING_PROFILE }}
+          files-folder: ${{ github.workspace }}\dist
+          files-folder-filter: exe
+          files-folder-recurse: false
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Check the signatures
+        if: env.SIGN_WITH == 'azure' || env.SIGN_WITH == 'pfx'
+        run: |
+          Expand-Archive "dist/inkline-${{ needs.check.outputs.version }}-windows-portable.zip" -DestinationPath zip-check
+          foreach ($f in "dist/Inkline/Inkline.exe", "zip-check/Inkline/Inkline.exe", "dist/inkline-${{ needs.check.outputs.version }}-windows-setup.exe") {
+            $sig = Get-AuthenticodeSignature $f
+            "${f}: $($sig.Status), by $($sig.SignerCertificate.Subject), timestamped by $($sig.TimeStamperCertificate.Subject)"
+            if ($sig.Status -ne "Valid" -or -not $sig.TimeStamperCertificate) { exit 1 }
+          }
+          Remove-Item -Recurse zip-check
+
+      - name: Remove the signing certificate
+        if: always() && env.WINDOWS_CERT_THUMBPRINT != ''
+        run: |
+          Remove-Item "Cert:\CurrentUser\My\$env:WINDOWS_CERT_THUMBPRINT" -ErrorAction SilentlyContinue   # the runner is thrown away after anyway
+          exit 0
 
       - name: Run the self-test with the built Inkline.exe
         env:
@@ -383,12 +479,11 @@ jobs:
           "Product: '$name' '$ver'"
           if ($name -ne "Inkline" -or $ver -ne "${{ needs.check.outputs.version }}") { exit 1 }
 
-      # Signing (docs/code-signing.md): only for a release, and only once SignPath is set up for the repository
-      # (the SIGNPATH_ORGANIZATION_ID variable and the SIGNPATH_API_TOKEN secret). Without them the installer
-      # is published unsigned, as before.
+      # SignPath (docs/code-signing.md): only for a release, and only when SignPath is the signing set up (SIGN_WITH
+      # above: the SIGNPATH_ORGANIZATION_ID variable and the SIGNPATH_API_TOKEN secret)
       - name: Keep the unsigned installer for signing
         id: unsigned
-        if: needs.check.outputs.publish == 'true' && vars.SIGNPATH_ORGANIZATION_ID != ''
+        if: env.SIGN_WITH == 'signpath'
         uses: actions/upload-artifact@v7
         with:
           name: windows-unsigned
@@ -466,9 +561,28 @@ jobs:
           # half is tested there too, under Rosetta
           - { arch: universal, runner: macos-15 }
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 40
+    timeout-minutes: 60   # notarization usually takes minutes, now and then longer
+    # Signing (docs/code-signing.md) is optional: with the Developer ID certificate (secrets MACOS_CERT_P12, base64,
+    # and MACOS_CERT_PASSWORD; MACOS_SIGN_IDENTITY optional) the app is signed inside out with the hardened runtime,
+    # and with Apple's notarization credentials (APPLE_ID, APPLE_TEAM_ID, APPLE_APP_PASSWORD, or an App Store Connect
+    # API key: APPLE_API_KEY_P8, APPLE_API_KEY_ID, APPLE_API_ISSUER) the disk image is notarized and stapled.
+    # Without the certificate the app is signed ad hoc, as before, and the run says so.
+    env:
+      HAVE_MAC_CERT: ${{ secrets.MACOS_CERT_P12 != '' }}
     steps:
       - uses: actions/checkout@v7
+
+      - name: Is there a Developer ID certificate?
+        if: env.HAVE_MAC_CERT != 'true'
+        run: echo "::notice::No MACOS_CERT_P12 secret, so Inkline.app is signed ad hoc and not notarized (see docs/code-signing.md)."
+
+      - name: Set up the Developer ID certificate
+        if: env.HAVE_MAC_CERT == 'true'
+        env:
+          MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+        run: python3 packaging/macos/sign.py import-cert >> "$GITHUB_ENV"
 
       - uses: actions/setup-python@v7
         if: matrix.arch != 'universal'
@@ -498,7 +612,14 @@ jobs:
           "$PY" -m pip install merged/numpy-*universal2.whl
           echo "PY=$PY" >> "$GITHUB_ENV"
 
-      - name: Build the app and its disk image
+      - name: Build the app and its disk image (and sign and notarize them, when set up)
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
         run: |
           "$PY" packaging/macos/build.py --arch ${{ matrix.arch }}
           V=${{ needs.check.outputs.version }}
@@ -507,6 +628,18 @@ jobs:
           test "$(defaults read "$PWD/dist/Inkline.app/Contents/Info" CFBundleShortVersionString)" = "$V"
           codesign --verify --deep "dist/Inkline.app"
           lipo -archs dist/Inkline.app/Contents/MacOS/Inkline
+          if [ "$HAVE_MAC_CERT" = true ]; then
+            info=$(codesign --display --verbose=2 "dist/Inkline.app" 2>&1)
+            echo "$info" | grep -E "^(Authority|Timestamp|Runtime Version)="
+            for want in "Authority=Developer ID Application" "Timestamp=" "Runtime Version="; do
+              echo "$info" | grep -q "^$want" || { echo "::error::Inkline.app's signature has no $want"; exit 1; }
+            done
+            codesign --verify --strict "dist/$DMG"
+          fi
+
+      - name: Remove the signing keychain
+        if: always() && env.MACOS_KEYCHAIN != ''
+        run: python3 packaging/macos/sign.py delete-keychain
 
       - name: Run the self-test with the built Inkline.app
         env:

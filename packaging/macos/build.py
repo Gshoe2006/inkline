@@ -12,14 +12,20 @@ installer) and a universal2 numpy (PyPI has only one processor's in each wheel: 
 delocate-merge; PySide6's wheels are universal2 already). The universal one is what Inkline's updater installs.
 PySide6 6.12 needs macOS 14 (Sonoma) or newer.
 
-It isn't signed with a Developer ID or notarized: PyInstaller signs it ad hoc, so the first time it's opened macOS
-asks (Control-click → Open, or System Settings → Privacy & Security → Open Anyway); see README.md.
+Signing (docs/code-signing.md): with MACOS_SIGN_IDENTITY set (a Developer ID Application identity in a keychain;
+MACOS_KEYCHAIN names the keychain if it isn't the default one), packaging/macos/sign.py signs everything in the app
+inside out with the hardened runtime, then signs, notarizes and staples the disk image (when it finds Apple's
+notarization credentials). Without it the app is signed ad hoc, so the first time it's opened macOS asks
+(Control-click → Open, or System Settings → Privacy & Security → Open Anyway); see README.md.
 """
 
 import os
 import shutil
 import subprocess
 import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import sign  # noqa: E402  (packaging/macos/sign.py)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DIST = os.path.join(ROOT, "dist")
@@ -60,6 +66,17 @@ def make_icns(out):
     return out
 
 
+def signing(env=None):
+    """(identity, keychain) for Developer ID signing, or (None, None) to sign ad hoc."""
+    env = os.environ if env is None else env
+    identity = env.get("MACOS_SIGN_IDENTITY", "").strip()
+    return (identity, env.get("MACOS_KEYCHAIN") or None) if identity else (None, None)
+
+
+def ad_hoc_command(bundle):
+    return ["codesign", "--force", "--deep", "--sign", "-", bundle]
+
+
 def app(arch="arm64"):
     os.makedirs(BUILD, exist_ok=True)
     icns = make_icns(os.path.join(BUILD, "inkline.icns"))
@@ -82,7 +99,12 @@ def app(arch="arm64"):
                        ("NSHighResolutionCapable", "true"), ("LSMinimumSystemVersion", MIN_MACOS)):
         kind = "-bool" if value == "true" else "-string"
         subprocess.run(["defaults", "write", plist, key, kind, value], check=True)
-    subprocess.run(["codesign", "--force", "--deep", "--sign", "-", bundle], check=True)   # ad hoc, after editing
+    identity, keychain = signing()   # after editing Info.plist, which changes what the signature covers
+    if identity:
+        sign.sign_app(bundle, identity, keychain)
+    else:
+        print("Not signed with a Developer ID (no MACOS_SIGN_IDENTITY): signing ad hoc; see docs/code-signing.md")
+        subprocess.run(ad_hoc_command(bundle), check=True)
     program = os.path.join(bundle, "Contents", "MacOS", "Inkline")
     held = set(subprocess.run(["lipo", "-archs", program], check=True, capture_output=True, text=True).stdout.split())
     if held != LIPO[arch]:
@@ -103,6 +125,9 @@ def dmg(bundle, arch="arm64"):
         os.remove(out)
     subprocess.run(["hdiutil", "create", "-volname", f"Inkline {v}", "-srcfolder", stage, "-ov", "-format", "UDZO",
                     out], check=True)
+    identity, keychain = signing()
+    if identity:
+        sign.sign_and_notarize_dmg(out, identity, keychain)
     return out
 
 

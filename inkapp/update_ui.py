@@ -20,6 +20,7 @@ from inkengine.i18n import tr
 from . import config, update_schedule, updater, whatsnew
 
 NOTIFY_ONLY = ("flatpak", "snap", "android", "source")
+STORE_UPDATED = ("android-play",)   # the store updates it, and its rules don't let Inkline point elsewhere: no checks
 
 
 class Updates(QObject):
@@ -61,7 +62,7 @@ class Updates(QObject):
     # --- checking --------------------------------------------------------------------------------------
     def at_start(self):
         """At start: ask once whether to check for updates; then check if a day has passed since the last."""
-        if not self.window.remember:
+        if not self.window.remember or self.kind in STORE_UPDATED:
             return
         prefs = config.read("preferences.json")
         if prefs.get("update_check") is None:
@@ -85,6 +86,10 @@ class Updates(QObject):
 
     def check(self, asked=True):
         """Ask GitHub for the latest release, on a worker thread."""
+        if self.kind in STORE_UPDATED:
+            if asked:
+                self.window._msg(tr("Google Play keeps Inkline up to date."))
+            return
         if asked:
             self.window._msg(tr("Checking for updates…"))
 
@@ -111,6 +116,8 @@ class Updates(QObject):
         self.schedule_actions = {}
         group = QActionGroup(menu)
         can = update_schedule.supported(self.kind)
+        if self.kind in STORE_UPDATED:
+            menu.setEnabled(False)
         for key, text in [("off", tr("Never")), *((k, tr(v)) for k, v in update_schedule.SCHEDULES.items())]:
             a = QAction(text, menu)
             a.setCheckable(True)

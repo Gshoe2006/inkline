@@ -17,6 +17,7 @@ BUILTIN_PRESETS = {
     "Nonogram booklet with answers": {"mode": "make", "gen": "nonogram", "booklet": True, "pages": 8, "ramp": True, "mix": False, "cover": True, "pageNums": True, "key": True, "poster": False},
     "Dot-to-dot booklet with answers": {"mode": "make", "gen": "dots", "booklet": True, "pages": 8, "ramp": True, "mix": False, "cover": True, "pageNums": True, "key": True, "poster": False, "weight": 4},
     "Spot the difference booklet with answers": {"mode": "make", "gen": "spot", "spotBase": "mandala", "booklet": True, "pages": 8, "ramp": True, "mix": False, "cover": True, "pageNums": True, "key": True, "poster": False},
+    "Logic puzzle booklet with answers": {"mode": "make", "gen": "logic", "booklet": True, "pages": 8, "ramp": True, "mix": False, "cover": True, "pageNums": True, "key": True, "poster": False},
     "Kakuro booklet with answers": {"mode": "make", "gen": "kakuro", "booklet": True, "pages": 8, "ramp": True, "mix": False, "cover": True, "pageNums": True, "key": True, "poster": False},
     # a week of worksheets for the age chosen (pack.week builds its pages when it's applied)
     "Worksheet pack: a week, with answers": {"pack": True},
@@ -24,6 +25,8 @@ BUILTIN_PRESETS = {
     "Engraved photo": {"mode": "convert", "style": "engrave", "dot": 2, "contrast": 110, "brightness": 0, "invert": False},
     "Colour-by-number mandala": {"mode": "make", "gen": "mandala", "cbn": True, "cbnColours": 6, "complexity": 3, "weight": 5, "frame": False, "booklet": False, "poster": False},
     "Colour-by-number photo": {"mode": "convert", "style": "cbn", "pcbnColours": 8, "threshold": 128, "contrast": 110, "brightness": 0},
+    "Calendar for next month": {"mode": "make", "gen": "calendar", "calKind": "month", "calMonth": 0, "calArt": "mandala", "complexity": 4, "weight": 4, "booklet": False, "poster": False, "sheet": "one"},
+    "Photo dot-to-dot": {"mode": "convert", "style": "dots", "pdotsN": 60, "pdotsAnswer": False, "threshold": 128, "contrast": 110, "brightness": 0, "invert": False},
     "Photo nonogram": {"mode": "convert", "style": "nono", "pnonoSize": 15, "pnonoAnswer": False, "threshold": 128, "contrast": 110, "brightness": 0, "invert": False},
     "Stippled photo": {"mode": "convert", "style": "stipple", "dot": 2, "contrast": 110, "brightness": 0, "invert": False},
     "Photo colouring page": {"mode": "convert", "style": "line", "threshold": 128, "dot": 2, "invert": False},
