@@ -8,6 +8,9 @@
 # PySide6's own build (the same wheels the Flatpak uses, which work with any Python 3.10 or newer) in
 # /usr/lib/inkline/vendor, and uses the system's Python and numpy. Needs dpkg-deb, python3 and curl;
 # downloads the two PySide6 wheels the first time, checked against their sha256.
+#
+# With INKLINE_FAST_WHEEL set to a wheel of the optional Rust module for this ARCH (packaging/build_fast.py makes
+# one), it goes in the vendor folder too and photos convert faster; without it Inkline uses its Python code.
 set -eu
 HERE=$(cd "$(dirname "$0")" && pwd)
 SRC=$(cd "$HERE/../.." && pwd)
@@ -32,6 +35,14 @@ https://files.pythonhosted.org/packages/97/ca/a4415e6218e0dff764fe2b2d30db2fc8f4
 esac
 
 command -v dpkg-deb >/dev/null || { echo "build-deb.sh: dpkg-deb is needed (Debian/Ubuntu: sudo apt install dpkg)"; exit 1; }
+FAST=${INKLINE_FAST_WHEEL:-}
+if [ -n "$FAST" ]; then
+  [ -f "$FAST" ] || { echo "build-deb.sh: INKLINE_FAST_WHEEL=$FAST isn't a file"; exit 1; }
+  case "$ARCH:$(basename "$FAST")" in
+    amd64:*-abi3-*x86_64.whl|arm64:*-abi3-*aarch64.whl) ;;
+    *) echo "build-deb.sh: $FAST isn't an abi3 wheel for $ARCH"; exit 1 ;;
+  esac
+fi
 mkdir -p "$CACHE" "$DIST"
 echo "$WHEELS" | while read -r url sum; do
   [ -n "$url" ] || continue
@@ -76,6 +87,11 @@ License: GPL-3.0-or-later
 Files: usr/lib/inkline/vendor/*
 License: LGPL-3.0-only or GPL-2.0-only or GPL-3.0-only
  PySide6 and Shiboken6 (Qt for Python), from their official wheels.
+
+Files: usr/lib/inkline/vendor/inkline_fast*
+License: GPL-3.0-or-later
+ Inkline's own optional Rust module (rust/inkline_fast in Inkline's source), with the Rust crates PyO3 and
+ ndarray (MIT or Apache-2.0) and rust-numpy (BSD-2-Clause) built into it.
 COPY
 
 # PySide6, unpacked where only Inkline finds it
@@ -84,6 +100,12 @@ COPY
 for w in $(echo "$WHEELS" | while read -r url _sum; do [ -n "$url" ] && echo "$CACHE/$(basename "$url")"; done); do
   python3 -m zipfile -e "$w" "$R/usr/lib/inkline/vendor"
 done
+if [ -n "$FAST" ]; then   # the optional Rust module, the same way (an abi3 wheel: any Python 3.9 or newer)
+  python3 -m zipfile -e "$FAST" "$R/usr/lib/inkline/vendor"
+  echo "build-deb.sh: with inkline_fast ($(basename "$FAST"))"
+else
+  echo "build-deb.sh: without inkline_fast (set INKLINE_FAST_WHEEL to include it)"
+fi
 find "$R/usr/lib/inkline/vendor" -type d -exec chmod 755 {} +
 find "$R/usr/lib/inkline/vendor" -type f -exec chmod 644 {} +
 

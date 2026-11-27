@@ -5,7 +5,7 @@
 #   sh packaging/flatpak/build.sh --bundle   also write dist/inkline-<version>.flatpak, one file to share
 #   sh packaging/flatpak/build.sh --run      start Inkline when it's done
 #
-# The first run sets up Flathub and the freedesktop 26.08 runtime (about 1 GB). Afterwards start
+# The first run sets up Flathub, the freedesktop 26.08 runtime and its Rust extension (about 1.5 GB). Afterwards start
 # Inkline from your app menu or with: flatpak run io.github.gshoe2006.Inkline
 # (packaging/flatpak/inkline.sh is the launcher inside the Flatpak; it doesn't run on its own.)
 set -eu
@@ -46,9 +46,10 @@ if ! command -v flatpak >/dev/null 2>&1 || ! command -v flatpak-builder >/dev/nu
   exit 1
 fi
 
-say "Setting up Flathub and the freedesktop $RUNTIME runtime (only downloads the first time)..."
+say "Setting up Flathub, the freedesktop $RUNTIME runtime and its Rust extension (only downloads the first time)..."
 flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-flatpak install --user --noninteractive -y flathub "org.freedesktop.Platform//$RUNTIME" "org.freedesktop.Sdk//$RUNTIME"
+flatpak install --user --noninteractive -y flathub "org.freedesktop.Platform//$RUNTIME" "org.freedesktop.Sdk//$RUNTIME" \
+  "org.freedesktop.Sdk.Extension.rust-stable//$RUNTIME"   # Rust, for the optional module rust/inkline_fast
 
 # Without FUSE (some containers), flatpak-builder needs telling not to use it.
 EXTRA=""

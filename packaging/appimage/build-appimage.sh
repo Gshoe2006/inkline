@@ -7,6 +7,10 @@
 #
 # Inside: a standalone Python (fetched by uv), PySide6's Essentials and numpy (from PyPI), and Inkline. Needs
 # curl and uv (pip install uv); downloads appimagetool the first time. Runs anywhere, even without FUSE.
+#
+# With INKLINE_FAST_WHEEL set to a wheel of the optional Rust module for this processor (packaging/build_fast.py,
+# run on the same machine, makes one), it's installed beside numpy and photos convert faster; without it Inkline
+# uses its Python code.
 set -eu
 HERE=$(cd "$(dirname "$0")" && pwd)
 SRC=$(cd "$HERE/../.." && pwd)
@@ -20,6 +24,14 @@ case "$ARCH" in x86_64|aarch64) ;; arm64) ARCH=aarch64 ;; *) echo "build-appimag
 TOOL="$CACHE/appimagetool-$ARCH.AppImage"
 
 command -v uv >/dev/null || { echo "build-appimage.sh: uv is needed: pip install uv"; exit 1; }
+FAST=${INKLINE_FAST_WHEEL:-}
+if [ -n "$FAST" ]; then
+  [ -f "$FAST" ] || { echo "build-appimage.sh: INKLINE_FAST_WHEEL=$FAST isn't a file"; exit 1; }
+  case "$(basename "$FAST")" in
+    *-abi3-*"$ARCH".whl) ;;
+    *) echo "build-appimage.sh: $FAST isn't an abi3 wheel for $ARCH"; exit 1 ;;
+  esac
+fi
 mkdir -p "$CACHE" "$DIST"
 if [ ! -f "$TOOL" ]; then
   curl -fsSL -o "$TOOL.part" https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-$ARCH.AppImage
@@ -41,6 +53,12 @@ PY="$D/usr/python/bin/python3"
 rm -f "$D/usr/python/lib/python$PYTHON/EXTERNALLY-MANAGED"   # this copy is the AppImage's own: pip may fill it
 # shellcheck disable=SC2086
 "$PY" -m pip install --quiet --no-cache-dir --no-compile --only-binary=:all: $PINS
+if [ -n "$FAST" ]; then   # the optional Rust module (an abi3 wheel: any Python 3.9 or newer)
+  "$PY" -m pip install --quiet --no-cache-dir --no-compile --no-deps "$FAST"
+  echo "build-appimage.sh: with inkline_fast ($(basename "$FAST"))"
+else
+  echo "build-appimage.sh: without inkline_fast (set INKLINE_FAST_WHEEL to include it)"
+fi
 rm -rf "$D/usr/python/include" "$D/usr/python/share" "$D/usr/python/lib/python$PYTHON/test" \
        "$D/usr/python/lib/python$PYTHON/idlelib" "$D/usr/python/lib/python$PYTHON/tkinter" \
        "$D/usr/python/lib/python$PYTHON/ensurepip"

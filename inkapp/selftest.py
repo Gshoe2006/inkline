@@ -45,6 +45,53 @@ def _silhouette():
     return Photo(img, name="cat.png")
 
 
+EXPECT_FAST_ENV = "INKLINE_EXPECT_FAST"   # set to 1 by the release for the packages that ship inkline_fast
+
+
+def fast_module_status():
+    """"yes (<where>)" when the optional Rust module inkline_fast is loaded by the engine and gives the Python code's
+    answer on a small picture; "no (<why>)" otherwise. Inkline works either way: without it, only slower."""
+    import numpy as np
+    from inkengine import cbn
+    try:
+        import inkline_fast
+    except ImportError as e:
+        return f"no ({e})"
+    if photo.inkline_fast is None or cbn.inkline_fast is None:
+        return "no (installed, but the engine didn't load it)"
+    try:   # one real call each way: an extension that imports but can't run (numpy too old or new) shows here
+        rng = np.random.default_rng(1)
+        lum = (rng.random(40 * 30) * 255).astype(np.float32)
+        mask = np.ones(40 * 30, np.uint8)
+        fast = photo._error_diffusion(lum, mask, 40, 30, 128, False)
+        e = photo.Conversion(40, 30, lum, mask)
+        sites = photo.stipple_sites(e, False)
+        photo.inkline_fast = None
+        try:
+            slow = photo._error_diffusion(lum, mask, 40, 30, 128, False)
+            slow_sites = photo.stipple_sites(photo.Conversion(40, 30, lum, mask), False)
+        finally:
+            photo.inkline_fast = inkline_fast
+        if fast != slow or sites != slow_sites:
+            return "no (loaded, but it gave different results from the Python code)"
+    except Exception as e:   # noqa: BLE001 — reported, not raised: the caller decides whether it matters
+        return f"no (loaded, but failed: {e})"
+    return f"yes ({getattr(inkline_fast, '__file__', None) or 'built in'})"
+
+
+def check_fast_module(outdir, env=None):
+    """Write whether inkline_fast works to inkline-fast.txt. Only informational, unless INKLINE_EXPECT_FAST=1 (the
+    release sets it for each package that ships the module): then a package without a working one fails."""
+    env = os.environ if env is None else env
+    found = fast_module_status()
+    with open(os.path.join(outdir, "inkline-fast.txt"), "w", encoding="utf-8") as f:
+        f.write(found + "\n")
+    print(f"selftest: inkline_fast: {found}")
+    if env.get(EXPECT_FAST_ENV) == "1" and not found.startswith("yes"):
+        raise RuntimeError(f"this package should ship the Rust module inkline_fast ({EXPECT_FAST_ENV}=1): {found}")
+    return found
+
+
 def _pdf(path, state):
     j = jobs.job(state)
     dev = QPdfWriter(path)
@@ -152,6 +199,8 @@ def run(window, outdir, app):
         with open(os.path.join(outdir, "install-kind.txt"), "w", encoding="utf-8") as f:
             f.write(updater.install_kind() + "\n")
     step("install kind", install_kind)
+
+    step("inkline_fast", lambda: check_fast_module(outdir))
 
     if fails:
         print(f"selftest: {len(fails)} failure(s)")

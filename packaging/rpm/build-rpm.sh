@@ -8,6 +8,9 @@
 # as Fedora and openSUSE package different PySide6 versions, or none. Needs rpmbuild (Fedora: dnf install rpm-build;
 # Debian: apt install rpm), python3 and curl; downloads the two PySide6 wheels the first time, checked against their
 # sha256. The libraries it needs are listed by file (libEGL.so.1, …), which Fedora and openSUSE both understand.
+#
+# With INKLINE_FAST_WHEEL set to a wheel of the optional Rust module for this ARCH (packaging/build_fast.py makes
+# one), it goes in the vendor folder too and photos convert faster; without it Inkline uses its Python code.
 set -eu
 HERE=$(cd "$(dirname "$0")" && pwd)
 SRC=$(cd "$HERE/../.." && pwd)
@@ -30,6 +33,14 @@ https://files.pythonhosted.org/packages/97/ca/a4415e6218e0dff764fe2b2d30db2fc8f4
 esac
 
 command -v rpmbuild >/dev/null || { echo "build-rpm.sh: rpmbuild is needed (Fedora: sudo dnf install rpm-build)"; exit 1; }
+FAST=${INKLINE_FAST_WHEEL:-}
+if [ -n "$FAST" ]; then
+  [ -f "$FAST" ] || { echo "build-rpm.sh: INKLINE_FAST_WHEEL=$FAST isn't a file"; exit 1; }
+  case "$ARCH:$(basename "$FAST")" in
+    x86_64:*-abi3-*x86_64.whl|aarch64:*-abi3-*aarch64.whl) ;;
+    *) echo "build-rpm.sh: $FAST isn't an abi3 wheel for $ARCH"; exit 1 ;;
+  esac
+fi
 mkdir -p "$CACHE" "$DIST"
 echo "$WHEELS" | while read -r url sum; do
   [ -n "$url" ] || continue
@@ -66,6 +77,12 @@ install -Dm644 "$SRC/LICENSE" "$R/usr/share/licenses/inkline/LICENSE"
 for url in $(echo "$WHEELS" | while read -r u _s; do [ -n "$u" ] && echo "$u"; done); do
   python3 -m zipfile -e "$CACHE/$(basename "$url")" "$R/usr/lib/inkline/vendor"
 done
+if [ -n "$FAST" ]; then   # the optional Rust module, the same way (an abi3 wheel: any Python 3.9 or newer)
+  python3 -m zipfile -e "$FAST" "$R/usr/lib/inkline/vendor"
+  echo "build-rpm.sh: with inkline_fast ($(basename "$FAST"))"
+else
+  echo "build-rpm.sh: without inkline_fast (set INKLINE_FAST_WHEEL to include it)"
+fi
 find "$R/usr/lib/inkline/vendor" -type d -exec chmod 755 {} +
 find "$R/usr/lib/inkline/vendor" -type f -exec chmod 644 {} +
 
