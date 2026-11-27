@@ -238,7 +238,7 @@ python3 packaging/translation_sheet.py fr      # writes inkline-fr-review.csv: E
 | `inkline.svg`, `icons/` | App icon; regenerate with `python3 packaging/make_icon.py` |
 | `inkline.desktop` | Application menu entry |
 | `inkline-mime.xml` | The `.inkline` project file type, so file managers open projects in Inkline |
-| `rust/inkline_fast/` | A trial: two inner loops in Rust, used when installed ([docs/performance.md](docs/performance.md)) |
+| `rust/inkline_fast/` | Optional Rust versions of the slowest photo loops, shipped in most packages and used when installed ([docs/performance.md](docs/performance.md)) |
 | `packaging/` | Build script, Arch PKGBUILD, self-extracting installer stub, release notes script |
 | `CHANGELOG.md` | What changed in each release; each section becomes that release's notes |
 | `VERSION` | App version used by both installers |
