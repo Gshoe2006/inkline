@@ -497,3 +497,16 @@ def test_the_command_line_makes_a_spelling_week_and_cards_with_backs(tmp_path):
     def pages(p):
         return int(re.search(rb"/Type\s*/Pages[^>]*?/Count\s+(\d+)", p.read_bytes()).group(1))
     assert pages(week) == 7 and pages(cards) == 2 and pages(speed_pdf) == 2
+
+
+def test_speed_test_never_repeats_a_fact_from_overlapping_tables():
+    """2 × 6 from the 2s and 6 × 2 from the 6s are one fact: none comes twice until every fact has come once."""
+    import random
+    from inkengine.patterns import speed
+
+    class S:
+        speed_count, speed_tables, speed_op, speed_order = 50, "", "times", "mixed"
+    for seed in range(20):
+        facts = speed.make_facts(random.Random(seed).random, 5, S())
+        keys = [tuple(sorted((a, b))) for a, _s, b, _r in facts]
+        assert len(keys) == len(set(keys)), seed

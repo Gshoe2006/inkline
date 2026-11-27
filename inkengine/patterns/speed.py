@@ -75,7 +75,15 @@ def make_facts(rnd, c, settings=None):
                     for n in range(1, 13):
                         out.append(_fact(t, n, o))
         return out[:count]
-    every = [(t, n, o) for o in ops for t in tables for n in range(1, 13)]
+    # each fact once: 2 × 6 is the same fact from the 2s and the 6s, so overlapping tables don't repeat it
+    every, seen = [], set()
+    for o in ops:
+        for t in tables:
+            for n in range(1, 13):
+                key = (o, min(t, n), max(t, n)) if o == "times" else (o, t, n)
+                if key not in seen:
+                    seen.add(key)
+                    every.append((t, n, o))
     last = None
     while len(out) < count:
         deck = list(every)
