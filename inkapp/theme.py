@@ -333,17 +333,29 @@ def desktop_style_name():
 def apply(app, dark=None):
     """Style the whole application; returns the tokens used (the preview draws its light table with them).
     With the desktop's style on, the widgets keep the desktop's look and colours; the preview's paper and table
-    still come from the tokens."""
+    still come from the tokens. Asked for the look the application already has, it changes nothing: setting a
+    style or stylesheet again restyles every widget there is (half a second once the window is built)."""
     t = tokens(dark)
     if DESKTOP["on"] and DESKTOP["style"] and not TOUCH["on"]:   # touch sizes are Inkline's own stylesheet
+        if _APPLIED["look"] == "desktop" and app.style() is _APPLIED["style"] and not app.styleSheet():
+            return t
         app.setStyleSheet("")
         app.setStyle(DESKTOP["style"])
         app.setPalette(DESKTOP["palette"] if DESKTOP["palette"] is not None else app.style().standardPalette())
+        _APPLIED.update(look="desktop", style=app.style())
+        return t
+    pal, sheet = palette(t), stylesheet(t)
+    if (_APPLIED["look"] == "inkline" and app.style() is _APPLIED["style"] and app.styleSheet() == sheet
+            and app.palette() == pal):
         return t
     app.setStyle("Fusion")
-    app.setPalette(palette(t))
-    app.setStyleSheet(stylesheet(t))
+    app.setPalette(pal)
+    app.setStyleSheet(sheet)
+    _APPLIED.update(look="inkline", style=app.style())
     return t
+
+
+_APPLIED = {"look": None, "style": None}   # what apply() last left the application with: "inkline" or "desktop"
 
 
 def use_desktop(app, on):

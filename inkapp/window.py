@@ -180,6 +180,7 @@ class Window(QMainWindow):
 
         central = QWidget()
         central.setObjectName("central")
+        self.setCentralWidget(central)
         lay = QHBoxLayout(central)
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(0)
@@ -199,7 +200,6 @@ class Window(QMainWindow):
             used = config.read("preferences.json").get("recent_patterns")
             self.sidebar.recent_gens = [g for g in used if isinstance(g, str)] if isinstance(used, list) else []
             self.sidebar._fill_gallery(self.state.settings)
-        self.setCentralWidget(central)
         self.sidebar.fill_presets(self.saved_presets)
 
         self.renderer = Renderer()

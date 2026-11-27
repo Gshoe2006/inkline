@@ -31,12 +31,10 @@ import os
 import platform as _platform
 import re
 import shutil
-import ssl
 import subprocess
 import sys
 import tempfile
 import time
-import urllib.request
 
 REPO = "Gshoe2006/inkline"
 API = f"https://api.github.com/repos/{REPO}/releases/latest"
@@ -138,6 +136,7 @@ CA_BUNDLES = ("/etc/ssl/certs/ca-certificates.crt", "/etc/pki/tls/certs/ca-bundl
 
 def tls_context(bundles=CA_BUNDLES):
     """A verifying HTTPS context; if the default one knows no certificate authorities, the system's bundle."""
+    import ssl   # here, not at the top: ssl and urllib cost start-up time, and most starts never go online
     ctx = ssl.create_default_context()
     if os.name != "nt" and not ctx.cert_store_stats().get("x509_ca"):
         for path in bundles:
@@ -151,12 +150,14 @@ def tls_context(bundles=CA_BUNDLES):
 
 
 def _open(req, timeout):
+    import urllib.request
     return urllib.request.urlopen(req, timeout=timeout, context=tls_context())
 
 
 def fetch_latest(timeout=10, opener=None):
     """The latest release, from GitHub's API: {version, notes, page, assets: {name: (url, sha256, size)}}.
     Raises OSError (or ValueError for an answer that isn't a release)."""
+    import urllib.request
     req = urllib.request.Request(API, headers={"Accept": "application/vnd.github+json",
                                                "User-Agent": "Inkline-update-check"})
     with (opener or _open)(req, timeout=timeout) as r:
@@ -190,6 +191,7 @@ def download(url, sha256, dest_dir=None, progress=None, cancelled=None, opener=N
     Raises OSError if it can't be fetched or doesn't match."""
     dest_dir = dest_dir or tempfile.mkdtemp(prefix="inkline-update-")
     path = os.path.join(dest_dir, os.path.basename(url.split("?", 1)[0]))
+    import urllib.request
     req = urllib.request.Request(url, headers={"User-Agent": "Inkline-update-check"})
     h = hashlib.sha256()
     with (opener or _open)(req, timeout=timeout) as r, open(path, "wb") as f:

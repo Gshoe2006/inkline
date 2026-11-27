@@ -77,7 +77,43 @@ What the numbers say:
   and about 0.2 s of Python (the noise grid, marching squares, and one canvas call per segment).
 - **Photos are the slow part.** The two dithers spend about 1 s in one pixel-by-pixel Python loop. Stipple spends
   2.2 s in Qt filling its dots and 1 s in Python placing them; engrave 0.7 s in Qt and 1.5 s in Python.
-- **Start-up** is about 1.3 s here: 0.1 s importing Qt, 0.2 s importing Inkline, 1 s building the window.
+- **Start-up** was about 1.3 s here: 0.1 s importing Qt, 0.2 s importing Inkline, 1 s building the window. It's
+  now about 0.65 s; see Start-up below.
+
+## Start-up
+
+Profiled with cProfile and timers round each part of `Window(...)`, and `python -X importtime` for the imports.
+Before (median of 5 fresh processes, offscreen, this container): import PySide6 0.09 s, import Inkline 0.23 s,
+build the window 0.85 s. The window's 0.85 s was:
+
+| part | seconds |
+|---|---:|
+| the stylesheet set a second time, once every widget existed (`set_touch` → `theme.apply`) | ~0.45 |
+| the sidebar put into the central widget: Qt polishes its ~1,000 widgets against the stylesheet | ~0.11 |
+| building the sidebar's controls (`Sidebar._build`, mostly Qt creating and polishing widgets) | ~0.13 |
+| the central widget put into the window: the same polish, all over again | ~0.05 |
+| `Sidebar.load()`, events waiting, everything else | ~0.10 |
+
+The gallery's six pictures and the first preview were already drawn on worker threads; the window doesn't wait for
+them. What changed:
+
+- `theme.apply` does nothing when asked for the look the application already has (same style, palette and
+  stylesheet; the desktop's style likewise). `main()` styles the application before building the window, and the
+  window's touch set-up asked for the same look again: Qt then restyled every widget for nothing.
+- The window sets its (empty) central widget first and fills it after, so the widgets are polished once, not twice.
+- `inkapp/updater.py` imports `urllib` and `ssl` when it goes online, not at start-up (about 0.02 s).
+
+After, same machine, median of 5: import PySide6 0.09 s, import Inkline 0.21 s, **build the window 0.33 s**
+(0.79–0.99 s before, 0.28–0.39 s after): about 60% less, and the whole start about 1.2 s → 0.65 s. Showing the
+window and its first paint takes about 0.06 s more either way. Screenshots of every rail page, in light, dark and
+touch, are pixel-for-pixel the same before and after. `tests/test_startup.py` checks that building the window
+restyles nothing and that the central widget goes in empty.
+
+Not done, and what it could save: about half of the 1,054 widgets are hidden, the options of patterns not chosen
+(each combo box alone brings nine of Qt's own widgets for its popup). Building each pattern's options the first time
+it's chosen could save roughly another 0.1–0.15 s, but every control is referenced by `Sidebar.sync()`, presets,
+undo, projects and many tests, so it's a larger change, best made when the sidebar isn't also being extended.
+Most of Inkline's import time is numpy (0.05 s, used by the engine everywhere) and PySide6 binding its types.
 
 ## The Rust trial
 
@@ -129,4 +165,4 @@ numpy was already doing the squares; what's left is a Python call per segment an
   paths (or drawing dots as a pre-rendered image at print resolution) may gain more than any Rust.
 - **Shipping the module** means a wheel per platform in the packages (Linux x86-64 and ARM64, Windows, both Macs,
   Android). `benchmark.yml`'s rust job shows the build is simple on Linux; do the others before relying on it.
-- **Start-up** (about 1 s building the window) is worth a profile of its own; it's Qt widgets, not the engine.
+- **Start-up**: profiled and roughly halved (Start-up, above). What's left is Qt polishing about a thousand widgets.
