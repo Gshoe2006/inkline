@@ -5,7 +5,7 @@ the line width, the design's seed (some patterns seed their noise with it) and t
 ported from index.html aren't listed.
 """
 
-from . import bingo, clock, early, contour, crossword, cryptogram, dots, flow, fractions, ladder, logic, planner, reward, ruled, kakuro, mandala, maths, maze, name, nonogram, reading, scramble, spelltest, spot, symmetry, sudoku, trace, truchet, words
+from . import bingo, clock, coords, early, contour, crossword, cryptogram, dots, drawread, flow, fractions, ladder, logic, lscwc, memory, planner, reward, ruled, kakuro, mandala, maths, maze, name, nonogram, reading, scramble, speed, spelltest, spot, symmetry, sudoku, trace, truchet, words
 
 GENERATORS = {
     "contour": contour.draw,
@@ -37,9 +37,14 @@ GENERATORS = {
     "cryptogram": cryptogram.draw,
     "ladder": ladder.draw,
     "calendar": planner.draw,
+    "lscwc": lscwc.draw,
+    "speed": speed.draw,
+    "drawread": drawread.draw,
+    "coords": coords.draw,
+    "memory": memory.draw,
 }
 
-NAMES = {"contour": "Contours", "dots": "Dot-to-dot", "flow": "Flow lines", "kakuro": "Kakuro", "mandala": "Mandala", "maze": "Maze", "name": "Name page", "nonogram": "Nonogram", "spot": "Spot the difference", "sudoku": "Sudoku", "truchet": "Woven tiles", "words": "Word search", "maths": "Maths drill", "trace": "Handwriting", "crossword": "Crossword", "clock": "Telling the time", "scramble": "Unscramble", "spelltest": "Spelling test", "fractions": "Fractions and number lines", "symmetry": "Symmetry", "ruled": "Graph and lined paper", "reward": "Reward chart", "reading": "Reading comprehension", "bingo": "Bingo", "early": "Early maths", "logic": "Logic puzzle", "cryptogram": "Cryptogram", "ladder": "Word ladder", "calendar": "Calendar"}
+NAMES = {"contour": "Contours", "dots": "Dot-to-dot", "flow": "Flow lines", "kakuro": "Kakuro", "mandala": "Mandala", "maze": "Maze", "name": "Name page", "nonogram": "Nonogram", "spot": "Spot the difference", "sudoku": "Sudoku", "truchet": "Woven tiles", "words": "Word search", "maths": "Maths drill", "trace": "Handwriting", "crossword": "Crossword", "clock": "Telling the time", "scramble": "Unscramble", "spelltest": "Spelling test", "fractions": "Fractions and number lines", "symmetry": "Symmetry", "ruled": "Graph and lined paper", "reward": "Reward chart", "reading": "Reading comprehension", "bingo": "Bingo", "early": "Early maths", "logic": "Logic puzzle", "cryptogram": "Cryptogram", "ladder": "Word ladder", "calendar": "Calendar", "lscwc": "Look, say, cover, write, check", "speed": "Times-table speed test", "drawread": "Draw what you read", "coords": "Coordinate grid", "memory": "Memory cards"}
 
 # Puzzles that have a solution to show on answer pages.
-HAS_ANSWER = {"maze", "dots", "sudoku", "words", "nonogram", "spot", "kakuro", "maths", "crossword", "clock", "scramble", "spelltest", "fractions", "symmetry", "reading", "bingo", "early", "logic", "cryptogram", "ladder"}
+HAS_ANSWER = {"maze", "dots", "sudoku", "words", "nonogram", "spot", "kakuro", "maths", "crossword", "clock", "scramble", "spelltest", "fractions", "symmetry", "reading", "bingo", "early", "logic", "cryptogram", "ladder", "speed", "coords"}

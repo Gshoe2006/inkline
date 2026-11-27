@@ -44,7 +44,7 @@ STEP_NAMES = {"gen": "Pattern", "complexity": "Complexity", "weight": "Line weig
               "pages": "Design pages", "ramp": "Get harder", "mix": "Mix every pattern", "cover": "Cover page",
               "page_nums": "Page numbers", "key": "Answer pages", "maze_shape": "Maze shape", "maze_word": "Word or name", "spot_base": "Picture",
               "ws_theme": "Words from", "ws_words": "Your words", "name_text": "Name or word", "name_bg": "Around the letters",
-              "maths_kind": "Sums", "money": "Money", "clock_task": "Clocks", "frac_kind": "Worksheet", "ruled_kind": "Paper", "reward_kind": "Reward", "reward_text": "Reward for", "bingo_kind": "Bingo", "early_kind": "Early maths", "bingo_theme": "Bingo words from", "bingo_words": "Your bingo words", "crypto_code": "Code", "crypto_source": "Put in code", "crypto_text": "Text in code", "ladder_kind": "Ladder help", "cal_kind": "Calendar", "cal_month": "Month", "cal_year": "Year", "cal_start": "Week starts on", "cal_art": "Picture", "pack_theme": "Worksheet pack", "pack_words": "Spelling words", "pack_days": "Worksheet pack days", "easy_read": "Easier to read", "cream": "Cream paper", "trace_source": "Trace", "trace_style": "Letters", "trace_hand": "Handwriting style", "trace_text": "Words to trace",
+              "maths_kind": "Sums", "money": "Money", "clock_task": "Clocks", "frac_kind": "Worksheet", "ruled_kind": "Paper", "reward_kind": "Reward", "reward_text": "Reward for", "bingo_kind": "Bingo", "early_kind": "Early maths", "bingo_theme": "Bingo words from", "bingo_words": "Your bingo words", "crypto_code": "Code", "crypto_source": "Put in code", "crypto_text": "Text in code", "ladder_kind": "Ladder help", "cal_kind": "Calendar", "cal_month": "Month", "cal_year": "Year", "cal_start": "Week starts on", "cal_art": "Picture", "scramble_kind": "Unscramble sheet", "speed_count": "Facts", "speed_tables": "Tables", "speed_order": "Order", "speed_op": "Facts to answer", "speed_chart": "Progress chart", "draw_source": "Sentences", "draw_text": "Your sentences", "coord_kind": "Coordinate grid", "memory_kind": "Cards", "memory_words": "Your pairs", "memory_backs": "Card backs", "pack_theme": "Worksheet pack", "pack_words": "Spelling words", "pack_days": "Worksheet pack days", "easy_read": "Easier to read", "cream": "Cream paper", "trace_source": "Trace", "trace_style": "Letters", "trace_hand": "Handwriting style", "trace_text": "Words to trace",
               "cbn_maths": "Colour by maths", "age": "Age", "sheet": "On the sheet", "panel_gens": "Designs on the sheet", "cross_theme": "Crossword words", "cross_words": "Crossword words and clues",
               "mode": "Mode", "style": "Style", "brightness": "Brightness", "contrast": "Contrast", "threshold": "Threshold",
               "dot": "Dot size", "fit": "Placement", "invert": "Invert", "pnono_size": "Squares across",
@@ -1701,7 +1701,7 @@ class Window(QMainWindow):
             j = self._job(snap)
             if j is None:
                 return
-            what = (tr("Save PDF of {what}").format(what=j.amount()) if j.label in ("copies", "booklets")
+            what = (tr("Save PDF of {what}").format(what=j.amount()) if j.label in ("copies", "booklets") or j.backs
                     else tr("Save {what} PDF").format(what=tr(j.label))) if j.count > 1 else tr("Save PDF")
             path = self._ask_path(what, j.name, "pdf", "PDF document (*.pdf)")
             if not path:
@@ -1768,6 +1768,8 @@ class Window(QMainWindow):
             printer.setPrinterName(self.print_with)
         if j.duplex:   # fold-and-staple books: double-sided, flipping on the short edge
             printer.setDuplex(QPrinter.DuplexMode.DuplexShortSide)
+        elif j.backs:  # memory cards and their backs: double-sided, flipping on the long edge
+            printer.setDuplex(QPrinter.DuplexMode.DuplexLongSide)
         self._msg(tr("Opening the print dialog…"))
         dialog = QPrintDialog(printer, self)
         # which pages print is chosen under Paper → Print or save only: the dialog's own range would be ignored

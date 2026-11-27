@@ -42,12 +42,13 @@ RANGES = {"seed": (0, 4294967295), "complexity": (1, 10), "weight": (1, 10), "ma
           "pages": (2, 40), "overlap": (0, 1), "brightness": (-100, 100), "contrast": (20, 300), "threshold": (1, 254),
           "dot": (1, 8), "pnono_size": (10, 30), "pcbn_colours": (4, 16), "cbn_colours": (3, 12),
           "cal_month": (0, 12), "cal_year": (0, 2100), "pdots_n": (20, 150)}
-LENGTHS = {"title": 80, "pack_words": 600, "pack_days": 200, "reward_text": 60, "bingo_words": 600, "crypto_text": 120, "maze_word": 12, "ws_words": 300, "name_text": 40, "trace_text": 300, "cross_words": 2000, "panel_gens": 200}
+LENGTHS = {"title": 80, "pack_words": 600, "pack_days": 200, "reward_text": 60, "bingo_words": 600, "crypto_text": 120, "speed_tables": 40, "draw_text": 600, "memory_words": 600, "maze_word": 12, "ws_words": 300, "name_text": 40, "trace_text": 300, "cross_words": 2000, "panel_gens": 200}
 
 
 def _choices():
     from . import pack, poster
-    from .patterns import bingo, clock, early, crossword, cryptogram, fractions, ladder, maths, money, planner, reward, ruled, name, spot, trace, words
+    from .patterns import (bingo, clock, coords, drawread, early, crossword, cryptogram, fractions, ladder, maths, memory, money, planner,
+                           reward, ruled, name, scramble, speed, spot, trace, words)
     try:
         from .photo import STYLES
     except ImportError:      # the engine without Qt: no photo styles to check against
@@ -57,6 +58,9 @@ def _choices():
             "age": {"any", "4-6", "7-9", "10+"}, "sheet": set(SHEETS), "maths_kind": set(maths.KINDS), "clock_task": set(clock.TASKS), "frac_kind": set(fractions.KINDS), "ruled_kind": set(ruled.KINDS), "reward_kind": set(reward.KINDS), "bingo_kind": set(bingo.KINDS), "early_kind": set(early.KINDS), "bingo_theme": set(words.THEME_NAMES) | {"custom"}, "money": set(money.CURRENCIES), "pack_theme": set(pack.THEME_NAMES), "trace_source": set(trace.SOURCES), "trace_style": set(trace.LETTERS), "trace_hand": set(trace.HANDS), "cross_theme": set(crossword.THEME_NAMES),
             "crypto_code": set(cryptogram.KINDS), "crypto_source": set(cryptogram.SOURCES), "ladder_kind": set(ladder.KINDS),
             "cal_kind": set(planner.KINDS), "cal_art": set(planner.BACKGROUNDS), "cal_start": set(planner.WEEK_STARTS),
+            "scramble_kind": set(scramble.KINDS), "speed_count": set(dict(speed.COUNTS)), "speed_order": set(speed.ORDERS),
+            "speed_op": set(speed.OPS), "draw_source": set(drawread.SOURCES), "coord_kind": set(coords.KINDS),
+            "memory_kind": set(memory.KINDS),
             "grid": set(poster.GRIDS), "mode": {"make", "convert"}, "fit": {"contain", "cover"},
             **({"style": set(STYLES)} if STYLES else {})}
 
@@ -119,6 +123,18 @@ class Settings:
     cal_year: int = 0            # calendar: the year, or 0 for the next time cal_month comes round
     cal_start: str = "auto"      # calendar: the first day of the week (auto, mon, sun)
     cal_art: str = "mandala"     # calendar: the picture above it (patterns.planner.BACKGROUNDS)
+    scramble_kind: str = "mixed" # unscramble: patterns.scramble.KINDS (mixed-up letters, or missing letters)
+    speed_count: int = 50        # times-table speed test: how many facts (patterns.speed.COUNTS: 25, 50, 100)
+    speed_tables: str = ""       # times-table speed test: the tables ("3, 4, 8"), or "" for Complexity's
+    speed_order: str = "mixed"   # times-table speed test: patterns.speed.ORDERS (mixed, order)
+    speed_op: str = "times"      # times-table speed test: patterns.speed.OPS (times, divide, both)
+    speed_chart: bool = False    # times-table speed test: a progress chart to fill in
+    draw_source: str = "sentences"   # draw what you read: patterns.drawread.SOURCES (Inkline's, or "custom")
+    draw_text: str = ""          # draw what you read: your own sentences, separated by ;
+    coord_kind: str = "plot"     # coordinate grid: patterns.coords.KINDS (plot the points, battleships)
+    memory_kind: str = "pictures"    # memory cards: patterns.memory.KINDS (pictures, words, dots, custom)
+    memory_words: str = ""       # memory cards: your own pairs ("cat: chat; dog: chien")
+    memory_backs: bool = False   # memory cards: a page of card backs after the cards, for double-sided printing
     frac_kind: str = "fractions" # fractions and number lines: patterns.fractions.KINDS
     clock_task: str = "read"     # telling the time: patterns.clock.TASKS (read, draw, mixed)
     trace_style: str = "print"   # handwriting: patterns.trace.LETTERS (print, or joined-up in the language's school style)
@@ -194,7 +210,8 @@ class Settings:
 # What each page of a booklet built page by page keeps for itself; the rest is the booklet's.
 PAGE_KEYS = ("gen", "seed", "complexity", "cbn", "cbn_colours", "cbn_maths", "maze_shape", "maze_word", "ws_theme", "ws_words",
              "name_text", "name_bg", "spot_base", "maths_kind", "money", "frac_kind", "ruled_kind", "reward_kind", "reward_text", "bingo_kind", "bingo_theme", "bingo_words", "early_kind", "crypto_code", "crypto_source", "crypto_text", "ladder_kind",
-             "cal_kind", "cal_month", "cal_year", "cal_start", "cal_art", "clock_task", "trace_source", "trace_style", "trace_hand", "trace_text",
+             "cal_kind", "cal_month", "cal_year", "cal_start", "cal_art", "scramble_kind", "speed_count", "speed_tables",
+             "speed_order", "speed_op", "speed_chart", "draw_source", "draw_text", "coord_kind", "memory_kind", "memory_words", "clock_task", "trace_source", "trace_style", "trace_hand", "trace_text",
              "cross_theme", "cross_words")
 
 
@@ -206,6 +223,8 @@ PAGE_ONLY = ("answer",)
 def has_answer(gen, s):
     """Whether a design of this pattern, drawn with these settings, has a solution for the answer pages."""
     from .cbn import is_cbn_design
+    if gen == "coords" and getattr(s, "coord_kind", "plot") == "battle":   # Battleships: a game, nothing to solve
+        return False
     return gen in HAS_ANSWER or is_cbn_design(gen, s)
 
 
@@ -259,7 +278,7 @@ def geometry(s, dpi=None):
 
 @dataclass
 class PageSpec:
-    kind: str = "design"         # design | answers | cover | blank | photo | pcover
+    kind: str = "design"         # design | answers | cover | blank | photo | pcover | backs (memory cards)
     gen: str = "maze"
     seed: int = 0
     c: int = 5
@@ -444,6 +463,13 @@ def draw_page(ctx, g, spec, s, keep=False):
             draw_bands(ctx, g, spec)
             return convert(ctx, design_box(g, spec, s, frame=False), g.dpi, s, spec.photo, view=view)
         return convert(ctx, g.box, g.dpi, s, spec.photo, view=view)
+    if spec.kind == "backs":   # memory cards' backs: where the front's grid falls once the sheet flips on its long edge
+        s = page_settings(s, spec)
+        front = design_box(g, replace(spec, kind="design", header=spec.header), s)
+        landscape = g.W > g.H
+        box = (Box(front.x, g.H - front.y - front.h, front.w, front.h) if landscape else
+               Box(g.W - front.x - front.w, front.y, front.w, front.h))
+        return draw_design(ctx, g, box, spec.gen, spec.seed, spec.c, s, lw, backs=True, flip="rows" if landscape else "cols")
     draw_bands(ctx, g, spec)
     if spec.kind == "design":
         s = page_settings(s, spec)   # a page built page by page draws with its own pattern settings
@@ -544,12 +570,21 @@ def draw_page(ctx, g, spec, s, keep=False):
         first = spec.designs[0].gen
         # a puzzle would give away a page's answer (and handwriting or a calendar is no picture), so their books get a
         # mandala
-        draw_design(ctx, g, art, "mandala" if first in HAS_ANSWER or first in ("trace", "calendar") else first,
+        draw_design(ctx, g, art, "mandala" if first in HAS_ANSWER or first in NO_COVER_ART else first,
                     spec.art_seed, 6, s, lw)
         return None
     if spec.kind == "blank":   # padding in a fold-and-staple book
         return None
     raise ValueError(f"unknown page kind {spec.kind!r}")
+
+
+# patterns whose page is no picture for a cover (worksheets with nothing to solve): their books get a mandala
+NO_COVER_ART = ("trace", "calendar", "lscwc", "drawread", "memory")
+
+
+def backs_page(spec):
+    """The page of card backs for a page of memory cards: printed on the other side of the sheet."""
+    return replace(spec, kind="backs", stamp="", page_no=0)
 
 
 def answer_page(specs, title=None):

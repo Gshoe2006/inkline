@@ -7,12 +7,12 @@
 Columns: where it appears (window or printed page), the English, the translation, then two empty columns,
 "Better wording" and "Comment", for the reviewer to fill in. After the interface, the sheet lists the word
 search themes, the crossword words and clues, the logic puzzle's names and things, the cryptogram's sayings and
-the word ladder's words, which are written in the language rather than translated from English, so they're
+the word ladder's words, the draw-what-you-read sentences and the memory cards' picture words, which are written in the language rather than translated from English, so they're
 checked too. The file is UTF-8 with a byte order mark, so Excel, LibreOffice and
 Google Sheets open the accents correctly.
 
 To use a reviewed sheet: copy each "Better wording" into inkengine/locale/<code>.json (or the word lists in
-inkengine/patterns/words.py, crossword.py, logic.py, cryptogram.py and ladder.py), keeping every {placeholder} and the & of a menu item.
+inkengine/patterns/words.py, crossword.py, logic.py, cryptogram.py, ladder.py, drawread.py and inkengine/pictures.py), keeping every {placeholder} and the & of a menu item.
 """
 
 import csv
@@ -68,6 +68,13 @@ def rows(code):
     for saying in cryptogram.SAYINGS.get(code, []):
         out.append(("cryptogram: sayings", "", saying))
     out.append(("word ladder: words", "", " ".join(ladder.WORDS.get(code, "").split())))
+    from inkengine import pictures
+    from inkengine.patterns import drawread
+    for level, (en_list, items) in enumerate(zip(drawread.READ_SENTENCES["en"], drawread.READ_SENTENCES.get(code, []))):
+        for en, text in zip(en_list, items):
+            out.append((f"draw what you read: level {level + 1}", en, text))
+    for name, word in pictures.WORDS.get(code, {}).items():
+        out.append(("memory cards: picture words", pictures.WORDS["en"][name], word))
     return out
 
 

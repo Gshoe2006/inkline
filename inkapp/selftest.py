@@ -24,7 +24,7 @@ from .state import State
 SEED = 20261117
 PATTERNS = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "words", "nonogram", "spot", "kakuro",
             "maths", "trace", "crossword", "clock", "scramble", "spelltest", "fractions", "symmetry", "ruled", "reward", "reading", "bingo", "early",
-            "logic", "cryptogram", "ladder", "calendar"]
+            "logic", "cryptogram", "ladder", "calendar", "lscwc", "speed", "drawread", "coords", "memory"]
 
 
 def _silhouette():
@@ -96,6 +96,13 @@ def run(window, outdir, app):
     step("mazeshape", lambda: page("mazeshape", replace(base, gen="maze", maze_shape="word", maze_word="Inkline")))
     step("name", lambda: page("name", replace(base, gen="name", name_text="Inkline 3.0", name_bg="flow")))
     step("cbnpattern", lambda: page("cbnpattern", replace(base, gen="mandala", cbn=True)))
+    step("battleships", lambda: page("battleships", replace(base, gen="coords", coord_kind="battle")))
+
+    def memorybacks():   # cards, then their backs: two pages
+        n = _pdf(os.path.join(outdir, "memorybacks.pdf"), State(replace(base, gen="memory", memory_backs=True)))
+        if n != 2:
+            raise RuntimeError(f"the memory cards have {n} pages, expected 2 (the cards and their backs)")
+    step("memorybacks", memorybacks)
     photo_s = replace(base, mode="convert")
     step("convert", lambda: page("convert", replace(photo_s, style="fs"), sample, svg=False))
     for style in ("engrave", "stipple", "cbn"):
