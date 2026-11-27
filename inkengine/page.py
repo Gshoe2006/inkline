@@ -132,6 +132,7 @@ class Settings:
     draw_source: str = "sentences"   # draw what you read: patterns.drawread.SOURCES (Inkline's, or "custom")
     draw_text: str = ""          # draw what you read: your own sentences, separated by ;
     coord_kind: str = "plot"     # coordinate grid: patterns.coords.KINDS (plot the points, battleships)
+    coord_answer: bool = False   # coordinate grid: draw the plotted picture joined up (to show what it makes)
     memory_kind: str = "pictures"    # memory cards: patterns.memory.KINDS (pictures, words, dots, custom)
     memory_words: str = ""       # memory cards: your own pairs ("cat: chat; dog: chien")
     memory_backs: bool = False   # memory cards: a page of card backs after the cards, for double-sided printing
@@ -211,13 +212,24 @@ class Settings:
 PAGE_KEYS = ("gen", "seed", "complexity", "cbn", "cbn_colours", "cbn_maths", "maze_shape", "maze_word", "ws_theme", "ws_words",
              "name_text", "name_bg", "spot_base", "maths_kind", "money", "frac_kind", "ruled_kind", "reward_kind", "reward_text", "bingo_kind", "bingo_theme", "bingo_words", "early_kind", "crypto_code", "crypto_source", "crypto_text", "ladder_kind",
              "cal_kind", "cal_month", "cal_year", "cal_start", "cal_art", "scramble_kind", "speed_count", "speed_tables",
-             "speed_order", "speed_op", "speed_chart", "draw_source", "draw_text", "coord_kind", "memory_kind", "memory_words", "clock_task", "trace_source", "trace_style", "trace_hand", "trace_text",
+             "speed_order", "speed_op", "speed_chart", "draw_source", "draw_text", "coord_kind", "coord_answer", "memory_kind", "memory_words", "clock_task", "trace_source", "trace_style", "trace_hand", "trace_text",
              "cross_theme", "cross_words")
 
 
 # Page-only keys: not settings of their own (nothing at the top level mirrors them). "answer": False leaves
 # that page's solution off the answer pages.
 PAGE_ONLY = ("answer",)
+
+
+def pattern_name(gen, s=None, opts=None):
+    """What a page of this pattern is called (in English, for tr): its name, or the kind it's set to where that's a
+    different sheet altogether (an unscramble set to missing letters is "Missing letters"). opts: the page's own
+    settings, over s's."""
+    def get(key, default):
+        return (opts or {}).get(key, getattr(s, key, default))
+    if gen == "scramble" and get("scramble_kind", "mixed") == "missing":
+        return "Missing letters"
+    return NAMES.get(gen, gen)
 
 
 def has_answer(gen, s):
@@ -356,8 +368,8 @@ def panel_specs(g, spec, s):
     out = []
     for k, (gen, b) in enumerate(zip(sheet_gens(s), sheet_boxes(box, s.sheet, g.dpi * 0.3))):
         out.append(replace(spec, gen=gen, seed=(spec.seed + k * 7919) & 0xFFFFFFFF, header=False, page_no=0,
-                           title="", name=False, stamp="", panel_box=b, label=tr(NAMES[gen]),
-                           key_label=f"{spec.key_label} · {tr(NAMES[gen])}" if spec.key_label else ""))
+                           title="", name=False, stamp="", panel_box=b, label=tr(pattern_name(gen, s)),
+                           key_label=f"{spec.key_label} · {tr(pattern_name(gen, s))}" if spec.key_label else ""))
     return out
 
 
@@ -539,6 +551,14 @@ def draw_page(ctx, g, spec, s, keep=False):
                 ctx.transform(k, 0, 0, k, 0, 0)
                 draw_design(ctx, g, src, "spot", d.seed, d.c, sd, lw, solve=True, line=ctx.line_width / k)
                 ctx.restore()
+            elif d.gen == "speed":   # the sheet itself, scaled into the slot: the same columns, the answers in them
+                src = item_box(g, d, sd)
+                k = min(slot.w / src.w, slot.h / src.h)
+                ctx.save()
+                ctx.translate(slot.x + (slot.w - src.w * k) / 2 - src.x * k, slot.y + (slot.h - src.h * k) / 2 - src.y * k)
+                ctx.transform(k, 0, 0, k, 0, 0)
+                draw_design(ctx, g, src, "speed", d.seed, d.c, sd, lw, solve=True)
+                ctx.restore()
             elif d.gen == "dots":   # same seed draws the same shape, finished
                 draw_design(ctx, g, slot, "dots", d.seed, d.c, sd, ctx.line_width, connect=True)
             elif d.gen in HAS_ANSWER:
@@ -550,10 +570,10 @@ def draw_page(ctx, g, spec, s, keep=False):
         ctx.set_font(fs, 700)
         ctx.text_align, ctx.fill_style = "center", "#000"
         ctx.fill_text(spec.title, b.x + b.w / 2, b.y + b.h * 0.14, b.w)
-        kinds = list(dict.fromkeys(d.gen for d in spec.designs))
+        kinds = list(dict.fromkeys(pattern_name(d.gen, s, d.opts) for d in spec.designs))
         n = len(spec.designs)
         if len(kinds) == 1:
-            sub = (tr("{n} {pattern} pages") if n > 1 else tr("1 {pattern} page")).format(n=n, pattern=tr(NAMES[kinds[0]]).lower())
+            sub = (tr("{n} {pattern} pages") if n > 1 else tr("1 {pattern} page")).format(n=n, pattern=tr(kinds[0]).lower())
         else:
             sub = (tr("{n} pages") if n > 1 else tr("1 page")).format(n=n)
         sub += " · " + tr("easy to hard") if s.ramp and n > 1 else ""
@@ -591,5 +611,5 @@ def answer_page(specs, title=None):
     """An answer page for up to four puzzle pages."""
     items = [d for d in specs if d.gen in HAS_ANSWER][:4]
     for d in items:
-        d.label = d.label or tr(NAMES.get(d.gen, d.gen))
+        d.label = d.label or tr(pattern_name(d.gen, None, d.opts))
     return PageSpec(kind="answers", title=title or tr("Answers"), items=items)

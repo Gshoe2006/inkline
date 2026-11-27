@@ -12,7 +12,7 @@ so that stacking the sheets, folding them and stapling the fold puts every page 
 from dataclasses import replace
 
 from .box import Box
-from .page import PAGE_ONLY, PAPER, Geometry, PageSpec, draw_page, has_answer, js_round, page_settings
+from .page import PAGE_ONLY, PAPER, Geometry, PageSpec, draw_page, has_answer, js_round, page_settings, pattern_name
 from .patterns import NAMES
 from .i18n import tr
 
@@ -59,7 +59,7 @@ def book_pages(s):
         opts = {k: v for k, v in p.items() if k not in ("gen", "seed", "complexity") + PAGE_ONLY}
         designs.append(PageSpec(kind="design", idx=i, gen=gen, seed=int(p.get("seed", s.seed)) & 0xFFFFFFFF,
                                 c=max(1, min(10, int(p.get("complexity", c)))), title=title, name=s.name_line,
-                                label=f"{tr(NAMES[gen])} {i + 1}", opts=opts))
+                                label=f"{tr(pattern_name(gen, s, opts))} {i + 1}", opts=opts))
     months = calendar_months(s, 0 if s.page_list or mix else n)
     for i in range(0 if s.page_list else n):
         gen = GENS[i % len(GENS)] if mix else s.gen
@@ -68,13 +68,13 @@ def book_pages(s):
         seed = _page_seed(s, i, (s.seed + i * 7919) & 0xFFFFFFFF)
         opts = {"cal_month": months[i][1], "cal_year": months[i][0]} if months else {}   # a calendar: the next month
         designs.append(PageSpec(kind="design", idx=i, gen=gen, seed=seed, c=cx, title=title, name=s.name_line,
-                                label=f"{tr(NAMES[gen])} {i + 1}", opts=opts))
+                                label=f"{tr(pattern_name(gen, s, opts))} {i + 1}", opts=opts))
     if s.cover:
         kinds = {d.gen for d in designs}
         cover_title = title or (_calendar_title(months) if months else
                                 tr("Worksheets") if len(kinds) > 1 and kinds & WORKSHEETS else
                                 tr("Colouring & puzzle book") if mix or len(kinds) > 1 else
-                                tr("{pattern} book").format(pattern=tr(NAMES[designs[0].gen])))
+                                tr("{pattern} book").format(pattern=tr(pattern_name(designs[0].gen, s, designs[0].opts))))
         pages.append(PageSpec(kind="cover", title=cover_title, designs=designs,
                               art_seed=_page_seed(s, "cover", (s.seed ^ 0x5BD1E995) & 0xFFFFFFFF)))
     pages.extend(designs)

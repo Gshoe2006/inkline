@@ -44,7 +44,7 @@ import argparse
 import random
 import sys
 
-from .page import PageSpec, Settings, answer_page, backs_page, has_answer, single_page
+from .page import PageSpec, Settings, answer_page, backs_page, has_answer, pattern_name, single_page
 from . import photo, poster
 from .patterns import (GENERATORS, NAMES, coords, cryptogram, drawread, ladder, maze, memory, name, planner, scramble, speed, spot,
                        words)
@@ -229,7 +229,7 @@ def main(argv=None):
             ap.error("--answers needs a .pdf output (the answer is a second page)")
         puzzle = single_page(s)
         key = answer_page([PageSpec(gen=puzzle.gen, seed=puzzle.seed, c=puzzle.c, title=puzzle.title,
-                                    name=puzzle.name, label=f"{NAMES[s.gen]} {s.seed}")])
+                                    name=puzzle.name, label=f"{pattern_name(s.gen, s)} {s.seed}")])
         output.write_pdf(a.out, s, [puzzle, key])
     else:
         output.write(a.out, s, single_page(s, pic))

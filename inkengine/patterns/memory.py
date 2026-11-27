@@ -6,7 +6,7 @@
 - Your own pairs: typed as "cat: chat; dog: chien" (a word on its own makes two cards the same).
 
 Complexity sets how many cards a page holds: 2 x 4 at 1-2, then 3 x 4, 4 x 4, 4 x 5 and 4 x 6 at 9-10 (turned
-round on a sideways page); fewer of your own pairs take a smaller grid with bigger cards. The seed shuffles where
+round on a sideways page). Your own pairs set it themselves: the smallest grid that holds them all, up to 12 pairs. The seed shuffles where
 each card goes. Dashed lines show where to cut.
 
 Card backs: a page of backs to print on the other side of the sheet, double-sided, flipping on the long edge. A
@@ -28,10 +28,11 @@ MAX_TEXT = 600
 
 
 def grid_for(c, landscape=False, cards=None):
-    """(columns, rows) at complexity c; with cards, the smallest grid that holds them, if smaller."""
+    """(columns, rows) at complexity c; with cards (your own pairs), the smallest grid that holds them all, whatever
+    the complexity (the largest, when there are more than it holds)."""
     g = GRIDS[min(len(GRIDS) - 1, (max(1, c) - 1) // 2)]
     if cards is not None:
-        g = next((x for x in GRIDS if x[0] * x[1] >= cards and x[0] * x[1] <= g[0] * g[1]), g)
+        g = next((x for x in GRIDS if x[0] * x[1] >= cards), GRIDS[-1])
     return (g[1], g[0]) if landscape else g
 
 
@@ -220,6 +221,7 @@ def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, solve=False, backs=Fa
     fits = {k: _fit_lines(ctx, str(v), iw * 0.9, ih * (0.6 if what == "number" else 0.5), 700 if what == "number" else 600)
             for k, ((what, v), _p) in enumerate(cards) if what in ("word", "number")}
     common = {w: min([f[1] for k, f in fits.items() if cards[k][0][0] == w] + [ih * 0.6]) for w in ("word", "number")}
+    own = getattr(settings, "memory_kind", "") == "custom"   # your own words: each as big as its card allows
     for k, (card, pair) in enumerate(cards):
         spot = back_place(k, cols, rows, flip) if backs else k
         r, col = divmod(spot, cols)
@@ -235,7 +237,7 @@ def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, solve=False, backs=Fa
         elif what == "dots":
             _dots(ctx, v, x + pad, y + pad, iw, ih)
         else:
-            lines, fs = fits[k][0], common[what]
+            lines, fs = fits[k][0], min(fits[k][1], ih * 0.6) if own else common[what]
             ctx.set_font(fs, 700 if what == "number" else 600)
             ctx.text_align, ctx.text_baseline = "center", "middle"
             lh = fs * 1.25

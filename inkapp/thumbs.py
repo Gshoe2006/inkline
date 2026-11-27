@@ -22,6 +22,18 @@ from inkengine.page import draw_page, geometry
 
 from .theme import PAPER_COLOUR
 
+# the settings the gallery draws a pattern's picture with, where its plain page would look like another pattern's (a
+# coordinate grid's empty grid is graph paper; joined up, it's a picture)
+GALLERY_OPTS = {"coords": {"coord_answer": True}}
+
+
+def gallery_spec(base, gen):
+    """The page the gallery shows for a pattern."""
+    from inkengine.page import single_page
+    spec = single_page(replace(base, gen=gen))
+    return replace(spec, opts=dict(GALLERY_OPTS[gen])) if gen in GALLERY_OPTS else spec
+
+
 THUMB_H = 34         # px: the row's picture is a page this tall (and as wide as its shape makes it), plus a
                      # 1 px edge all round: 36, the photo list's picture slot
 DRAW_DPI = 30        # drawn at this resolution, then scaled down smoothly

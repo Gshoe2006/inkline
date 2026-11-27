@@ -54,6 +54,12 @@ def spelling_list(text):
     return out[:MAX_WORDS]
 
 
+def day_name(gen, spelling):
+    """What a day's sheet is called (English, for tr): a spelling week's unscramble is its missing letters."""
+    from .page import pattern_name
+    return pattern_name(gen, None, {"scramble_kind": "missing" if spelling else "mixed"})
+
+
 def chosen_days(text):
     """The five days typed into pack_days ("maths,trace,..."), or None if they aren't five known sheets."""
     days = [d.strip() for d in (text or "").split(",") if d.strip()]

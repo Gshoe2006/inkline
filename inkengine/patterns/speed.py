@@ -9,8 +9,9 @@ score, and an answer page.
 - Facts: times, sharing (the times tables backwards: 24 ÷ 3) or both.
 - My progress: a chart to colour a bar in after each try, so a child sees the score climb.
 
-The facts are laid out in as many columns as give the biggest writing. The answer page writes each answer in its
-blank, in grey.
+The facts are numbered, as the maths drill's sums are, and laid out in as many columns as give the biggest writing,
+each column's facts centred in it. The answer page shows the sheet itself, scaled down, with each answer written in
+its blank in grey (page.py draws it from the sheet's own box, so its columns are the sheet's).
 """
 
 import re
@@ -101,11 +102,18 @@ def make_facts(rnd, c, settings=None):
     return out[:count]
 
 
+def _number_width(ctx, n, fs):
+    """How wide the facts' numbers are ("100."), and the gap after them, at font size fs."""
+    ctx.set_font(fs * 0.55, 400)
+    return ctx.measure_text(f"{n}.") + fs * 0.35
+
+
 def _layout(ctx, box, facts, dpi):
     """(columns, rows, font size) giving the biggest writing that fits."""
     best = None
+    numbers = _number_width(ctx, len(facts), 100) / 100
     ctx.set_font(100, 500)
-    widest = max(ctx.measure_text(f"{a} {s} {b} = ") for a, s, b, _ans in facts) / 100 + 2.6
+    widest = max(ctx.measure_text(f"{a} {s} {b} = ") for a, s, b, _ans in facts) / 100 + 2.6 + numbers
     for cols in range(1, 7):
         rows = -(-len(facts) // cols)
         cw, rh = box.w / cols, box.h / rows
@@ -122,7 +130,7 @@ def _chart(ctx, x, y, w, h, count, lw, fs):
     ctx.set_font(fs, 700)
     ctx.text_align, ctx.text_baseline = "left", "alphabetic"
     ctx.fill_text(tr("My progress"), x, y + fs)
-    top = y + fs * 1.6
+    top = y + fs * 2.1   # clear of the title: the top score's number reaches half a line above the top line
     left = x + fs * 2.4
     bottom = y + h - fs * 1.4
     gw, gh = x + w - left, bottom - top
@@ -156,7 +164,7 @@ def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, solve=False, **_opts)
     """The facts with a blank for each answer (or, with solve=True, the answers in grey), under the time and score
     box."""
     facts = make_facts(rnd, c, settings)
-    chart = bool(getattr(settings, "speed_chart", False)) and not solve   # (the answers need only the facts)
+    chart = bool(getattr(settings, "speed_chart", False))
     hfs = min(dpi * 0.22, box.h / 28)
     head_h = hfs * 2.6
     chart_h = min(box.h * 0.24, dpi * 2.4) if chart else 0
@@ -193,12 +201,19 @@ def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, solve=False, **_opts)
     cols, rows, fs = _layout(ctx, area, facts, dpi)
     cw, rh = area.w / cols, area.h / rows
     blank = fs * 2.4
+    numbers = _number_width(ctx, len(facts), fs)
     ctx.set_font(fs, 500)
     widest = max(ctx.measure_text(f"{a} {sign} {b} = ") for a, sign, b, _ans in facts)
+    spare = max(0.0, cw - (numbers + widest + blank))   # each column's facts centred in it
     for k, (a, sign, b, answer) in enumerate(facts):
         col, row = k // rows, k % rows
-        x = area.x + col * cw + cw * 0.05
+        x = area.x + col * cw + spare / 2
         y = area.y + row * rh + rh * 0.68
+        ctx.set_font(fs * 0.55, 400)
+        ctx.fill_style = "#666"
+        ctx.text_align = "left"
+        ctx.fill_text(f"{k + 1}.", x, y)
+        x += numbers
         ctx.set_font(fs, 500)
         ctx.fill_style = "#000"
         ctx.text_align = "right"   # every blank in a column starts in the same place

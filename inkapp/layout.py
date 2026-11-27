@@ -394,8 +394,7 @@ class AllPatterns(QWidget):
 
     def __init__(self, names, descriptions, current=None):
         from PySide6.QtWidgets import QLabel, QLineEdit, QScrollArea
-        from dataclasses import replace
-        from inkengine.page import Settings, single_page
+        from inkengine.page import Settings
         from . import thumbs
         super().__init__()
         self.names, self.descriptions = names, descriptions
@@ -442,7 +441,7 @@ class AllPatterns(QWidget):
                 b.clicked.connect(lambda _c=False, g=gen: self.picked.emit(g))
                 grid.addWidget(b, i // 4, i % 4)
                 self.buttons[gen] = b
-                spec = single_page(replace(base, gen=gen))
+                spec = thumbs.gallery_spec(base, gen)
                 self._keys[thumbs.key(base, spec)] = gen
                 specs.append(spec)
             lay.addWidget(grid_w)
