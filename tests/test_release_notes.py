@@ -59,3 +59,13 @@ def test_changelog_has_notes_for_the_current_version():
     result = subprocess.run([sys.executable, SCRIPT], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip()
+
+
+def test_every_heading_starts_its_own_line():
+    """A release's notes run up to the next "## "; one stuck to the end of a line (6.3.0's notes ended
+    "...about printing.## 6.2.0") ends up in the published notes."""
+    import os
+    import re
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "CHANGELOG.md")
+    text = open(path, encoding="utf-8").read()
+    assert not re.search(r"\S#{2,3} \d", text), "a heading starts mid-line"
