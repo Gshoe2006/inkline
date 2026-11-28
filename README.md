@@ -211,7 +211,9 @@ default handwriting words are written in each language in `inkengine/patterns/wo
 **Check a translation.** The translations were written without a native speaker's review, so corrections are
 very welcome: see [docs/translating.md](docs/translating.md) (also *Help → Help translate Inkline…*). Open a
 [Suggest a better translation](https://github.com/Gshoe2006/inkline/issues/new?template=translation.yml) issue,
-or check the lot on a web page or in a spreadsheet:
+or check the lot on the [review pages](https://gshoe2006.github.io/inkline/) (one per language, nothing to
+install: type better wordings, then copy them into the issue). Maintainers can make the pages or a spreadsheet
+themselves:
 
 ```sh
 python3 packaging/translation_sheet.py all inkline-review.html   # every language: search, filter, type better wording
