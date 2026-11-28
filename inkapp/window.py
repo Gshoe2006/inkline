@@ -321,9 +321,15 @@ class Window(QMainWindow):
         pv.page.pan.connect(self._pan)
         pv.page.zoom.connect(self._wheel_zoom)
         pv.page.pan_end.connect(self._drag_ended)
-        for control, _write in sb._binds.values():
-            if isinstance(control, QAbstractSlider):
-                control.sliderReleased.connect(self._drag_ended)
+        self._hooked = set()   # the sliders whose release ends a drag step (a pattern's own, once built: panel_built)
+
+        def hook_sliders(*_a):
+            for control, _write in sb._binds.values():
+                if isinstance(control, QAbstractSlider) and id(control) not in self._hooked:
+                    self._hooked.add(id(control))
+                    control.sliderReleased.connect(self._drag_ended)
+        hook_sliders()
+        sb.panel_built.connect(hook_sliders)
         for s in (sb.zoom, sb.panx, sb.pany):
             s.sliderReleased.connect(self._drag_ended)
 
@@ -1543,8 +1549,7 @@ class Window(QMainWindow):
             self._fit_tablet()
             self._fit_toolbar()
         self.preview.set_busy("")
-        self.sidebar.ws_note.setText(r.note)
-        self.sidebar.cross_note.setText(r.note)
+        self.sidebar.set_render_note(r.note)
         self.sidebar.sync(r.view)
         self._view = r.view
         self._show_printer_edges()

@@ -69,6 +69,7 @@ def _photo(name):
 
 
 def test_every_control_in_the_window_has_a_name(win):
+    win.sidebar.build_all()   # every pattern's options, built otherwise only once their pattern is chosen
     assert unnamed(win) == []
     # a booklet built page by page (its rows' buttons), a photo book (its photos' buttons), and a touch screen
     _set(win, booklet=True, pages=3)
