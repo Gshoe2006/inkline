@@ -4,26 +4,29 @@ Escape skips. Once finished or skipped it isn't shown again (preferences.json "t
 """
 
 from PySide6.QtCore import QPoint, QRect, Qt
-from PySide6.QtWidgets import QApplication, QFrame, QHBoxLayout, QLabel, QVBoxLayout
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout
 
 from inkengine.i18n import tr
 
 from . import config, theme
-from .widgets import button, label
+from .widgets import button, label, own_look as _own_look, paint_frame
 
 # what each step points at (found on the window by target()), with its title and text
 TOUR_TITLES = {"rail": "Choose what you're working on", "gallery": "Pick a pattern by its picture",
-               "toolbar": "Make, save and print", "sidebar": "One section open at a time", "menu": "Settings and themes"}
+               "toolbar": "Make, save and print", "sidebar": "One section open at a time",
+               "menu": "Settings and themes"}
 TOUR_TEXTS = {
     "rail": "Create makes up a design and Photo converts one; Booklet, Poster and Print hold more options. Ctrl+1 to "
             "Ctrl+5 choose them from the keyboard.",
     "gallery": "The patterns you used last are here. All patterns… shows every one, by kind, with a search box.",
     "toolbar": "Presets, New design and More designs, then save as PDF, PNG or SVG, or print.",
-    "sidebar": "On Print and Booklet, opening a section closes the others, so every page fits without scrolling.",
-    "menu": "Edit → Settings (Ctrl+,) has printing defaults, what Ctrl+E saves, updates, the language and the themes."}
+    "sidebar": "Opening a section closes the others, so every page fits without scrolling.",
+    "menu": "Edit → Settings (Ctrl+,) has printing defaults, what Ctrl+E saves, updates, the language and the themes. "
+            "Help → Keyboard shortcuts lists every shortcut."}
 STEPS = [(k, TOUR_TITLES[k], TOUR_TEXTS[k]) for k in TOUR_TITLES]
 # touch mode: the toolbar keeps fewer buttons, and the menus are in its Menu button
-TOUCH_TEXTS = {"toolbar": "Presets, New design, Save PDF and Print. The Menu button has the rest, and the menus.",
+TOUCH_TEXTS = {"rail": "Create makes up a design and Photo converts one; Booklet, Poster and Print hold more options.",
+               "toolbar": "Presets, New design, Save PDF and Print. The Menu button has the rest, and the menus.",
                "menu": "Menu → Edit → Settings has printing defaults, what Save saves, updates, the language and the "
                        "themes."}
 
@@ -43,31 +46,12 @@ def target(window, name):
     return {"rail": rail, "gallery": sb.gallery, "toolbar": sb.toolbar, "sidebar": sb, "menu": menus}[name]
 
 
-def _own_look():
-    """True when Inkline's stylesheet is off (View → Use my desktop's style): the card and outline then draw their
-    own background and border in the desktop's colours, or the card's text would sit straight on the window."""
-    return not QApplication.instance().styleSheet()
-
-
-def _paint_frame(widget, fill):
-    from PySide6.QtGui import QPainter, QPalette, QPen
-    pal = widget.palette()
-    p = QPainter(widget)
-    p.setRenderHint(QPainter.RenderHint.Antialiasing)
-    width = 1.5 if fill else 3.0
-    p.setPen(QPen(pal.color(QPalette.ColorRole.Highlight), width))
-    p.setBrush(pal.color(QPalette.ColorRole.Window) if fill else Qt.BrushStyle.NoBrush)
-    half = width / 2
-    p.drawRoundedRect(widget.rect().toRectF().adjusted(half, half, -half, -half), 10, 10)
-    p.end()
-
-
 class Outline(QFrame):
     """The outline round the part of the window the tour is pointing at."""
 
     def paintEvent(self, ev):
         if _own_look():
-            _paint_frame(self, fill=False)
+            paint_frame(self, fill=False)
         else:
             super().paintEvent(ev)
 
@@ -77,7 +61,7 @@ class Tour(QFrame):
 
     def paintEvent(self, ev):
         if _own_look():
-            _paint_frame(self, fill=True)
+            paint_frame(self, fill=True)
         else:
             super().paintEvent(ev)
 

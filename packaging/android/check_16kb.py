@@ -1,16 +1,20 @@
 """Checks every native library in APKs, app bundles (.aab) or folders is ready for 16 KB memory pages, as Google Play
 requires of apps targeting Android 15 (API 35) and later: each ELF LOAD segment must be aligned to at least 16 KB.
 
-    python3 packaging/android/check_16kb.py FILE.apk|FILE.aab|DIR ...
+    python3 packaging/android/check_16kb.py [--bundled NAME ...] FILE.apk|FILE.aab|DIR ...
 
 Prints each library's smallest LOAD alignment and exits 1 if any is under 16 KB. Files named .so that aren't ELF
-are skipped (python-for-android's libpybundle.so is a tar of the Python standard library). Only the 64-bit ABIs
+are skipped (python-for-android's libpybundle.so is a gzipped tar of the Python standard library and site-packages,
+unpacked on the device). --bundled NAME also checks the Python extension module NAME (e.g. inkline_fast.abi3.so)
+inside each APK's or bundle's libpybundle.so, and fails if it isn't there. Only the 64-bit ABIs
 are checked (arm64-v8a, x86_64), as on Play; NDK r28 and later build 16 KB-aligned by default.
 """
 
+import io
 import os
 import struct
 import sys
+import tarfile
 import zipfile
 
 PAGE = 16384
@@ -72,15 +76,46 @@ def libraries(path):
                 yield name, z.read(name)
 
 
-def check(paths, out=print):
-    """The libraries under 16 KB alignment, as "file: name (alignment)" lines; out() is told about every one."""
+def bundled(path, names):
+    """(name, bytes) for each file whose base name is in names inside the libpybundle.so of an APK's or an .aab's
+    64-bit ABIs (as "<libpybundle path>!<member>"), and the names missing from any of those libpybundle.so files."""
+    found, missing = [], []
+    with zipfile.ZipFile(path) as z:
+        bundles = [n for n in z.namelist() if n.endswith("/libpybundle.so") and _abi(n) in ABIS]
+        if not bundles:
+            return found, [f"{n} (no libpybundle.so)" for n in names]
+        for bundle in bundles:
+            seen = set()
+            with tarfile.open(fileobj=io.BytesIO(z.read(bundle)), mode="r:*") as tar:
+                for member in tar.getmembers():
+                    base = member.name.rsplit("/", 1)[-1]
+                    if member.isfile() and base in names:
+                        seen.add(base)
+                        found.append((f"{bundle}!{member.name}", tar.extractfile(member).read()))
+            missing += [f"{n} (not in {bundle})" for n in names if n not in seen]
+    return found, missing
+
+
+def check(paths, out=print, bundled_names=()):
+    """The libraries under 16 KB alignment, as "file: name (alignment)" lines; out() is told about every one.
+    bundled_names: extension modules that must be in each APK's or bundle's libpybundle.so, checked too."""
     bad = []
     seen = 0
     for path in paths:
-        for name, data in libraries(path):
+        found = list(libraries(path))
+        if bundled_names:
+            if os.path.isdir(path):
+                bad.append(f"{os.path.basename(path)}: --bundled needs an APK or an .aab")
+            else:
+                more, missing = bundled(path, bundled_names)
+                found += more
+                bad += [f"{os.path.basename(path)}: {m}" for m in missing]
+        for name, data in found:
             aligns = load_alignments(data)
             if aligns is None:
                 out(f"{name}: not ELF, skipped")
+                if "!" in name:   # a --bundled module must be a library
+                    bad.append(f"{os.path.basename(path)}: {name} isn't an ELF library")
                 continue
             seen += 1
             low = min(aligns) if aligns else 0
@@ -95,9 +130,16 @@ def check(paths, out=print):
 
 
 def main(argv):
-    if not argv:
+    names, paths = [], []
+    args = iter(argv)
+    for a in args:
+        if a == "--bundled":
+            names.append(next(args, None) or "")
+        else:
+            paths.append(a)
+    if not paths or "" in names:
         raise SystemExit(__doc__)
-    bad = check(argv)
+    bad = check(paths, bundled_names=names)
     if bad:
         print("\nNot ready for 16 KB pages:\n  " + "\n  ".join(bad))
         raise SystemExit(1)

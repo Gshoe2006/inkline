@@ -54,6 +54,7 @@ STEP_NAMES = {"gen": "Pattern", "complexity": "Complexity", "weight": "Line weig
               "overlap": "Overlap", "testpage": "Printer test page", "fold": "Fold-and-staple", "paper": "Paper size",
               "orient": "Orientation", "margin": "Margin", "dpi": "Resolution", "page_list": "Pages"}
 KEEP_SECONDS = 60     # unsaved work is copied for recovery at most this often
+STATUS_SECONDS = 8    # the status line's message goes after this long (longer messages stay longer)
 PAGES_MIME = "application/x-inkline-pages"   # booklet pages on the clipboard: {"app": "Inkline", "pages": [...]}
 MERGE_SECONDS = 1.5   # changes to the same thing this close together (a slider drag, typing) are one step
 BOOKLET_LOOK = ("weight", "frame", "title", "name_line", "paper", "orient", "margin", "fold")   # drawn on every page
@@ -213,6 +214,8 @@ class Window(QMainWindow):
         self.worker.finished.connect(self._job_done)
         self.worker.failed.connect(lambda _n, why: self._job_failed(why))
         self.status.connect(self.sidebar.set_status)
+        # a message goes after a while, or with the next change made (not while a print or save shows its progress)
+        self._status_timer = QTimer(self, singleShot=True, timeout=lambda: self.sidebar.set_status(""))
         self._render_timer = QTimer(self, singleShot=True, interval=40, timeout=self._render)
         self._remember_timer = QTimer(self, singleShot=True, interval=400, timeout=self._save_settings)
         # a copy of unsaved work, to get it back if Inkline closes unexpectedly (not for windows that remember nothing)
@@ -229,6 +232,7 @@ class Window(QMainWindow):
         self._drags = 0      # counts finished slider and photo drags, so the next drag is a new step
         self._focus_moves = 0   # leaving a field and coming back starts a new typing step
         QApplication.instance().focusChanged.connect(self._focus_moved)
+        QApplication.instance().focusChanged.connect(self._first_focus)
         self._last = _Snapshot(self.state)
         self._restoring = False
 
@@ -277,7 +281,9 @@ class Window(QMainWindow):
     # --- wiring -------------------------------------------------------------------------------------
     def _wire(self):
         sb, pv = self.sidebar, self.preview
+        sb.changed.connect(self._clear_status)   # first: a message _changed() gives is kept
         sb.changed.connect(self._changed)
+        sb.notice.connect(self._msg)
         sb.cancel_btn.clicked.connect(self.cancel_job)
         esc = QShortcut(QKeySequence(Qt.Key.Key_Escape), self)
         esc.activated.connect(self._escape)
@@ -315,9 +321,15 @@ class Window(QMainWindow):
         pv.page.pan.connect(self._pan)
         pv.page.zoom.connect(self._wheel_zoom)
         pv.page.pan_end.connect(self._drag_ended)
-        for control, _write in sb._binds.values():
-            if isinstance(control, QAbstractSlider):
-                control.sliderReleased.connect(self._drag_ended)
+        self._hooked = set()   # the sliders whose release ends a drag step (a pattern's own, once built: panel_built)
+
+        def hook_sliders(*_a):
+            for control, _write in sb._binds.values():
+                if isinstance(control, QAbstractSlider) and id(control) not in self._hooked:
+                    self._hooked.add(id(control))
+                    control.sliderReleased.connect(self._drag_ended)
+        hook_sliders()
+        sb.panel_built.connect(hook_sliders)
         for s in (sb.zoom, sb.panx, sb.pany):
             s.sliderReleased.connect(self._drag_ended)
 
@@ -334,7 +346,7 @@ class Window(QMainWindow):
 
         f = mb.addMenu(tr("&File"))
         self._top_menus = [f]   # File, Edit, View, Help: the toolbar's Menu button holds them on a touch screen
-        act(f, "Ne&w project", self.new_project)
+        act(f, "Ne&w project", self.new_project, "Ctrl+Shift+N")
         act(f, "Open pro&ject…", lambda: self.open_project(), "Ctrl+Shift+O")
         self.recent_projects_menu = f.addMenu(tr("Open recen&t project"))
         self.recent_projects_menu.aboutToShow.connect(self._fill_recent_projects)
@@ -360,12 +372,16 @@ class Window(QMainWindow):
         undo.setShortcuts(QKeySequence.StandardKey.Undo)
         redo = self.history.createRedoAction(self, tr("&Redo"))
         redo.setShortcuts(QKeySequence.StandardKey.Redo)
+        undo.setData(tr("Undo"))   # its name in Help → Keyboard shortcuts (its text says what it undoes)
+        redo.setData(tr("Redo"))
         e.addAction(undo)
         e.addAction(redo)
         e.addSeparator()
         # a booklet's pages through the clipboard (Ctrl+C in the page list; Ctrl+V pastes pages or a picture)
         act(e, "&Copy page\tCtrl+C", lambda: self.copy_pages(False))
         act(e, "Copy &all pages", lambda: self.copy_pages(True))
+        # the design's number (its seed), as New design's right-click copies it: here for a touch screen too (Menu)
+        self.act_number = act(e, "Copy design &number", self.sidebar._copy_design_number)
         act(e, "&Paste\tCtrl+V", self.paste)
         e.addSeparator()
         act(e, "&History…", self.show_history, "Ctrl+H")
@@ -373,8 +389,9 @@ class Window(QMainWindow):
         act(e, "&Settings…", self.show_settings, "Ctrl+,")
         v = mb.addMenu(tr("&View"))
         self._top_menus.append(v)
-        act(v, "&New design", self.new_design, "Ctrl+N")
-        act(v, "&More designs…", self.more_designs, "Ctrl+Shift+N")
+        # Ctrl+N: a new design is what Inkline makes most; File → New project has Ctrl+Shift+N
+        self.act_new = act(v, "&New design", self.new_design, "Ctrl+N")
+        self.act_more = act(v, "&More designs…", self.more_designs, "Ctrl+Shift+M")
         act(v, "Pre&vious page\t←", lambda: self.step_page(-1))
         act(v, "Ne&xt page\t→", lambda: self.step_page(1))
         v.addSeparator()
@@ -415,6 +432,7 @@ class Window(QMainWindow):
         self._top_menus.append(h)
         act(h, "&What's new", lambda: self.show_whats_new())
         act(h, "T&our of the window", lambda: self.show_tour())
+        act(h, "&Keyboard shortcuts", self.show_shortcuts)
         act(h, "Check for &updates…", lambda: self.updates.check(asked=True))
         self.updates.add_menu(h.addMenu(tr("Check for updates au&tomatically")))
         self.act_translate = act(h, "Help t&ranslate Inkline…", self._help_translate)
@@ -490,6 +508,8 @@ class Window(QMainWindow):
                              and e.key() in (Qt.Key.Key_Left, Qt.Key.Key_Right))      # view; Page Up/Down still turn
                     and self.step_page(d)):
                 return True   # taken only when there were pages to turn; menus keep their arrow keys
+        if obj is self.sidebar and e.type() == QEvent.Type.Resize and not theme.TOUCH["on"]:
+            QTimer.singleShot(0, self, self._fit_toolbar)   # wider options (a wider font): less room for the toolbar
         return super().eventFilter(obj, e)
 
     def _set_mode(self, mode):
@@ -771,9 +791,16 @@ class Window(QMainWindow):
         self._drags += 1
 
     def _sync_actions(self):
-        """The File menu's saves are enabled exactly when the footer's buttons are (2.x clicked the button)."""
+        """The File menu's saves are enabled exactly when the footer's buttons are (2.x clicked the button); New
+        design and More designs only where a design is made up (a photo's page is the photo: they'd do nothing)."""
         if hasattr(self, "act_pdf"):
             sb = self.sidebar
+            make = self.state.settings.mode == "make"
+            for a in (self.act_new, self.act_more, self.act_number):
+                a.setEnabled(make)
+            if sb.new_design.isHidden() == make:   # the toolbar has them only on Create
+                sb.new_design.setVisible(make)
+                self._fit_toolbar()
             # Ctrl+E saves Edit → Settings' format, or PDF when that can't save this page (SVG of a photo)
             buttons = {"pdf": sb.pdf_btn, "png": sb.png_btn, "svg": sb.svg_btn}
             fmt = getattr(self, "_save_format", "pdf")
@@ -793,7 +820,8 @@ class Window(QMainWindow):
         if b.isEnabled():
             b.click()
         else:   # Booklet with a photo: say why nothing happened
-            self._msg(tr("A photo book is made on the Photo page (Ctrl+2)."))
+            self._msg(tr("A photo book is made on the Photo page.") if theme.TOUCH["on"] else
+                      tr("A photo book is made on the Photo page (Ctrl+2)."))
 
     # --- touch screens -------------------------------------------------------------------------------------
     def set_touch(self, on, save=True):
@@ -803,6 +831,7 @@ class Window(QMainWindow):
         self.menuBar().setVisible(not on)
         self.menu_btn.setVisible(bool(on))
         self.sidebar.keys.setVisible(not on)   # the keyboard shortcuts: no keyboard
+        self.sidebar.set_touch(on)             # hints say tap and pinch rather than click and scroll
         if on:
             self.setMinimumSize(360, 480)   # the bottom bar's six entries
         else:
@@ -822,8 +851,22 @@ class Window(QMainWindow):
             if err:
                 self._msg(err)
 
+    def _first_focus(self, old, new):
+        """The window's first focus, given when it opens, lands on the rail's first page (or, on a phone, the toolbar's
+        first button): a focus ring nobody asked for, round the page chosen it looks like a second thing chosen. Nothing
+        has the focus at the start; the first Tab goes to the rail."""
+        if new is None or new.window() is not self:
+            return
+        self._fit_toolbar()   # shown, with the sidebar at its width: the toolbar's room is known
+        QApplication.instance().focusChanged.disconnect(self._first_focus)
+        bars = (self.sidebar.rail, self.sidebar.toolbar, getattr(self, "bottom", None))   # a phone's: New design
+        if old is None and any(bar is not None and bar.isAncestorOf(new) for bar in bars):
+            QTimer.singleShot(0, self, new.clearFocus)
+
     def resizeEvent(self, ev):
         super().resizeEvent(ev)
+        if not theme.TOUCH["on"]:
+            self._fit_toolbar()
         if theme.TOUCH["on"]:
             narrow = self.width() < theme.ONE_COLUMN_WIDTH
             if narrow != self._narrow:
@@ -888,18 +931,24 @@ class Window(QMainWindow):
         brand; Save PNG and SVG and More designs in File and View; in one column, Save PDF too)."""
         sb = self.sidebar
         touch = theme.TOUCH["on"]
-        for w in (sb.brand, sb.png_btn, sb.svg_btn, sb.more_btn):
+        make = self.state.settings.mode == "make"   # More designs only where designs are made up
+        for w in (sb.brand, sb.png_btn, sb.svg_btn):
             w.setVisible(not touch)
+        sb.more_btn.setVisible(make and not touch)
         phone = touch and self._narrow
         sb.pdf_btn.setVisible(not phone)
         sb.presets_btn.setVisible(not phone)   # in the Menu button instead
         self.menu_btn.presets.setVisible(phone)
         m = 8 if touch and self._narrow else 14
         sb.toolbar.layout().setContentsMargins(m, 8, m, 8)
-        if touch and not phone:   # a tablet: More designs too, when the toolbar has room for it
+        if touch and not phone and make:   # a tablet: More designs too, when the toolbar has room for it
             room = self.width() - sb.rail.width() - sb.width()
             sb.toolbar.layout().invalidate()   # measured without it (hidden above)
             sb.more_btn.setVisible(sb.toolbar.sizeHint().width() + theme.PAIR_GAP + sb.more_btn.sizeHint().width() <= room)
+        if not touch:   # a longer language or a wider font: the brand gives way before a button is cut short
+            room = self.width() - sb.rail.width() - sb.width()
+            sb.toolbar.layout().invalidate()
+            sb.brand.setVisible(sb.toolbar.sizeHint().width() <= room)
 
     def _fit_tablet(self):
         """Touch, wide (a tablet held sideways): a portrait page is as tall as the window lets it be, so the room
@@ -1513,8 +1562,7 @@ class Window(QMainWindow):
             self._fit_tablet()
             self._fit_toolbar()
         self.preview.set_busy("")
-        self.sidebar.ws_note.setText(r.note)
-        self.sidebar.cross_note.setText(r.note)
+        self.sidebar.set_render_note(r.note)
         self.sidebar.sync(r.view)
         self._view = r.view
         self._show_printer_edges()
@@ -1744,7 +1792,7 @@ class Window(QMainWindow):
             book = sb.shown(sb.copies_answer_book) and sb.copies_answer_book.isChecked()
             return jobs.job(snap, only, copies, sb.copies_vary.isChecked(), answers, names, book)
         except ValueError as why:
-            self._msg(tr("{why} Fix the pages under Paper → Print or save only, or clear it to use every page.").format(
+            self._msg(tr("{why} Fix the pages under Print → Paper → Print or save only, or clear it to use every page.").format(
                 why=why))
             self.sidebar.reveal(self.sidebar.only_pages)   # Print is in the toolbar: the field may be out of view
             self.sidebar.only_pages.setFocus()
@@ -1774,7 +1822,7 @@ class Window(QMainWindow):
             printer.setDuplex(QPrinter.DuplexMode.DuplexLongSide)
         self._msg(tr("Opening the print dialog…"))
         dialog = QPrintDialog(printer, self)
-        # which pages print is chosen under Paper → Print or save only: the dialog's own range would be ignored
+        # which pages print is chosen under Print → Paper → Print or save only: the dialog's own range would be ignored
         dialog.setOption(QAbstractPrintDialog.PrintDialogOption.PrintPageRange, False)
         if dialog.exec() != QPrintDialog.DialogCode.Accepted:
             self._msg(tr("Print cancelled."))
@@ -1965,6 +2013,25 @@ class Window(QMainWindow):
 
     def _msg(self, text):
         self.status.emit(text)
+        # long enough to read (more for a longer message), then gone: it doesn't stay on through later screens
+        timer = getattr(self, "_status_timer", None)
+        if timer is None:
+            return
+        if text and not getattr(self, "_busy_saving", False):
+            timer.start(max(STATUS_SECONDS * 1000, 60 * len(text)))
+        else:
+            timer.stop()
+
+    def _clear_status(self, *_a):
+        """A change made: the last message was about what came before."""
+        if not self._busy_saving and self.sidebar.status.text():
+            self._status_timer.stop()
+            self.sidebar.set_status("")
+
+    def show_shortcuts(self):
+        """Help → Keyboard shortcuts: every one, from the menus and the window."""
+        from .shortcuts import ShortcutsDialog
+        ShortcutsDialog(self).exec()
 
     def show_history(self):
         """Every undo step in a list beside the window: choosing one goes back (or forward) to it."""

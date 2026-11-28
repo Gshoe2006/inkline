@@ -50,15 +50,28 @@ def test_the_rail_chooses_the_page_and_the_mode(make_win):
     assert w.state.settings.mode == "convert" and sb.page_key() == "photo"
 
 
+# the patterns with the most options of their own (and the longest hints)
+TALL = ["maths", "calendar", "speed", "name", "trace", "reward", "cryptogram", "lscwc", "drawread", "crossword", "clock",
+        "nonogram", "bingo", "memory", "coords"]
+MARGIN = 8   # px to spare: another font or a longer word still fits
+
+
 @pytest.mark.parametrize("lang", ["en", "de"])
-def test_every_page_fits_without_scrolling(make_win, lang):
-    """At 820 px high: Create with a pattern's options, Booklet edited page by page, Print with copies open,
-    Photo, Poster."""
+def test_every_page_fits_without_scrolling(make_win, lang, ui_font):
+    """At 820 px high, in Inkline's font and CI's wider DejaVu Sans: Create with each of the tallest patterns'
+    options, Booklet edited page by page, Print with copies open, Photo, Poster."""
     from inkengine import i18n
     try:
         i18n.set_language(lang)
         w = make_win()
         sb = w.sidebar
+        for gen in TALL:
+            w.state.update(gen=gen)
+            sb.load()
+            w._changed("gen")
+            spin(0.15)
+            col, view = sb._columns["make"], sb._scrolls["make"].viewport()
+            assert col.sizeHint().height() + MARGIN <= view.height(), (lang, ui_font, gen, col.sizeHint().height())
         w.state.update(gen="maths")
         sb.load()
         w._changed("gen")
@@ -67,14 +80,15 @@ def test_every_page_fits_without_scrolling(make_win, lang):
         sb.load()
         w._changed("booklet")
         sb.pages_edit.emit(True)
-        cases += [("booklet", None), ("print", "paper"), ("print", "copies"), ("print", "text"), ("poster", None)]
+        cases += [("booklet", None), ("print", "paper"), ("print", "copies"), ("make", "text"), ("poster", None)]
         for page, fold in cases:
             sb.show_page(page)
             if fold:
                 sb.folds[fold].set_open(True)
             spin(0.2)
             col, view = sb._columns[page], sb._scrolls[page].viewport()
-            assert col.sizeHint().height() <= view.height(), (lang, page, fold, col.sizeHint().height(), view.height())
+            assert col.sizeHint().height() + MARGIN <= view.height(), (lang, ui_font, page, fold,
+                                                                        col.sizeHint().height(), view.height())
         sb.show_page("booklet")
         sb.book_folds["pack"].set_open(True)                 # the Worksheet pack with its five days
         spin(0.2)
@@ -245,7 +259,7 @@ def test_searching_in_another_language():
         i18n.set_language("en")
 
 
-def test_changing_a_booklet_page_on_the_booklet_page(make_win):
+def test_changing_a_booklet_page_on_the_booklet_page(make_win, ui_font):
     w = make_win()
     sb = w.sidebar
     w.state.update(booklet=True, pages=4)

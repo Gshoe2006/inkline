@@ -2,14 +2,16 @@
 
 - Rail: Make · Photo (the two modes) and Booklet · Poster · Print (more options for what's made); each shows its own
   page of options beside it.
-- Fold: a section of options that opens and closes; the folds on a page take turns, one open at a time, so a page
-  fits without scrolling.
+- Fold: a section of options that opens and closes; every page holds its options in folds, and the folds on a page
+  take turns, one open at a time, so a page fits without scrolling.
 - Gallery: the patterns used last as pictures, to choose one by sight (the Pattern list under it has them all).
 - Popup: a toolbar button whose panel holds real controls (Presets).
 - Touch screens (theme.TOUCH): BottomBar, the rail's entries along the bottom of a phone-width window, with Preview
   (the options page and the preview take turns there); MenuButton, the menu bar's menus in the toolbar, as Android
   has no menu bar.
 """
+
+from itertools import accumulate
 
 from PySide6.QtCore import QEvent, QObject, QSize, Qt, Signal
 from PySide6.QtGui import QAction, QIcon, QPixmap
@@ -48,14 +50,23 @@ class Rail(QFrame):
             b.setText(tr(text))
             b.setToolTip(tr("{name} ({keys})").format(name=tr(text), keys=f"Ctrl+{i + 1}"))   # the window's shortcut
             b.setCheckable(True)   # not exclusive buttons: those switch on the arrow keys, changing the mode by accident
+            # the focus ring is the keyboard's: Tab reaches the rail, a click doesn't put a ring on it (_click moves a
+            # ring that's already there to the page clicked)
+            b.setFocusPolicy(Qt.FocusPolicy.TabFocus)
             b.setCursor(Qt.CursorShape.PointingHandCursor)
             b.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
             b.setMinimumHeight(48)
-            b.clicked.connect(lambda _c=False, k=key: self.chosen.emit(k))
+            b.clicked.connect(lambda _c=False, k=key: self._click(k))
             lay.addWidget(b)
             self.buttons[key] = b
         lay.addStretch(1)
         self.fit_width()
+
+    def _click(self, key):
+        from PySide6.QtWidgets import QApplication
+        if QApplication.focusWidget() in self.buttons.values():   # the keyboard was on the rail: it follows the click
+            self.buttons[key].setFocus(Qt.FocusReason.TabFocusReason)
+        self.chosen.emit(key)
 
     def fit_width(self):
         """As wide as RAIL_WIDTH, or wider when a label needs it (a longer language, a wider font)."""
@@ -264,22 +275,16 @@ class Gallery(QWidget):
     """The patterns as pictures: picked(gen) when one is clicked."""
     picked = Signal(str)
 
-    def __init__(self, names):
+    def __init__(self, names, descriptions=None):
         super().__init__()
-        self.names = names
+        self.names, self.descriptions = names, descriptions or {}
         grid = QGridLayout(self)
         grid.setContentsMargins(0, 0, 0, 0)
         grid.setSpacing(theme.PAIR_GAP)
         self.buttons = []
         for i in range(GALLERY):
-            b = QToolButton()
-            b.setObjectName("galleryItem")
-            b.setCheckable(True)
+            b = Tile(64, 86, 108)   # room for a name on two lines
             b.setAutoExclusive(False)
-            b.setCursor(Qt.CursorShape.PointingHandCursor)
-            b.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
-            b.setIconSize(QSize(64, 64))
-            b.setMinimumSize(86, 96)
             b.clicked.connect(lambda _c=False, i=i: self._click(i))
             grid.addWidget(b, i // 3, i % 3)
             self.buttons.append(b)
@@ -290,9 +295,8 @@ class Gallery(QWidget):
         """Which patterns, in order, and the one in use (checked, if it's among them)."""
         self.gens = list(gens)[:GALLERY]
         for b, gen in zip(self.buttons, self.gens):
-            b.setText(tr(self.names.get(gen, gen)))
-            b.setToolTip(tr(self.names.get(gen, gen)))
-            b.setAccessibleName(tr(self.names.get(gen, gen)))
+            b.set_name(tr(self.names.get(gen, gen)))
+            b.setToolTip(tr(self.descriptions.get(gen) or self.names.get(gen, gen)))   # what it is, as All patterns says
             b.setChecked(gen == current)
 
     def set_picture(self, gen, img):
@@ -304,6 +308,80 @@ class Gallery(QWidget):
             for k, b in enumerate(self.buttons):   # the one clicked stays chosen, even clicked again
                 b.setChecked(k == i)
             self.picked.emit(self.gens[i])
+
+
+# where a pattern's one-word name (in any language) breaks when it's wider than its picture: at the joins of its parts
+JOINS = ["Belohnungs-tafel", "Belonings-kaart", "Buchstaben-salat", "Compren-sione", "Compré-hension", "compre-hension",
+         "Crypto-gramme", "Critto-gramma", "Geheim-schrift", "Hussel-woorden", "Koordinaten-system", "Kreuzwort-rätsel",
+         "Kruiswoord-puzzel", "Lese-verständnis", "Memory-kaarten", "Nono-gramma", "Rechen-übungen",
+         "Reken-oefeningen", "Schüttel-wörter", "Vlecht-patroon", "desorde-nadas", "embara-lhadas"]
+_JOINS = {j.replace("-", ""): [len(p) for p in accumulate(j.split("-"))][:-1] for j in JOINS}
+
+
+def _cut(word, metrics, width):
+    """(head, tail) of a word too wide for one line: after a hyphen it has, at a join (JOINS), or else as far in as
+    fits leaving at least four letters to the second line; None when nothing fits."""
+    def fits(k, mark):
+        return metrics.horizontalAdvance(word[:k] + mark) <= width
+    hyphens = [i + 1 for i, c in enumerate(word) if c == "-" and 0 < i < len(word) - 1]
+    for k in reversed(hyphens):
+        if fits(k, ""):
+            return word[:k], word[k:]
+    for k in reversed(_JOINS.get(word, [])):
+        if fits(k, "-"):
+            return word[:k] + "-", word[k:]
+    k = max((k for k in range(4, len(word) - 3) if fits(k, "-")), default=0)
+    return (word[:k] + "-", word[k:]) if k else None
+
+
+def two_lines(text, metrics, width):
+    """A picture button's name on up to two lines that fit width (px), broken between words; what doesn't fit on
+    the second ends in …. A long name is no longer cut in the middle ("Tellin…e time")."""
+    words, first = text.split(), ""
+    for i, w in enumerate(words):
+        t = f"{first} {w}".strip()
+        if metrics.horizontalAdvance(t) <= width:
+            first = t
+            continue
+        if not first:   # one word wider than the button (German's long nouns): broken where its parts join
+            cut = _cut(w, metrics, width)
+            if cut is None:
+                return metrics.elidedText(text, Qt.TextElideMode.ElideRight, width)
+            first, words[i] = cut
+        rest = " ".join(words[i:])
+        return first + ("\n" + metrics.elidedText(rest, Qt.TextElideMode.ElideRight, width) if rest else "")
+    return first
+
+
+class Tile(QToolButton):
+    """A pattern as a picture with its name under it, on two lines when it needs them (two_lines)."""
+
+    def __init__(self, icon_px, min_w, min_h):
+        super().__init__()
+        self.setObjectName("galleryItem")
+        self.setCheckable(True)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
+        self.setIconSize(QSize(icon_px, icon_px))
+        self.setMinimumSize(min_w, min_h)
+        self.name = ""
+
+    def set_name(self, name):
+        self.name = name
+        self.setAccessibleName(name)
+        self._relabel()
+
+    def _relabel(self):
+        self.setText(two_lines(self.name, self.fontMetrics(), max(self.width(), self.minimumWidth()) - 12))
+
+    def resizeEvent(self, ev):
+        super().resizeEvent(ev)
+        self._relabel()
+
+    def changeEvent(self, ev):
+        super().changeEvent(ev)
+        if ev.type() in (QEvent.Type.StyleChange, QEvent.Type.FontChange):
+            self._relabel()
 
 
 def recent_patterns(used, known):
@@ -325,6 +403,8 @@ class Popup(QToolButton):
         self.setAccessibleName(tr(text))   # without the arrow
         self.setObjectName("toolbarMenu")
         self.setCursor(Qt.CursorShape.PointingHandCursor)
+        # never narrower than its text, as the toolbar's push buttons ("Réglages…strés" was cut short)
+        self.setSizePolicy(self.sizePolicy().horizontalPolicy().Minimum, self.sizePolicy().verticalPolicy())
         self.frame = QFrame(self, Qt.WindowType.Popup)
         self.frame.setObjectName("popupPanel")
         lay = QVBoxLayout(self.frame)
@@ -427,17 +507,10 @@ class AllPatterns(QWidget):
             grid.setContentsMargins(0, 0, 0, 0)
             grid.setSpacing(theme.PAIR_GAP)
             for i, gen in enumerate(g for g in gens if g in names):
-                b = QToolButton()
-                b.setObjectName("galleryItem")
-                b.setCheckable(True)
+                b = Tile(80, 112, 132)
                 b.setChecked(gen == current)
-                b.setCursor(Qt.CursorShape.PointingHandCursor)
-                b.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
-                b.setIconSize(QSize(80, 80))
-                b.setMinimumSize(112, 120)
-                b.setText(tr(names[gen]))
+                b.set_name(tr(names[gen]))
                 b.setToolTip(tr(descriptions.get(gen, names[gen])))
-                b.setAccessibleName(tr(names[gen]))
                 b.clicked.connect(lambda _c=False, g=gen: self.picked.emit(g))
                 grid.addWidget(b, i // 4, i % 4)
                 self.buttons[gen] = b
@@ -446,11 +519,11 @@ class AllPatterns(QWidget):
                 specs.append(spec)
             lay.addWidget(grid_w)
             self.headings.append((head, grid_w, gens))
-        lay.addStretch(1)
         self.empty = QLabel(tr("No pattern matches. Try another word."))
         self.empty.setProperty("role", "hint")
         self.empty.hide()
-        lay.addWidget(self.empty)
+        lay.addWidget(self.empty)   # above the stretch: at the top, under the search box, where the pictures were
+        lay.addStretch(1)
         scroll.setWidget(body)
         outer.addWidget(scroll, 1)
         # the keyboard: Down from the search box into the pictures, arrows between them, Enter to choose; Enter in

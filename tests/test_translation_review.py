@@ -151,6 +151,78 @@ def test_the_web_page_for_every_language_and_strings_that_look_like_html(tmp_pat
         translation_sheet.main(["translation_sheet.py", "all", str(tmp_path / "all.csv")])
 
 
+# --- the review site (GitHub Pages) ------------------------------------------------------------------------------
+
+def test_the_site_index_links_each_language_with_its_counts():
+    page = translation_sheet.index_page({"fr": (12, 40), "de": (0, 38), "xx": (3, 3)},
+                                        {"fr": "Français", "de": "Deutsch", "xx": "<b>X & Y</b>"}, commit="abcdef0123456789")
+    assert '<a href="fr.html">Français <span class="en">(French)</span></a>' in page
+    assert "12 of 40 need review" in page and "all 38 reviewed" in page and "3 of 3 need review" in page
+    assert '<a href="all.html">' in page and "15 of 81 need review" in page   # every language: the totals
+    assert page.index('href="fr.html"') < page.index('href="de.html"') < page.index('href="all.html"')
+    assert "&lt;b&gt;X &amp; Y&lt;/b&gt;" in page and "<b>X" not in page   # names are escaped
+    assert "abcdef012345" in page and "abcdef0123456" not in page
+    assert "template=translation.yml" in page and "docs/translating.md" in page
+    assert not re.search(r"<script[^>]+src=|<link[^>]+stylesheet|@import|url\(", page)   # nothing to fetch
+    assert "prefers-color-scheme: dark" in page and 'name="viewport"' in page
+    assert "Made from commit" not in translation_sheet.index_page({"fr": (1, 2)}, {"fr": "Français"})
+
+
+def test_the_site_has_a_page_per_language_and_an_index(marks, tmp_path):
+    out = tmp_path / "site"
+    translation_sheet.main(["translation_sheet.py", "site", str(out)])
+    assert sorted(os.listdir(out)) == sorted([f"{c}.html" for c in LANGS] + ["all.html", "index.html"])
+    index = (out / "index.html").read_text(encoding="utf-8")
+    for code in LANGS:
+        _text, data = _page_data(out / f"{code}.html")
+        assert list(data["languages"]) == [code]
+        need = sum(1 for r in data["rows"] if r[4])
+        assert f'href="{code}.html"' in index and f"{need} of {len(data['rows'])} need review" in index
+    _text, data = _page_data(out / "all.html")
+    assert list(data["languages"]) == LANGS
+
+
+def _site_workflow():
+    return open(os.path.join(ROOT, ".github", "workflows", "translations-site.yml"), encoding="utf-8").read()
+
+
+def test_the_site_workflow_builds_and_deploys_with_pages():
+    yaml = pytest.importorskip("yaml")
+    text = _site_workflow()
+    flow = yaml.safe_load(text)
+    on = flow[True]   # YAML 1.1 reads the key `on` as true
+    assert "workflow_dispatch" in on and on["push"]["branches"] == ["main"]
+    paths = on["push"]["paths"]
+    for p in ("inkengine/locale/**", "packaging/translations/**", "packaging/translation_sheet.py",
+              "inkengine/patterns/**"):
+        assert p in paths
+    assert flow["permissions"]["pages"] == "write" and flow["permissions"]["id-token"] == "write"
+    build, deploy = flow["jobs"]["build"], flow["jobs"]["deploy"]
+    uses = [s.get("uses", "").split("@")[0] for s in build["steps"]]
+    runs = "\n".join(s.get("run", "") for s in build["steps"])
+    assert uses.index("actions/checkout") < uses.index("actions/setup-python") < uses.index("actions/configure-pages") \
+        < uses.index("actions/upload-pages-artifact")
+    assert "PySide6-Essentials==6.12.0" in runs and "numpy" in runs
+    assert "packages.microsoft.com" in runs and "sudo rm -f" in runs   # the apt source that fails at times
+    site = re.search(r"translation_sheet\.py site (\S+)", runs).group(1)
+    upload = [s for s in build["steps"] if s.get("uses", "").startswith("actions/upload-pages-artifact")][0]
+    assert upload["with"]["path"] == site
+    assert deploy["needs"] == "build" and deploy["environment"]["name"] == "github-pages"
+    assert "steps.deployment.outputs.page_url" in deploy["environment"]["url"]
+    step = deploy["steps"][-1]
+    assert step["uses"].startswith("actions/deploy-pages@") and step["id"] == "deployment"
+
+
+def test_the_guide_and_issue_form_point_reviewers_to_the_site():
+    guide = open(os.path.join(ROOT, "docs", "translating.md"), encoding="utf-8").read()
+    form = open(os.path.join(ROOT, ".github", "ISSUE_TEMPLATE", "translation.yml"), encoding="utf-8").read()
+    assert translation_sheet.SITE_URL == "https://gshoe2006.github.io/inkline/"
+    assert translation_sheet.SITE_URL in guide and translation_sheet.SITE_URL in form
+    assert "GitHub Actions" in guide and "Settings → Pages" in guide   # what the owner does once
+    assert "python3" not in form   # reviewers aren't asked to run anything
+    assert guide.index(translation_sheet.SITE_URL) < guide.index("python3 packaging/translation_sheet.py")
+
+
 # --- apply.py ----------------------------------------------------------------------------------------------------
 
 @pytest.fixture

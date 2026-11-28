@@ -74,7 +74,7 @@ flatpak install --user inkline-6.3.0.flatpak
 
 ### Found a problem?
 
-Please open an issue saying what you did, what you expected, and what happened. Include your system (distro, Windows or macOS version), and the printer if it's about printing.## 6.2.0 - 2026-11-27
+Please open an issue saying what you did, what you expected, and what happened. Include your system (distro, Windows or macOS version), and the printer if it's about printing.
 
 ## 6.2.0 - 2026-11-27
 

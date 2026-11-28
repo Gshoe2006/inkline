@@ -86,7 +86,10 @@ release, next to the APKs. Everything for the listing is in the repository or th
   `targetSdkVersion` the Android workflow checks for. Building for a newer target: `build.py --target-api 37`.
 - **16 KB pages.** Play requires every native library of an app targeting API 35 or later to be aligned for 16 KB
   memory pages. NDK r28c builds that way by default; the workflows check every library in the APKs and the bundle
-  with `packaging/android/check_16kb.py` (and `zipalign -c -P 16`), and fail if one isn't.
+  with `packaging/android/check_16kb.py` (and `zipalign -c -P 16`), and fail if one isn't. The Rust module
+  inkline_fast sits in `libpybundle.so` (python-for-android's bundle of the Python files) rather than in
+  `lib/<abi>/`, so `--bundled inkline_fast.abi3.so` checks it there too; its recipe links it with
+  `-z max-page-size=16384` and refuses to finish if it isn't aligned.
 - **versionCode** `1 000 000 000 + XYYZZ × 10 + ABI` from VERSION X.Y.Z (6.1.0 on arm64: 1000601001; x86_64 ends
   in 2), from `version_code()` in `packaging/android/build.py`. It rises with every release as long as the minor
   and patch numbers stay under 100, and it's above what earlier APKs had, so they update in place.

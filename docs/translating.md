@@ -7,28 +7,50 @@ better wording. You don't need to know any programming.
 
 In Inkline, **Help → Help translate Inkline…** opens this page.
 
-## 1. Get the list of strings
+## 1. Open the review page
 
-Every string Inkline shows in its window or prints on a page, and the word lists its puzzles use, can be written
-out side by side with the English:
+Every string Inkline shows in its window or prints on a page, and the word lists its puzzles use, are listed side
+by side with the English at **[gshoe2006.github.io/inkline](https://gshoe2006.github.io/inkline/)**: one page for
+each language (and one with every language), and how many strings in each still need review. Nothing to install
+and no programming: open your language's page in any browser, search, filter to what still needs review, and type
+a better wording beside any row. What you type is kept in your browser until you clear it. Then press
+**Copy my suggestions** and paste them into an issue (see step 3).
 
-- **A web page** (easiest): open it in any browser, search, filter to what still needs review, and type a better
-  wording beside any row. It works offline and keeps what you type until you clear it. Then press
-  **Copy my suggestions** and paste them into an issue (see step 3).
-- **A spreadsheet** (CSV, for Excel, LibreOffice Calc or Google Sheets): fill in the *Better wording* and
-  *Comment* columns and attach the file to an issue.
+The pages are remade from the main branch whenever a translation or word list changes, so they always show what
+the next release will say.
 
-To make them you need Python 3 and a copy of Inkline's source:
+If you'd rather use a spreadsheet (CSV, for Excel, LibreOffice Calc or Google Sheets, with *Better wording* and
+*Comment* columns to fill in and attach to an issue), open a
+[Suggest a better translation](https://github.com/Gshoe2006/inkline/issues/new?template=translation.yml) issue
+saying which language you'd like to check, and a maintainer will attach one for you.
+
+### Making the pages and sheets yourself (maintainers)
+
+With Python 3, PySide6 and a copy of Inkline's source:
 
 ```sh
-python3 packaging/translation_sheet.py all inkline-review.html        # every language, one web page
+python3 packaging/translation_sheet.py all inkline-review.html        # every language, one web page (works offline)
 python3 packaging/translation_sheet.py fr inkline-fr-review.html      # just French
 python3 packaging/translation_sheet.py fr                             # inkline-fr-review.csv
 python3 packaging/translation_sheet.py fr --needs-review              # only what nobody has checked, newest first
+python3 packaging/translation_sheet.py site out/                      # the whole site: out/index.html and a page each
 ```
 
-If you can't run these, open a [Suggest a better translation](https://github.com/Gshoe2006/inkline/issues/new?template=translation.yml)
-issue saying which language you'd like to check, and a maintainer will attach the page for you.
+### The review site (for the repository's owner)
+
+[`.github/workflows/translations-site.yml`](../.github/workflows/translations-site.yml) runs `translation_sheet.py
+site` and publishes the result with GitHub Pages whenever a push to `main` changes `inkengine/locale/`,
+`packaging/translations/`, `packaging/translation_sheet.py` or the word lists in `inkengine/patterns/` (or when run
+by hand from the Actions tab). GitHub Pages has to be switched on once, by the owner:
+
+1. On GitHub, open the repository's **Settings → Pages**.
+2. Under **Build and deployment**, set **Source** to **GitHub Actions** (not "Deploy from a branch").
+3. Run the workflow once: **Actions → Translation review site → Run workflow**.
+
+The site is then at **https://gshoe2006.github.io/inkline/**. Until Pages is switched on, the workflow's deploy
+step fails; nothing else depends on it.
+
+### What's on each row
 
 Each row says **where** the text appears (*window*, *page* — printed on a page — or a puzzle's word list), the
 **English**, the **translation**, whether it **needs review**, and a **Key** (the English text, or for word lists

@@ -110,10 +110,22 @@ window and its first paint takes about 0.06 s more either way. Screenshots of ev
 touch, are pixel-for-pixel the same before and after. `tests/test_startup.py` checks that building the window
 restyles nothing and that the central widget goes in empty.
 
-Not done, and what it could save: about half of the 1,054 widgets are hidden, the options of patterns not chosen
-(each combo box alone brings nine of Qt's own widgets for its popup). Building each pattern's options the first time
-it's chosen could save roughly another 0.1–0.15 s, but every control is referenced by `Sidebar.sync()`, presets,
-undo, projects and many tests, so it's a larger change, best made when the sidebar isn't also being extended.
+### Each pattern's options, built when first wanted
+
+About half the window's widgets were the options of patterns not chosen (each combo box alone brings nine of Qt's own
+widgets for its popup). Since 6.3 each pattern's own options (`PATTERN_PANELS` in `inkapp/sidebar.py`: 22 panels, from
+the word search's words to the calendar's month and year) are built the first time that pattern is chosen, in their
+place between Age and Complexity, with the settings as they are. Everything that reads a control by name still works:
+reading one of a panel's attributes builds that panel first (`Sidebar.__getattr__`), `load()` fills in only what's
+built, `sync()` builds and shows the chosen pattern's panel, and tests that walk every control call
+`sidebar.build_all()`. `tests/test_lazy_panels.py` checks the table against what each panel makes.
+
+The window starts with 658 widgets instead of 1,167 (a mandala, the first pattern, has no options of its own).
+Building the window, median of 20 fresh processes each, run alternately with and without the change, offscreen, this
+container: **0.41 s before (0.37–0.44), 0.27 s after (0.23–0.33)**, about 0.14 s less. Choosing a pattern for the
+first time then builds its options once: 5–20 ms for most, 49 ms for the times-table speed test (all 22 together
+about 0.2 s).
+
 Most of Inkline's import time is numpy (0.05 s, used by the engine everywhere) and PySide6 binding its types.
 
 ## The Rust module
@@ -214,15 +226,21 @@ and gives the Python code's answer.
 | AppImage x86_64 / aarch64 | 3.12 (uv's standalone) | wheel pip-installed beside numpy |
 | Snap amd64 / arm64 | core24's 3.12 | its own part: Rust from rustup, `cargo build`, the library put in the venv's site-packages |
 | Flatpak | the freedesktop 26.08 SDK's | built offline with the SDK's Rust extension from the crates in Cargo.lock, listed in the manifest by `packaging/flatpak/cargo_sources.py` |
+| Android APK / Play bundle (arm64-v8a, x86_64) | python-for-android's 3.14 | a local python-for-android recipe (`packaging/android/inkline_fast_recipe.py`): `cargo build --locked` for `aarch64-linux-android` or `x86_64-linux-android`, linked by the NDK's clang (API 28) against python-for-android's libpython3.14, put in site-packages as `inkline_fast.abi3.so` |
+
+On Android the module travels inside `libpybundle.so` (python-for-android's tar of the Python files, unpacked on the
+device) rather than in the APK's `lib/<abi>/`, so the recipe checks its 16 KB page alignment as it builds, and the
+workflows check it again in the APK and the bundle (`check_16kb.py --bundled inkline_fast.abi3.so`). The emulator
+self-test runs with `INKLINE_EXPECT_FAST=1` (`emulator-test.sh` leaves an `inkline-expect-fast` file beside
+`inkline-selftest`, which main.py turns into the variable), and the workflow checks its `inkline-fast.txt` says
+yes. Only the x86_64 build runs on the emulator; the arm64 one is built the same way, from the same crate, but is
+proved to load only on a real phone.
 
 Not shipped, and why:
 
 - **The `.run` installer and the Arch package** run on the system's own Python and numpy, which differ from machine
   to machine, and they carry no compiled code at all (the .run works on any processor). They use the Python code:
   the same pages, slower photos. (An Arch user can still `pip install` the module from `rust/inkline_fast`.)
-- **Android** isn't done yet: it needs the module cross-compiled for arm64-v8a (and x86_64 for the emulator) with
-  the NDK, as a python-for-android recipe like `packaging/android/pyjnius_recipe.py`, and the 16 KB page-size check
-  (`packaging/android/check_16kb.py`) run on it. The Python code is used there until then.
 - **Running from source** uses it if it's installed (`packaging/build_fast.py --install`).
 
 ## Recommendation for 8.0
@@ -235,5 +253,6 @@ Not shipped, and why:
   both give the same output. What's left in the photo pages is mostly Qt painting and PNG encoding.
 - **Look at Qt painting for engrave and truchet.** Stipple's 2.2 s of path filling is now 0.2 s (above); engrave's
   0.65 s and truchet's 0.44 s are still one `fillPath`/`drawPath` each.
-- **Shipping the module** is done for every package with its own Python (above); Android is the step left.
-- **Start-up**: profiled and roughly halved (Start-up, above). What's left is Qt polishing about a thousand widgets.
+- **Shipping the module** is done for every package with its own Python, Android included (above).
+- **Start-up**: profiled and roughly halved (Start-up, above), then each pattern's options built when first wanted
+  (about 0.14 s less again). What's left is Qt polishing about 650 widgets.

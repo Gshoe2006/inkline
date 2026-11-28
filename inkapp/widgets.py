@@ -6,10 +6,13 @@ SubOptions  indented options with a line on their left, shown while their parent
 Pair        two rows side by side (2.x's .pair)
 Hint        small muted help text (2.x's .hint)
 Pager       ‹ Page 3 of 14 › (2.x's .pager)
+
+own_look() and paint_frame() give a floating card (the tour's, the preview's "rendering…") its own background and
+border when Inkline's stylesheet is off (View → Use my desktop's style), where it would otherwise be see-through.
 """
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import (QCheckBox, QComboBox, QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit,
+from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit,
                                QPushButton, QSlider, QVBoxLayout, QWidget)
 
 from inkengine.i18n import tr
@@ -20,6 +23,27 @@ from . import theme
 def _role(widget, role):
     widget.setProperty("role", role)
     return widget
+
+
+def own_look():
+    """True when Inkline's stylesheet is off (View → Use my desktop's style): a floating card then draws its own
+    background and border in the desktop's colours, or its text would sit straight on what's under it."""
+    return not QApplication.instance().styleSheet()
+
+
+def paint_frame(widget, fill, radius=10, width=None):
+    """A rounded border in the palette's highlight colour round the widget, filled with its window colour (fill),
+    or an outline only."""
+    from PySide6.QtGui import QPainter, QPalette, QPen
+    pal = widget.palette()
+    p = QPainter(widget)
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    width = width or (1.5 if fill else 3.0)
+    p.setPen(QPen(pal.color(QPalette.ColorRole.Highlight), width))
+    p.setBrush(pal.color(QPalette.ColorRole.Window) if fill else Qt.BrushStyle.NoBrush)
+    half = width / 2
+    p.drawRoundedRect(widget.rect().toRectF().adjusted(half, half, -half, -half), radius, radius)
+    p.end()
 
 
 def label(text, role="label"):
@@ -59,7 +83,7 @@ class Check(QWidget):
         self.text = label(text)
         self.text.setWordWrap(True)
         self.text.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.text.mousePressEvent = lambda _e: self.box.toggle()
+        self.text.mousePressEvent = lambda _e: self.box.toggle() if self.box.isEnabled() else None
         lay.addWidget(self.box, 0, Qt.AlignmentFlag.AlignTop)
         lay.addWidget(self.text, 1)
         self.box.toggled.connect(self.toggled)
@@ -131,6 +155,7 @@ class OptionRow(QWidget):
         top = QHBoxLayout()
         top.setSpacing(theme.PAIR_GAP)
         self.label = label(text)
+        self.label.setWordWrap(True)   # a long label (another language, half a Pair) wraps rather than widen the sidebar
         self.label.setBuddy(control)
         if not control.accessibleName():   # a screen reader names a list by its label, not its current entry
             control.setAccessibleName(self.label.text())

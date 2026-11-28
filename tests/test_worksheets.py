@@ -256,7 +256,7 @@ def test_the_sidebar_offers_each_worksheets_options(win):
     _set(win, trace_source="words")
     assert sb.shown(sb.trace_text_row)
     _set(win, trace_source="name")
-    assert sb.shown(sb.trace_hint) and "Paper → Names" in sb.trace_hint.text()
+    assert sb.shown(sb.trace_hint) and "Print → Copies and names" in sb.trace_hint.text()
     _set(win, gen="crossword")
     assert sb.shown(sb.cross_opts) and not sb.shown(sb.cross_words_row)
     _set(win, cross_theme="custom")
