@@ -226,6 +226,16 @@ QMenu::item {{ padding: 12px 24px; }}
 """
 
 
+def _filled_choice(t):
+    """Where borders are as dark as the text (High contrast), the rail's chosen page is filled with the accent: an
+    accent bar alone is hard to tell from the keyboard's black focus ring."""
+    if t.line != t.ink:
+        return ""
+    return f"""
+QToolButton#railButton:checked {{ background: {t.accent}; border-color: {t.accent}; color: {t.accent_ink}; }}
+QToolButton#railButton:checked:focus {{ border: 2px solid {t.ink}; border-left: 4px solid {t.ink}; }}"""
+
+
 def _stylesheet(t):
     ui, head, mono = _families(FONT_UI), _families(FONT_HEAD), _families(FONT_MONO)
     return f"""
@@ -250,7 +260,7 @@ QToolButton#railButton:checked {{ background: {t.field}; border-color: {t.field}
   color: {t.accent}; padding-left: 1px; }}
 QToolButton#railButton:focus {{ border: 2px solid {t.ink}; padding: 3px; }}
 QToolButton#railButton:checked:focus {{ border: 2px solid {t.ink}; border-left: 4px solid {t.accent}; padding: 3px 3px 3px 1px; }}
-QToolButton#railButton:disabled {{ color: {t.off}; }}
+QToolButton#railButton:disabled {{ color: {t.off}; }}{_filled_choice(t)}
 QToolButton#galleryItem {{ background: {t.field}; border: 1px solid {t.line}; border-radius: 8px; font-size: 11px;
   padding: 4px; }}
 QToolButton#galleryItem:hover {{ border-color: {t.accent}; }}

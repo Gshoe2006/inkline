@@ -91,10 +91,26 @@ def test_the_rails_focus_ring_isnt_its_selection(make_win):
     w = make_win()
     spin()
     assert QApplication.focusWidget() not in w.sidebar.rail.buttons.values()   # nothing on the rail at the start
-    photo = w.sidebar.rail.buttons["photo"]
-    QTest.mouseClick(photo, Qt.MouseButton.LeftButton)
-    assert QApplication.focusWidget() is photo                                 # a click takes the focus along
-    assert w.sidebar.rail.buttons["booklet"].isEnabled() is False
+    rail = w.sidebar.rail.buttons
+    QTest.mouseClick(rail["photo"], Qt.MouseButton.LeftButton)
+    assert QApplication.focusWidget() not in rail.values()                     # a click leaves no ring
+    rail["photo"].setFocus(Qt.FocusReason.TabFocusReason)                      # the keyboard on the rail...
+    QTest.mouseClick(rail["make"], Qt.MouseButton.LeftButton)
+    assert QApplication.focusWidget() is rail["make"]                          # ...follows a click
+    assert rail["booklet"].isEnabled()
+    hc = theme.stylesheet(theme.CONTRAST)                                       # High contrast: filled, not a bar
+    assert f"background: {theme.CONTRAST.accent}" in hc.split("QToolButton#railButton:checked {")[-1].split("}")[0]
+
+
+def test_a_phone_opens_with_no_focus_ring_in_the_toolbar(make_win):
+    w = make_win(size=(412, 860))
+    w.set_touch(True, save=False)
+    try:
+        spin()
+        f = QApplication.focusWidget()
+        assert f is None or not (w.sidebar.toolbar.isAncestorOf(f) or f in w.sidebar.rail.buttons.values())
+    finally:
+        w.set_touch(False, save=False)
 
 
 # --- 2, 3, 17, 10: hints and labels -----------------------------------------------------------------------------
@@ -156,7 +172,7 @@ def test_complexity_has_one_hint_under_its_slider(make_win):
     assert stray == []                                          # none left inside the patterns' own options
     lay = sb.complexity_hint.parentWidget().layout()
     i = lay.indexOf(sb.complexity_hint)
-    assert lay.itemAt(i - 1).widget().control is sb._binds["complexity"][0]   # straight under the slider
+    assert lay.itemAt(i - 1).widget().isAncestorOf(sb._binds["complexity"][0])   # straight under the slider
 
 
 # --- 5, 6: All patterns' empty state, the sample's name -----------------------------------------------------------
@@ -186,6 +202,7 @@ def test_touch_hints_say_tap_and_finger(make_win):
     try:
         assert "finger" in sb.drag_hint.text() and "Double-tap" in sb.page_list_hint.text()
         assert sb.paper_hint.text().startswith("For this design. Menu → Edit → Settings")
+        assert sb.pbook_hint.text().startswith("Tap a photo") and "double-tap" in sb.page_change_btn.toolTip()
         _set(w, mode="convert")
         w._rail_key("booklet")
         assert sb.status.text() == "A photo book is made on the Photo page."   # no Ctrl+2 without a keyboard
@@ -221,6 +238,7 @@ def test_the_rendering_pill_follows_the_window_and_has_its_own_background(make_w
     w = make_win()
     pv = w.preview
     pv.set_busy("rendering…")
+    fresh = pv.busy.size()                                      # padded by the stylesheet
     w.resize(1100, 820)
     spin(0.2)
     assert abs(pv.busy.geometry().right() - (pv._stage.width() - 34)) <= 2   # top right, after the resize too
@@ -233,13 +251,27 @@ def test_the_rendering_pill_follows_the_window_and_has_its_own_background(make_w
         app.setPalette(own)
         pv.set_busy("rendering…")
         QApplication.processEvents()
-        assert pv.busy.contentsMargins().left() == 10           # padded by itself
+        assert pv.busy.width() >= pv.busy.fontMetrics().horizontalAdvance("rendering…") + 20   # padded by itself
         img = pv.busy.grab().toImage()
         assert img.pixelColor(pv.busy.width() // 2, pv.busy.height() - 3) == QColor(30, 33, 38)
     finally:
         app.setPalette(pal)
         app.setStyleSheet(sheet)
-        pv.set_busy("")
+    pv.set_busy("rendering…")                                    # Inkline's look again: the stylesheet pads it
+    QApplication.processEvents()
+    m = pv.busy.contentsMargins()                               # the stylesheet's 10 × 4 padding and 1 px border
+    assert (m.left(), m.top(), m.right(), m.bottom()) == (11, 5, 11, 5) and pv.busy.size() == fresh
+    pv.set_busy("")
+
+
+def test_the_pill_is_padded_in_inklines_own_look(make_win):
+    pv = make_win().preview
+    pv.set_busy("rendering…")
+    QApplication.processEvents()
+    m = pv.busy.contentsMargins()
+    assert (m.left(), m.top(), m.right(), m.bottom()) == (11, 5, 11, 5)
+    fm = pv.busy.fontMetrics()                                   # 10 × 4 px padding and a 1 px border, each side
+    assert pv.busy.width() >= fm.horizontalAdvance("rendering…") + 22 and pv.busy.height() >= fm.height() + 10
 
 
 # --- 11, 12: Settings opens big enough, Presets isn't cut off in French ---------------------------------------------
@@ -253,7 +285,7 @@ def test_settings_opens_at_its_full_size(make_win):
 
 
 @pytest.mark.parametrize("lang", ["en", "fr", "de"])
-def test_presets_fits_its_text(make_win, lang):
+def test_presets_fits_its_text(make_win, lang, ui_font):
     try:
         i18n.set_language(lang)
         w = make_win()
@@ -344,6 +376,11 @@ def test_the_design_number_is_in_new_designs_tooltip_and_copies(make_win):
     assert f"Design number {n}." in sb.new_design.toolTip() and sb.copy_number in sb.new_design.actions()
     sb.copy_number.trigger()
     assert QApplication.clipboard().text() == str(n) and str(n) in sb.status.text()
+    QApplication.clipboard().clear()
+    w.act_number.trigger()                                      # Edit → Copy design number (Menu, on a touch screen)
+    assert QApplication.clipboard().text() == str(n)
+    _set(w, mode="convert")
+    assert not w.act_number.isEnabled()
 
 
 def test_print_is_the_one_primary_button_and_photos_have_no_new_design(make_win):
@@ -385,6 +422,8 @@ def test_the_footer_has_three_shortcuts_on_one_line(make_win, lang):
         spin(0.2)
         keys = w.sidebar.keys
         assert keys.text() == i18n.tr("Ctrl+P print · Ctrl+N new design · ← → pages")
+        _set(w, mode="convert")                                 # a photo: no new design to make
+        assert keys.text() == i18n.tr("Ctrl+P print · Ctrl+O open image · ← → pages")
         assert keys.height() < 2 * keys.fontMetrics().lineSpacing()   # one line
         assert keys.width() >= keys.sizeHint().width()
     finally:
@@ -403,3 +442,9 @@ def test_help_lists_every_shortcut(make_win, monkeypatch):
     help_menu = next(a.menu() for a in w.menuBar().actions() if a.text() == "&Help")
     next(a for a in help_menu.actions() if a.text() == "&Keyboard shortcuts").trigger()
     assert shown and shown[0].groups == all_rows(w)
+    try:
+        i18n.set_language("de")
+        keys = dict(dict(all_rows(w))[i18n.tr("In the window and its lists")]).values()
+        assert "Entf" in keys and "Eingabe" in keys            # as a German keyboard prints them
+    finally:
+        i18n.set_language("en")

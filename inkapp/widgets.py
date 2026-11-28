@@ -155,6 +155,7 @@ class OptionRow(QWidget):
         top = QHBoxLayout()
         top.setSpacing(theme.PAIR_GAP)
         self.label = label(text)
+        self.label.setWordWrap(True)   # a long label (another language, half a Pair) wraps rather than widen the sidebar
         self.label.setBuddy(control)
         if not control.accessibleName():   # a screen reader names a list by its label, not its current entry
             control.setAccessibleName(self.label.text())

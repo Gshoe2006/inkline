@@ -87,6 +87,12 @@ TOUCH_HINTS = {
         "and paper apply to every page.",
     "For this design. Edit → Settings sets the paper new projects start with.":
         "For this design. Menu → Edit → Settings sets the paper new projects start with.",
+    "Click a photo to crop it; each photo keeps its own crop. PDF and Print use every page, or only those chosen under "
+    "Print → Paper.":
+        "Tap a photo to crop it; each photo keeps its own crop. PDF and Print use every page, or only those chosen under "
+        "Print → Paper.",
+    "Change the selected page's pattern and options here (or double-click a page)":
+        "Change the selected page's pattern and options here (or double-tap a page)",
 }
 
 
@@ -505,16 +511,22 @@ class Sidebar(QFrame):
         mk.addWidget(self.gallery)
         self.all_patterns_btn = button("All patterns…", "mini", "Every pattern as a picture, by kind, with a search box")
         self.all_patterns_btn.clicked.connect(self.open_all_patterns)
-        mk.addWidget(_tools(self.all_patterns_btn))
         # every page holds its options in folds that take turns (one open at a time), so each page fits on the screen
         design_fold = sec = Fold("Design", open_=True)
         self.design_note = sec.add(Hint())   # which booklet page the section edits, when it's built page by page
         self.gen = self._combo("gen", pattern_options())
         describe_patterns(self.gen)
-        sec.add(OptionRow("Pattern", self.gen))
+        pattern_row = sec.add(OptionRow("Pattern", self.gen))
+        # All patterns… on the Pattern row's top line, at its right (as Back to page list sits beside the page's name):
+        # no row of its own, so Create fits without scrolling
+        pattern_row.layout().itemAt(0).layout().addWidget(self.all_patterns_btn, 0, Qt.AlignmentFlag.AlignBottom)
         # several designs on one sheet (single pages): the layout, then the patterns after this one
         self.sheet = self._combo("sheet", list(SHEETS.items()))
-        self.sheet_row = sec.add(OptionRow("On the sheet", self.sheet))
+        self.sheet_row = OptionRow("On the sheet", self.sheet)
+        # Age and On the sheet side by side, as Size and Orientation are, so Create fits without scrolling (Age on the
+        # left: On the sheet is hidden for a booklet or poster)
+        self.age = self._combo("age", list(ages.AGES.items()))
+        sec.add(Pair(OptionRow("Age", self.age), self.sheet_row))
         self.sheet_opts = SubOptions()
         self.panel_combos = []
         for which in ("2nd design", "3rd design", "4th design"):
@@ -525,15 +537,15 @@ class Sidebar(QFrame):
             self.panel_combos.append((self.sheet_opts.add(OptionRow(which, c)), c))
         self.sheet_hint = self.sheet_opts.add(Hint("They share Complexity and the options above. Answer pages, under "
                                                    "Print → Copies and names, show each puzzle's answer."))
-        sec.add(self.sheet_opts)
-        self.age = self._combo("age", list(ages.AGES.items()))
-        sec.add(OptionRow("Age", self.age))
         self.age_hint = sec.add(Hint("Sets complexity, line weight and options to suit. Change any of them after."))
+        sec.add(self.sheet_opts)
         # each pattern's own options are built the first time they're wanted (build_panel), here: before Complexity
         self._panel_lay, self._built, self._render_note = sec._lay, {}, ""
-        self.complexity_row = sec.add(self._slider("complexity", "Complexity", 1, 10, lambda v: f"{v} / 10"))
+        # Complexity and Line weight side by side, as Move ↔ and Move ↕ are; Complexity's hint straight under them
+        self.complexity_row = self._slider("complexity", "Complexity", 1, 10, lambda v: f"{v}/10")   # narrow: half a Pair
+        self._panel_anchor = sec.add(Pair(self.complexity_row, self._slider("weight", "Line weight", 1, 10,
+                                                                            lambda v: f"{v / 150 * 25.4:.2f} mm")))
         self.complexity_hint = sec.add(Hint())   # what it does for this pattern: complexity_hint()
-        sec.add(self._slider("weight", "Line weight", 1, 10, lambda v: f"{v / 150 * 25.4:.2f} mm"))
         sec.add(self._check("frame", "Draw a border around the design"))
         # only for the patterns it works on (cbn.CBN_GENS), or a booklet that mixes every pattern
         self.cbn_check = sec.add(self._check("cbn", "Colour by number (a number in each space, with a crayon key)"))
@@ -706,8 +718,8 @@ class Sidebar(QFrame):
         self.ppager.prev.connect(lambda: self.page_step.emit(-1))
         self.ppager.next.connect(lambda: self.page_step.emit(1))
         self.pbook_opts.add(self.ppager)
-        self.pbook_opts.add(Hint("Click a photo to crop it; each photo keeps its own crop. PDF and Print use every page, "
-                                 "or only those chosen under Print → Paper."))
+        self.pbook_hint = self.pbook_opts.add(Hint("Click a photo to crop it; each photo keeps its own crop. PDF and "
+                                                   "Print use every page, or only those chosen under Print → Paper."))
         self.photo_panel.add(self.pbook_opts)
         rotl, rotr, reset = button("↺", tip="Rotate left 90°"), button("↻", tip="Rotate right 90°"), button("Reset")
         rotl.setAccessibleName(tr("Rotate left"))
@@ -804,7 +816,8 @@ class Sidebar(QFrame):
         # a class set: one copy per name, each name written on its copy's "Name" line (never remembered either)
         self.copies_names = line_edit(placeholder="Optional: Ana, Ben, Cara…", max_length=4000)
         self.copies_names.setAccessibleName(tr("Names: one copy for each, written on its Name line"))
-        self._had_names, self._auto_name_line = False, True
+        # the first names typed turn the Name line on, once for each project (set_class_set starts again)
+        self._had_names, self._auto_name_line, self._name_line_done = False, True, False
         self.copies_names.textChanged.connect(lambda _t: (self._names_typed(), self.sync(), self.class_set_changed.emit()))
         self.copies_names_row = sec.add(OptionRow("Names", self.copies_names))
         # class lists kept in the settings folder (class-lists.json), to use again
@@ -958,9 +971,8 @@ class Sidebar(QFrame):
         self.cal_year = self._combo("cal_year", planner.year_choices())
         self.cal_date_row = self.cal_opts.add(Pair(OptionRow("Month", self.cal_month), OptionRow("Year", self.cal_year)))
         self.cal_start = self._combo("cal_start", list(planner.WEEK_STARTS.items()))
-        self.cal_opts.add(OptionRow("Week starts on", self.cal_start))
         self.cal_art = self._combo("cal_art", list(planner.BACKGROUNDS.items()))
-        self.cal_opts.add(OptionRow("Picture", self.cal_art))
+        self.cal_opts.add(Pair(OptionRow("Week starts on", self.cal_start), OptionRow("Picture", self.cal_art)))
 
     def _panel_scramble(self):
         self.scramble_opts = SubOptions()
@@ -978,9 +990,8 @@ class Sidebar(QFrame):
         self.speed_op = self._combo("speed_op", list(speed.OPS.items()))
         self.speed_opts.add(Pair(OptionRow("How many facts", self.speed_count), OptionRow("Times or sharing", self.speed_op)))
         self.speed_tables = self._text("speed_tables", "e.g. 3, 4, 8", speed.MAX_TABLES)
-        self.speed_opts.add(OptionRow("Tables", self.speed_tables))
         self.speed_order = self._combo("speed_order", list(speed.ORDERS.items()))
-        self.speed_opts.add(OptionRow("Order", self.speed_order))
+        self.speed_opts.add(Pair(OptionRow("Tables", self.speed_tables), OptionRow("Order", self.speed_order)))
         self.speed_opts.add(self._check("speed_chart", "A progress chart to fill in after each try"))
         self.speed_note = self.speed_opts.add(Hint())
 
@@ -1058,7 +1069,7 @@ class Sidebar(QFrame):
         getattr(self, f"_panel_{key}")()
         box = self.__dict__[f"{key}_opts"]
         order = list(PATTERN_PANELS)
-        after = next((self._built[k] for k in order[order.index(key) + 1:] if k in self._built), self.complexity_row)
+        after = next((self._built[k] for k in order[order.index(key) + 1:] if k in self._built), self._panel_anchor)
         box.hide()
         self._panel_lay.insertWidget(self._panel_lay.indexOf(after), box)
         self._built[key] = box
@@ -1209,7 +1220,7 @@ class Sidebar(QFrame):
         cs = cs or {}
         n = cs.get("copies", 1)
         self.copies.setText(str(n) if n > 1 else "")
-        self._auto_name_line = False   # a project's names come with its own Name line setting
+        self._auto_name_line, self._name_line_done = False, False   # a project's names come with its own Name line
         try:
             self.copies_names.setText(cs.get("names", ""))
         finally:
@@ -1760,6 +1771,10 @@ class Sidebar(QFrame):
         """The footer's save buttons' tooltips, with the shortcut each has (Ctrl+E saves Edit → Settings' format)."""
         fmt = getattr(self, "save_format", "pdf")
         make = s.mode == "make"
+        # the footer's three shortcuts: a photo makes up no new design, but opens another photo
+        self.keys.setText(tr("Ctrl+P print · Ctrl+N new design · ← → pages") if make else
+                          tr("Ctrl+P print · Ctrl+O open image · ← → pages"))
+        self.keys.setMinimumWidth(self.keys.sizeHint().width())   # on one line: the status message wraps instead
         self.pdf_btn.setToolTip(tr("Save PDF (Ctrl+E)") if fmt == "pdf" else
                                 tr("Save PDF (Ctrl+Shift+E)") if fmt == "png" else tr("Save PDF"))
         self.png_btn.setToolTip(tr("Posters save as PDF (one page per sheet) or print directly")
@@ -1781,8 +1796,10 @@ class Sidebar(QFrame):
 
     def set_touch(self, on):
         """Hints that say click, double-click or scroll say tap, double-tap and pinch on a touch screen."""
-        for hint, english in zip((self.drag_hint, self.page_list_hint, self.paper_hint), TOUCH_HINTS):   # in its order
-            hint.setText(tr(TOUCH_HINTS[english] if on else english))
+        setters = (self.drag_hint.setText, self.page_list_hint.setText, self.paper_hint.setText, self.pbook_hint.setText,
+                   self.page_change_btn.setToolTip)
+        for put, english in zip(setters, TOUCH_HINTS):   # in TOUCH_HINTS' order
+            put(tr(TOUCH_HINTS[english] if on else english))
 
     def _copy_design_number(self):
         from PySide6.QtWidgets import QApplication
@@ -1801,9 +1818,12 @@ class Sidebar(QFrame):
 
     def _names_typed(self):
         """Names typed for a class set write themselves on the "Name ______" line: the first names typed turn it on
-        (once: turned off again, the hint says how to turn it back on)."""
+        (once for the project: turned off again, even after the names are cleared and typed again, the hint says how
+        to turn it back on)."""
         typed = bool(jobs.parse_names(self.copies_names.text()))
-        if typed and not self._had_names and self._auto_name_line and not self.state.settings.name_line:
+        if typed and not self._had_names and self._auto_name_line and not self._name_line_done \
+                and not self.state.settings.name_line:
+            self._name_line_done = True
             self.state.update(name_line=True)
             control, write = self._binds["name_line"]
             was, self._loading = self._loading, True

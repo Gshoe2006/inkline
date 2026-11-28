@@ -11,6 +11,8 @@
   has no menu bar.
 """
 
+from itertools import accumulate
+
 from PySide6.QtCore import QEvent, QObject, QSize, Qt, Signal
 from PySide6.QtGui import QAction, QIcon, QPixmap
 from PySide6.QtWidgets import QFrame, QGridLayout, QHBoxLayout, QMenu, QScrollArea, QToolButton, QVBoxLayout, QWidget
@@ -48,15 +50,23 @@ class Rail(QFrame):
             b.setText(tr(text))
             b.setToolTip(tr("{name} ({keys})").format(name=tr(text), keys=f"Ctrl+{i + 1}"))   # the window's shortcut
             b.setCheckable(True)   # not exclusive buttons: those switch on the arrow keys, changing the mode by accident
-            b.setFocusPolicy(Qt.FocusPolicy.StrongFocus)   # a click takes the focus along: it never stays on the page left
+            # the focus ring is the keyboard's: Tab reaches the rail, a click doesn't put a ring on it (_click moves a
+            # ring that's already there to the page clicked)
+            b.setFocusPolicy(Qt.FocusPolicy.TabFocus)
             b.setCursor(Qt.CursorShape.PointingHandCursor)
             b.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
             b.setMinimumHeight(48)
-            b.clicked.connect(lambda _c=False, k=key: self.chosen.emit(k))
+            b.clicked.connect(lambda _c=False, k=key: self._click(k))
             lay.addWidget(b)
             self.buttons[key] = b
         lay.addStretch(1)
         self.fit_width()
+
+    def _click(self, key):
+        from PySide6.QtWidgets import QApplication
+        if QApplication.focusWidget() in self.buttons.values():   # the keyboard was on the rail: it follows the click
+            self.buttons[key].setFocus(Qt.FocusReason.TabFocusReason)
+        self.chosen.emit(key)
 
     def fit_width(self):
         """As wide as RAIL_WIDTH, or wider when a label needs it (a longer language, a wider font)."""
@@ -300,6 +310,30 @@ class Gallery(QWidget):
             self.picked.emit(self.gens[i])
 
 
+# where a pattern's one-word name (in any language) breaks when it's wider than its picture: at the joins of its parts
+JOINS = ["Belohnungs-tafel", "Belonings-kaart", "Buchstaben-salat", "Compren-sione", "Compré-hension", "compre-hension",
+         "Crypto-gramme", "Critto-gramma", "Geheim-schrift", "Hussel-woorden", "Koordinaten-system", "Kreuzwort-rätsel",
+         "Kruiswoord-puzzel", "Lese-verständnis", "Memory-kaarten", "Nono-gramma", "Rechen-übungen",
+         "Reken-oefeningen", "Schüttel-wörter", "Vlecht-patroon", "desorde-nadas", "embara-lhadas"]
+_JOINS = {j.replace("-", ""): [len(p) for p in accumulate(j.split("-"))][:-1] for j in JOINS}
+
+
+def _cut(word, metrics, width):
+    """(head, tail) of a word too wide for one line: after a hyphen it has, at a join (JOINS), or else as far in as
+    fits leaving at least four letters to the second line; None when nothing fits."""
+    def fits(k, mark):
+        return metrics.horizontalAdvance(word[:k] + mark) <= width
+    hyphens = [i + 1 for i, c in enumerate(word) if c == "-" and 0 < i < len(word) - 1]
+    for k in reversed(hyphens):
+        if fits(k, ""):
+            return word[:k], word[k:]
+    for k in reversed(_JOINS.get(word, [])):
+        if fits(k, "-"):
+            return word[:k] + "-", word[k:]
+    k = max((k for k in range(4, len(word) - 3) if fits(k, "-")), default=0)
+    return (word[:k] + "-", word[k:]) if k else None
+
+
 def two_lines(text, metrics, width):
     """A picture button's name on up to two lines that fit width (px), broken between words; what doesn't fit on
     the second ends in …. A long name is no longer cut in the middle ("Tellin…e time")."""
@@ -309,11 +343,11 @@ def two_lines(text, metrics, width):
         if metrics.horizontalAdvance(t) <= width:
             first = t
             continue
-        if not first:   # one word wider than the button (German's long nouns): broken with a hyphen
-            cut = max((k for k in range(2, len(w) - 1) if metrics.horizontalAdvance(w[:k] + "-") <= width), default=0)
-            if not cut:
+        if not first:   # one word wider than the button (German's long nouns): broken where its parts join
+            cut = _cut(w, metrics, width)
+            if cut is None:
                 return metrics.elidedText(text, Qt.TextElideMode.ElideRight, width)
-            first, words[i] = w[:cut] + "-", w[cut:]
+            first, words[i] = cut
         rest = " ".join(words[i:])
         return first + ("\n" + metrics.elidedText(rest, Qt.TextElideMode.ElideRight, width) if rest else "")
     return first
@@ -369,6 +403,8 @@ class Popup(QToolButton):
         self.setAccessibleName(tr(text))   # without the arrow
         self.setObjectName("toolbarMenu")
         self.setCursor(Qt.CursorShape.PointingHandCursor)
+        # never narrower than its text, as the toolbar's push buttons ("Réglages…strés" was cut short)
+        self.setSizePolicy(self.sizePolicy().horizontalPolicy().Minimum, self.sizePolicy().verticalPolicy())
         self.frame = QFrame(self, Qt.WindowType.Popup)
         self.frame.setObjectName("popupPanel")
         lay = QVBoxLayout(self.frame)

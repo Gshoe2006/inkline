@@ -380,6 +380,8 @@ class Window(QMainWindow):
         # a booklet's pages through the clipboard (Ctrl+C in the page list; Ctrl+V pastes pages or a picture)
         act(e, "&Copy page\tCtrl+C", lambda: self.copy_pages(False))
         act(e, "Copy &all pages", lambda: self.copy_pages(True))
+        # the design's number (its seed), as New design's right-click copies it: here for a touch screen too (Menu)
+        self.act_number = act(e, "Copy design &number", self.sidebar._copy_design_number)
         act(e, "&Paste\tCtrl+V", self.paste)
         e.addSeparator()
         act(e, "&History…", self.show_history, "Ctrl+H")
@@ -506,6 +508,8 @@ class Window(QMainWindow):
                              and e.key() in (Qt.Key.Key_Left, Qt.Key.Key_Right))      # view; Page Up/Down still turn
                     and self.step_page(d)):
                 return True   # taken only when there were pages to turn; menus keep their arrow keys
+        if obj is self.sidebar and e.type() == QEvent.Type.Resize and not theme.TOUCH["on"]:
+            QTimer.singleShot(0, self, self._fit_toolbar)   # wider options (a wider font): less room for the toolbar
         return super().eventFilter(obj, e)
 
     def _set_mode(self, mode):
@@ -792,7 +796,7 @@ class Window(QMainWindow):
         if hasattr(self, "act_pdf"):
             sb = self.sidebar
             make = self.state.settings.mode == "make"
-            for a in (self.act_new, self.act_more):
+            for a in (self.act_new, self.act_more, self.act_number):
                 a.setEnabled(make)
             if sb.new_design.isHidden() == make:   # the toolbar has them only on Create
                 sb.new_design.setVisible(make)
@@ -848,16 +852,21 @@ class Window(QMainWindow):
                 self._msg(err)
 
     def _first_focus(self, old, new):
-        """The window's first focus, given when it opens, lands on the rail's first page: the focus ring round the page
-        chosen looks like a second thing chosen. Nothing has the focus at the start; the first Tab goes to the rail."""
+        """The window's first focus, given when it opens, lands on the rail's first page (or, on a phone, the toolbar's
+        first button): a focus ring nobody asked for, round the page chosen it looks like a second thing chosen. Nothing
+        has the focus at the start; the first Tab goes to the rail."""
         if new is None or new.window() is not self:
             return
+        self._fit_toolbar()   # shown, with the sidebar at its width: the toolbar's room is known
         QApplication.instance().focusChanged.disconnect(self._first_focus)
-        if old is None and new in self.sidebar.rail.buttons.values():
+        bars = (self.sidebar.rail, self.sidebar.toolbar, getattr(self, "bottom", None))   # a phone's: New design
+        if old is None and any(bar is not None and bar.isAncestorOf(new) for bar in bars):
             QTimer.singleShot(0, self, new.clearFocus)
 
     def resizeEvent(self, ev):
         super().resizeEvent(ev)
+        if not theme.TOUCH["on"]:
+            self._fit_toolbar()
         if theme.TOUCH["on"]:
             narrow = self.width() < theme.ONE_COLUMN_WIDTH
             if narrow != self._narrow:
@@ -936,6 +945,10 @@ class Window(QMainWindow):
             room = self.width() - sb.rail.width() - sb.width()
             sb.toolbar.layout().invalidate()   # measured without it (hidden above)
             sb.more_btn.setVisible(sb.toolbar.sizeHint().width() + theme.PAIR_GAP + sb.more_btn.sizeHint().width() <= room)
+        if not touch:   # a longer language or a wider font: the brand gives way before a button is cut short
+            room = self.width() - sb.rail.width() - sb.width()
+            sb.toolbar.layout().invalidate()
+            sb.brand.setVisible(sb.toolbar.sizeHint().width() <= room)
 
     def _fit_tablet(self):
         """Touch, wide (a tablet held sideways): a portrait page is as tall as the window lets it be, so the room
@@ -1779,7 +1792,7 @@ class Window(QMainWindow):
             book = sb.shown(sb.copies_answer_book) and sb.copies_answer_book.isChecked()
             return jobs.job(snap, only, copies, sb.copies_vary.isChecked(), answers, names, book)
         except ValueError as why:
-            self._msg(tr("{why} Fix the pages under Paper → Print or save only, or clear it to use every page.").format(
+            self._msg(tr("{why} Fix the pages under Print → Paper → Print or save only, or clear it to use every page.").format(
                 why=why))
             self.sidebar.reveal(self.sidebar.only_pages)   # Print is in the toolbar: the field may be out of view
             self.sidebar.only_pages.setFocus()
@@ -1809,7 +1822,7 @@ class Window(QMainWindow):
             printer.setDuplex(QPrinter.DuplexMode.DuplexLongSide)
         self._msg(tr("Opening the print dialog…"))
         dialog = QPrintDialog(printer, self)
-        # which pages print is chosen under Paper → Print or save only: the dialog's own range would be ignored
+        # which pages print is chosen under Print → Paper → Print or save only: the dialog's own range would be ignored
         dialog.setOption(QAbstractPrintDialog.PrintDialogOption.PrintPageRange, False)
         if dialog.exec() != QPrintDialog.DialogCode.Accepted:
             self._msg(tr("Print cancelled."))

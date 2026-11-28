@@ -285,6 +285,10 @@ def test_the_names_field_says_what_it_does(win):
     assert sb.copies.isEnabled() and sb.copies.placeholderText() == "1"
     sb.copies_names.setText("Ana, Ben, Cara, Dev")                         # more names: it stays off (once only)
     assert not win.state.settings.name_line
+    sb.copies_names.setText("")
+    sb.copies_names.setText("Eva, Finn")                                   # cleared and typed again: still off
+    assert not win.state.settings.name_line
+    sb.copies_names.setText("Ana, Ben, Cara, Dev")
     _set(win, name_line=True, gen="maze")
     assert not sb.copies.isEnabled()                                        # the names say how many
     assert sb.copies_hint.text().startswith("Print and Save PDF make 4 copies, one for each name, each with its own design")

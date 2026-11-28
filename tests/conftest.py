@@ -52,3 +52,21 @@ def settle(window, timeout=20):
             return
         time.sleep(0.01)
     raise AssertionError("the window didn't settle")
+
+
+@pytest.fixture(params=[None, "DejaVu Sans"])
+def ui_font(request):
+    """The window in Inkline's own font, then in DejaVu Sans (what CI's Ubuntu has: wider), for layouts that must
+    fit either way."""
+    from PySide6.QtGui import QFontDatabase
+    from inkapp import theme
+    family = request.param
+    if family and family not in QFontDatabase.families():
+        pytest.skip(f"{family} isn't installed")
+    before = list(theme.FONT_UI)
+    if family:
+        theme.FONT_UI[:] = [family]
+    theme.apply(_APP)
+    yield family
+    theme.FONT_UI[:] = before
+    theme.apply(_APP)

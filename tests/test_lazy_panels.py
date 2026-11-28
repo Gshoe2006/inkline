@@ -72,7 +72,7 @@ def test_panels_sit_in_their_order_before_complexity(make_win):
     lay = sb._panel_lay
     keys = [k for k in PATTERN_PANELS if k in sb._built]
     places = [lay.indexOf(sb._built[k]) for k in keys]
-    assert places == sorted(places) and max(places) < lay.indexOf(sb.complexity_row)
+    assert places == sorted(places) and max(places) < lay.indexOf(sb._panel_anchor)   # Complexity and Line weight
 
 
 def test_presets_undo_and_projects_reach_unbuilt_panels(make_win, tmp_path):

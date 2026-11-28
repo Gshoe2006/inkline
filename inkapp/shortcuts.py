@@ -24,6 +24,15 @@ SHORTCUT_EXTRAS = [("Ctrl+1 … Ctrl+5", "Create, Photo, Booklet, Poster or Prin
                    ("+  −  0", "With the preview focused: zoom in, zoom out, whole page")]
 
 
+# the keys' names as a keyboard in the person's language prints them (Entf, Suppr, Intro...)
+KEY_NAMES = {"Esc": "Esc", "Return": "Return", "Delete": "Del"}
+
+
+def key_names(keys):
+    """A shortcut's keys with their names in the person's language."""
+    return " ".join(tr(KEY_NAMES[k]) if k in KEY_NAMES else k for k in keys.split(" "))
+
+
 def _plain(text):
     """A menu entry's name without its keyboard letter or the shortcut written after a tab."""
     return text.split("\t")[0].replace("&&", "\0").replace("&", "").replace("\0", "&")
@@ -51,7 +60,7 @@ def all_rows(window):
     """[(section title, [(name, keys)])]: each menu's, then the window's own."""
     groups = [(_plain(m.title()), menu_rows(m)) for m in getattr(window, "_top_menus", [])]
     groups = [(t, rows) for t, rows in groups if rows]
-    return groups + [(tr("In the window and its lists"), [(tr(what), keys) for keys, what in SHORTCUT_EXTRAS])]
+    return groups + [(tr("In the window and its lists"), [(tr(what), key_names(keys)) for keys, what in SHORTCUT_EXTRAS])]
 
 
 class ShortcutsDialog(QDialog):

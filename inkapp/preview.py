@@ -13,7 +13,7 @@ the view round, and a double tap or double click (or View → Whole page) shows 
 import math
 import time
 
-from PySide6.QtCore import QEvent, QPointF, QRectF, Qt, Signal
+from PySide6.QtCore import QEvent, QPointF, QRectF, QSize, Qt, Signal
 from PySide6.QtGui import QBrush, QColor, QEventPoint, QFont, QInputDevice, QPainter, QPen
 from PySide6.QtWidgets import (QApplication, QFrame, QGraphicsDropShadowEffect, QHBoxLayout, QLabel, QVBoxLayout,
                                QWidget)
@@ -352,14 +352,20 @@ class Page(QWidget):
 
 
 class Busy(QLabel):
-    """The "rendering…" pill over the light table. With the desktop's style (no stylesheet) it draws its own background
-    and border, as the tour's card does, so it never sits see-through on the page."""
+    """The "rendering…" pill over the light table. With the desktop's style (no stylesheet) it pads itself and draws its
+    own background and border, as the tour's card does, so it never sits see-through on the page. Its padding is in its
+    size, never its contents margins: the stylesheet keeps its own padding and border there."""
 
-    PAD = (10, 4, 10, 4)   # px: as the stylesheet's padding, when there's no stylesheet to pad it
+    PAD = QSize(20, 8)   # px, both sides together: as the stylesheet's padding, when there's no stylesheet to pad it
+
+    def __init__(self, text, parent):
+        super().__init__(text, parent)
+        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+    def sizeHint(self):
+        return super().sizeHint() + (self.PAD if own_look() else QSize(0, 0))
 
     def fit(self):
-        """Its size for its text, padded by the stylesheet or (the desktop's style) by itself."""
-        self.setContentsMargins(*(self.PAD if own_look() else (0, 0, 0, 0)))
         self.adjustSize()
 
     def paintEvent(self, ev):
