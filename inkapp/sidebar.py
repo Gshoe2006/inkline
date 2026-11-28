@@ -7,7 +7,7 @@ Photo ("Convert a photo"), then Page text, Poster and Paper.
 """
 
 from PySide6.QtCore import QEvent, QPoint, QSize, Qt, QTimer, Signal
-from PySide6.QtGui import QIntValidator, QKeySequence, QPixmap, QShortcut
+from PySide6.QtGui import QAction, QIntValidator, QKeySequence, QPixmap, QShortcut
 from PySide6.QtWidgets import (QStackedWidget, QAbstractItemView, QFrame, QHBoxLayout, QLabel, QListWidget, QListWidgetItem,
                                QProgressBar, QScrollArea, QVBoxLayout, QWidget)
 
@@ -50,6 +50,64 @@ GEN_OPTIONS = [("mandala", "Mandala (colouring page)"), ("maze", "Maze"), ("truc
 GRID_OPTIONS = [("2x2", "2 × 2"), ("3x3", "3 × 3"), ("4x4", "4 × 4"), ("2x1", "2 across × 1"), ("3x2", "3 across × 2"),
                 ("1x2", "1 across × 2"), ("2x3", "2 across × 3")]
 CBN_PATTERN_NOTE = "Repeated spaces share a number, and spaces side by side get different colours."
+# what Complexity does, under its slider, for each pattern (and for some, each kind: "gen/kind"); none for the
+# patterns where it plainly sets how detailed the drawing is
+COMPLEXITY_HINTS = {
+    "maze": "Complexity sets how many paths the maze has, and how narrow they get.",
+    "sudoku": "Complexity sets how many numbers are given: 48 at 1, down to 25 at 10.",
+    "words": "Complexity sets the grid (8 to 16 letters across), how many words, and which ways they run.",
+    "crossword": "Complexity sets how many words: 5 at 1, up to 14 at 10.",
+    "reading": "Complexity sets the passage: short and simple, then longer, then harder.",
+    "trace": "Complexity sets how many rows to write: 4 at 1, up to 11 at 10.",
+    "maths": "Complexity sets how big the numbers get and how many sums there are.",
+    "ruled": "Complexity sets the spacing: an inch apart at 1, down to 5 mm at 10.",
+    "early": "Complexity sets the numbers: up to 10, then up to 20 (place value up to 50, then 99).",
+    "bingo": "Complexity sets the card: 3 × 3, 4 × 4 or 5 × 5.",
+    "logic": "Complexity sets the grid: 3, 4 or 5 of each thing, and how many clues there are.",
+    "cryptogram": "Complexity sets how long the saying is and how few letters the key gives away.",
+    "cryptogram/custom": "Complexity sets how few letters the key gives away.",
+    "ladder": "Complexity sets the words (3, 4 or 5 letters) and how many steps each ladder takes.",
+    "calendar": "Complexity sets how detailed the picture is.",
+    "lscwc": "Complexity sets how many words from a theme; your own list is used, up to 20 words.",
+    "speed": "With no tables typed, Complexity chooses them: the 2, 5 and 10 times tables at 1, up to the 12 at 9.",
+    "drawread": "Complexity sets the sentences: a few words, then a sentence, then two.",
+    "coords": "Complexity sets the picture: fewer points, then more, then four quadrants with negative numbers.",
+    "coords/battle": "Complexity sets the grids: 6 × 6, 8 × 8 or 10 × 10, and the ships. Print one for each player.",
+    "memory": "Complexity sets how many cards: 8 at 1, up to 24 at 10.",
+    "memory/custom": "Your pairs set how many cards: up to 12 pairs on a page, the cards as big as they fit.",
+    "clock": "Complexity goes from o'clock and half past to quarters, five minutes and any minute.",
+}
+# hints that say how to do something with a mouse, and how on a touch screen (Sidebar.set_touch)
+TOUCH_HINTS = {
+    "Drag the preview to move the photo; scroll over it to zoom.":
+        "Drag the preview with a finger to move the photo; Zoom makes it bigger.",
+    "Double-click a page (or Change this page) to change it here; drag it to move it. Line weight, border, title and "
+    "paper apply to every page.":
+        "Double-tap a page (or Change this page) to change it here; drag it to move it. Line weight, border, title "
+        "and paper apply to every page.",
+    "For this design. Edit → Settings sets the paper new projects start with.":
+        "For this design. Menu → Edit → Settings sets the paper new projects start with.",
+}
+
+
+def complexity_hint(s):
+    """What Complexity does for the pattern chosen, in English (for tr), or "" when there's nothing to say."""
+    kind = {"cryptogram": s.crypto_source == "custom" and "custom", "drawread": s.draw_source == "custom" and "custom",
+            "coords": s.coord_kind == "battle" and "battle", "memory": s.memory_kind == "custom" and "custom"}.get(s.gen)
+    if kind:
+        return COMPLEXITY_HINTS.get(f"{s.gen}/{kind}", "")
+    return COMPLEXITY_HINTS.get(s.gen, "")
+
+
+def pattern_options():
+    """The Pattern lists' entries: each pattern by its short name (as the gallery and the booklet's pages name it)."""
+    return [(g, NAMES[g]) for g, _d in GEN_OPTIONS]
+
+
+def describe_patterns(c):
+    """Each entry of a Pattern list gets its pattern's description as its tooltip (as All patterns shows it)."""
+    for i, (_g, d) in enumerate(GEN_OPTIONS):
+        c.setItemData(i, tr(d), Qt.ItemDataRole.ToolTipRole)
 MAX_PHOTOS = 60
 THUMB_MARGIN = 3      # page pictures drawn beyond the rows that can be seen, so a short scroll finds them ready
 MAX_BOOK_PAGES = 40   # design pages in a booklet built page by page, as the quick booklet's slider
@@ -62,6 +120,7 @@ class Sidebar(QFrame):
     more_designs = Signal()       # More designs…: several to choose from
     page_step = Signal(int)       # the pager: -1 or +1
     swap_page = Signal(bool)      # New design for this page (True) / Back to original (False)
+    notice = Signal(str)          # something the status line should say (the window shows it)
     open_images = Signal(bool)    # Open image… (False) / Add photos… (True)
     sample = Signal()
     preset_chosen = Signal(str, str)   # ("b" built-in or "s" saved, name)
@@ -89,6 +148,7 @@ class Sidebar(QFrame):
     mode_changed = Signal(str)
     page_shown = Signal(str)      # a page of options was shown (the window's bottom bar marks it, in one column)
     synced = Signal()             # sync() ran: the window matches its menu actions to the footer buttons
+    panel_built = Signal(str)     # a pattern's own options were built (build_panel)
 
     def __init__(self, state, version):
         super().__init__()
@@ -249,9 +309,10 @@ class Sidebar(QFrame):
         self.progress_row.hide()
         lay.addWidget(self.progress_row)
         self.save_format = "pdf"   # what Ctrl+E saves (Edit → Settings; the window keeps it up to date)
-        self.keys = keys = label("Ctrl+P print · Ctrl+E PDF · Ctrl+S save project · Ctrl+N new design · ← → pages", "keys")
-        keys.setWordWrap(True)   # a narrow window wraps it rather than being held wide
-        lay.addWidget(keys)
+        # three shortcuts, so it fits on one line; Help → Keyboard shortcuts lists them all
+        self.keys = keys = label("Ctrl+P print · Ctrl+N new design · ← → pages", "keys")
+        keys.setToolTip(tr("Every shortcut is under Help → Keyboard shortcuts."))
+        lay.addWidget(keys)   # on one line: the status message beside it wraps instead
         return f
 
     # --- the rail's pages -------------------------------------------------------------------------------
@@ -286,6 +347,7 @@ class Sidebar(QFrame):
             self._editor_lay.addWidget(self.make_panel)
         self.book_list_view.hide()
         self.page_editor.show()
+        self.folds["design"].set_open(True)   # closed on Create while Page text was open: open here
         self._editing_title()
         self.show_page("booklet")
 
@@ -433,7 +495,7 @@ class Sidebar(QFrame):
         mk = QVBoxLayout(self.make_panel)
         mk.setContentsMargins(0, 0, 0, 0)
         mk.setSpacing(theme.SECTION_GAP)
-        self.gallery = Gallery(NAMES)
+        self.gallery = Gallery(NAMES, dict(GEN_OPTIONS))
         self.gallery.picked.connect(lambda gen: self.gen.set_value(gen))
         self.gallery_thumbs = thumbs.Thumbnails(thumbs.Look(h=64, dpi=14, thicken=1.6, darken=1.6))
         self.gallery_thumbs.ready.connect(self._gallery_ready)
@@ -444,9 +506,11 @@ class Sidebar(QFrame):
         self.all_patterns_btn = button("All patterns…", "mini", "Every pattern as a picture, by kind, with a search box")
         self.all_patterns_btn.clicked.connect(self.open_all_patterns)
         mk.addWidget(_tools(self.all_patterns_btn))
-        sec = Section("Design")
+        # every page holds its options in folds that take turns (one open at a time), so each page fits on the screen
+        design_fold = sec = Fold("Design", open_=True)
         self.design_note = sec.add(Hint())   # which booklet page the section edits, when it's built page by page
-        self.gen = self._combo("gen", GEN_OPTIONS)
+        self.gen = self._combo("gen", pattern_options())
+        describe_patterns(self.gen)
         sec.add(OptionRow("Pattern", self.gen))
         # several designs on one sheet (single pages): the layout, then the patterns after this one
         self.sheet = self._combo("sheet", list(SHEETS.items()))
@@ -454,192 +518,46 @@ class Sidebar(QFrame):
         self.sheet_opts = SubOptions()
         self.panel_combos = []
         for which in ("2nd design", "3rd design", "4th design"):
-            c = combo(list(GEN_OPTIONS))
+            c = combo(pattern_options())
+            describe_patterns(c)
             c.setAccessibleName(tr("{which} on the sheet").format(which=tr(which)))
             c.currentIndexChanged.connect(self._panels_picked)
             self.panel_combos.append((self.sheet_opts.add(OptionRow(which, c)), c))
-        self.sheet_hint = self.sheet_opts.add(Hint("They share Complexity and the options above. Answer pages "
-                                                   "(with copies) show each puzzle's answer."))
+        self.sheet_hint = self.sheet_opts.add(Hint("They share Complexity and the options above. Answer pages, under "
+                                                   "Print → Copies and names, show each puzzle's answer."))
         sec.add(self.sheet_opts)
         self.age = self._combo("age", list(ages.AGES.items()))
         sec.add(OptionRow("Age", self.age))
         self.age_hint = sec.add(Hint("Sets complexity, line weight and options to suit. Change any of them after."))
-        self.words_opts = SubOptions()
-        self.ws_theme = self._combo("ws_theme", list(words.THEME_NAMES.items()))
-        self.words_opts.add(OptionRow("Words from", self.ws_theme))
-        self.ws_words = self._text("ws_words", "e.g. mum, dad, grandma, pizza", 300)
-        self.ws_words_row = self.words_opts.add(OptionRow("Your words", self.ws_words))
-        self.ws_note = self.words_opts.add(Hint())
-        self.maze_opts = SubOptions()
-        self.maze_shape = self._combo("maze_shape", list(maze.SHAPE_NAMES.items()))
-        self.maze_opts.add(OptionRow("Maze shape", self.maze_shape))
-        self.maze_word = self._text("maze_word", "e.g. Maya", 12)
-        self.maze_word_row = self.maze_opts.add(OptionRow("Word or name", self.maze_word))
-        self.name_opts = SubOptions()
-        self.name_text = self._text("name_text", "e.g. Maya, Happy Birthday", 40)
-        self.name_opts.add(OptionRow("Name or word", self.name_text))
-        self.name_bg = self._combo("name_bg", list(name.BACKGROUNDS.items()))
-        self.name_opts.add(OptionRow("Around the letters", self.name_bg))
-        self.spot_opts = SubOptions()
-        self.spot_base = self._combo("spot_base", list(spot.BASES.items()))
-        self.spot_opts.add(OptionRow("Picture", self.spot_base))
-        self.maths_opts = SubOptions()
-        self.maths_kind = self._combo("maths_kind", list(maths.KINDS.items()))
-        self.maths_opts.add(OptionRow("Sums", self.maths_kind))
-        self.money = self._combo("money", list(money.CURRENCIES.items()))
-        self.money_row = self.maths_opts.add(OptionRow("Money", self.money))
-        self.maths_opts.add(Hint("Complexity sets how big the numbers get and how many sums there are."))
-        self.frac_opts = SubOptions()
-        self.frac_kind = self._combo("frac_kind", list(fractions.KINDS.items()))
-        self.frac_opts.add(OptionRow("Worksheet", self.frac_kind))
-        self.ruled_opts = SubOptions()
-        self.ruled_kind = self._combo("ruled_kind", list(ruled.KINDS.items()))
-        self.ruled_opts.add(OptionRow("Paper", self.ruled_kind))
-        self.ruled_opts.add(Hint("Complexity sets the spacing: an inch apart at 1, down to 5 mm at 10."))
-        self.reward_opts = SubOptions()
-        self.reward_kind = self._combo("reward_kind", list(reward.KINDS.items()))
-        self.reward_opts.add(OptionRow("Make", self.reward_kind))
-        self.reward_text = self._text("reward_text", "e.g. reading every day", 60)
-        self.reward_opts.add(OptionRow("For", self.reward_text))
-        self.reward_opts.add(Hint("With Paper → Names, each child gets one with their name on it."))
-        self.early_opts = SubOptions()
-        self.early_kind = self._combo("early_kind", list(early.KINDS.items()))
-        self.early_opts.add(OptionRow("Pictures", self.early_kind))
-        self.early_opts.add(Hint("Complexity sets the numbers: up to 10, then up to 20 (place value up to 50, then 99)."))
-        self.bingo_opts = SubOptions()
-        self.bingo_kind = self._combo("bingo_kind", list(bingo.KINDS.items()))
-        self.bingo_opts.add(OptionRow("Call out", self.bingo_kind))
-        self.bingo_theme = self._combo("bingo_theme", list(words.THEME_NAMES.items()))
-        self.bingo_theme_row = self.bingo_opts.add(OptionRow("Words from", self.bingo_theme))
-        self.bingo_words = self._text("bingo_words", "e.g. cat, dog, sun, hat, pen", 600)
-        self.bingo_words_row = self.bingo_opts.add(OptionRow("Your words", self.bingo_words))
-        self.bingo_note = self.bingo_opts.add(Hint())
-        self.bingo_opts.add(Hint("Complexity sets the card: 3 × 3, 4 × 4 or 5 × 5. With Paper → Copies or Names, every "
-                                 "card is different; Answer pages adds the caller's sheet."))
-        self.logic_opts = SubOptions()
-        self.logic_opts.add(Hint("Complexity sets the grid: 3, 4 or 5 of each thing, and how many clues there are."))
-        self.crypto_opts = SubOptions()
-        self.crypto_code = self._combo("crypto_code", list(cryptogram.KINDS.items()))
-        self.crypto_opts.add(OptionRow("Code", self.crypto_code))
-        self.crypto_source = self._combo("crypto_source", list(cryptogram.SOURCES.items()))
-        self.crypto_opts.add(OptionRow("Put in code", self.crypto_source))
-        self.crypto_text = self._text("crypto_text", "e.g. Happy birthday, Grandma!", cryptogram.MAX_TEXT)
-        self.crypto_text_row = self.crypto_opts.add(OptionRow("Your text", self.crypto_text))
-        self.crypto_note = self.crypto_opts.add(Hint())
-        self.crypto_hint = self.crypto_opts.add(Hint("Complexity sets how long the saying is and how few letters the key "
-                                                     "gives away."))
-        self.crypto_own_hint = self.crypto_opts.add(Hint("Complexity sets how few letters the key gives away."))
-        self.ladder_opts = SubOptions()
-        self.ladder_kind = self._combo("ladder_kind", list(ladder.KINDS.items()))
-        self.ladder_opts.add(OptionRow("Clue", self.ladder_kind))
-        self.ladder_note = self.ladder_opts.add(Hint())
-        self.ladder_opts.add(Hint("Complexity sets the words (3, 4 or 5 letters) and how many steps each ladder takes."))
-        self.cal_opts = SubOptions()
-        self.cal_kind = self._combo("cal_kind", list(planner.KINDS.items()))
-        self.cal_opts.add(OptionRow("Make", self.cal_kind))
-        self.cal_month = self._combo("cal_month", planner.MONTH_CHOICES)
-        self.cal_year = self._combo("cal_year", planner.year_choices())
-        self.cal_date_row = self.cal_opts.add(Pair(OptionRow("Month", self.cal_month), OptionRow("Year", self.cal_year)))
-        self.cal_start = self._combo("cal_start", list(planner.WEEK_STARTS.items()))
-        self.cal_opts.add(OptionRow("Week starts on", self.cal_start))
-        self.cal_art = self._combo("cal_art", list(planner.BACKGROUNDS.items()))
-        self.cal_opts.add(OptionRow("Picture", self.cal_art))
-        self.cal_opts.add(Hint("Complexity sets how detailed the picture is."))
-        self.scramble_opts = SubOptions()
-        self.scramble_kind = self._combo("scramble_kind", list(scramble.KINDS.items()))
-        self.scramble_opts.add(OptionRow("Sheet", self.scramble_kind))
-        self.lscwc_opts = SubOptions()
-        self.lscwc_note = self.lscwc_opts.add(Hint())
-        self.lscwc_opts.add(Hint("Fold the sheet along the dashed line to cover the words. Complexity sets how many "
-                                 "words from a theme; your own list is used, up to 20 words."))
-        self.speed_opts = SubOptions()
-        self.speed_count = self._combo("speed_count", speed.COUNTS)
-        self.speed_op = self._combo("speed_op", list(speed.OPS.items()))
-        self.speed_opts.add(Pair(OptionRow("How many facts", self.speed_count), OptionRow("Times or sharing", self.speed_op)))
-        self.speed_tables = self._text("speed_tables", "e.g. 3, 4, 8", speed.MAX_TABLES)
-        self.speed_opts.add(OptionRow("Tables", self.speed_tables))
-        self.speed_order = self._combo("speed_order", list(speed.ORDERS.items()))
-        self.speed_opts.add(OptionRow("Order", self.speed_order))
-        self.speed_opts.add(self._check("speed_chart", "A progress chart to fill in after each try"))
-        self.speed_note = self.speed_opts.add(Hint())
-        self.speed_opts.add(Hint("With no tables typed, Complexity chooses them: the 2, 5 and 10 times tables at 1, "
-                                 "up to the 12 at 9."))
-        self.draw_opts = SubOptions()
-        self.draw_source = self._combo("draw_source", list(drawread.SOURCES.items()))
-        self.draw_opts.add(OptionRow("Sentences", self.draw_source))
-        self.draw_text = self._text("draw_text", "e.g. A red car; A dog in the rain", drawread.MAX_TEXT)
-        self.draw_text_row = self.draw_opts.add(OptionRow("Your sentences", self.draw_text))
-        self.draw_note = self.draw_opts.add(Hint())
-        self.draw_hint = self.draw_opts.add(Hint("Complexity sets the sentences: a few words, then a sentence, then two."))
-        self.coord_opts = SubOptions()
-        self.coord_kind = self._combo("coord_kind", list(coords.KINDS.items()))
-        self.coord_opts.add(OptionRow("Make", self.coord_kind))
-        self.coord_answer_check = self.coord_opts.add(self._check("coord_answer", "Draw the picture joined up (to show "
-                                                                                  "what the points make)"))
-        self.coord_plot_hint = self.coord_opts.add(Hint("Complexity sets the picture: fewer points, then more, then four "
-                                                        "quadrants with negative numbers."))
-        self.coord_battle_hint = self.coord_opts.add(Hint("Complexity sets the grids: 6 × 6, 8 × 8 or 10 × 10, and the "
-                                                          "ships. Print one for each player."))
-        self.memory_opts = SubOptions()
-        self.memory_kind = self._combo("memory_kind", list(memory.KINDS.items()))
-        self.memory_opts.add(OptionRow("Cards", self.memory_kind))
-        self.memory_words = self._text("memory_words", "e.g. cat: chat; dog: chien", memory.MAX_TEXT)
-        self.memory_words_row = self.memory_opts.add(OptionRow("Your pairs", self.memory_words))
-        self.memory_note = self.memory_opts.add(Hint())
-        self.memory_backs_check = self.memory_opts.add(self._check("memory_backs", "Card backs (a second page, to "
-                                                                                    "print on the back)"))
-        self.memory_backs_hint = self.memory_opts.add(Hint("Print double-sided, flipping on the long edge, so each "
-                                                           "back lands behind its card."))
-        self.memory_no_backs_hint = self.memory_opts.add(Hint(MEMORY_NO_BACKS))
-        self.memory_hint = self.memory_opts.add(Hint("Complexity sets how many cards: 8 at 1, up to 24 at 10."))
-        self.memory_own_hint = self.memory_opts.add(Hint("Your pairs set how many cards: up to 12 pairs on a page, the "
-                                                         "cards as big as they fit."))
-        self.clock_opts = SubOptions()
-        self.clock_task = self._combo("clock_task", list(clock.TASKS.items()))
-        self.clock_opts.add(OptionRow("Clocks", self.clock_task))
-        self.clock_opts.add(Hint("Complexity goes from o'clock and half past to quarters, five minutes and any minute."))
-        self.trace_opts = SubOptions()
-        self.trace_source = self._combo("trace_source", list(trace.SOURCES.items()))
-        self.trace_opts.add(OptionRow("Trace", self.trace_source))
-        self.trace_style = self._combo("trace_style", list(trace.LETTERS.items()))
-        self.trace_opts.add(OptionRow("Letters", self.trace_style))
-        self.trace_hand = self._combo("trace_hand", list(trace.HANDS.items()))
-        self.trace_hand_row = self.trace_opts.add(OptionRow("Style", self.trace_hand))
-        self.trace_text = self._text("trace_text", "e.g. cat, dog, sun, my name", 300)
-        self.trace_text_row = self.trace_opts.add(OptionRow("Your words", self.trace_text))
-        self.trace_hint = self.trace_opts.add(Hint())
-        self.cross_opts = SubOptions()
-        self.cross_theme = self._combo("cross_theme", list(crossword.THEME_NAMES.items()))
-        self.cross_opts.add(OptionRow("Words from", self.cross_theme))
-        self.cross_words = self._text("cross_words", "e.g. cat: Says miaow; sun: Our nearest star", 2000)
-        self.cross_words_row = self.cross_opts.add(OptionRow("Your words and clues", self.cross_words))
-        self.cross_words_hint = self.cross_opts.add(Hint("Each as word: clue, separated by ; (a word without a clue gets ?)."))
-        self.cross_note = self.cross_opts.add(Hint())
-        sec.add(self.words_opts, self.maze_opts, self.name_opts, self.spot_opts, self.maths_opts, self.frac_opts, self.ruled_opts,
-                self.reward_opts, self.bingo_opts, self.early_opts, self.logic_opts, self.crypto_opts, self.ladder_opts,
-                self.cal_opts, self.scramble_opts, self.lscwc_opts, self.speed_opts, self.draw_opts, self.coord_opts,
-                self.memory_opts, self.clock_opts,
-                self.trace_opts, self.cross_opts)
-        sec.add(self._slider("complexity", "Complexity", 1, 10, lambda v: f"{v} / 10"))
+        # each pattern's own options are built the first time they're wanted (build_panel), here: before Complexity
+        self._panel_lay, self._built, self._render_note = sec._lay, {}, ""
+        self.complexity_row = sec.add(self._slider("complexity", "Complexity", 1, 10, lambda v: f"{v} / 10"))
+        self.complexity_hint = sec.add(Hint())   # what it does for this pattern: complexity_hint()
         sec.add(self._slider("weight", "Line weight", 1, 10, lambda v: f"{v / 150 * 25.4:.2f} mm"))
         sec.add(self._check("frame", "Draw a border around the design"))
-        sec.add(self._check("cbn", "Colour by number (a number in each space, with a crayon key)"))
+        # only for the patterns it works on (cbn.CBN_GENS), or a booklet that mixes every pattern
+        self.cbn_check = sec.add(self._check("cbn", "Colour by number (a number in each space, with a crayon key)"))
         self.cbn_opts = SubOptions()
         self.cbn_opts.add(self._slider("cbn_colours", "Colours", 3, 12))
         self.cbn_opts.add(self._check("cbn_maths", "Colour by maths (a sum in each space: its answer is the colour)"))
         self.cbn_note = self.cbn_opts.add(Hint(CBN_PATTERN_NOTE))
         sec.add(self.cbn_opts)
         # a booklet built page by page: this page's solution on the answer pages (shown for puzzles and colour by number)
-        self.page_answer_check = check("Include its answer in the answer pages")
+        self.page_answer_check = check("Include this page in the answer pages")
         self.page_answer_check.toggled.connect(lambda on: None if self._loading else self.page_answer.emit(on))
         sec.add(self.page_answer_check)
-        self.seed = label("", "seed")
-        new = button("New design", "primary", "New design (Ctrl+N)")
+        # New design is a plain button: Print… is the toolbar's one primary button. The design's number (its seed)
+        # is in its tooltip, and its right-click menu copies it (Copy design number)
+        self.design_number = s.seed
+        new = button("New design", tip="New design (Ctrl+N)")
         new.setObjectName("newDesign")
         new.clicked.connect(self.reroll)
+        new.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
+        self.copy_number = QAction(tr("Copy design number"), new)
+        self.copy_number.triggered.connect(self._copy_design_number)
+        new.addAction(self.copy_number)
         self.new_design = new
-        sec.add(self.seed)
-        more = button("More designs…", tip="Choose from six designs (Ctrl+Shift+N)")
+        more = button("More designs…", tip="Choose from six designs (Ctrl+Shift+M)")
         more.clicked.connect(self.more_designs)
         self.more_btn = more   # these two in the toolbar
         mk.addWidget(sec)
@@ -648,7 +566,7 @@ class Sidebar(QFrame):
         pack_fold = sec = Fold("Worksheet pack")
         # a week of worksheets in one go: the theme (or this week's spelling words), then Make
         self.pack_theme = self._combo("pack_theme", list(pack.THEME_NAMES.items()))
-        sec.add(OptionRow("Worksheet pack", self.pack_theme))
+        sec.add(OptionRow("Theme", self.pack_theme))
         self.pack_words = self._text("pack_words", "e.g. because, friend, said, which", 600)
         self.pack_words_row = sec.add(OptionRow("Spelling words", self.pack_words))
         # the week's five sheets: the usual ones for the theme, or the teacher's choice (pack_days)
@@ -711,8 +629,7 @@ class Sidebar(QFrame):
                                                       "Line weight, border, title and paper apply to every page."))
         self.book_opts.add(self._check("cover", "Cover page"))
         self.book_opts.add(self._check("page_nums", "Page numbers"))
-        self.book_opts.add(self._check("key", "Answer pages for puzzles (mazes, dot-to-dots, sudoku, word search, nonograms) "
-                                              "and colour-by-number pages"))
+        self.book_opts.add(self._check("key", "Answer pages (puzzles, worksheets and colour by number)"))
         self.pager = Pager()
         self.pager.prev.connect(lambda: self.page_step.emit(-1))
         self.pager.next.connect(lambda: self.page_step.emit(1))
@@ -723,7 +640,8 @@ class Sidebar(QFrame):
         self.page_orig.clicked.connect(lambda: self.swap_page.emit(False))
         self.page_orig.hide()   # shown once the page shown has been swapped
         self.book_opts.add(_tools(self.page_new, self.page_orig))
-        self.book_opts.add(Hint("PDF and Print use every page, or only those chosen under Paper. PNG and SVG save the page shown."))
+        self.book_opts.add(Hint("PDF and Print use every page, or only those chosen under Print → Paper. PNG and SVG save "
+                                "the page shown."))
         sec.add(self.book_opts)
         # the Booklet page shows its options, or (built page by page) one page's design: Change this page
         self.book_list_view = QWidget()
@@ -737,7 +655,7 @@ class Sidebar(QFrame):
         ev = QVBoxLayout(self.page_editor)
         ev.setContentsMargins(0, 0, 0, 0)
         ev.setSpacing(theme.SECTION_GAP)
-        self.page_back = button("‹ All pages", "mini", "Back to the booklet's page list")
+        self.page_back = button("‹ Back to page list", "mini", "Back to the booklet's page list")
         self.page_back.clicked.connect(self.back_to_pages)
         self.page_editing = label("", "legend")
         ev.addWidget(_row(self.page_editing, self.page_back, stretch_first=True))
@@ -749,7 +667,7 @@ class Sidebar(QFrame):
         self.col.addWidget(self.make_panel)
 
         # Convert a photo
-        self.photo_panel = Section("Photo")
+        self.photo_panel = Fold("Photo", open_=True)
         drop = QFrame()
         drop.setObjectName("drop")
         dl = QVBoxLayout(drop)
@@ -788,7 +706,8 @@ class Sidebar(QFrame):
         self.ppager.prev.connect(lambda: self.page_step.emit(-1))
         self.ppager.next.connect(lambda: self.page_step.emit(1))
         self.pbook_opts.add(self.ppager)
-        self.pbook_opts.add(Hint("Click a photo to crop it; each photo keeps its own crop. PDF and Print use every page, or only those chosen under Paper."))
+        self.pbook_opts.add(Hint("Click a photo to crop it; each photo keeps its own crop. PDF and Print use every page, "
+                                 "or only those chosen under Print → Paper."))
         self.photo_panel.add(self.pbook_opts)
         rotl, rotr, reset = button("↺", tip="Rotate left 90°"), button("↻", tip="Rotate right 90°"), button("Reset")
         rotl.setAccessibleName(tr("Rotate left"))
@@ -811,7 +730,7 @@ class Sidebar(QFrame):
         for sl in (self.zoom, self.panx, self.pany):
             sl.valueChanged.connect(lambda _v: None if self._loading else self.crop.emit("sliders"))
         self.photo_panel.add(self.zoom_row, Pair(self.panx_row, self.pany_row))
-        self.photo_panel.add(Hint("Drag the preview to move the photo; scroll over it to zoom."))
+        self.drag_hint = self.photo_panel.add(Hint("Drag the preview to move the photo; scroll over it to zoom."))
         self.style = self._combo("style", [(k, photo.STYLE_NAMES[k]) for k in photo.STYLES])
         self.photo_panel.add(OptionRow("Style", self.style))
         self.pcbn_opts = SubOptions()
@@ -819,33 +738,37 @@ class Sidebar(QFrame):
         self.pcbn_opts.add(Hint("Threshold / detail sets how small the regions get. The key names the crayon for each number."))
         self.pnono_opts = SubOptions()
         self.pnono_opts.add(self._slider("pnono_size", "Squares across", 10, 30))
-        self.pnono_opts.add(self._check("pnono_answer", "Show the answer"))
+        self.pnono_opts.add(self._check("pnono_answer", "Show the answer on the puzzle"))
         self.pnono_opts.add(Hint("Threshold sets which squares are shaded. Where logic alone can't finish the picture, "
                                  "a few squares are changed, or shaded to start you off."))
         self.pdots_opts = SubOptions()
         self.pdots_opts.add(self._slider("pdots_n", "Dots", 20, 150))
-        self.pdots_opts.add(self._check("pdots_answer", "Show the answer"))
+        self.pdots_opts.add(self._check("pdots_answer", "Show the answer on the puzzle"))
         self.pdots_opts.add(Hint("Threshold picks the outline: the biggest dark shape in the photo (or light, with "
                                  "Invert). Each number sits outside the line."))
         self.photo_panel.add(self.pcbn_opts, self.pnono_opts, self.pdots_opts)
-        self.photo_panel.add(self._slider("brightness", "Brightness", -100, 100, lambda v: f"+{v}" if v > 0 else str(v)))
-        self.photo_panel.add(self._slider("contrast", "Contrast", 20, 300, lambda v: f"{v}%"))
-        self.photo_panel.add(self._slider("threshold", "Threshold / detail", 1, 254))
-        self.photo_panel.add(self._slider("dot", "Dot size", 1, 8, lambda v: f"{v} px"))
+        # each style shows the sliders it uses (PHOTO_SLIDERS), as Create shows only the options that apply
+        self.photo_sliders = {
+            "brightness": self.photo_panel.add(self._slider("brightness", "Brightness", -100, 100,
+                                                            lambda v: f"+{v}" if v > 0 else str(v))),
+            "contrast": self.photo_panel.add(self._slider("contrast", "Contrast", 20, 300, lambda v: f"{v}%")),
+            "threshold": self.photo_panel.add(self._slider("threshold", "Threshold / detail", 1, 254)),
+            "dot": self.photo_panel.add(self._slider("dot", "Dot size", 1, 8, lambda v: f"{v} px"))}
         fit = self._combo("fit", [("contain", "Fit inside"), ("cover", "Fill page")])
-        inv = self._check("invert", "Invert")
-        inv_row = OptionRow(" ", inv)
-        self.photo_panel.add(Pair(OptionRow("Placement", fit), inv_row))
+        self.photo_panel.add(OptionRow("Placement", fit))
+        self.invert_check = self.photo_panel.add(self._check("invert", "Invert"))
         self._page_cols["photo"].addWidget(self.photo_panel)
 
-        # Page text
-        text_fold = sec = Fold("Page text")
+        # Page text: what's written on the page, so on Create (or Photo, with a photo: sync() moves it there); it takes
+        # turns with Design, or with Photo
+        self.text_section = sec = Fold("Page text")
         sec.add(OptionRow("Title", self._text("title", "e.g. Rainy Day Mazes", 60)))
         sec.add(self._check("name_line", 'Add a "Name ______" line'))
         sec.add(self._check("easy_read", "Easier to read: a clearer font, with letters and words spaced wider"))
+        self.col.addWidget(sec)
 
         # Poster
-        sec = Section("Poster")
+        poster_fold = sec = Fold("Poster", open_=True)
         sec.add(self._check("poster", "Print it big, across several sheets"))
         self.poster_opts = SubOptions()
         self.poster_opts.add(Pair(OptionRow("Sheets", self._combo("grid", GRID_OPTIONS)),
@@ -857,8 +780,9 @@ class Sidebar(QFrame):
         self._page_cols["poster"].addWidget(sec)
 
         # Paper
+        # the paper for the design open now (Edit → Settings has what new projects start with); the printer test page
+        # is under View → Printer test page, with its hint here while it's shown
         paper = sec = Fold("Paper", open_=True)
-        sec.add(self._check("testpage", "Show the printer test page"))
         self.fold_check = self._check("fold", "Fold-and-staple book (2 pages per sheet)")
         self.fold_hint = Hint()
         sec.add(self.fold_check, self.fold_hint)
@@ -880,7 +804,8 @@ class Sidebar(QFrame):
         # a class set: one copy per name, each name written on its copy's "Name" line (never remembered either)
         self.copies_names = line_edit(placeholder="Optional: Ana, Ben, Cara…", max_length=4000)
         self.copies_names.setAccessibleName(tr("Names: one copy for each, written on its Name line"))
-        self.copies_names.textChanged.connect(lambda _t: (self.sync(), self.class_set_changed.emit()))
+        self._had_names, self._auto_name_line = False, True
+        self.copies_names.textChanged.connect(lambda _t: (self._names_typed(), self.sync(), self.class_set_changed.emit()))
         self.copies_names_row = sec.add(OptionRow("Names", self.copies_names))
         # class lists kept in the settings folder (class-lists.json), to use again
         self.class_lists = {}
@@ -909,7 +834,7 @@ class Sidebar(QFrame):
         self.copies_answers.toggled.connect(lambda _on: (self.sync(), self.class_set_changed.emit()))
         sec.add(self.copies_answers)
         # a class set of booklets: their answers in one book for the teacher, not in each child's booklet
-        self.copies_answer_book = check("Answers in a separate teacher's book")
+        self.copies_answer_book = check("Answer pages in a separate teacher's book")
         self.copies_answer_book.toggled.connect(lambda _on: (self.sync(), self.class_set_changed.emit()))
         sec.add(self.copies_answer_book)
         self.copies_hint = sec.add(Hint())
@@ -931,10 +856,319 @@ class Sidebar(QFrame):
         sec.add(self._check("cream", "Cream paper on screen and in PDFs (Print still uses white paper)"))
         self.margin_hint = sec.add(Hint())   # the printer can't reach that far in: set_margin_warning()
         self.margin_hint.setVisible(False)
-        self.folds = {"paper": paper, "text": text_fold, "copies": copies_fold}
-        for f in (paper, text_fold, copies_fold):
+        self.paper_hint = sec.add(Hint("For this design. Edit → Settings sets the paper new projects start with."))
+        self.folds = {"design": design_fold, "photo": self.photo_panel, "text": self.text_section, "poster": poster_fold,
+                      "paper": paper, "copies": copies_fold}
+        for f in (paper, copies_fold):
             self._page_cols["print"].addWidget(f)
-        one_open([paper, text_fold, copies_fold])
+        one_open([paper, copies_fold])
+        one_open([design_fold, self.text_section])
+        one_open([self.photo_panel, self.text_section])
+
+    def _panel_words(self):
+        self.words_opts = SubOptions()
+        self.ws_theme = self._combo("ws_theme", list(words.THEME_NAMES.items()))
+        self.words_opts.add(OptionRow("Words from", self.ws_theme))
+        self.ws_words = self._text("ws_words", "e.g. mum, dad, grandma, pizza", 300)
+        self.ws_words_row = self.words_opts.add(OptionRow("Your words", self.ws_words))
+        self.ws_note = self.words_opts.add(Hint())
+
+    def _panel_maze(self):
+        self.maze_opts = SubOptions()
+        self.maze_shape = self._combo("maze_shape", list(maze.SHAPE_NAMES.items()))
+        self.maze_opts.add(OptionRow("Maze shape", self.maze_shape))
+        self.maze_word = self._text("maze_word", "e.g. Maya", 12)
+        self.maze_word_row = self.maze_opts.add(OptionRow("Word or name", self.maze_word))
+
+    def _panel_name(self):
+        self.name_opts = SubOptions()
+        self.name_text = self._text("name_text", "e.g. Maya, Happy Birthday", 40)
+        self.name_opts.add(OptionRow("Name or word", self.name_text))
+        self.name_bg = self._combo("name_bg", list(name.BACKGROUNDS.items()))
+        self.name_opts.add(OptionRow("Around the letters", self.name_bg))
+
+    def _panel_spot(self):
+        self.spot_opts = SubOptions()
+        self.spot_base = self._combo("spot_base", list(spot.BASES.items()))
+        self.spot_opts.add(OptionRow("Picture", self.spot_base))
+
+    def _panel_maths(self):
+        self.maths_opts = SubOptions()
+        self.maths_kind = self._combo("maths_kind", list(maths.KINDS.items()))
+        self.maths_opts.add(OptionRow("Sums", self.maths_kind))
+        self.money = self._combo("money", list(money.CURRENCIES.items()))
+        self.money_row = self.maths_opts.add(OptionRow("Money", self.money))
+
+    def _panel_frac(self):
+        self.frac_opts = SubOptions()
+        self.frac_kind = self._combo("frac_kind", list(fractions.KINDS.items()))
+        self.frac_opts.add(OptionRow("Worksheet", self.frac_kind))
+
+    def _panel_ruled(self):
+        self.ruled_opts = SubOptions()
+        self.ruled_kind = self._combo("ruled_kind", list(ruled.KINDS.items()))
+        self.ruled_opts.add(OptionRow("Paper", self.ruled_kind))
+
+    def _panel_reward(self):
+        self.reward_opts = SubOptions()
+        self.reward_kind = self._combo("reward_kind", list(reward.KINDS.items()))
+        self.reward_opts.add(OptionRow("Kind", self.reward_kind))
+        self.reward_text = self._text("reward_text", "e.g. reading every day", 60)
+        self.reward_opts.add(OptionRow("For", self.reward_text))
+        self.reward_opts.add(Hint("With names under Print → Copies and names, each child gets one with their name on it."))
+
+    def _panel_early(self):
+        self.early_opts = SubOptions()
+        self.early_kind = self._combo("early_kind", list(early.KINDS.items()))
+        self.early_opts.add(OptionRow("Pictures", self.early_kind))
+
+    def _panel_bingo(self):
+        self.bingo_opts = SubOptions()
+        self.bingo_kind = self._combo("bingo_kind", list(bingo.KINDS.items()))
+        self.bingo_opts.add(OptionRow("Call out", self.bingo_kind))
+        self.bingo_theme = self._combo("bingo_theme", list(words.THEME_NAMES.items()))
+        self.bingo_theme_row = self.bingo_opts.add(OptionRow("Words from", self.bingo_theme))
+        self.bingo_words = self._text("bingo_words", "e.g. cat, dog, sun, hat, pen", 600)
+        self.bingo_words_row = self.bingo_opts.add(OptionRow("Your words", self.bingo_words))
+        self.bingo_note = self.bingo_opts.add(Hint())
+        self.bingo_opts.add(Hint("With copies or names under Print → Copies and names, every card is different; "
+                                 "Answer pages adds the caller's sheet."))
+
+    def _panel_crypto(self):
+        self.crypto_opts = SubOptions()
+        self.crypto_code = self._combo("crypto_code", list(cryptogram.KINDS.items()))
+        self.crypto_opts.add(OptionRow("Code", self.crypto_code))
+        self.crypto_source = self._combo("crypto_source", list(cryptogram.SOURCES.items()))
+        self.crypto_opts.add(OptionRow("Put in code", self.crypto_source))
+        self.crypto_text = self._text("crypto_text", "e.g. Happy birthday, Grandma!", cryptogram.MAX_TEXT)
+        self.crypto_text_row = self.crypto_opts.add(OptionRow("Your text", self.crypto_text))
+        self.crypto_note = self.crypto_opts.add(Hint())
+
+    def _panel_ladder(self):
+        self.ladder_opts = SubOptions()
+        self.ladder_kind = self._combo("ladder_kind", list(ladder.KINDS.items()))
+        self.ladder_opts.add(OptionRow("Clue", self.ladder_kind))
+        self.ladder_note = self.ladder_opts.add(Hint())
+
+    def _panel_cal(self):
+        self.cal_opts = SubOptions()
+        self.cal_kind = self._combo("cal_kind", list(planner.KINDS.items()))
+        self.cal_opts.add(OptionRow("Kind", self.cal_kind))
+        self.cal_month = self._combo("cal_month", planner.MONTH_CHOICES)
+        self.cal_year = self._combo("cal_year", planner.year_choices())
+        self.cal_date_row = self.cal_opts.add(Pair(OptionRow("Month", self.cal_month), OptionRow("Year", self.cal_year)))
+        self.cal_start = self._combo("cal_start", list(planner.WEEK_STARTS.items()))
+        self.cal_opts.add(OptionRow("Week starts on", self.cal_start))
+        self.cal_art = self._combo("cal_art", list(planner.BACKGROUNDS.items()))
+        self.cal_opts.add(OptionRow("Picture", self.cal_art))
+
+    def _panel_scramble(self):
+        self.scramble_opts = SubOptions()
+        self.scramble_kind = self._combo("scramble_kind", list(scramble.KINDS.items()))
+        self.scramble_opts.add(OptionRow("Sheet", self.scramble_kind))
+
+    def _panel_lscwc(self):
+        self.lscwc_opts = SubOptions()
+        self.lscwc_note = self.lscwc_opts.add(Hint())
+        self.lscwc_opts.add(Hint("Fold the sheet along the dashed line to cover the words."))
+
+    def _panel_speed(self):
+        self.speed_opts = SubOptions()
+        self.speed_count = self._combo("speed_count", speed.COUNTS)
+        self.speed_op = self._combo("speed_op", list(speed.OPS.items()))
+        self.speed_opts.add(Pair(OptionRow("How many facts", self.speed_count), OptionRow("Times or sharing", self.speed_op)))
+        self.speed_tables = self._text("speed_tables", "e.g. 3, 4, 8", speed.MAX_TABLES)
+        self.speed_opts.add(OptionRow("Tables", self.speed_tables))
+        self.speed_order = self._combo("speed_order", list(speed.ORDERS.items()))
+        self.speed_opts.add(OptionRow("Order", self.speed_order))
+        self.speed_opts.add(self._check("speed_chart", "A progress chart to fill in after each try"))
+        self.speed_note = self.speed_opts.add(Hint())
+
+    def _panel_draw(self):
+        self.draw_opts = SubOptions()
+        self.draw_source = self._combo("draw_source", list(drawread.SOURCES.items()))
+        self.draw_opts.add(OptionRow("Sentences", self.draw_source))
+        self.draw_text = self._text("draw_text", "e.g. A red car; A dog in the rain", drawread.MAX_TEXT)
+        self.draw_text_row = self.draw_opts.add(OptionRow("Your sentences", self.draw_text))
+        self.draw_note = self.draw_opts.add(Hint())
+
+    def _panel_coord(self):
+        self.coord_opts = SubOptions()
+        self.coord_kind = self._combo("coord_kind", list(coords.KINDS.items()))
+        self.coord_opts.add(OptionRow("Kind", self.coord_kind))
+        self.coord_answer_check = self.coord_opts.add(self._check("coord_answer", "Draw the picture joined up (to show "
+                                                                                  "what the points make)"))
+
+    def _panel_memory(self):
+        self.memory_opts = SubOptions()
+        self.memory_kind = self._combo("memory_kind", list(memory.KINDS.items()))
+        self.memory_opts.add(OptionRow("Cards", self.memory_kind))
+        self.memory_words = self._text("memory_words", "e.g. cat: chat; dog: chien", memory.MAX_TEXT)
+        self.memory_words_row = self.memory_opts.add(OptionRow("Your pairs", self.memory_words))
+        self.memory_note = self.memory_opts.add(Hint())
+        self.memory_backs_check = self.memory_opts.add(self._check("memory_backs", "Card backs (a second page, to "
+                                                                                    "print on the back)"))
+        self.memory_backs_hint = self.memory_opts.add(Hint("Print double-sided, flipping on the long edge, so each "
+                                                           "back lands behind its card."))
+        self.memory_no_backs_hint = self.memory_opts.add(Hint(MEMORY_NO_BACKS))
+
+    def _panel_clock(self):
+        self.clock_opts = SubOptions()
+        self.clock_task = self._combo("clock_task", list(clock.TASKS.items()))
+        self.clock_opts.add(OptionRow("Clocks", self.clock_task))
+
+    def _panel_trace(self):
+        self.trace_opts = SubOptions()
+        self.trace_source = self._combo("trace_source", list(trace.SOURCES.items()))
+        self.trace_opts.add(OptionRow("Trace", self.trace_source))
+        self.trace_style = self._combo("trace_style", list(trace.LETTERS.items()))
+        self.trace_opts.add(OptionRow("Letters", self.trace_style))
+        self.trace_hand = self._combo("trace_hand", list(trace.HANDS.items()))
+        self.trace_hand_row = self.trace_opts.add(OptionRow("Style", self.trace_hand))
+        self.trace_text = self._text("trace_text", "e.g. cat, dog, sun, my name", 300)
+        self.trace_text_row = self.trace_opts.add(OptionRow("Your words", self.trace_text))
+        self.trace_hint = self.trace_opts.add(Hint())
+
+    def _panel_cross(self):
+        self.cross_opts = SubOptions()
+        self.cross_theme = self._combo("cross_theme", list(crossword.THEME_NAMES.items()))
+        self.cross_opts.add(OptionRow("Words from", self.cross_theme))
+        self.cross_words = self._text("cross_words", "e.g. cat: Says miaow; sun: Our nearest star", 2000)
+        self.cross_words_row = self.cross_opts.add(OptionRow("Your words and clues", self.cross_words))
+        self.cross_words_hint = self.cross_opts.add(Hint("Each as word: clue, separated by ; (a word without a clue gets ?)."))
+        self.cross_note = self.cross_opts.add(Hint())
+
+    # --- each pattern's own options: built when first wanted ------------------------------------------------------
+    def __getattr__(self, name):
+        """A pattern's control, label or hint read before its options were built: built now (sync(), presets, undo,
+        projects and tests all read them by name)."""
+        key = _PANEL_OF.get(name)
+        if key is None or "_built" not in self.__dict__:
+            raise AttributeError(name)
+        self.build_panel(key)
+        return self.__dict__[name]
+
+    def build_panel(self, key):
+        """A pattern's own options (PATTERN_PANELS), built the first time they're wanted, in their place in Design and
+        showing the settings as they are; hidden until sync() shows them."""
+        box = self._built.get(key)
+        if box is not None:
+            return box
+        before = set(self._binds)
+        getattr(self, f"_panel_{key}")()
+        box = self.__dict__[f"{key}_opts"]
+        order = list(PATTERN_PANELS)
+        after = next((self._built[k] for k in order[order.index(key) + 1:] if k in self._built), self.complexity_row)
+        box.hide()
+        self._panel_lay.insertWidget(self._panel_lay.indexOf(after), box)
+        self._built[key] = box
+        values = self.state.settings.to_dict()
+        was, self._loading = self._loading, True
+        try:
+            for k in self._binds.keys() - before:
+                self._binds[k][1](values[k])
+        finally:
+            self._loading = was
+        if key in ("words", "cross"):   # the preview's note about the words (set_render_note)
+            self.__dict__[f"{'ws' if key == 'words' else 'cross'}_note"].setText(self._render_note)
+        self.panel_built.emit(key)
+        return box
+
+    def build_all(self):
+        """Every pattern's options built, as they all were before 6.3 (for tests and walks over every control)."""
+        for key in PATTERN_PANELS:
+            self.build_panel(key)
+        self.sync()
+
+    def set_render_note(self, note):
+        """What the preview found about the words (too long, left out...), for the word search's and crossword's."""
+        self._render_note = note
+        for key, name in (("words", "ws_note"), ("cross", "cross_note")):
+            if key in self._built:
+                self.__dict__[name].setText(note)
+
+    def _sync_panels(self, s, mix_book):
+        """The chosen pattern's options shown (built first, the first time), the others hidden."""
+        for key, (gens, _names) in PATTERN_PANELS.items():
+            want = s.gen in gens or (key == "maze" and mix_book)
+            box = self.build_panel(key) if want else self._built.get(key)
+            if box is not None:
+                box.setVisible(want)
+                if want and hasattr(type(self), f"_sync_{key}"):
+                    getattr(self, f"_sync_{key}")(s)
+
+    def _sync_words(self, s):
+        self.ws_words_row.setVisible(s.ws_theme == "custom")
+        self.ws_note.setVisible(bool(self.ws_note.text()) and s.gen == "words")
+
+    def _sync_maze(self, s):
+        self.maze_word_row.setVisible(s.maze_shape == "word")
+
+    def _sync_maths(self, s):
+        self.money_row.setVisible(s.maths_kind == "money")
+
+    def _sync_bingo(self, s):
+        self.bingo_theme_row.setVisible(s.bingo_kind == "words")
+        self.bingo_words_row.setVisible(s.bingo_kind == "words" and s.bingo_theme == "custom")
+        self.bingo_note.setText(bingo.note(s))
+        self.bingo_note.setVisible(bool(self.bingo_note.text()))
+
+    def _sync_crypto(self, s):
+        self.crypto_text_row.setVisible(s.crypto_source == "custom")
+        self.crypto_note.setText(cryptogram.note(s))
+        self.crypto_note.setVisible(bool(self.crypto_note.text()))
+
+    def _sync_ladder(self, s):
+        self.ladder_note.setText(ladder.note(s))
+        self.ladder_note.setVisible(bool(self.ladder_note.text()))
+
+    def _sync_cal(self, s):
+        self.cal_date_row.setVisible(s.cal_kind == "month")
+        if self.cal_year.findData(s.cal_year) < 0 and planner.FIRST_YEAR <= s.cal_year <= planner.LAST_YEAR:
+            was, self._loading = self._loading, True   # a year saved earlier, before this year's list: listed too
+            self.cal_year.clear()
+            for value, text in planner.year_choices(keep=s.cal_year):
+                self.cal_year.addItem(tr(text), value)
+            self.cal_year.set_value(s.cal_year)
+            self._loading = was
+
+    def _sync_lscwc(self, s):
+        self.lscwc_note.setText(lscwc.note(s))
+        self.lscwc_note.setVisible(bool(self.lscwc_note.text()))
+
+    def _sync_speed(self, s):
+        self.speed_note.setText(speed.note(s))
+        self.speed_note.setVisible(bool(self.speed_note.text()))
+
+    def _sync_draw(self, s):
+        self.draw_text_row.setVisible(s.draw_source == "custom")
+        self.draw_note.setText(drawread.note(s))
+        self.draw_note.setVisible(bool(self.draw_note.text()))
+
+    def _sync_coord(self, s):
+        self.coord_answer_check.setVisible(s.coord_kind != "battle")
+
+    def _sync_memory(self, s):
+        self.memory_words_row.setVisible(s.memory_kind == "custom")
+        backs_ok = not s.booklet and not s.poster and PANELS.get(s.sheet, 1) == 1   # as jobs.card_backs
+        self.memory_backs_check.setEnabled(backs_ok)   # backs print with a single page or copies only
+        self.memory_backs_check.setToolTip("" if backs_ok else tr(MEMORY_NO_BACKS))
+        self.memory_backs_hint.setVisible(s.memory_backs and backs_ok)
+        self.memory_no_backs_hint.setVisible(not backs_ok)
+        self.memory_note.setText(memory.note(s))
+        self.memory_note.setVisible(bool(self.memory_note.text()))
+
+    def _sync_cross(self, s):
+        self.cross_words_row.setVisible(s.cross_theme == "custom")
+        self.cross_words_hint.setVisible(s.cross_theme == "custom")
+        self.cross_note.setVisible(bool(self.cross_note.text()))
+
+    def _sync_trace(self, s):
+        self.trace_text_row.setVisible(s.trace_source == "words")
+        self.trace_hand_row.setVisible(s.trace_style == "joined")
+        self.trace_hint.setVisible(s.trace_source == "name")
+        self.trace_hint.setText(tr("Traces each child's name from Print → Copies and names, or else the name page's text.")
+                                if s.trace_source == "name" else "")
 
     def copies_typed(self):
         """The number in the Copies field, or None when it's empty."""
@@ -975,7 +1209,11 @@ class Sidebar(QFrame):
         cs = cs or {}
         n = cs.get("copies", 1)
         self.copies.setText(str(n) if n > 1 else "")
-        self.copies_names.setText(cs.get("names", ""))
+        self._auto_name_line = False   # a project's names come with its own Name line setting
+        try:
+            self.copies_names.setText(cs.get("names", ""))
+        finally:
+            self._auto_name_line = True
         self.copies_vary.setChecked(cs.get("vary", True))
         self.copies_answers.setChecked(cs.get("answers", True))
         self.copies_answer_book.setChecked(cs.get("answer_book", False))
@@ -1327,7 +1565,9 @@ class Sidebar(QFrame):
             else:   # no page to change any more (back to a quick booklet, a photo): Create's controls go home
                 self.back_to_pages()
         mix_book = s.booklet and s.mix and not listing
-        self.words_opts.setVisible(s.gen in WORD_GENS)   # unscramble, spelling tests and look-say-cover take their words from here
+        hint = "" if mix_book else complexity_hint(s)
+        self.complexity_hint.setText(tr(hint) if hint else "")
+        self.complexity_hint.setVisible(bool(hint))
         self.age_hint.setVisible(s.age != "any")
         sheet_ok = make and not s.booklet and not s.poster and not s.testpage   # single designs only
         self.sheet_row.setVisible(sheet_ok)
@@ -1339,64 +1579,7 @@ class Sidebar(QFrame):
             row.setVisible(k + 1 < n_panels)
             c.set_value(gens[k + 1])
         self._loading = was
-        self.maths_opts.setVisible(s.gen == "maths")
-        self.clock_opts.setVisible(s.gen == "clock")
-        self.frac_opts.setVisible(s.gen == "fractions")
-        self.ruled_opts.setVisible(s.gen == "ruled")
-        self.reward_opts.setVisible(s.gen == "reward")
-        self.bingo_opts.setVisible(s.gen == "bingo")
-        self.early_opts.setVisible(s.gen == "early")
-        self.bingo_theme_row.setVisible(s.bingo_kind == "words")
-        self.bingo_words_row.setVisible(s.bingo_kind == "words" and s.bingo_theme == "custom")
-        self.bingo_note.setText(bingo.note(s))
-        self.bingo_note.setVisible(bool(self.bingo_note.text()))
-        self.logic_opts.setVisible(s.gen == "logic")
-        self.crypto_opts.setVisible(s.gen == "cryptogram")
-        self.crypto_text_row.setVisible(s.crypto_source == "custom")
-        self.crypto_hint.setVisible(s.crypto_source != "custom")
-        self.crypto_own_hint.setVisible(s.crypto_source == "custom")
-        self.crypto_note.setText(cryptogram.note(s) if s.gen == "cryptogram" else "")
-        self.crypto_note.setVisible(bool(self.crypto_note.text()))
-        self.ladder_opts.setVisible(s.gen == "ladder")
-        self.ladder_note.setText(ladder.note(s) if s.gen == "ladder" else "")
-        self.ladder_note.setVisible(bool(self.ladder_note.text()))
-        self.cal_opts.setVisible(s.gen == "calendar")
-        self.cal_date_row.setVisible(s.cal_kind == "month")
-        if self.cal_year.findData(s.cal_year) < 0 and planner.FIRST_YEAR <= s.cal_year <= planner.LAST_YEAR:
-            was, self._loading = self._loading, True   # a year saved earlier, before this year's list: listed too
-            self.cal_year.clear()
-            for value, text in planner.year_choices(keep=s.cal_year):
-                self.cal_year.addItem(tr(text), value)
-            self.cal_year.set_value(s.cal_year)
-            self._loading = was
-        self.scramble_opts.setVisible(s.gen == "scramble")
-        self.lscwc_opts.setVisible(s.gen == "lscwc")
-        self.lscwc_note.setText(lscwc.note(s) if s.gen == "lscwc" else "")
-        self.lscwc_note.setVisible(bool(self.lscwc_note.text()))
-        self.speed_opts.setVisible(s.gen == "speed")
-        self.speed_note.setText(speed.note(s) if s.gen == "speed" else "")
-        self.speed_note.setVisible(bool(self.speed_note.text()))
-        self.draw_opts.setVisible(s.gen == "drawread")
-        self.draw_text_row.setVisible(s.draw_source == "custom")
-        self.draw_hint.setVisible(s.draw_source != "custom")
-        self.draw_note.setText(drawread.note(s) if s.gen == "drawread" else "")
-        self.draw_note.setVisible(bool(self.draw_note.text()))
-        self.coord_opts.setVisible(s.gen == "coords")
-        self.coord_plot_hint.setVisible(s.coord_kind != "battle")
-        self.coord_answer_check.setVisible(s.coord_kind != "battle")
-        self.coord_battle_hint.setVisible(s.coord_kind == "battle")
-        self.memory_opts.setVisible(s.gen == "memory")
-        self.memory_words_row.setVisible(s.memory_kind == "custom")
-        backs_ok = not s.booklet and not s.poster and PANELS.get(s.sheet, 1) == 1   # as jobs.card_backs
-        self.memory_backs_check.setEnabled(backs_ok)   # backs print with a single page or copies only
-        self.memory_backs_check.setToolTip("" if backs_ok else tr(MEMORY_NO_BACKS))
-        self.memory_backs_hint.setVisible(s.memory_backs and backs_ok)
-        self.memory_no_backs_hint.setVisible(not backs_ok)
-        self.memory_hint.setVisible(s.memory_kind != "custom")
-        self.memory_own_hint.setVisible(s.memory_kind == "custom")
-        self.memory_note.setText(memory.note(s) if s.gen == "memory" else "")
-        self.memory_note.setVisible(bool(self.memory_note.text()))
-        self.money_row.setVisible(s.maths_kind == "money")
+        self._sync_panels(s, mix_book)
         self.pack_words_row.setVisible(s.pack_theme == "spelling")
         spelling = s.pack_theme == "spelling"
         what = (tr("Look, say, cover, write, check, a word search, missing letters and a crossword of your words, then "
@@ -1413,30 +1596,18 @@ class Sidebar(QFrame):
         self.pack_hint.setText(what.format(age=tr(ages.AGES[s.age if s.age in ages.EXTRAS else pack.DEFAULT_AGE]).lower())
                                if ready else tr("Type this week's spelling words to make the pack."))
         self.pack_btn.setEnabled(ready)
-        self.cross_opts.setVisible(s.gen == "crossword")
-        self.cross_words_row.setVisible(s.cross_theme == "custom")
-        self.cross_words_hint.setVisible(s.cross_theme == "custom")
-        self.trace_opts.setVisible(s.gen == "trace")
-        self.trace_text_row.setVisible(s.trace_source == "words")
-        self.trace_hand_row.setVisible(s.trace_style == "joined")
-        self.trace_hint.setVisible(s.trace_source == "name")
-        self.trace_hint.setText(tr("Traces each child's name from Paper → Names, or else the name page's text.")
-                                if s.trace_source == "name" else "")
-        self.ws_words_row.setVisible(s.ws_theme == "custom")
-        self.maze_opts.setVisible(s.gen == "maze" or mix_book)
-        self.maze_word_row.setVisible(s.maze_shape == "word")
-        self.name_opts.setVisible(s.gen == "name")
-        self.spot_opts.setVisible(s.gen == "spot")
-        self.cbn_opts.setVisible(s.cbn)
+        cbn_ok = s.gen in cbn.CBN_GENS or mix_book   # the patterns colour by number works on
+        self.cbn_check.setVisible(cbn_ok)
+        self.cbn_opts.setVisible(s.cbn and cbn_ok)
         if s.gen == "name" and s.name_bg in ("none", "flow"):
             note = "Flow lines and plain pages enclose few spaces: choose Woven tiles or Contours around the letters for more to colour."
-        elif s.gen in cbn.CBN_GENS or mix_book:
-            note = CBN_PATTERN_NOTE
         else:
-            note = "Works on mandalas, woven tiles, contours and name pages; choose one of those to see it."
+            note = CBN_PATTERN_NOTE
         self.cbn_note.setText(tr(note))
         page = self.state.book_page if listing else None
-        self.seed.setText(tr("seed {n}").format(n=page.get('seed', s.seed) if page else s.seed))
+        self.design_number = page.get("seed", s.seed) if page else s.seed
+        self.new_design.setToolTip(tr("New design (Ctrl+N)") + "\n" + tr("Design number {n}. Right-click to copy it.")
+                                   .format(n=self.design_number))
         self.design_note.setVisible(page is not None)
         answers = page is not None and s.key and has_answer(s.gen, s)
         self.page_answer_check.setVisible(answers)
@@ -1456,6 +1627,10 @@ class Sidebar(QFrame):
         self.pcbn_opts.setVisible(s.style == "cbn")
         self.pnono_opts.setVisible(s.style == "nono")
         self.pdots_opts.setVisible(s.style == "dots")
+        for key, row in self.photo_sliders.items():
+            row.setVisible(s.style in PHOTO_SLIDERS[key])
+        self.invert_check.setVisible(s.style != "cbn")   # colour by number reads the photo's colours, not its tones
+        self._place_text_section(make)
         self.poster_opts.setVisible(s.poster)
         if s.poster:
             from inkengine.poster import size_note
@@ -1489,6 +1664,7 @@ class Sidebar(QFrame):
         for row in (self.copies_row, self.copies_names_row, self.class_list_row, self.class_list_save_row):
             row.setVisible(shown)
         self.copies.setEnabled(not names)   # the names say how many
+        self.copies.setPlaceholderText(str(min(len(names), MAX_COPIES)) if names else "1")
         # a booklet's pages each vary in their own way (and it has its own answer pages)
         can_vary, vary_note = (True, "") if books else jobs.copies_vary(s)
         typed = self.copies_typed()
@@ -1505,9 +1681,9 @@ class Sidebar(QFrame):
             vary = can_vary and (self.copies_vary.isChecked() or always)
             parts = [tr("Copies go from 1 to {top}.").format(top=MAX_COPIES)] if off else []
             if unnamed:
-                parts.append(tr('To write the names on the booklets, turn on Page text → Add a "Name ______" line.')
+                parts.append(tr('To write the names on the booklets, turn on Add a "Name ______" line under Page text.')
                              if books else
-                             tr('To write the names on the copies, turn on Page text → Add a "Name ______" line.'))
+                             tr('To write the names on the copies, turn on Add a "Name ______" line under Page text.'))
             # whole sentences, so each language can phrase them (and agree them with booklet or copy) its own way
             if names:
                 many = len(jobs.parse_names(self.copies_names.text(), None)) > MAX_COPIES
@@ -1578,18 +1754,12 @@ class Sidebar(QFrame):
         vector = not make and s.style in photo.VECTOR_STYLES
         self.svg_btn.setEnabled((make or vector) and not s.testpage and not fold)
         self.save_tips(s)
-        self.ws_note.setVisible(bool(self.ws_note.text()) and s.gen == "words")
-        self.cross_note.setVisible(bool(self.cross_note.text()) and s.gen == "crossword")
         self.synced.emit()
 
     def save_tips(self, s):
         """The footer's save buttons' tooltips, with the shortcut each has (Ctrl+E saves Edit → Settings' format)."""
         fmt = getattr(self, "save_format", "pdf")
         make = s.mode == "make"
-        self.keys.setText(tr("Ctrl+P print · Ctrl+E PDF · Ctrl+S save project · Ctrl+N new design · ← → pages")
-                          if fmt == "pdf" else
-                          tr("Ctrl+P print · Ctrl+E {format} · Ctrl+S save project · Ctrl+N new design · ← → pages")
-                          .format(format=fmt.upper()))
         self.pdf_btn.setToolTip(tr("Save PDF (Ctrl+E)") if fmt == "pdf" else
                                 tr("Save PDF (Ctrl+Shift+E)") if fmt == "png" else tr("Save PDF"))
         self.png_btn.setToolTip(tr("Posters save as PDF (one page per sheet) or print directly")
@@ -1608,6 +1778,40 @@ class Sidebar(QFrame):
 
     def set_status(self, text):
         self.status.setText(text)
+
+    def set_touch(self, on):
+        """Hints that say click, double-click or scroll say tap, double-tap and pinch on a touch screen."""
+        for hint, english in zip((self.drag_hint, self.page_list_hint, self.paper_hint), TOUCH_HINTS):   # in its order
+            hint.setText(tr(TOUCH_HINTS[english] if on else english))
+
+    def _copy_design_number(self):
+        from PySide6.QtWidgets import QApplication
+        QApplication.clipboard().setText(str(self.design_number))
+        self.notice.emit(tr("Copied the design number, {n}.").format(n=self.design_number))
+
+    def _place_text_section(self, make):
+        """Page text on Create, or on Photo with a photo: it's written on the page either way."""
+        col = self._page_cols["make" if make else "photo"]
+        if col.indexOf(self.text_section) < 0:
+            col.insertWidget(col.count() - 1, self.text_section)   # before the column's stretch
+            self.text_section.show()
+            main = self.folds["design" if make else "photo"]
+            if not main.is_open() and not self.text_section.is_open():   # one of the page's folds open
+                main.set_open(True)
+
+    def _names_typed(self):
+        """Names typed for a class set write themselves on the "Name ______" line: the first names typed turn it on
+        (once: turned off again, the hint says how to turn it back on)."""
+        typed = bool(jobs.parse_names(self.copies_names.text()))
+        if typed and not self._had_names and self._auto_name_line and not self.state.settings.name_line:
+            self.state.update(name_line=True)
+            control, write = self._binds["name_line"]
+            was, self._loading = self._loading, True
+            write(True)
+            self._loading = was
+            self.changed.emit("name_line")
+            self.notice.emit(tr('Turned on Add a "Name ______" line, so each name is written on its page.'))
+        self._had_names = typed
 
 
 class _CopiesValidator(QIntValidator):
@@ -1725,7 +1929,41 @@ class _Elided(QLabel):
 
 
 MEMORY_NO_BACKS = "Card backs print with a single page or copies, not in a booklet, a poster or a sheet of several designs."
+# the photo styles each slider changes (the others don't read it: halftone, engraving and stippling have no threshold;
+# a nonogram, dot-to-dot or colour by number sets its own cell size; colour by number reads the photo's own colours)
+PHOTO_SLIDERS = {"brightness": set(photo.STYLES) - {"cbn"}, "contrast": set(photo.STYLES) - {"cbn"},
+                 "threshold": set(photo.STYLES) - {"halftone", "engrave", "stipple"},
+                 "dot": set(photo.STYLES) - {"nono", "cbn", "dots"}}
 WORD_GENS = ("words", "scramble", "spelltest", "lscwc")   # the patterns whose words come from Words from
+# each pattern's own options, in the order they sit in Design (between Age and Complexity): the patterns they're
+# for, and the attributes building them makes. About half the window's widgets, for patterns most people never
+# choose: each panel is built the first time its pattern is chosen, or one of its attributes is read
+# (Sidebar.build_panel). tests/test_lazy_panels.py checks this table against what each _panel_ method makes.
+PATTERN_PANELS = {
+    "words": (WORD_GENS, "words_opts ws_note ws_theme ws_words ws_words_row"),
+    "maze": (("maze",), "maze_opts maze_shape maze_word maze_word_row"),
+    "name": (("name",), "name_bg name_opts name_text"),
+    "spot": (("spot",), "spot_base spot_opts"),
+    "maths": (("maths",), "maths_kind maths_opts money money_row"),
+    "frac": (("fractions",), "frac_kind frac_opts"),
+    "ruled": (("ruled",), "ruled_kind ruled_opts"),
+    "reward": (("reward",), "reward_kind reward_opts reward_text"),
+    "early": (("early",), "early_kind early_opts"),
+    "bingo": (("bingo",), "bingo_kind bingo_note bingo_opts bingo_theme bingo_theme_row bingo_words bingo_words_row"),
+    "crypto": (("cryptogram",), "crypto_code crypto_note crypto_opts crypto_source crypto_text crypto_text_row"),
+    "ladder": (("ladder",), "ladder_kind ladder_note ladder_opts"),
+    "cal": (("calendar",), "cal_art cal_date_row cal_kind cal_month cal_opts cal_start cal_year"),
+    "scramble": (("scramble",), "scramble_kind scramble_opts"),
+    "lscwc": (("lscwc",), "lscwc_note lscwc_opts"),
+    "speed": (("speed",), "speed_count speed_note speed_op speed_opts speed_order speed_tables"),
+    "draw": (("drawread",), "draw_note draw_opts draw_source draw_text draw_text_row"),
+    "coord": (("coords",), "coord_answer_check coord_kind coord_opts"),
+    "memory": (("memory",), "memory_backs_check memory_backs_hint memory_kind memory_no_backs_hint memory_note memory_opts memory_words memory_words_row"),
+    "clock": (("clock",), "clock_opts clock_task"),
+    "trace": (("trace",), "trace_hand trace_hand_row trace_hint trace_opts trace_source trace_style trace_text trace_text_row"),
+    "cross": (("crossword",), "cross_note cross_opts cross_theme cross_words cross_words_hint cross_words_row"),
+}
+_PANEL_OF = {name: key for key, (_gens, names) in PATTERN_PANELS.items() for name in names.split()}
 DAY_NAMES = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
 SPELLING_USUAL = pack.SPELLING_DAYS
 

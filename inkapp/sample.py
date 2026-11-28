@@ -4,6 +4,7 @@ to show before any photo is opened."""
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QImage, QLinearGradient, QPainter, QPainterPath, QPolygonF, QRadialGradient
 
+from inkengine.i18n import tr
 from inkengine.photo import Photo
 from inkengine.qt import ensure_app
 from inkengine.rng import mulberry32
@@ -54,4 +55,4 @@ def sample_photo():
         ty = 760 + rnd() * 160
         x.drawPolygon(QPolygonF([QPointF(tx, ty - th), QPointF(tx - th * 0.25, ty), QPointF(tx + th * 0.25, ty)]))
     x.end()
-    return Photo(img, name="Sample: mountain lake")
+    return Photo(img, name=tr("Sample: mountain lake"))

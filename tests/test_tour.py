@@ -79,7 +79,9 @@ def test_the_tour_starts_where_the_gallery_is(make_win):
 def test_touch_mode_describes_its_own_toolbar():
     from inkapp import tour
     assert "PNG" in tour.step_text("toolbar") and "PNG" not in tour.step_text("toolbar", touch=True)
-    assert "Menu" in tour.step_text("menu", touch=True) and tour.step_text("rail", touch=True) == tour.step_text("rail")
+    assert "Menu" in tour.step_text("menu", touch=True)
+    assert "Ctrl+1" in tour.step_text("rail") and "Ctrl" not in tour.step_text("rail", touch=True)   # no keyboard
+    assert "Keyboard shortcuts" in tour.step_text("menu") and "Ctrl" not in tour.step_text("menu", touch=True)
 
 
 def test_the_card_has_its_own_background_with_the_desktops_style(make_win):

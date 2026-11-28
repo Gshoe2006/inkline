@@ -110,10 +110,22 @@ window and its first paint takes about 0.06 s more either way. Screenshots of ev
 touch, are pixel-for-pixel the same before and after. `tests/test_startup.py` checks that building the window
 restyles nothing and that the central widget goes in empty.
 
-Not done, and what it could save: about half of the 1,054 widgets are hidden, the options of patterns not chosen
-(each combo box alone brings nine of Qt's own widgets for its popup). Building each pattern's options the first time
-it's chosen could save roughly another 0.1–0.15 s, but every control is referenced by `Sidebar.sync()`, presets,
-undo, projects and many tests, so it's a larger change, best made when the sidebar isn't also being extended.
+### Each pattern's options, built when first wanted
+
+About half the window's widgets were the options of patterns not chosen (each combo box alone brings nine of Qt's own
+widgets for its popup). Since 6.3 each pattern's own options (`PATTERN_PANELS` in `inkapp/sidebar.py`: 22 panels, from
+the word search's words to the calendar's month and year) are built the first time that pattern is chosen, in their
+place between Age and Complexity, with the settings as they are. Everything that reads a control by name still works:
+reading one of a panel's attributes builds that panel first (`Sidebar.__getattr__`), `load()` fills in only what's
+built, `sync()` builds and shows the chosen pattern's panel, and tests that walk every control call
+`sidebar.build_all()`. `tests/test_lazy_panels.py` checks the table against what each panel makes.
+
+The window starts with 658 widgets instead of 1,167 (a mandala, the first pattern, has no options of its own).
+Building the window, median of 20 fresh processes each, run alternately with and without the change, offscreen, this
+container: **0.41 s before (0.37–0.44), 0.27 s after (0.23–0.33)**, about 0.14 s less. Choosing a pattern for the
+first time then builds its options once: 5–20 ms for most, 49 ms for the times-table speed test (all 22 together
+about 0.2 s).
+
 Most of Inkline's import time is numpy (0.05 s, used by the engine everywhere) and PySide6 binding its types.
 
 ## The Rust module
@@ -242,4 +254,5 @@ Not shipped, and why:
 - **Look at Qt painting for engrave and truchet.** Stipple's 2.2 s of path filling is now 0.2 s (above); engrave's
   0.65 s and truchet's 0.44 s are still one `fillPath`/`drawPath` each.
 - **Shipping the module** is done for every package with its own Python, Android included (above).
-- **Start-up**: profiled and roughly halved (Start-up, above). What's left is Qt polishing about a thousand widgets.
+- **Start-up**: profiled and roughly halved (Start-up, above), then each pattern's options built when first wanted
+  (about 0.14 s less again). What's left is Qt polishing about 650 widgets.

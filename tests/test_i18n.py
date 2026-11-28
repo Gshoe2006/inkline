@@ -179,6 +179,7 @@ def test_the_window_in_each_language_asks_for_nothing_untranslated(language, tmp
     w = Window("5.0.0", remember=False)
     w.show()
     try:
+        w.sidebar.build_all()   # every pattern's options, so their words are asked for too
         _walk_states(w)
         # pages of every kind, printed: their words too
         from inkapp import jobs, render

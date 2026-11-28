@@ -2,8 +2,8 @@
 
 - Rail: Make · Photo (the two modes) and Booklet · Poster · Print (more options for what's made); each shows its own
   page of options beside it.
-- Fold: a section of options that opens and closes; the folds on a page take turns, one open at a time, so a page
-  fits without scrolling.
+- Fold: a section of options that opens and closes; every page holds its options in folds, and the folds on a page
+  take turns, one open at a time, so a page fits without scrolling.
 - Gallery: the patterns used last as pictures, to choose one by sight (the Pattern list under it has them all).
 - Popup: a toolbar button whose panel holds real controls (Presets).
 - Touch screens (theme.TOUCH): BottomBar, the rail's entries along the bottom of a phone-width window, with Preview
@@ -48,6 +48,7 @@ class Rail(QFrame):
             b.setText(tr(text))
             b.setToolTip(tr("{name} ({keys})").format(name=tr(text), keys=f"Ctrl+{i + 1}"))   # the window's shortcut
             b.setCheckable(True)   # not exclusive buttons: those switch on the arrow keys, changing the mode by accident
+            b.setFocusPolicy(Qt.FocusPolicy.StrongFocus)   # a click takes the focus along: it never stays on the page left
             b.setCursor(Qt.CursorShape.PointingHandCursor)
             b.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
             b.setMinimumHeight(48)
@@ -264,22 +265,16 @@ class Gallery(QWidget):
     """The patterns as pictures: picked(gen) when one is clicked."""
     picked = Signal(str)
 
-    def __init__(self, names):
+    def __init__(self, names, descriptions=None):
         super().__init__()
-        self.names = names
+        self.names, self.descriptions = names, descriptions or {}
         grid = QGridLayout(self)
         grid.setContentsMargins(0, 0, 0, 0)
         grid.setSpacing(theme.PAIR_GAP)
         self.buttons = []
         for i in range(GALLERY):
-            b = QToolButton()
-            b.setObjectName("galleryItem")
-            b.setCheckable(True)
+            b = Tile(64, 86, 108)   # room for a name on two lines
             b.setAutoExclusive(False)
-            b.setCursor(Qt.CursorShape.PointingHandCursor)
-            b.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
-            b.setIconSize(QSize(64, 64))
-            b.setMinimumSize(86, 96)
             b.clicked.connect(lambda _c=False, i=i: self._click(i))
             grid.addWidget(b, i // 3, i % 3)
             self.buttons.append(b)
@@ -290,9 +285,8 @@ class Gallery(QWidget):
         """Which patterns, in order, and the one in use (checked, if it's among them)."""
         self.gens = list(gens)[:GALLERY]
         for b, gen in zip(self.buttons, self.gens):
-            b.setText(tr(self.names.get(gen, gen)))
-            b.setToolTip(tr(self.names.get(gen, gen)))
-            b.setAccessibleName(tr(self.names.get(gen, gen)))
+            b.set_name(tr(self.names.get(gen, gen)))
+            b.setToolTip(tr(self.descriptions.get(gen) or self.names.get(gen, gen)))   # what it is, as All patterns says
             b.setChecked(gen == current)
 
     def set_picture(self, gen, img):
@@ -304,6 +298,56 @@ class Gallery(QWidget):
             for k, b in enumerate(self.buttons):   # the one clicked stays chosen, even clicked again
                 b.setChecked(k == i)
             self.picked.emit(self.gens[i])
+
+
+def two_lines(text, metrics, width):
+    """A picture button's name on up to two lines that fit width (px), broken between words; what doesn't fit on
+    the second ends in …. A long name is no longer cut in the middle ("Tellin…e time")."""
+    words, first = text.split(), ""
+    for i, w in enumerate(words):
+        t = f"{first} {w}".strip()
+        if metrics.horizontalAdvance(t) <= width:
+            first = t
+            continue
+        if not first:   # one word wider than the button (German's long nouns): broken with a hyphen
+            cut = max((k for k in range(2, len(w) - 1) if metrics.horizontalAdvance(w[:k] + "-") <= width), default=0)
+            if not cut:
+                return metrics.elidedText(text, Qt.TextElideMode.ElideRight, width)
+            first, words[i] = w[:cut] + "-", w[cut:]
+        rest = " ".join(words[i:])
+        return first + ("\n" + metrics.elidedText(rest, Qt.TextElideMode.ElideRight, width) if rest else "")
+    return first
+
+
+class Tile(QToolButton):
+    """A pattern as a picture with its name under it, on two lines when it needs them (two_lines)."""
+
+    def __init__(self, icon_px, min_w, min_h):
+        super().__init__()
+        self.setObjectName("galleryItem")
+        self.setCheckable(True)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
+        self.setIconSize(QSize(icon_px, icon_px))
+        self.setMinimumSize(min_w, min_h)
+        self.name = ""
+
+    def set_name(self, name):
+        self.name = name
+        self.setAccessibleName(name)
+        self._relabel()
+
+    def _relabel(self):
+        self.setText(two_lines(self.name, self.fontMetrics(), max(self.width(), self.minimumWidth()) - 12))
+
+    def resizeEvent(self, ev):
+        super().resizeEvent(ev)
+        self._relabel()
+
+    def changeEvent(self, ev):
+        super().changeEvent(ev)
+        if ev.type() in (QEvent.Type.StyleChange, QEvent.Type.FontChange):
+            self._relabel()
 
 
 def recent_patterns(used, known):
@@ -427,17 +471,10 @@ class AllPatterns(QWidget):
             grid.setContentsMargins(0, 0, 0, 0)
             grid.setSpacing(theme.PAIR_GAP)
             for i, gen in enumerate(g for g in gens if g in names):
-                b = QToolButton()
-                b.setObjectName("galleryItem")
-                b.setCheckable(True)
+                b = Tile(80, 112, 132)
                 b.setChecked(gen == current)
-                b.setCursor(Qt.CursorShape.PointingHandCursor)
-                b.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
-                b.setIconSize(QSize(80, 80))
-                b.setMinimumSize(112, 120)
-                b.setText(tr(names[gen]))
+                b.set_name(tr(names[gen]))
                 b.setToolTip(tr(descriptions.get(gen, names[gen])))
-                b.setAccessibleName(tr(names[gen]))
                 b.clicked.connect(lambda _c=False, g=gen: self.picked.emit(g))
                 grid.addWidget(b, i // 4, i % 4)
                 self.buttons[gen] = b
@@ -446,11 +483,11 @@ class AllPatterns(QWidget):
                 specs.append(spec)
             lay.addWidget(grid_w)
             self.headings.append((head, grid_w, gens))
-        lay.addStretch(1)
         self.empty = QLabel(tr("No pattern matches. Try another word."))
         self.empty.setProperty("role", "hint")
         self.empty.hide()
-        lay.addWidget(self.empty)
+        lay.addWidget(self.empty)   # above the stretch: at the top, under the search box, where the pictures were
+        lay.addStretch(1)
         scroll.setWidget(body)
         outer.addWidget(scroll, 1)
         # the keyboard: Down from the search box into the pictures, arrows between them, Enter to choose; Enter in

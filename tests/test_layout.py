@@ -67,7 +67,7 @@ def test_every_page_fits_without_scrolling(make_win, lang):
         sb.load()
         w._changed("booklet")
         sb.pages_edit.emit(True)
-        cases += [("booklet", None), ("print", "paper"), ("print", "copies"), ("print", "text"), ("poster", None)]
+        cases += [("booklet", None), ("print", "paper"), ("print", "copies"), ("make", "text"), ("poster", None)]
         for page, fold in cases:
             sb.show_page(page)
             if fold:

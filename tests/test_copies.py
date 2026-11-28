@@ -275,12 +275,19 @@ def test_a_name_is_written_on_the_line_and_the_design_is_unchanged():
 def test_the_names_field_says_what_it_does(win):
     sb = win.sidebar
     assert sb.shown(sb.copies_names_row)
-    sb.copies_names.setText("Ana, Ben, Cara")                              # no Name line yet
-    assert sb.copies_hint.text().startswith('To write the names on the copies, turn on Page text → Add a "Name ______" line.')
-    assert sb.copies.isEnabled()
+    sb.copies_names.setText("Ana, Ben, Cara")                              # no Name line yet: names turn it on
+    assert win.state.settings.name_line and sb._binds["name_line"][0].isChecked()
+    assert sb.status.text() == 'Turned on Add a "Name ______" line, so each name is written on its page.'
+    assert not sb.copies.isEnabled() and sb.copies.placeholderText() == "3"   # the names say how many
+    _set(win, name_line=False)                                             # turned off again: the hint says how
+    assert sb.copies_hint.text().startswith('To write the names on the copies, turn on Add a "Name ______" line under '
+                                            'Page text.')
+    assert sb.copies.isEnabled() and sb.copies.placeholderText() == "1"
+    sb.copies_names.setText("Ana, Ben, Cara, Dev")                         # more names: it stays off (once only)
+    assert not win.state.settings.name_line
     _set(win, name_line=True, gen="maze")
     assert not sb.copies.isEnabled()                                        # the names say how many
-    assert sb.copies_hint.text().startswith("Print and Save PDF make 3 copies, one for each name, each with its own design")
+    assert sb.copies_hint.text().startswith("Print and Save PDF make 4 copies, one for each name, each with its own design")
     assert sb.copies_hint.text().endswith("Answer pages follow, each labelled with its copy's name.")
     sb.copies_names.setText(",".join(f"P{i}" for i in range(120)))
     assert "one for each name (the first 100)" in sb.copies_hint.text()

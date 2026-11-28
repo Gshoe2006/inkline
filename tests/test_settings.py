@@ -89,7 +89,8 @@ def test_ctrl_e_saves_the_chosen_format(make_win):
     d.format.set_value("png")
     assert w.act_png.shortcut().toString() == "Ctrl+E" and w.act_pdf.shortcut().toString() == "Ctrl+Shift+E"
     assert w.sidebar.png_btn.toolTip() == "Save PNG (Ctrl+E)" and w.sidebar.pdf_btn.toolTip() == "Save PDF (Ctrl+Shift+E)"
-    assert "Ctrl+E PNG" in w.sidebar.keys.text()             # the shortcuts line under the buttons too
+    from inkapp.shortcuts import all_rows                    # Help → Keyboard shortcuts says so too
+    assert ("Save PNG…", "Ctrl+E") in dict(all_rows(w))["File"]
     d.format.set_value("svg")
     assert w.act_svg.shortcut().toString() == "Ctrl+E" and w.act_pdf.shortcut().toString() == ""
     assert w.sidebar.svg_btn.toolTip().endswith("(Ctrl+E)")
@@ -98,7 +99,7 @@ def test_ctrl_e_saves_the_chosen_format(make_win):
     w._changed("mode")
     QApplication.processEvents()
     assert not w.sidebar.svg_btn.isEnabled() and w.act_pdf.shortcut().toString() == "Ctrl+E"
-    assert "Ctrl+E PDF" in w.sidebar.keys.text()
+    assert ("Save PDF…", "Ctrl+E") in dict(all_rows(w))["File"]
     w.state.update(mode="make")
     w.sidebar.load()
     w._changed("mode")

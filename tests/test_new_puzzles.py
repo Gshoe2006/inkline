@@ -360,8 +360,8 @@ def _set(w, **kw):
 
 def test_the_sidebar_shows_each_ones_options(win):
     sb = win.sidebar
-    _set(win, gen="logic")
-    assert sb.shown(sb.logic_opts) and not sb.shown(sb.crypto_opts)
+    _set(win, gen="logic")                              # its one hint is Complexity's, under the slider
+    assert sb.complexity_hint.text().startswith("Complexity sets the grid: 3, 4 or 5") and not sb.shown(sb.crypto_opts)
     _set(win, gen="cryptogram")
     assert sb.shown(sb.crypto_opts) and not sb.shown(sb.crypto_text_row) and not sb.shown(sb.crypto_note)
     sb.crypto_code.set_value("symbols")
@@ -493,9 +493,9 @@ def test_cryptogram_punctuation_is_narrow_and_the_key_heading_is_centred():
 def test_the_cryptogram_hint_suits_your_own_text(win):
     sb = win.sidebar
     _set(win, gen="cryptogram")
-    assert sb.shown(sb.crypto_hint) and not sb.shown(sb.crypto_own_hint)
+    assert sb.shown(sb.complexity_hint) and "how long the saying is" in sb.complexity_hint.text()
     _set(win, crypto_source="custom")
-    assert not sb.shown(sb.crypto_hint) and sb.shown(sb.crypto_own_hint)
+    assert sb.complexity_hint.text() == "Complexity sets how few letters the key gives away."
 
 
 def test_three_ladders_in_two_rows_centre_the_last():
