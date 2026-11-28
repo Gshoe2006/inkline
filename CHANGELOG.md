@@ -76,6 +76,8 @@ flatpak install --user inkline-6.3.0.flatpak
 
 Please open an issue saying what you did, what you expected, and what happened. Include your system (distro, Windows or macOS version), and the printer if it's about printing.## 6.2.0 - 2026-11-27
 
+## 6.2.0 - 2026-11-27
+
 Inkline 6.2 adds five new things to make (logic puzzles, cryptograms, word ladders, calendars and photo dot-to-dots), zoom for the preview, a better layout for tablets, and works better with screen readers and the keyboard. It also gets ready for Google Play and for signed Windows and Mac apps.
 
 ### What's new
