@@ -6,6 +6,76 @@ To release a new version, add a section headed `## <version>` (the same text as 
 pull request that bumps `VERSION`. When it merges, `.github/workflows/release.yml` builds the packages
 and publishes a GitHub Release with that section as its notes.
 
+## 6.3.0 - 2026-11-28
+
+Inkline 6.3 opens twice as fast, draws photo styles up to four times faster, adds six new things to make for the classroom, and makes it easy for native speakers to improve the translations.
+
+### What's new
+
+- **Faster.** The window opens in about half the time it did. Photo styles are drawn up to four times faster (stippling 3.3 s → 1 s, the dithers about 4×, line drawings 1.5×) by a small built-in Rust module in every package that brings its own Python (Windows, macOS, `.deb`, `.rpm`, AppImage, Snap, Flatpak); pages come out exactly the same.
+- **Look, say, cover, write, check.** A spelling practice sheet from your own words or a theme, with three tries to write and tick.
+- **Missing letters.** Unscramble has a second sheet: the words with letters left out to fill in.
+- **A spelling week.** A worksheet pack on spelling now makes the week from one word list: Monday look, say, cover, write, check; Tuesday a word search; Wednesday missing letters; Thursday a crossword; Friday the spelling test, with answers at the end.
+- **Times-table speed test.** 25, 50 or 100 numbered facts (times, sharing or both, chosen tables or by age), a time and score box, an optional chart to track progress, and an answer page laid out like the sheet.
+- **Draw what you read.** Short sentences at three reading levels, in all seven languages (or your own), each with a box to draw it in.
+- **Coordinate grids.** Plot the points to draw a picture (0 to 10, or four quadrants for older children), with the picture as the answer; or Battleships, with a grid for your ships and one for theirs.
+- **Memory cards.** Pairs to cut out and match: pictures, words and pictures, numbers and dots, or your own pairs, with an optional page of backs lined up for double-sided printing.
+- **Help translate Inkline.** Every translation is marked until a native speaker has read it; **Help → Help translate Inkline…** explains how to review them on a simple web page and suggest better wording.
+
+### Fixed
+
+- The first-start tour was see-through with **View → Use my desktop's style** on; it has its own background now.
+- A spelling pack's Wednesday is called Missing letters everywhere, and the speed test's options and undo steps use the same names.
+
+### Upgrading
+
+Nothing changes in what Inkline needs. Your presets, settings, projects, recent files and printer carry over. If you have 5.6 or later, Inkline offers this update itself (**Help → Check for updates…**); otherwise, install it as below.
+
+**Windows**
+Run `inkline-6.3.0-windows-setup.exe`, or unzip `inkline-6.3.0-windows-portable.zip` and run `Inkline\Inkline.exe`.
+
+**macOS**
+Open `inkline-6.3.0-macos.dmg` and drag Inkline to Applications. It isn't signed by Apple yet, so the first time, Control-click Inkline and choose **Open**.
+
+**Debian / Ubuntu / Linux Mint / Pop!_OS / Raspberry Pi OS**
+```sh
+sudo apt install ./inkline_6.3.0-1_amd64.deb     # or _arm64.deb on ARM64
+```
+
+**Fedora / openSUSE**
+```sh
+sudo dnf install ./inkline-6.3.0-1.x86_64.rpm    # or .aarch64.rpm; openSUSE: sudo zypper install --allow-unsigned-rpm …
+```
+
+**Arch / CachyOS / Manjaro**
+```sh
+sudo pacman -U inkline-6.3.0-1-any.pkg.tar.zst
+```
+
+**Snap**
+```sh
+sudo snap install --dangerous ./inkline_6.3.0_amd64.snap   # or _arm64.snap
+```
+
+**Any distro, nothing installed**
+```sh
+chmod +x inkline-6.3.0-x86_64.AppImage && ./inkline-6.3.0-x86_64.AppImage   # or -aarch64.AppImage
+```
+
+**Any other distro**
+```sh
+sh inkline-6.3.0.run            # or --system for every user
+```
+
+**Flatpak**
+```sh
+flatpak install --user inkline-6.3.0.flatpak
+```
+
+### Found a problem?
+
+Please open an issue saying what you did, what you expected, and what happened. Include your system (distro, Windows or macOS version), and the printer if it's about printing.## 6.2.0 - 2026-11-27
+
 ## 6.2.0 - 2026-11-27
 
 Inkline 6.2 adds five new things to make (logic puzzles, cryptograms, word ladders, calendars and photo dot-to-dots), zoom for the preview, a better layout for tablets, and works better with screen readers and the keyboard. It also gets ready for Google Play and for signed Windows and Mac apps.
