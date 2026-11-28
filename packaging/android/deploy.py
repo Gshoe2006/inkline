@@ -13,6 +13,9 @@ the bundle has the one ABI of the wheels given.
 - numpy (a python-for-android recipe): the tool asks buildozer only for Python, shiboken6 and PySide6
 - A trimmed PySide6: prune.py, appended to the PySide6 recipe the tool writes, removes the Qt modules and libraries
   Inkline doesn't use (the wheel has them all)
+- inkline_fast, Inkline's optional Rust module (rust/inkline_fast): inkline_fast_recipe.py, a local recipe that
+  cross-compiles it with cargo for the build's ABI and puts it in site-packages (written with this folder's path,
+  fast_recipe())
 - Print: pyjnius, and the Java class (java/…/PdfPrint.java) that hands a PDF to Android's print service; pyjnius
   built to get its JNI environment from Qt (pyjnius_recipe.py, a local recipe: python-for-android builds it for
   the webview bootstrap's glue, which the Qt bootstrap doesn't have)
@@ -37,13 +40,15 @@ JAVA = os.path.join(HERE, "java")   # Print's Java side
 ANDROID_API = "36"   # targetSdk: Google Play's floor for new apps and updates rises each August (docs/publishing.md)
 MIN_API = "28"       # Qt 6.12's minimum (Android 9); python-for-android builds with the NDK at this API too
 DATA_EXTS = "json,ttf,svg,md,txt"
+REQUIREMENTS = "python3,shiboken6,PySide6,numpy,pyjnius,inkline_fast"
+FAST_PLACEHOLDER = "INKLINE_ANDROID = None"
 
 
 def inkline_settings(version, numeric_version, icons=None, exts="py", api=ANDROID_API):
     """The buildozer.spec [app] values Inkline sets over the deploy tool's, in order, as (key, value) pairs. icons:
     {"icon", "foreground", "background"} PNG paths (play/make_graphics.py's app_icons)."""
     out = [
-        ("requirements", "python3,shiboken6,PySide6,numpy,pyjnius"),
+        ("requirements", REQUIREMENTS),
         ("android.add_src", JAVA),
         ("source.include_exts", f"{exts},{DATA_EXTS}"),
         ("source.include_patterns", "VERSION,LICENSE"),
@@ -82,6 +87,27 @@ def trim(recipe):
         f.write(head + prune + "\n\n" + sep + tail)
 
 
+def fast_recipe(text, android_dir=HERE):
+    """inkline_fast_recipe.py's text with this folder's path written in (the recipe finds the crate, and
+    check_16kb.py, from it)."""
+    if FAST_PLACEHOLDER not in text:
+        raise SystemExit("deploy.py: inkline_fast_recipe.py has no INKLINE_ANDROID line to fill in")
+    return text.replace(FAST_PLACEHOLDER, f"INKLINE_ANDROID = {os.path.abspath(android_dir)!r}", 1)
+
+
+def local_recipes(recipe_dir):
+    """Inkline's own recipes beside the deploy tool's: pyjnius (its JNI environment from Qt) and inkline_fast."""
+    jnius = os.path.join(recipe_dir, "pyjnius")
+    os.makedirs(jnius, exist_ok=True)
+    shutil.copyfile(os.path.join(HERE, "pyjnius_recipe.py"), os.path.join(jnius, "__init__.py"))
+    fast = os.path.join(recipe_dir, "inkline_fast")
+    os.makedirs(fast, exist_ok=True)
+    with open(os.path.join(HERE, "inkline_fast_recipe.py"), encoding="utf-8") as f:
+        text = fast_recipe(f.read())
+    with open(os.path.join(fast, "__init__.py"), "w", encoding="utf-8") as f:
+        f.write(text)
+
+
 def parse(argv):
     """(our options, the deploy tool's arguments), split at "--"."""
     split = argv.index("--")
@@ -116,9 +142,7 @@ def main(argv):
     def inkline_config(self, spec_file, pysidedeploy_config):
         original(self, spec_file, pysidedeploy_config)
         trim(os.path.join(str(pysidedeploy_config.recipe_dir), "PySide6", "__init__.py"))
-        jnius = os.path.join(str(pysidedeploy_config.recipe_dir), "pyjnius")
-        os.makedirs(jnius, exist_ok=True)
-        shutil.copyfile(os.path.join(HERE, "pyjnius_recipe.py"), os.path.join(jnius, "__init__.py"))
+        local_recipes(str(pysidedeploy_config.recipe_dir))
         exts = self.get_value("app", "source.include_exts", ignore_fail=True) or "py"
         for key, value in inkline_settings(ours.version, ours.numeric_version, icon_paths(ours.icons), exts,
                                            ours.target_api):

@@ -1,6 +1,7 @@
 """The optional Rust module (rust/inkline_fast) in the release packages: built for each processor by
 packaging/build_fast.py (or inside the Flatpak's and the Snap's own builders), installed beside numpy, and proved
-to load by each package's self-test. The .run, the Arch package and Android use their Python code instead."""
+to load by each package's self-test. The .run and the Arch package use their Python code instead. (Android builds
+it with a python-for-android recipe: tests/test_android.py.)"""
 
 import importlib.util
 import os

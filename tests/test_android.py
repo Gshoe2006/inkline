@@ -30,7 +30,7 @@ def test_the_app_folder_has_inkline_and_a_main_py(tmp_path, monkeypatch):
 
 def test_deploy_adds_numpy_and_the_data_files():
     deploy = open(os.path.join(ROOT, "packaging", "android", "deploy.py"), encoding="utf-8").read()
-    assert "\"python3,shiboken6,PySide6,numpy,pyjnius\"" in deploy and "json,ttf,svg" in deploy
+    assert "\"python3,shiboken6,PySide6,numpy,pyjnius,inkline_fast\"" in deploy and "json,ttf,svg" in deploy
     assert '"io.github.gshoe2006"' in deploy and '"inkline"' in deploy
 
 
@@ -388,7 +388,7 @@ def test_the_apk_can_run_the_screenshot_pass_and_ci_takes_the_play_screenshots()
 def test_release_adds_the_signed_play_bundle():
     flow = open(os.path.join(ROOT, ".github", "workflows", "android-release.yml"), encoding="utf-8").read()
     assert "matrix.arch == 'aarch64' && '--aab'" in flow and "inkline-$V-android.aab" in flow
-    assert "jarsigner -verify" in flow and 'check_16kb.py "$AAB"' in flow
+    assert "jarsigner -verify" in flow and 'check_16kb.py --bundled inkline_fast.abi3.so "$AAB"' in flow
     signing = open(os.path.join(ROOT, "docs", "android-signing.md"), encoding="utf-8").read()
     assert "upload key" in signing and "Play App Signing" in signing
     publishing = open(os.path.join(ROOT, "docs", "publishing.md"), encoding="utf-8").read()
@@ -410,3 +410,165 @@ def test_the_play_listing_fits_plays_limits():
     assert 500 < len(section("Full description")) <= 4000
     privacy = open(os.path.join(ROOT, "packaging", "android", "play", "privacy.md"), encoding="utf-8").read()
     assert "api.github.com" in privacy and "collect" in privacy
+
+
+# --- inkline_fast, the optional Rust module, cross-compiled into the APK ------------------------------------------
+def _workflow(name):
+    return open(os.path.join(ROOT, ".github", "workflows", name), encoding="utf-8").read()
+
+
+def test_the_fast_recipe_cross_compiles_with_the_ndks_clang_against_the_apks_libpython():
+    import pytest
+    r = _load("inkline_fast_recipe", "packaging", "android", "inkline_fast_recipe.py")
+    assert r.Recipe is None or r.recipe   # (python-for-android isn't here: only the parts it builds with)
+    assert r.rust_target("arm64-v8a") == "aarch64-linux-android" and r.rust_target("x86_64") == "x86_64-linux-android"
+    with pytest.raises(SystemExit):
+        r.rust_target("armeabi-v7a")   # CPython has no 32-bit Android build
+    clang = r.linker("/ndk/bin", "aarch64-linux-android", 28)
+    assert clang == os.path.join("/ndk/bin", "aarch64-linux-android28-clang")
+    base = {"PATH": "/usr/bin", "HOME": "/h", "RUSTFLAGS": "-C target-cpu=native", "CC": "clang", "CFLAGS": "-O0",
+            "CARGO_BUILD_TARGET": "x86_64-unknown-linux-gnu"}
+    env = r.cargo_env(base, "aarch64-linux-android", clang, "/p4a/python3/android-build", "3.14", "/b/target")
+    assert env["PATH"] == "/usr/bin" and env["HOME"] == "/h"
+    assert not {"RUSTFLAGS", "CC", "CFLAGS", "CARGO_BUILD_TARGET"} & set(env)   # nothing meant for something else
+    assert env["CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER"] == clang
+    assert "-Wl,-z,max-page-size=16384" in env["CARGO_TARGET_AARCH64_LINUX_ANDROID_RUSTFLAGS"]   # 16 KB pages
+    assert env["PYO3_CROSS_LIB_DIR"] == "/p4a/python3/android-build"   # where libpython3.14.so is
+    assert env["PYO3_CROSS_PYTHON_VERSION"] == "3.14" and env["PYO3_NO_PYTHON"] == "1"
+    assert env["CARGO_TARGET_DIR"] == "/b/target" and env["CARGO_PROFILE_RELEASE_STRIP"] == "symbols"
+    assert base["RUSTFLAGS"] == "-C target-cpu=native"   # the caller's environment is left as it was
+    x86 = r.cargo_env({}, "x86_64-linux-android", "/c", "/l", "3.14", "/t")
+    assert x86["CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER"] == "/c"
+    crate = os.path.join(ROOT, "rust", "inkline_fast")
+    cmd = r.cargo_command(crate, "x86_64-linux-android")
+    assert cmd[:4] == ["cargo", "build", "--release", "--locked"]   # the crates Cargo.lock pins, as on desktop
+    assert cmd[cmd.index("--target") + 1] == "x86_64-linux-android"
+    assert os.path.exists(cmd[cmd.index("--manifest-path") + 1])
+    assert r.built_library("/t", "x86_64-linux-android") == os.path.join("/t", "x86_64-linux-android", "release",
+                                                                         "libinkline_fast.so")
+    src = open(os.path.join(ROOT, "packaging", "android", "inkline_fast_recipe.py"), encoding="utf-8").read()
+    assert '"inkline_fast.abi3.so"' in src and "get_python_install_dir(arch.arch)" in src   # site-packages, as PySide6's
+    assert 'depends = ["python3"]' in src and "python.link_root(arch.arch)" in src
+
+
+def test_the_fast_recipe_refuses_a_library_not_ready_for_16kb_pages(tmp_path):
+    import pytest
+    r = _load("inkline_fast_recipe2", "packaging", "android", "inkline_fast_recipe.py")
+    r.INKLINE_ANDROID = os.path.join(ROOT, "packaging", "android")
+    good, bad = tmp_path / "good.so", tmp_path / "bad.so"
+    good.write_bytes(_elf([0x4000, 0x4000]))
+    bad.write_bytes(_elf([0x4000, 0x1000]))
+    assert r.check_alignment(str(good)) == 0x4000
+    with pytest.raises(SystemExit, match="16 KB"):
+        r.check_alignment(str(bad))
+
+
+def test_deploy_writes_the_fast_recipe_with_where_inkline_is(tmp_path):
+    import pytest
+    deploy = _load("android_deploy2", "packaging", "android", "deploy.py")
+    assert deploy.REQUIREMENTS.split(",")[-2:] == ["pyjnius", "inkline_fast"]
+    assert dict(deploy.inkline_settings("6.1.0", 1))["requirements"] == deploy.REQUIREMENTS
+    deploy.local_recipes(str(tmp_path))
+    assert (tmp_path / "pyjnius" / "__init__.py").read_text(encoding="utf-8") == \
+        open(os.path.join(ROOT, "packaging", "android", "pyjnius_recipe.py"), encoding="utf-8").read()
+    text = (tmp_path / "inkline_fast" / "__init__.py").read_text(encoding="utf-8")
+    assert "INKLINE_ANDROID = None" not in text
+    ns = {}
+    exec(compile(text, "inkline_fast/__init__.py", "exec"), ns)
+    assert os.path.samefile(ns["INKLINE_ANDROID"], os.path.join(ROOT, "packaging", "android"))
+    assert os.path.exists(os.path.join(ns["INKLINE_ANDROID"], "check_16kb.py"))
+    assert os.path.exists(os.path.join(ns["INKLINE_ANDROID"], "..", "..", "rust", "inkline_fast", "Cargo.toml"))
+    assert "INKLINE_ANDROID = '/x/y'" in deploy.fast_recipe("a\nINKLINE_ANDROID = None\nb", "/x/y")
+    with pytest.raises(SystemExit):
+        deploy.fast_recipe("nothing to fill in")
+    src = open(os.path.join(ROOT, "packaging", "android", "deploy.py"), encoding="utf-8").read()
+    assert "local_recipes(str(pysidedeploy_config.recipe_dir))" in src
+
+
+def test_the_trim_leaves_inkline_fast_alone(tmp_path):
+    ns = {"PySideRecipe": type("R", (), {"build_arch": lambda s, a: None}), "info": print}
+    exec(open(os.path.join(ROOT, "packaging", "android", "prune.py"), encoding="utf-8").read(), ns)
+    site = tmp_path / "site-packages"
+    pyside, libs = site / "PySide6", tmp_path / "libs"
+    (pyside / "Qt" / "lib").mkdir(parents=True)
+    libs.mkdir()
+    (site / "inkline_fast.abi3.so").write_bytes(_elf([0x4000]))
+    (pyside / "QtCore.abi3.so").write_bytes(b"x")
+    (libs / "libpython3.14.so").write_bytes(b"x")
+    ns["inkline_prune"](str(pyside), str(libs))
+    assert (site / "inkline_fast.abi3.so").exists() and (libs / "libpython3.14.so").exists()
+
+
+def _pybundle(files):
+    import io
+    import tarfile
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w:gz") as tar:
+        for name, data in files.items():
+            info = tarfile.TarInfo(name)
+            info.size = len(data)
+            tar.addfile(info, io.BytesIO(data))
+    return buf.getvalue()
+
+
+def test_16kb_check_finds_inkline_fast_inside_the_python_bundle(tmp_path):
+    import zipfile
+    import pytest
+    check = _load("check_16kb2", "packaging", "android", "check_16kb.py")
+    mod = "_python_bundle/site-packages/inkline_fast.abi3.so"
+    name = ["inkline_fast.abi3.so"]
+
+    def apk(filename, bundle_files, where="lib/x86_64/"):
+        p = tmp_path / filename
+        with zipfile.ZipFile(p, "w") as z:
+            z.writestr(where + "libpython3.14.so", _elf([0x4000]))
+            if bundle_files is not None:
+                z.writestr(where + "libpybundle.so", _pybundle(bundle_files))
+        return str(p)
+    said = []
+    good = apk("good.apk", {mod: _elf([0x4000, 0x4000]), "_python_bundle/stdlib.zip": b"zip"})
+    assert check.check([good], out=said.append, bundled_names=name) == []
+    assert any(f"libpybundle.so!{mod}: 16 KB" in s for s in said)
+    assert check.check([good], out=said.append) == []   # without --bundled, the bundle isn't opened
+    missing = apk("missing.apk", {"_python_bundle/stdlib.zip": b"zip"})
+    assert check.check([missing], out=said.append, bundled_names=name) == \
+        ["missing.apk: inkline_fast.abi3.so (not in lib/x86_64/libpybundle.so)"]
+    nobundle = apk("nobundle.apk", None)
+    assert "no libpybundle.so" in check.check([nobundle], out=said.append, bundled_names=name)[0]
+    loose = apk("loose.apk", {mod: _elf([0x4000, 0x1000])})
+    assert check.check([loose], out=said.append, bundled_names=name) == \
+        [f"loose.apk: lib/x86_64/libpybundle.so!{mod} (4096)"]
+    notelf = apk("notelf.apk", {mod: b"not a library" * 8})
+    assert "isn't an ELF library" in check.check([notelf], out=said.append, bundled_names=name)[0]
+    aab = apk("inkline.aab", {mod: _elf([0x4000])}, where="base/lib/arm64-v8a/")
+    assert check.check([aab], out=said.append, bundled_names=name) == []
+    check.main(["--bundled", "inkline_fast.abi3.so", good])
+    with pytest.raises(SystemExit):
+        check.main(["--bundled", "inkline_fast.abi3.so", missing])
+    with pytest.raises(SystemExit):
+        check.main([good, "--bundled"])   # a name is needed
+
+
+def test_the_apk_self_test_requires_inkline_fast_in_ci():
+    build = _build()
+    assert '"inkline-expect-fast"' in build.MAIN and 'os.environ["INKLINE_EXPECT_FAST"] = "1"' in build.MAIN
+    assert build.MAIN.index("inkline-expect-fast") < build.MAIN.index("import inkline ")
+    test = open(os.path.join(ROOT, "packaging", "android", "emulator-test.sh"), encoding="utf-8").read()
+    assert "EXPECT_FAST=${INKLINE_EXPECT_FAST:-}" in test and "touch $d/inkline-expect-fast" in test
+    assert 'grep -q "^yes" "$OUT/selftest/inkline-fast.txt"' in test
+    flow = _workflow("android.yml")
+    assert "rust/inkline_fast/**" in flow   # a change to the crate runs the Android build
+    apk = flow.split("\n  emulator:\n")[0]
+    assert "uses: dtolnay/rust-toolchain@stable" in apk and "targets: ${{ matrix.arch }}-linux-android" in apk
+    assert apk.index("dtolnay/rust-toolchain") < apk.index("name: Build the APK")
+    assert 'check_16kb.py --bundled inkline_fast.abi3.so "$APK"' in apk
+    assert "INKLINE_EXPECT_FAST=1 sh packaging/android/emulator-test.sh" in flow
+    assert 'grep -q "^yes" android-test/selftest/inkline-fast.txt' in flow
+
+
+def test_release_apks_and_the_bundle_carry_inkline_fast():
+    flow = _workflow("android-release.yml")
+    assert "uses: dtolnay/rust-toolchain@stable" in flow and "targets: ${{ matrix.arch }}-linux-android" in flow
+    assert flow.index("dtolnay/rust-toolchain") < flow.index("packaging/android/build.py --release")
+    assert 'check_16kb.py --bundled inkline_fast.abi3.so "$APK"' in flow
+    assert 'check_16kb.py --bundled inkline_fast.abi3.so "$AAB"' in flow

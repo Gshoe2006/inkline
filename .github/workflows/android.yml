@@ -1,7 +1,8 @@
 # Android: builds Inkline's window into a debug APK with Qt's pyside6-android-deploy (packaging/android/build.py), for
-# ARM64 phones and tablets and for x86-64, checks what Google Play checks (16 KB page alignment of every native
+# ARM64 phones and tablets and for x86-64, with the optional Rust module inkline_fast cross-compiled into it (the
+# inkline_fast recipe, packaging/android/inkline_fast_recipe.py), checks what Google Play checks (16 KB page alignment of every native
 # library, the target API level, the versionCode), then starts the x86-64 one on a phone emulator: a screenshot of the
-# window, the self-test, whose files are checked as on desktop, Print, and screenshots for the Play listing
+# window, the self-test (which must find inkline_fast working), whose files are checked as on desktop, Print, and screenshots for the Play listing
 # (play-screenshots; a tablet emulator's are play-screenshots-tablet, if it manages). The Play listing's icon and
 # feature graphic are the play-graphics download. (Signed release APKs and the Play bundle: android-release.yml.)
 # Run it from the Actions tab (Run workflow), or it runs on pull requests that change packaging/android.
@@ -10,7 +11,7 @@ name: Android
 on:
   workflow_dispatch:
   pull_request:
-    paths: [packaging/android/**, .github/workflows/android.yml]
+    paths: [packaging/android/**, rust/inkline_fast/**, .github/workflows/android.yml]
 
 permissions:
   contents: read
@@ -36,6 +37,11 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"   # python-for-android needs JDK 17
+
+      # inkline_fast: the inkline_fast recipe cross-compiles rust/inkline_fast with cargo for the APK's ABI
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.arch }}-linux-android
 
       - name: Install build tools, PySide6 (for its deploy tool) and the Android SDK parts
         run: |
@@ -78,7 +84,7 @@ jobs:
       - name: Check it as Google Play would (16 KB pages, target API, versionCode)
         run: |
           APK=$(ls dist/inkline-*-android-${{ matrix.arch }}-debug.apk)
-          python3 packaging/android/check_16kb.py "$APK"
+          python3 packaging/android/check_16kb.py --bundled inkline_fast.abi3.so "$APK"
           "$ANDROID_HOME/build-tools/36.0.0/zipalign" -c -P 16 -v 4 "$APK" | tail -3
           "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$APK" > badging.txt
           grep -iE "^package:|sdkVersion|application-label:|application-icon|uses-permission" badging.txt   # (the permissions: for the Data safety form)
@@ -155,12 +161,15 @@ jobs:
           profile: ${{ matrix.profile }}
           disable-animations: true
           script: |
-            if [ "${{ matrix.device }}" = phone ]; then sh packaging/android/emulator-test.sh dist/inkline-*-android-x86_64-debug.apk android-test; fi
+            if [ "${{ matrix.device }}" = phone ]; then INKLINE_EXPECT_FAST=1 sh packaging/android/emulator-test.sh dist/inkline-*-android-x86_64-debug.apk android-test; fi
             sh packaging/android/screenshots.sh dist/inkline-*-android-x86_64-debug.apk play-screenshots
 
       - name: Check the files the self-test wrote on Android
         if: matrix.device == 'phone'
-        run: python3 packaging/check_selftest.py android-test/selftest
+        run: |
+          python3 packaging/check_selftest.py android-test/selftest
+          echo "inkline_fast: $(cat android-test/selftest/inkline-fast.txt)"
+          grep -q "^yes" android-test/selftest/inkline-fast.txt || { echo "::error::the APK's self-test didn't find inkline_fast working"; exit 1; }
 
       - uses: actions/upload-artifact@v7
         if: always() && matrix.device == 'phone'

@@ -1,7 +1,8 @@
 # Adds signed Android APKs to a release, once the Release workflow has published it (a release made with that
 # workflow's token starts no workflow itself, but finishing a workflow run does), and the Android App Bundle for
 # Google Play (inkline-<version>-android.aab, arm64: the Qt bootstrap builds one ABI per bundle; see
-# docs/publishing.md). Kept apart from the Release workflow so a slow or rate-limited Android build never holds up
+# docs/publishing.md). Each carries the optional Rust module inkline_fast, cross-compiled for its ABI (the
+# Android workflow's emulator self-test proves it loads). Kept apart from the Release workflow so a slow or rate-limited Android build never holds up
 # the other packages.
 #
 # Signing needs the release key, as four repository secrets (docs/android-signing.md says how to make it):
@@ -66,6 +67,11 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      - uses: dtolnay/rust-toolchain@stable
+        if: env.HAVE_KEY == 'true'
+        with:
+          targets: ${{ matrix.arch }}-linux-android
+
       - uses: actions/cache@v5
         if: env.HAVE_KEY == 'true'
         with:
@@ -112,20 +118,20 @@ jobs:
             --ndk "$ANDROID_HOME/ndk/$NDK_VERSION" --sdk "$ANDROID_HOME"
           rm -f "$P4A_RELEASE_KEYSTORE"
 
-      - name: Check the signatures and 16 KB page alignment
+      - name: Check the signatures, 16 KB page alignment and inkline_fast
         if: env.HAVE_KEY == 'true'
         run: |
           V=${{ steps.release.outputs.version }}
           APK="dist/inkline-$V-android-${{ matrix.arch }}.apk"
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs "$APK"
           "$ANDROID_HOME/build-tools/36.0.0/zipalign" -c -P 16 -v 4 "$APK" | tail -3
-          python3 packaging/android/check_16kb.py "$APK"
+          python3 packaging/android/check_16kb.py --bundled inkline_fast.abi3.so "$APK"
           if [ "${{ matrix.arch }}" = aarch64 ]; then
             AAB="dist/inkline-$V-android.aab"
             SIGNED=$(jarsigner -verify "$AAB")
             echo "$SIGNED" | tail -3
             case "$SIGNED" in *"jar verified"*) ;; *) echo "::error::$AAB isn't signed"; exit 1 ;; esac
-            python3 packaging/android/check_16kb.py "$AAB"
+            python3 packaging/android/check_16kb.py --bundled inkline_fast.abi3.so "$AAB"
           fi
 
       - name: Add them to the release
