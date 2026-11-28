@@ -6,10 +6,11 @@
   negative. The answer page draws the picture joined up on the grid; so does the page itself with "Draw the picture
   joined up" (to show a class what the points make, and the gallery's picture of the pattern).
 - Battleships: two grids, "My ships" to place your fleet on and "Their ships" to mark your shots, letters across and
-  numbers down; 6 x 6 with three ships at 1-3, 8 x 8 with four at 4-7, 10 x 10 with five at 8-10, listed under the
+  numbers down; 6 x 6 with three ships at 1-3, 8 x 8 with four at 4-7, 10 x 10 with five at 8-10, listed beside or under the
   grids with a box to tick when each is sunk. There's nothing to solve, so no answer page.
 
-Upright pages put the grids one above the other, sideways ones side by side.
+Upright pages put the grids one above the other, the fleet beside them. Sideways pages put "Their ships" as tall
+as the page and "My ships" smaller beside it, the fleet under that.
 """
 
 from .. import pictures
@@ -198,22 +199,24 @@ def battle_size(c):
     return 10, [5, 4, 3, 3, 2]
 
 
-def _battle_grid(ctx, x, y, size, n, lw, fs, title):
-    """One grid: its title above, letters across the top, numbers down the left, size the squares' side."""
+def _battle_grid(ctx, x, y, size, n, lw, fs, title, label_fs=None):
+    """One grid: its title above, letters across the top, numbers down the left (at label_fs, fs unless given), size
+    the squares' side."""
+    lfs = label_fs or fs
     cell = size / n
     ctx.save()
     ctx.fill_style = "#000"
     ctx.set_font(fs * 1.25, 700)
     ctx.text_align, ctx.text_baseline = "center", "alphabetic"
     ctx.fill_text(title, x + size / 2, y - fs * 1.75)
-    ctx.set_font(fs, 600)
+    ctx.set_font(lfs, 600)
     ctx.text_baseline = "middle"
     letters = "ABCDEFGHIJ"
     for i in range(n):
         ctx.text_align = "center"
-        ctx.fill_text(letters[i], x + (i + 0.5) * cell, y - fs * 0.6)
+        ctx.fill_text(letters[i], x + (i + 0.5) * cell, y - lfs * 0.6)
         ctx.text_align = "right"
-        ctx.fill_text(str(i + 1), x - fs * 0.35, y + (i + 0.5) * cell)
+        ctx.fill_text(str(i + 1), x - lfs * 0.35, y + (i + 0.5) * cell)
     ctx.line_width = max(1.0, lw * 0.5)
     ctx.stroke_style = "#000"
     for i in range(1, n):
@@ -226,19 +229,6 @@ def _battle_grid(ctx, x, y, size, n, lw, fs, title):
     ctx.line_width = max(1.0, lw * 1.2)
     ctx.stroke_rect(x, y, size, size)
     ctx.restore()
-
-
-def _fleet_rows(ctx, fleet, left, right, fs, cell, sunk):
-    """The fleet laid out from left to right: [(x, row, length, name)] and how many rows it takes."""
-    out, x, row = [], left, 0
-    for length in fleet:
-        name = tr(SHIP_NAMES[length])
-        need = cell * length + fs * 0.5 + ctx.measure_text(name) + fs * 0.6 + ctx.measure_text(sunk) + fs * 0.3 + cell + fs * 1.6
-        if x + need - fs * 1.6 > right and x > left:
-            x, row = left, row + 1
-        out.append((x, row, length, name))
-        x += need
-    return out, row + 1
 
 
 def _battle_upright(ctx, box, n, fleet, lw, dpi):
@@ -304,75 +294,112 @@ def _battle_upright(ctx, box, n, fleet, lw, dpi):
     return {"kind": "battle", "size": n, "fleet": fleet, "grids": [(x, y, size) for x, y in spots]}
 
 
+def _fleet_column(ctx, fleet, names, sunk, cw, tfs):
+    """The instructions and the fleet in a column cw wide at text size tfs: (the instructions' lines, whether each
+    ship takes one row - its squares, its name, its sunk box - or two - its name over the rest -, the column's width
+    and its height). Measured in the page's font."""
+    ctx.set_font(tfs, 400)
+    lines = _wrap_text(ctx, tr(INSTRUCTIONS["battle"]), cw)
+    text_w = max([ctx.measure_text(line) for line in lines] + [0])
+    sunk_w = ctx.measure_text(sunk)
+    ctx.set_font(tfs, 600)
+    name_w = max(ctx.measure_text(nm) for nm in names)
+    row_w = tfs * (max(fleet) + 0.5) + name_w + tfs * 0.8 + sunk_w + tfs * 1.3
+    one_row = row_w <= cw
+    if one_row:
+        width, height = row_w, tfs * 1.6 * len(fleet)
+    else:
+        width, height = max(name_w, tfs * (max(fleet) + 0.6) + sunk_w + tfs * 1.3), tfs * 2.9 * len(fleet)
+    return lines, one_row, max(text_w, width), tfs * (1.4 * len(lines) + 0.9) + height
+
+
 def _battle(ctx, box, c, lw, dpi):
+    """A sideways page: "Their ships", where your shots go, as tall as the page; "My ships" smaller beside it, and the
+    instructions and the fleet under that. (Two equal squares side by side are held to half the page's width: a
+    sideways page is only about 1.3-1.5 times as wide as it is tall, so they left its bottom third empty.)"""
     n, fleet = battle_size(c)
-    landscape = box.w > box.h
-    if not landscape:
+    if box.w <= box.h:
         return _battle_upright(ctx, box, n, fleet, lw, dpi)
     fs = min(dpi * 0.2, box.h / 32)
     head = fs * 3.6     # a grid's title and letters
     ctx.set_font(fs, 600)   # its numbers, measured in the page's font (wider in some), with room to spare
     side = max(fs * 1.6, ctx.measure_text(str(n)) + fs * 0.6)
-    cell = fs * 0.9     # a ship's square
+    gap = fs * 2.0      # between the big grid and the column beside it
+    under = fs * 1.4    # between the small grid and the instructions
     sunk = tr("Sunk")
-    right = box.x + box.w
+    names = [tr(SHIP_NAMES[length]) for length in fleet]
 
-    def place(fleet_h):
-        if landscape:
-            size = min((box.w - 2 * side - fs * 3) / 2, box.h - head - fleet_h)
-            total = 2 * (side + size) + fs * 3
-            x0 = box.x + (box.w - total) / 2
-            spots = [(x0 + side, box.y + head), (x0 + side + size + fs * 3 + side, box.y + head)]
-            return size, spots, box.y + head + size
-        size = min(box.w - side - fs, (box.h - 2 * head - fleet_h - fs) / 2)
-        x0 = box.x + (box.w - size - side) / 2 + side
-        spots = [(x0, box.y + head), (x0, box.y + head + size + fs + head)]
-        return size, spots, spots[1][1] + size
+    def lay(big, tfs):
+        """With the big grid big across and the column's text at tfs: (the small grid's size, the column, its x)."""
+        cx = box.x + side + big + gap
+        cw = box.x + box.w - cx
+        col = _fleet_column(ctx, fleet, names, sunk, cw, tfs)
+        small = min(cw - side, box.h - head - under - col[3])
+        return small, col, cx
 
-    def under(left):
-        """The instructions' lines, the fleet's places and the height they take under the grids."""
-        ctx.set_font(fs, 400)
-        lines = _wrap_text(ctx, tr(INSTRUCTIONS["battle"]), right - left)
-        ships, rows = _fleet_rows(ctx, fleet, left, right, fs, cell, sunk)
-        return lines, ships, fs * (2 + 1.35 * len(lines) + 0.7) + (rows - 1) * cell * 1.7 + cell
-
-    fleet_h = fs * 8.6
-    for _ in range(3):   # the grids as big as leave the instructions and the fleet room under them
-        size, spots, bottom = place(fleet_h)
-        lines, ships, fleet_h = under(min(x for x, _y in spots) - side)
-    size, spots, bottom = place(fleet_h)
-    left = min(x for x, _y in spots) - side
-    lines, ships, _h = under(left)
-    for (x, y), which in zip(spots, ("mine", "theirs")):
-        _battle_grid(ctx, x, y, size, n, lw, fs, tr(GRID_NAMES[which]))
+    # the big grid as tall as the page, unless that leaves the small one under about half its size: then the
+    # column's text a little smaller (down to 85%), then the big grid a little smaller, until it does
+    big = min(box.h - head, box.w - 2 * side - gap)
+    while True:
+        tfs = fs * 1.15
+        while True:
+            small, col, cx = lay(big, tfs)
+            if small >= big * 0.45 or tfs < fs * 0.85:
+                break
+            tfs *= 0.95
+        if small >= big * 0.45 or big < box.h * 0.4:
+            break
+        big *= 0.98
+    lines, one_row, col_w, _col_h = col
+    used = side + big + gap + max(side + small, col_w)
+    shift = (box.w - used) / 2   # what's left over either side, when the page's height holds the grids
+    top = box.y + head
+    theirs = (box.x + shift + side, top)
+    mine = (cx + shift + side, top)
+    _battle_grid(ctx, *theirs, big, n, lw, fs, tr(GRID_NAMES["theirs"]))
+    _battle_grid(ctx, *mine, small, n, lw, fs, tr(GRID_NAMES["mine"]), min(fs, small / n * 0.6))
+    # the instructions and the fleet under "My ships": each ship as its squares (shaded), its name, and a box to
+    # tick when it's sunk
+    x0 = cx + shift
+    cell = tfs
     ctx.save()
     ctx.fill_style = "#000"
     ctx.text_align, ctx.text_baseline = "left", "alphabetic"
-    ctx.set_font(fs, 400)
-    y = bottom + fs * 2
-    for line in lines:
-        ctx.fill_text(line, left, y)
-        y += fs * 1.35
-    # the fleet: each ship as its squares (shaded), its name, and a box to tick when it's sunk
-    top = y - fs * 0.6
     ctx.line_width = max(1.0, lw * 0.6)
-    for x, row, length, name in ships:
-        y = top + row * cell * 1.7
+    y = top + small + under
+    ctx.set_font(tfs, 400)
+    for line in lines:
+        y += tfs * 1.4
+        ctx.fill_text(line, x0, y)
+    y += tfs * 0.9
+    ctx.set_font(tfs, 600)
+    name_x = x0 + cell * (max(fleet) + 0.5)
+    sunk_x = name_x + max(ctx.measure_text(nm) for nm in names) + tfs * 0.8
+    for length, name in zip(fleet, names):
+        if one_row:   # its squares, its name, then "Sunk" and its box, the names and boxes lined up
+            sq_top = y + tfs * 0.3
+            ctx.set_font(tfs, 600)
+            ctx.fill_style = "#000"
+            ctx.fill_text(name, name_x, sq_top + cell * 0.85)
+            tx = sunk_x
+        else:         # its name, then its squares and "Sunk" under it
+            ctx.set_font(tfs, 600)
+            ctx.fill_style = "#000"
+            ctx.fill_text(name, x0, y + tfs * 1.1)
+            sq_top = y + tfs * 1.45
+            tx = x0 + cell * (length + 0.6)
         for k in range(length):
             ctx.fill_style = "#ccc"
-            ctx.fill_rect(x + cell * k, y, cell, cell)
-            ctx.stroke_rect(x + cell * k, y, cell, cell)
-        ctx.fill_style = "#000"
-        tx = x + cell * length + fs * 0.5
-        ctx.fill_text(name, tx, y + cell * 0.85)
-        tx += ctx.measure_text(name) + fs * 0.6
+            ctx.fill_rect(x0 + cell * k, sq_top, cell, cell)
+            ctx.stroke_rect(x0 + cell * k, sq_top, cell, cell)
         ctx.fill_style = "#555"
-        ctx.fill_text(sunk, tx, y + cell * 0.85)
+        ctx.set_font(tfs, 400)
+        ctx.fill_text(sunk, tx, sq_top + cell * 0.85)
         ctx.fill_style = "#000"
-        tx += ctx.measure_text(sunk) + fs * 0.3
-        ctx.stroke_rect(tx, y, cell, cell)
+        ctx.stroke_rect(tx + ctx.measure_text(sunk) + tfs * 0.3, sq_top, cell, cell)
+        y += tfs * (1.6 if one_row else 2.9)
     ctx.restore()
-    return {"kind": "battle", "size": n, "fleet": fleet, "grids": [(x, y, size) for x, y in spots]}
+    return {"kind": "battle", "size": n, "fleet": fleet, "grids": [mine + (small,), theirs + (big,)]}
 
 
 def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, solve=False, **_opts):

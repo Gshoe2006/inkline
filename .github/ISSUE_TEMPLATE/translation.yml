@@ -7,7 +7,9 @@ body:
     attributes:
       value: |
         Thank you! Inkline's translations were written without a native speaker, so suggestions from people who
-        speak the language are the best way to improve them. The guide, with a page listing every string, is
+        speak the language are the best way to improve them. Every string, beside the English, is on the
+        [review pages](https://gshoe2006.github.io/inkline/) (one per language: type better wordings there, then
+        press "Copy my suggestions"), and the guide is
         [docs/translating.md](https://github.com/Gshoe2006/inkline/blob/main/docs/translating.md).
         Fill in either one suggestion (the boxes below) or paste several rows at the end, or both.
   - type: dropdown
@@ -56,6 +58,5 @@ body:
   - type: markdown
     attributes:
       value: |
-        Making the review page yourself: `python3 packaging/translation_sheet.py all review.html` (every language, with
-        search and a box for better wording), or `python3 packaging/translation_sheet.py fr --needs-review` for a
-        spreadsheet of what nobody has checked yet.
+        The review pages are at https://gshoe2006.github.io/inkline/ (nothing to install). If you'd rather fill in a
+        spreadsheet, ask for one here and a maintainer will attach it.

@@ -553,6 +553,35 @@ def test_upright_battleships_use_the_page():
     assert out["grids"][0][2] > 2250 * 0.5
 
 
+@pytest.mark.parametrize("family", [None, "DejaVu Sans"])
+def test_sideways_battleships_use_the_pages_height(family, monkeypatch):
+    """Two equal grids side by side were held to half the page's width and left its bottom third empty: "Their
+    ships" is now as tall as the page allows (with the title and the name line too), "My ships" beside it no less than
+    about half its size, and the fleet under that still fits, in each language and in CI's wider font."""
+    from PySide6.QtGui import QFontDatabase
+    from inkengine import qt
+    if family:
+        if family not in QFontDatabase.families():
+            pytest.skip(f"{family} isn't installed")
+        monkeypatch.setattr(qt, "FONT_FAMILIES", [family])
+    for lang in ("en", "de", "fr"):
+        i18n.set_language(lang)
+        for paper in ("letter", "a4"):
+            for title in ("", "T"):
+                for c in (1, 5, 10):
+                    s = Settings(gen="coords", coord_kind="battle", complexity=c, paper=paper, orient="landscape",
+                                 dpi=150, title=title, name_line=bool(title))
+                    g = geometry(s)
+                    box = design_box(g, single_page(s), s)
+                    ctx = Measuring()
+                    out = GENERATORS["coords"](ctx, box, mulberry32(1), c, s, lw=2, seed=1, dpi=g.dpi)
+                    (_mx, my, mine), (_tx, ty, theirs) = out["grids"]
+                    where = (lang, paper, title, c)
+                    assert theirs >= box.h * 0.7 and mine >= theirs * 0.4, (where, theirs / box.h, mine / theirs)
+                    assert ty + theirs <= box.y + box.h and my == ty, where
+                    assert _outside(ctx, box, 2) is None, (where, _outside(ctx, box, 2))
+
+
 def test_the_gallery_finds_them_by_kind():
     from inkapp import layout, sidebar
     descriptions = dict(sidebar.GEN_OPTIONS)
