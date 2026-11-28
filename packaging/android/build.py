@@ -11,7 +11,9 @@ arch is aarch64 (phones and tablets) or x86_64 (the emulator, Chromebooks). The 
 shiboken6 builds for Android and that arch (download.qt.io/official_releases/QtForPython/, the same version as the
 PySide6 this Python has). Uses Qt's pyside6-android-deploy (from that PySide6) with buildozer and
 python-for-android; needs JDK 17, the Android SDK and NDK r28c (or it uses ~/.pyside6_android_deploy), git and the
-usual build tools. deploy.py adds what the tool doesn't know Inkline needs: numpy, and its data files.
+usual build tools, and Rust (cargo, with rustup's aarch64-linux-android or x86_64-linux-android target) for
+the optional module inkline_fast. deploy.py adds what the tool doesn't know Inkline needs: numpy, inkline_fast,
+and its data files.
 
 One bundle holds one ABI: python-for-android's Qt bootstrap builds a single arch per run (each arch has its own
 PySide6 wheel), and the per-arch bundles can't simply be merged (each has its own list of Qt libraries to load in
@@ -20,7 +22,8 @@ its resources). Play takes an arm64-only bundle; see docs/publishing.md.
 The versionCode (version_code()) comes from VERSION and the arch, and rises with every release.
 
 On the device, a file named "inkline-selftest" in the app's private folder makes it run the self-test into
-selftest/ there instead of opening the window, one named "inkline-printtest" makes it press Print a few seconds
+selftest/ there instead of opening the window (with "inkline-expect-fast" beside it, the self-test fails unless
+the Rust module inkline_fast loads and gives the Python code's results), one named "inkline-printtest" makes it press Print a few seconds
 after it opens, and one named "inkline-screens" makes it show its pages in turn for screenshots, with Print's
 dialog last (inkline_screens.py, below; CI does all three on an emulator, with adb run-as).
 """
@@ -48,6 +51,8 @@ if os.path.exists(os.path.join(PRIVATE, "inkline-selftest")):   # CI: the self-t
     os.makedirs(out, exist_ok=True)
     sys.stdout = sys.stderr = open(os.path.join(out, "selftest.log"), "w", encoding="utf-8", buffering=1)
     sys.argv = [sys.argv[0], "--selftest", out]   # on Android's own display: the APK has no "offscreen" plugin
+if os.path.exists(os.path.join(PRIVATE, "inkline-expect-fast")):   # CI: the self-test requires inkline_fast
+    os.environ["INKLINE_EXPECT_FAST"] = "1"
 if os.path.exists(os.path.join(PRIVATE, "inkline-printtest")):   # CI: press Print once the window is up
     os.environ["INKLINE_PRINT_TEST"] = "1"
 if os.path.exists(os.path.join(PRIVATE, "inkline-screens")):   # CI: each page in turn, for screenshots

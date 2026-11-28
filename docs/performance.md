@@ -214,15 +214,21 @@ and gives the Python code's answer.
 | AppImage x86_64 / aarch64 | 3.12 (uv's standalone) | wheel pip-installed beside numpy |
 | Snap amd64 / arm64 | core24's 3.12 | its own part: Rust from rustup, `cargo build`, the library put in the venv's site-packages |
 | Flatpak | the freedesktop 26.08 SDK's | built offline with the SDK's Rust extension from the crates in Cargo.lock, listed in the manifest by `packaging/flatpak/cargo_sources.py` |
+| Android APK / Play bundle (arm64-v8a, x86_64) | python-for-android's 3.14 | a local python-for-android recipe (`packaging/android/inkline_fast_recipe.py`): `cargo build --locked` for `aarch64-linux-android` or `x86_64-linux-android`, linked by the NDK's clang (API 28) against python-for-android's libpython3.14, put in site-packages as `inkline_fast.abi3.so` |
+
+On Android the module travels inside `libpybundle.so` (python-for-android's tar of the Python files, unpacked on the
+device) rather than in the APK's `lib/<abi>/`, so the recipe checks its 16 KB page alignment as it builds, and the
+workflows check it again in the APK and the bundle (`check_16kb.py --bundled inkline_fast.abi3.so`). The emulator
+self-test runs with `INKLINE_EXPECT_FAST=1` (`emulator-test.sh` leaves an `inkline-expect-fast` file beside
+`inkline-selftest`, which main.py turns into the variable), and the workflow checks its `inkline-fast.txt` says
+yes. Only the x86_64 build runs on the emulator; the arm64 one is built the same way, from the same crate, but is
+proved to load only on a real phone.
 
 Not shipped, and why:
 
 - **The `.run` installer and the Arch package** run on the system's own Python and numpy, which differ from machine
   to machine, and they carry no compiled code at all (the .run works on any processor). They use the Python code:
   the same pages, slower photos. (An Arch user can still `pip install` the module from `rust/inkline_fast`.)
-- **Android** isn't done yet: it needs the module cross-compiled for arm64-v8a (and x86_64 for the emulator) with
-  the NDK, as a python-for-android recipe like `packaging/android/pyjnius_recipe.py`, and the 16 KB page-size check
-  (`packaging/android/check_16kb.py`) run on it. The Python code is used there until then.
 - **Running from source** uses it if it's installed (`packaging/build_fast.py --install`).
 
 ## Recommendation for 8.0
@@ -235,5 +241,5 @@ Not shipped, and why:
   both give the same output. What's left in the photo pages is mostly Qt painting and PNG encoding.
 - **Look at Qt painting for engrave and truchet.** Stipple's 2.2 s of path filling is now 0.2 s (above); engrave's
   0.65 s and truchet's 0.44 s are still one `fillPath`/`drawPath` each.
-- **Shipping the module** is done for every package with its own Python (above); Android is the step left.
+- **Shipping the module** is done for every package with its own Python, Android included (above).
 - **Start-up**: profiled and roughly halved (Start-up, above). What's left is Qt polishing about a thousand widgets.

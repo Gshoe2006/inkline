@@ -1,7 +1,8 @@
 # Inkline's trim of the PySide6 recipe (packaging/android/deploy.py appends this file to the recipe Qt's deploy tool
 # writes): the wheel holds every Qt module, ~150 MB, and Inkline uses four. After the recipe has installed PySide6
 # and copied its libraries, everything no kept part needs goes: other PySide6 modules, Qt libraries no kept library
-# loads (followed through each ELF file's DT_NEEDED list), QML, and Qt translations other than qtbase's.
+# loads (followed through each ELF file's DT_NEEDED list), QML, and Qt translations other than qtbase's. Only
+# PySide6's folder and Qt's libraries are touched: inkline_fast.abi3.so (site-packages) and libpython stay.
 import os as _ink_os
 import struct as _ink_struct
 
