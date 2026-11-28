@@ -5,6 +5,9 @@
 #   3. build    the .run installer and the Arch package (in Arch Linux), the .flatpak, the Debian/Ubuntu .deb and
 #               the AppImage (each for x86-64 and ARM64), the Fedora/openSUSE .rpm (x86-64 and ARM64), the .snap (x86-64 and ARM64),
 #               the Windows installer and portable .zip, and the macOS disk images (universal, Apple silicon, Intel)
+#               Each of these but the .run and the Arch package (which use the system's Python) ships the optional
+#               Rust module rust/inkline_fast, built for its processor by packaging/build_fast.py (the Flatpak and
+#               the Snap build it inside their own builders), and its self-test fails without it (INKLINE_EXPECT_FAST)
 #   4. release  tags the commit, publishes "Inkline <version>" with those notes and the sixteen files,
 #               then tells the app portal (Gshoe2006/Apps) to show it straight away
 #
@@ -145,6 +148,7 @@ jobs:
 
       - name: Install Flatpak tools
         run: |
+          sudo grep -ls packages.microsoft.com /etc/apt/sources.list.d/* | xargs -r sudo rm -f || true   # its apt source returns 403 at times; nothing here needs it
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends flatpak flatpak-builder elfutils   # elfutils: eu-strip, which flatpak-builder runs on the host
 
@@ -152,6 +156,12 @@ jobs:
         run: |
           sh packaging/flatpak/build.sh --bundle
           test -f "dist/inkline-${{ needs.check.outputs.version }}.flatpak"
+
+      # in the build folder build.sh leaves (flatpak-builder --run needs no desktop session, unlike flatpak run)
+      - name: Check it ships the Rust module and that it works
+        run: |
+          flatpak-builder --run build-flatpak packaging/flatpak/io.github.gshoe2006.Inkline.yml python3 -c \
+            "import sys; sys.path.insert(0, '/app/lib/inkline'); from inkapp import selftest; s = selftest.fast_module_status(); print('inkline_fast:', s); sys.exit(0 if s.startswith('yes') else 1)"
 
       - uses: actions/upload-artifact@v7
         with:
@@ -169,9 +179,19 @@ jobs:
           - { arch: amd64, runner: ubuntu-24.04 }
           - { arch: arm64, runner: ubuntu-24.04-arm }   # Raspberry Pi 4 and 5, ARM laptops (glibc 2.39 or newer)
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      # the optional Rust module, for this processor, needing no newer glibc than the package asks for
+      - name: Build inkline_fast
+        run: |
+          pipx install "maturin>=1.5,<2" || python3 -m pip install --user --break-system-packages "maturin>=1.5,<2"
+          export PATH="$HOME/.local/bin:$PATH"
+          python3 packaging/build_fast.py --out "$RUNNER_TEMP/wheels" --max-glibc ${{ matrix.arch == 'amd64' && '2.34' || '2.39' }}
+          echo "INKLINE_FAST_WHEEL=$(ls "$RUNNER_TEMP"/wheels/inkline_fast-*.whl)" >> "$GITHUB_ENV"
 
       - name: Build the .deb
         run: |
@@ -180,9 +200,10 @@ jobs:
 
       - name: Install it and run the self-test with it
         run: |
+          sudo grep -ls packages.microsoft.com /etc/apt/sources.list.d/* | xargs -r sudo rm -f || true   # its apt source returns 403 at times; nothing here needs it
           sudo apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y poppler-utils "./dist/inkline_${{ needs.check.outputs.version }}-1_${{ matrix.arch }}.deb"   # poppler-utils: check_selftest reads the PDFs
-          QT_QPA_PLATFORM=offscreen inkline --selftest deb-selftest
+          QT_QPA_PLATFORM=offscreen INKLINE_EXPECT_FAST=1 inkline --selftest deb-selftest
           python3 packaging/check_selftest.py deb-selftest --install-kind deb
 
       - uses: actions/upload-artifact@v7
@@ -206,6 +227,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Build inkline_fast
+        run: |
+          pipx install "maturin>=1.5,<2" || python3 -m pip install --user --break-system-packages "maturin>=1.5,<2"
+          export PATH="$HOME/.local/bin:$PATH"
+          python3 packaging/build_fast.py --out "$RUNNER_TEMP/wheels" --max-glibc ${{ matrix.arch == 'x86_64' && '2.35' || '2.39' }}
+          echo "INKLINE_FAST_WHEEL=$(ls "$RUNNER_TEMP"/wheels/inkline_fast-*.whl)" >> "$GITHUB_ENV"
+
       - name: Build the AppImage
         run: |
           pip install uv || python3 -m pip install --user --break-system-packages uv
@@ -215,9 +245,10 @@ jobs:
 
       - name: Run the self-test with it
         run: |
+          sudo grep -ls packages.microsoft.com /etc/apt/sources.list.d/* | xargs -r sudo rm -f || true   # its apt source returns 403 at times; nothing here needs it
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3 poppler-utils   # poppler-utils: check_selftest reads the PDFs
-          QT_QPA_PLATFORM=offscreen APPIMAGE_EXTRACT_AND_RUN=1 \
+          QT_QPA_PLATFORM=offscreen APPIMAGE_EXTRACT_AND_RUN=1 INKLINE_EXPECT_FAST=1 \
             "./dist/inkline-${{ needs.check.outputs.version }}-${{ matrix.arch }}.AppImage" --selftest appimage-selftest
           python3 packaging/check_selftest.py appimage-selftest --install-kind appimage
 
@@ -238,12 +269,18 @@ jobs:
           - { arch: aarch64, runner: ubuntu-24.04-arm }   # PySide6's ARM64 build needs glibc 2.39 (Fedora 40+)
     runs-on: ${{ matrix.runner }}
     container: fedora:latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - name: Install build tools
-        run: dnf install -y --setopt=install_weak_deps=False rpm-build python3 curl findutils poppler-utils
+        run: dnf install -y --setopt=install_weak_deps=False rpm-build python3 curl findutils poppler-utils cargo rust gcc
 
       - uses: actions/checkout@v7
+
+      # the optional Rust module (Fedora's own Rust), needing no newer glibc than the package asks for
+      - name: Build inkline_fast
+        run: |
+          python3 packaging/build_fast.py --out "$RUNNER_TEMP/wheels" --max-glibc ${{ matrix.arch == 'x86_64' && '2.34' || '2.39' }}
+          echo "INKLINE_FAST_WHEEL=$(ls "$RUNNER_TEMP"/wheels/inkline_fast-*.whl)" >> "$GITHUB_ENV"
 
       - name: Build the .rpm
         run: |
@@ -253,7 +290,7 @@ jobs:
       - name: Install it on Fedora and run the self-test with it
         run: |
           dnf install -y "./dist/inkline-${{ needs.check.outputs.version }}-1.${{ matrix.arch }}.rpm"
-          QT_QPA_PLATFORM=offscreen inkline --selftest rpm-selftest
+          QT_QPA_PLATFORM=offscreen INKLINE_EXPECT_FAST=1 inkline --selftest rpm-selftest
           python3 packaging/check_selftest.py rpm-selftest --install-kind rpm
 
       - uses: actions/upload-artifact@v7
@@ -284,7 +321,7 @@ jobs:
       - name: Install it on openSUSE and run the self-test with it
         run: |
           zypper --non-interactive install --allow-unsigned-rpm "./dist/inkline-${{ needs.check.outputs.version }}-1.x86_64.rpm"
-          QT_QPA_PLATFORM=offscreen inkline --selftest rpm-selftest
+          QT_QPA_PLATFORM=offscreen INKLINE_EXPECT_FAST=1 inkline --selftest rpm-selftest
           python3 packaging/check_selftest.py rpm-selftest --install-kind rpm
 
   snap:
@@ -307,9 +344,10 @@ jobs:
       - name: Install it and run the self-test with it
         run: |
           sudo snap install --dangerous "${{ steps.snap.outputs.snap }}"
+          sudo grep -ls packages.microsoft.com /etc/apt/sources.list.d/* | xargs -r sudo rm -f || true   # its apt source returns 403 at times; nothing here needs it
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends poppler-utils
-          QT_QPA_PLATFORM=offscreen inkline --selftest "$HOME/snap-selftest"
+          QT_QPA_PLATFORM=offscreen INKLINE_EXPECT_FAST=1 inkline --selftest "$HOME/snap-selftest"
           python3 packaging/check_selftest.py "$HOME/snap-selftest" --install-kind snap
           mkdir -p dist
           cp "${{ steps.snap.outputs.snap }}" dist/
@@ -353,6 +391,13 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install PySide6-Essentials==6.12.0 shiboken6==6.12.0 numpy==2.3.5 pyinstaller
           choco install innosetup -y --no-progress
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Build and install inkline_fast (the optional Rust module, which PyInstaller then bundles)
+        run: |
+          python -m pip install "maturin>=1.5,<2"
+          python packaging/build_fast.py --out "$env:RUNNER_TEMP\wheels" --install
 
       - name: How is it signed?
         run: |
@@ -445,12 +490,14 @@ jobs:
       - name: Run the self-test with the built Inkline.exe
         env:
           QT_QPA_PLATFORM: offscreen
+          INKLINE_EXPECT_FAST: "1"
         run: |
           python -c "import subprocess, sys; sys.exit(subprocess.run([r'dist\Inkline\Inkline.exe', '--selftest', r'windows-selftest\installed']).returncode)"
 
       - name: Unzip the portable copy and run the self-test with it
         env:
           QT_QPA_PLATFORM: offscreen
+          INKLINE_EXPECT_FAST: "1"
         run: |
           Expand-Archive "dist/inkline-${{ needs.check.outputs.version }}-windows-portable.zip" -DestinationPath portable
           python -c "import subprocess, sys; sys.exit(subprocess.run([r'portable\Inkline\Inkline.exe', '--selftest', r'windows-selftest\portable']).returncode)"
@@ -544,6 +591,7 @@ jobs:
           path: windows-selftest
       - name: Check the files Inkline.exe wrote
         run: |
+          sudo grep -ls packages.microsoft.com /etc/apt/sources.list.d/* | xargs -r sudo rm -f || true   # its apt source returns 403 at times; nothing here needs it
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends poppler-utils
           python3 packaging/check_selftest.py windows-selftest/installed --install-kind windows
@@ -612,6 +660,20 @@ jobs:
           "$PY" -m pip install merged/numpy-*universal2.whl
           echo "PY=$PY" >> "$GITHUB_ENV"
 
+      # the optional Rust module, for the app's processors (both, in one universal2 library, for the universal app)
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.arch == 'universal' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Build and install inkline_fast
+        run: |
+          "$PY" -m pip install "maturin>=1.5,<2"
+          if [ "${{ matrix.arch }}" = universal ]; then
+            "$PY" packaging/build_fast.py --out "$RUNNER_TEMP/wheels" --target universal2-apple-darwin --install
+          else
+            "$PY" packaging/build_fast.py --out "$RUNNER_TEMP/wheels" --install
+          fi
+
       - name: Build the app and its disk image (and sign and notarize them, when set up)
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
@@ -644,12 +706,14 @@ jobs:
       - name: Run the self-test with the built Inkline.app
         env:
           QT_QPA_PLATFORM: offscreen
+          INKLINE_EXPECT_FAST: "1"
         run: dist/Inkline.app/Contents/MacOS/Inkline --selftest selftest/macos-${{ matrix.arch }}
 
       - name: Run the universal app's Intel half too (under Rosetta)
         if: matrix.arch == 'universal'
         env:
           QT_QPA_PLATFORM: offscreen
+          INKLINE_EXPECT_FAST: "1"
         run: |
           /usr/sbin/softwareupdate --install-rosetta --agree-to-license || true
           arch -x86_64 dist/Inkline.app/Contents/MacOS/Inkline --selftest selftest/macos-rosetta
@@ -689,6 +753,7 @@ jobs:
           path: selftest
       - name: Check the files each Inkline.app wrote
         run: |
+          sudo grep -ls packages.microsoft.com /etc/apt/sources.list.d/* | xargs -r sudo rm -f || true   # its apt source returns 403 at times; nothing here needs it
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends poppler-utils
           for d in arm64 intel universal rosetta; do

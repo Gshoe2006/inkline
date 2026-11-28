@@ -27,6 +27,16 @@
     python3 -m inkengine calendar --month 3 --year 2027 --week-start sun -o march.pdf
     python3 -m inkengine calendar --planner week --art flow -o week.pdf    (weekly planner)
     python3 -m inkengine photo --image cat.jpg --style dots --dots 80 -o cat-dots.pdf    (photo dot-to-dot)
+    python3 -m inkengine lscwc --words "because, friend, said" -o learn.pdf    (look, say, cover, write, check)
+    python3 -m inkengine scramble --scramble missing --words "because, friend" --answers -o gaps.pdf
+    python3 -m inkengine words --spelling-pack "because, friend, said, which" -o week.pdf    (a week of spelling sheets)
+    python3 -m inkengine speed --facts 100 --tables 6,7,8 --progress-chart --answers -o speed.pdf
+    python3 -m inkengine drawread --complexity 2 -o draw.pdf    (draw what you read)
+    python3 -m inkengine drawread --draw-sentences "A red car; A dog in the rain" -o mine.pdf
+    python3 -m inkengine coords --complexity 9 --answers -o plot.pdf    (plot the points: a picture)
+    python3 -m inkengine coords --coords battle -o battleships.pdf
+    python3 -m inkengine memory --cards words --card-backs -o cards.pdf    (memory cards, backs on page 2)
+    python3 -m inkengine memory --cards custom --pairs "cat: chat; dog: chien" -o french.pdf
     python3 -m inkengine testpage -o test.pdf    (printer test page)
 """
 
@@ -34,9 +44,10 @@ import argparse
 import random
 import sys
 
-from .page import PageSpec, Settings, answer_page, single_page
+from .page import PageSpec, Settings, answer_page, backs_page, has_answer, pattern_name, single_page
 from . import photo, poster
-from .patterns import GENERATORS, HAS_ANSWER, NAMES, cryptogram, ladder, maze, name, planner, spot, words
+from .patterns import (GENERATORS, NAMES, coords, cryptogram, drawread, ladder, maze, memory, name, planner, scramble, speed, spot,
+                       words)
 
 
 def main(argv=None):
@@ -57,6 +68,23 @@ def main(argv=None):
     ap.add_argument("--code", default="numbers", choices=sorted(cryptogram.KINDS), help="cryptogram: numbers or symbols")
     ap.add_argument("--sentence", default="", help="cryptogram: your own text to put in code (instead of a saying)")
     ap.add_argument("--mark-changes", action="store_true", help="word ladder: shade the letter that changes on each rung")
+    ap.add_argument("--scramble", default="mixed", choices=sorted(scramble.KINDS), help="unscramble: mixed-up or missing letters")
+    ap.add_argument("--spelling-pack", metavar="WORDS", default="",
+                    help="a week of spelling sheets for these words (PDF): look, say, cover, write, check; word search; "
+                         "missing letters; crossword; spelling test; answers (the pattern argument is ignored)")
+    sp = ap.add_argument_group("times-table speed tests (pattern: speed)")
+    sp.add_argument("--facts", type=int, default=50, choices=[n for n, _t in speed.COUNTS], help="how many facts")
+    sp.add_argument("--tables", default="", help='the tables, e.g. "3,4,8" (default: as complexity sets)')
+    sp.add_argument("--in-order", action="store_true", help="1 x 3, 2 x 3, 3 x 3... instead of mixed up")
+    sp.add_argument("--sharing", default="times", choices=sorted(speed.OPS), help="times, divide (sharing) or both")
+    sp.add_argument("--progress-chart", action="store_true", help="a chart to colour in after each try")
+    ap.add_argument("--draw-sentences", default="", help="draw what you read: your own sentences, separated by ;")
+    ap.add_argument("--coords", default="plot", choices=sorted(coords.KINDS), help="coordinate grid: plot the points or battleships")
+    mc = ap.add_argument_group("memory cards (pattern: memory)")
+    mc.add_argument("--cards", default="pictures", choices=sorted(memory.KINDS), help="what the pairs are")
+    mc.add_argument("--pairs", default="", help='your own pairs, e.g. "cat: chat; dog: chien" (sets --cards custom)')
+    mc.add_argument("--card-backs", action="store_true",
+                    help="PDF only: a second page of card backs (print double-sided, flipping on the long edge)")
     cal = ap.add_argument_group("calendars (pattern: calendar)")
     cal.add_argument("--planner", default="month", choices=sorted(planner.KINDS), help="a month calendar or a weekly planner")
     cal.add_argument("--month", type=int, default=0, choices=range(0, 13), metavar="1-12", help="the month (default: next month)")
@@ -117,7 +145,12 @@ def main(argv=None):
                  pdots_answer=a.solved, crypto_code=a.code, crypto_source="custom" if a.sentence else "sayings",
                  crypto_text=a.sentence[:cryptogram.MAX_TEXT], ladder_kind="marked" if a.mark_changes else "plain",
                  cal_kind=a.planner, cal_month=a.month, cal_year=a.year if planner.FIRST_YEAR <= a.year <= planner.LAST_YEAR else 0,
-                 cal_start=a.week_start, cal_art=a.art,
+                 cal_start=a.week_start, cal_art=a.art, scramble_kind=a.scramble, speed_count=a.facts,
+                 speed_tables=a.tables[:speed.MAX_TABLES], speed_order="order" if a.in_order else "mixed",
+                 speed_op=a.sharing, speed_chart=a.progress_chart,
+                 draw_source="custom" if a.draw_sentences.strip() else "sentences", draw_text=a.draw_sentences[:drawread.MAX_TEXT],
+                 coord_kind=a.coords, memory_kind="custom" if a.pairs.strip() else a.cards,
+                 memory_words=a.pairs[:memory.MAX_TEXT], memory_backs=a.card_backs,
                  pcbn_colours=max(4, min(16, a.crayons)), cbn=bool(a.cbn), cbn_colours=max(3, min(12, a.cbn or 6)),
                  pcover=not a.no_cover, ppage_nums=not a.no_page_numbers)
     from . import output   # imported here so --help works without starting Qt
@@ -161,6 +194,19 @@ def main(argv=None):
             ap.error("--poster needs a .pdf (the sheets) or .svg (the whole poster) output")
         print(poster.size_note(s))
         return
+    if a.spelling_pack:
+        from dataclasses import replace
+        from . import pack
+        if not pack.spelling_list(a.spelling_pack):
+            ap.error("--spelling-pack needs some words")
+        if not a.out.lower().endswith(".pdf"):
+            ap.error("--spelling-pack needs a .pdf output")
+        week = pack.week(replace(s, pack_theme="spelling"), [(s.seed + k * 7919) & 0xFFFFFFFF for k in range(5)],
+                         spelling=a.spelling_pack)
+        s = replace(s, **week)
+        n = output.write_book_pdf(a.out, s)
+        print(f"wrote {a.out}: a week of spelling sheets, {n} pages (seed {s.seed})")
+        return
     if a.booklet:
         if not a.out.lower().endswith(".pdf"):
             ap.error("--booklet needs a .pdf output")
@@ -169,14 +215,21 @@ def main(argv=None):
         if s.fold:
             print("Print double-sided, flipping on the short edge, then stack, fold and staple.")
         return
+    if a.card_backs and s.gen == "memory":
+        if not a.out.lower().endswith(".pdf"):
+            ap.error("--card-backs needs a .pdf output (the backs are a second page)")
+        cards = single_page(s)
+        output.write_pdf(a.out, s, [cards, backs_page(cards)])
+        print(f"wrote {a.out}: cards, then their backs (seed {s.seed}). Print double-sided, flipping on the long edge.")
+        return
     if a.answers:
-        if s.gen not in HAS_ANSWER:
+        if not has_answer(s.gen, s):
             ap.error(f"--answers: {s.gen} pages have no answers")
         if not a.out.lower().endswith(".pdf"):
             ap.error("--answers needs a .pdf output (the answer is a second page)")
         puzzle = single_page(s)
         key = answer_page([PageSpec(gen=puzzle.gen, seed=puzzle.seed, c=puzzle.c, title=puzzle.title,
-                                    name=puzzle.name, label=f"{NAMES[s.gen]} {s.seed}")])
+                                    name=puzzle.name, label=f"{pattern_name(s.gen, s)} {s.seed}")])
         output.write_pdf(a.out, s, [puzzle, key])
     else:
         output.write(a.out, s, single_page(s, pic))

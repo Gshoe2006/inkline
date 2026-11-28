@@ -16,10 +16,12 @@ import xml.etree.ElementTree as ET
 
 PATTERNS = ["mandala", "maze", "truchet", "contour", "flow", "dots", "sudoku", "words", "nonogram", "spot", "kakuro", "maths",
             "trace", "crossword", "clock", "scramble", "spelltest", "fractions", "symmetry", "ruled", "reward", "reading", "bingo", "early",
-            "logic", "cryptogram", "ladder", "calendar", "mazeshape", "name", "cbnpattern", "nonophoto", "dotsphoto"]
+            "logic", "cryptogram", "ladder", "calendar", "lscwc", "speed", "drawread", "coords", "memory", "mazeshape", "name",
+            "cbnpattern", "battleships", "nonophoto", "dotsphoto"]
 PAGE_PX = (2550, 3300)                     # Letter at 300 dpi
 PDF_PAGES = {**{n: 1 for n in PATTERNS + ["convert", "engrave", "stipple", "cbn", "testpage"]},
              "booklet": 9,                 # cover + 6 mazes + 2 answer pages
+             "memorybacks": 2,             # memory cards, then their backs
              "poster-mandala-2x2": 4,
              "poster-photo-3x3": 9,
              "photobook": 4,               # cover + 3 photos
@@ -85,7 +87,8 @@ def main(d, install_kind=None):
             shapes = sum(1 for tag in ("rect", "circle", "line") for _ in root.iter("{http://www.w3.org/2000/svg}" + tag))
             # a crossword is a few dozen squares and its clues; a spelling test, numbered lines to write on
             need = {"crossword": 40, "spelltest": 20, "ruled": 20, "reward": 20, "reading": 30, "bingo": 20, "early": 20, "cryptogram": 30, "ladder": 30,
-                    "calendar": 40, "dotsphoto": 40}.get(n, 60)
+                    "calendar": 40, "dotsphoto": 40, "drawread": 10, "lscwc": 30,
+                    "battleships": 40, "memory": 30}.get(n, 60)
             if commands + texts + shapes < need:
                 problems.append(f"{n}.svg draws only {commands} path segments, {shapes} shapes and {texts} labels; "
                                 "expected a full design")

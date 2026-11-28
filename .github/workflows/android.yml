@@ -39,6 +39,7 @@ jobs:
 
       - name: Install build tools, PySide6 (for its deploy tool) and the Android SDK parts
         run: |
+          sudo grep -ls packages.microsoft.com /etc/apt/sources.list.d/* | xargs -r sudo rm -f || true   # its apt source returns 403 at times; nothing here needs it
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends git zip unzip autoconf automake libtool pkg-config \
             zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev build-essential lld ccache libltdl-dev libtool-bin \
@@ -141,6 +142,7 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+          sudo grep -ls packages.microsoft.com /etc/apt/sources.list.d/* | xargs -r sudo rm -f || true   # its apt source returns 403 at times; nothing here needs it
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends poppler-utils
 

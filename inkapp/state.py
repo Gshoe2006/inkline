@@ -18,6 +18,9 @@ BUILTIN_PRESETS = {
     "Dot-to-dot booklet with answers": {"mode": "make", "gen": "dots", "booklet": True, "pages": 8, "ramp": True, "mix": False, "cover": True, "pageNums": True, "key": True, "poster": False, "weight": 4},
     "Spot the difference booklet with answers": {"mode": "make", "gen": "spot", "spotBase": "mandala", "booklet": True, "pages": 8, "ramp": True, "mix": False, "cover": True, "pageNums": True, "key": True, "poster": False},
     "Logic puzzle booklet with answers": {"mode": "make", "gen": "logic", "booklet": True, "pages": 8, "ramp": True, "mix": False, "cover": True, "pageNums": True, "key": True, "poster": False},
+    "Times-table speed test with a progress chart": {"mode": "make", "gen": "speed", "speedCount": 50, "speedTables": "", "speedOrder": "mixed", "speedOp": "times", "speedChart": True, "booklet": False, "poster": False, "sheet": "one"},
+    "Memory cards with card backs": {"mode": "make", "gen": "memory", "memoryKind": "pictures", "memoryBacks": True, "complexity": 5, "weight": 4, "frame": False, "booklet": False, "poster": False, "sheet": "one"},
+    "Battleships for two players": {"mode": "make", "gen": "coords", "coordKind": "battle", "complexity": 5, "weight": 4, "frame": False, "booklet": False, "poster": False, "sheet": "one"},
     "Kakuro booklet with answers": {"mode": "make", "gen": "kakuro", "booklet": True, "pages": 8, "ramp": True, "mix": False, "cover": True, "pageNums": True, "key": True, "poster": False},
     # a week of worksheets for the age chosen (pack.week builds its pages when it's applied)
     "Worksheet pack: a week, with answers": {"pack": True},

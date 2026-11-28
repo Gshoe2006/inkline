@@ -14,7 +14,7 @@ import math
 from dataclasses import dataclass, replace
 
 from PySide6.QtCore import QLineF, QPointF, QRectF, Qt
-from PySide6.QtGui import QColor, QFontMetricsF, QPainter, QPainterPath, QPen
+from PySide6.QtGui import QColor, QFontMetricsF, QPainter, QPainterPath, QPaintEngine, QPen, QTransform
 
 from .qt import FONT_FAMILIES, make_font
 
@@ -261,6 +261,49 @@ def _as_lines(cmds):
     return lines
 
 
+_MIN_DOTS = 16
+_AXIS_ALIGNED = (QTransform.TransformationType.TxNone, QTransform.TransformationType.TxTranslate,
+                 QTransform.TransformationType.TxScale)
+
+
+def _dot_groups(cmds, painter):
+    """A path made only of whole circles (a row of stipple dots: move, arc, move, arc...) split into groups
+    that share no pixel column, or None for any other path or painter. Qt's raster painter fills one long path
+    of many circles about 10x slower than the same circles a few at a time, and groups that touch no common
+    pixel come out exactly the same filled one by one (nonzero fill: circles only interact where they overlap).
+    Only for the raster painter (PNG, preview) with no rotation; PDFs keep the one path."""
+    if painter.paintEngine() is None or painter.paintEngine().type() != QPaintEngine.Type.Raster:
+        return None
+    t = painter.combinedTransform()
+    if t.type() not in _AXIS_ALIGNED:
+        return None
+    m11, dx = t.m11(), t.dx()
+    spans = []
+    for k in range(0, len(cmds) - 1, 2):
+        mv, a = cmds[k], cmds[k + 1]
+        if mv[0] != "M" or a[0] != "A" or abs(a[5]) < TAU - 1e-9:
+            return None
+        cx, r = a[1], a[3]
+        x0, x1 = (cx - r) * m11 + dx, (cx + r) * m11 + dx
+        if x0 > x1:
+            x0, x1 = x1, x0
+        spans.append((min(x0, mv[1] * m11 + dx), max(x1, mv[1] * m11 + dx), k))
+    if len(cmds) % 2:
+        return None
+    spans.sort()
+    groups, cur, right = [], [], -math.inf
+    for x0, x1, k in spans:
+        if cur and math.floor(x0) > math.ceil(right):   # at least one whole pixel column between them
+            groups.append(cur)
+            cur, right = [], -math.inf
+        cur.append(k)
+        right = max(right, x1)
+    groups.append(cur)
+    if len(groups) < 2:
+        return None
+    return [[c for k in sorted(g) for c in cmds[k:k + 2]] for g in groups]
+
+
 class QtCanvas(Canvas):
     """Draws with a QPainter that the caller owns (begin/end are the caller's job)."""
 
@@ -308,8 +351,15 @@ class QtCanvas(Canvas):
         self.p.restore()
 
     def fill(self):
-        if self.path:
-            self.p.fillPath(to_qpath(self.path), QColor(self.st.fill_style))
+        if not self.path:
+            return
+        colour = QColor(self.st.fill_style)
+        groups = _dot_groups(self.path, self.p) if len(self.path) >= 2 * _MIN_DOTS else None
+        if groups is None:
+            self.p.fillPath(to_qpath(self.path), colour)
+            return
+        for g in groups:
+            self.p.fillPath(to_qpath(g), colour)
 
     def fill_rect(self, x, y, w, h):
         self.p.fillRect(QRectF(x, y, w, h), QColor(self.st.fill_style))

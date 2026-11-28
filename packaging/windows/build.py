@@ -8,6 +8,8 @@ and dist/inkline-<version>-windows-portable.zip (the app folder to unzip and run
 
 Needs Python 3.10+ with PySide6-Essentials, numpy and pyinstaller (pip install PySide6-Essentials numpy
 pyinstaller), and for the installer Inno Setup 6 (its iscc.exe on PATH or in Program Files).
+The optional Rust module (faster photo styles) goes in when it's installed in that Python
+(python packaging/build_fast.py --install builds and installs it; it needs Rust).
 
 Code signing is optional (docs/code-signing.md). With INKLINE_SIGN_CMD set to a command holding {file}, such as
 
@@ -71,6 +73,8 @@ def app_folder():
     cmd = [sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", "--windowed", "--name", "Inkline",
            "--icon", ico, "--distpath", DIST, "--workpath", BUILD, "--specpath", BUILD,
            "--collect-submodules", "inkengine", "--collect-submodules", "inkapp",
+           # the optional Rust module, when it's installed (packaging/build_fast.py --install); only a warning if not
+           "--hidden-import", "inkline_fast",
            # Qt for Python's Essentials are all Inkline uses; leave the rest of numpy's and Qt's extras out
            "--exclude-module", "tkinter", "--exclude-module", "unittest", "--exclude-module", "pydoc"]
     for d in data:

@@ -39,7 +39,7 @@ smooth dither style. Note the phone's model next to the numbers.
 
 ## Numbers from this container
 
-Measured on the Linux container this work was done in: 4 CPUs (Intel Xeon, 2.10 GHz), Python 3.13, Qt 6.12.0,
+These are 6.1's numbers, before the photo work below (which has its own table). Measured on the Linux container this work was done in: 4 CPUs (Intel Xeon, 2.10 GHz), Python 3.13, Qt 6.12.0,
 numpy 2.5, offscreen Qt. A shared cloud machine: runs vary by about 10–15%. Median of 3 runs, seconds.
 
 | item | seconds |
@@ -75,58 +75,165 @@ What the numbers say:
 - **The slowest pattern is slow in Qt, not in Python.** Truchet (0.75 s) spends 0.44 s in one `QPainter.drawPath`
   call. Spot (0.44 s) has about 0.2 s of its own, mostly numpy working out the regions to colour. Contour (0.64 s): 0.22 s PNG, about 0.14 s Qt drawing its lines,
   and about 0.2 s of Python (the noise grid, marching squares, and one canvas call per segment).
-- **Photos are the slow part.** The two dithers spend about 1 s in one pixel-by-pixel Python loop. Stipple spends
-  2.2 s in Qt filling its dots and 1 s in Python placing them; engrave 0.7 s in Qt and 1.5 s in Python.
-- **Start-up** is about 1.3 s here: 0.1 s importing Qt, 0.2 s importing Inkline, 1 s building the window.
+- **Photos were the slow part.** The two dithers spent about 1 s in one pixel-by-pixel Python loop. Stipple spent
+  2.2 s in Qt filling its dots and 1 s in Python placing them; engrave 0.7 s in Qt and 1.5 s in Python. The next two
+  sections say what changed.
+- **Start-up** was about 1.3 s here: 0.1 s importing Qt, 0.2 s importing Inkline, 1 s building the window. It's
+  now about 0.65 s; see Start-up below.
 
-## The Rust trial
+## Start-up
 
-`rust/inkline_fast` is a small Rust module (PyO3, built with maturin) with two functions:
+Profiled with cProfile and timers round each part of `Window(...)`, and `python -X importtime` for the imports.
+Before (median of 5 fresh processes, offscreen, this container): import PySide6 0.09 s, import Inkline 0.23 s,
+build the window 0.85 s. The window's 0.85 s was:
 
-- `contour_level`: marching squares for one contour level, the loop asked about first (contour was the slowest
-  pattern with real Python work in it);
-- `error_diffusion`: the Floyd–Steinberg and Atkinson dithers, which the profile showed are the biggest single
-  Python loop in the app.
+| part | seconds |
+|---|---:|
+| the stylesheet set a second time, once every widget existed (`set_touch` → `theme.apply`) | ~0.45 |
+| the sidebar put into the central widget: Qt polishes its ~1,000 widgets against the stylesheet | ~0.11 |
+| building the sidebar's controls (`Sidebar._build`, mostly Qt creating and polishing widgets) | ~0.13 |
+| the central widget put into the window: the same polish, all over again | ~0.05 |
+| `Sidebar.load()`, events waiting, everything else | ~0.10 |
 
-`inkengine/patterns/contour.py` and `inkengine/photo.py` use it when `import inkline_fast` works, and otherwise run
-the Python code as before. The output is identical, not just close: the Rust does the same operations in the same
-order with the same 32-bit rounding. `tests/test_inkline_fast.py` compares both paths move by move and byte by byte
-(skipped when the module isn't installed), and the JavaScript-recording tests for contour and photos pass with it.
+The gallery's six pictures and the first preview were already drawn on worker threads; the window doesn't wait for
+them. What changed:
 
-To build and try it:
+- `theme.apply` does nothing when asked for the look the application already has (same style, palette and
+  stylesheet; the desktop's style likewise). `main()` styles the application before building the window, and the
+  window's touch set-up asked for the same look again: Qt then restyled every widget for nothing.
+- The window sets its (empty) central widget first and fills it after, so the widgets are polished once, not twice.
+- `inkapp/updater.py` imports `urllib` and `ssl` when it goes online, not at start-up (about 0.02 s).
+
+After, same machine, median of 5: import PySide6 0.09 s, import Inkline 0.21 s, **build the window 0.33 s**
+(0.79–0.99 s before, 0.28–0.39 s after): about 60% less, and the whole start about 1.2 s → 0.65 s. Showing the
+window and its first paint takes about 0.06 s more either way. Screenshots of every rail page, in light, dark and
+touch, are pixel-for-pixel the same before and after. `tests/test_startup.py` checks that building the window
+restyles nothing and that the central widget goes in empty.
+
+Not done, and what it could save: about half of the 1,054 widgets are hidden, the options of patterns not chosen
+(each combo box alone brings nine of Qt's own widgets for its popup). Building each pattern's options the first time
+it's chosen could save roughly another 0.1–0.15 s, but every control is referenced by `Sidebar.sync()`, presets,
+undo, projects and many tests, so it's a larger change, best made when the sidebar isn't also being extended.
+Most of Inkline's import time is numpy (0.05 s, used by the engine everywhere) and PySide6 binding its types.
+
+## The Rust module
+
+`rust/inkline_fast` is a small Rust module (PyO3, built with maturin) with the slowest loops of the photo styles
+and one of contour's:
+
+| function | what it does | used by |
+|---|---|---|
+| `error_diffusion` | the Floyd–Steinberg and Atkinson dithers | photo: fs, atkinson |
+| `stipple_sites` | which work pixels get a dot (error diffusion with a wobble) | photo: stipple |
+| `engrave_band` | one engraving line's stretches (darkness per column, the wave) | photo: engrave |
+| `gauss_blur` | separable Gaussian blur | photo: line, cbn |
+| `despeckle` | clearing away black blobs too small to colour | photo: line |
+| `chamfer` | the two passes of a region's distance map | photo: cbn, page: spot |
+| `contour_level` | marching squares for one contour level | page: contour |
+
+`inkengine/photo.py`, `cbn.py` and `patterns/contour.py` use it when `import inkline_fast` works, and otherwise run
+the Python code. The output is identical, not just close: the Rust does the same operations in the same order with
+the same 32-bit rounding (and calls the same C library `sin` as Python's `math.sin`), so every dot, line, region and
+pixel is the same, and so is every PNG, PDF and SVG. `tests/test_inkline_fast.py` compares both paths on several
+seeds and sizes (odd sizes, one-pixel strips, holes in the picture, inverted tones): each function's numbers, every
+drawing call of a whole photo page, and the dithered bytes (skipped when the module isn't installed). The
+JavaScript-recording tests for contour and photos pass with it too.
+
+It's an abi3 wheel (any CPython 3.9 or newer), so one wheel per processor serves every package. To build and try it:
 
 ```sh
-python3 -m pip install maturin
-cd rust/inkline_fast && maturin build --release && python3 -m pip install target/wheels/inkline_fast-*.whl
+python3 packaging/build_fast.py --install     # needs Rust (https://rustup.rs); fetches maturin if it isn't there
 ```
 
-It isn't in any release package. The benchmark's JSON says whether it was loaded (`inkline_fast: true`).
+The benchmark's JSON says whether it was loaded (`inkline_fast: true`), and so does the self-test
+(`inkline-fast.txt` in its folder).
 
-Results on the same container (median of 3 or 5 runs):
+### Stipple's dots in Qt
 
-| what | Python | with Rust | faster |
+Stipple drew each row of dots as one filled path (one `<path>` per row keeps the SVG small), and Qt's raster painter
+fills one long path of a few hundred circles about ten times slower than the same circles a few at a time: 2.2 s of
+the page was `fillPath`. On the raster painter (PNG, the preview) `QtCanvas.fill` now splits a path made only of
+whole circles into groups that share no pixel column and fills each group on its own. The pixels are exactly the
+same (circles filled with the nonzero rule only interact where they overlap, and groups with a free pixel column
+between them touch no common pixel), checked pixel for pixel by `tests/test_stipple_fill.py`; PDFs and SVGs still
+get one vector path per row, as before. Stipple's dot centres are also worked out with numpy in one go (the same
+32-bit hash, the same order of operations, so the same numbers). Both help with or without the Rust module.
+
+Other ways were tried and left: drawing each dot with `drawEllipse` is as fast but shades the overlap of two dots'
+edges differently (up to 64 levels on 0.5% of pixels); Engrave's `fillPath` (0.65 s for 486 long, thin polygons)
+didn't get faster with `drawPolygon`, the odd-even rule or without the clip, and splitting its polygons would
+change the antialiased pixels at the seams.
+
+### Results
+
+The benchmark's photo items on the same container (made-up 2000 × 1500 photo, Letter at 300 dpi, PNG; median of 5
+runs, seconds; runs vary by about 10%):
+
+| photo style | 6.1 | now, Python only | now, with Rust | faster than 6.1 |
+|---|---:|---:|---:|---:|
+| stipple | 3.34 | 1.41 | 0.97 | 3.4× |
+| atkinson | 1.58 | 1.58 | 0.40 | 4.0× |
+| fs (smooth dither) | 1.31 | 1.29 | 0.35 | 3.7× |
+| cbn | 1.52 | 1.55 | 1.21 | 1.25× |
+| engrave | 1.53 | 1.38 | 1.13 | 1.35× |
+| line | 0.48 | 0.49 | 0.31 | 1.55× |
+| halftone | 0.63 | 0.60 | 0.66 | (unchanged) |
+
+Each loop on its own (Python, then Rust):
+
+| loop | Python | Rust | faster |
 |---|---:|---:|---:|
-| the dither loop alone, 1125 × 1500 pixels, Floyd–Steinberg | 1.75 s | 0.018 s | ~95× |
-| the dither loop alone, Atkinson | 2.31 s | 0.025 s | ~90× |
-| photo: fs, whole page | 1.40 s | 0.39 s | 3.6× |
-| photo: atkinson, whole page | 1.81 s | 0.35 s | 5.2× |
+| the dither loop, 1125 × 1500 pixels, Floyd–Steinberg | 1.75 s | 0.018 s | ~95× |
+| the dither loop, Atkinson | 2.31 s | 0.025 s | ~90× |
+| stipple dot placement, 563 × 750 sites | 0.49 s | 0.008 s | ~60× |
+| engraving: building the lines and the canvas calls (no painting) | 0.42 s | 0.12 s | 3.6× |
+| despeckle, 1125 × 1500 | 0.58 s | 0.027 s | ~20× |
+| Gaussian blur, 1125 × 1500 (numpy before) | 0.08 s | 0.012 s | 6.6× |
+| chamfer distance map, 1125 × 1462 (numpy before) | 0.12 s | 0.05 s | 2.5× |
 | contour drawing, no painting (noise, squares, canvas calls) | 0.087 s | 0.058 s | 1.5× |
-| page: contour, whole page | 0.64 s | 0.59 s | within noise |
 
-The dithers' whole-page time is now mostly the PNG save and Qt cropping the photo. Contour hardly changes because
-numpy was already doing the squares; what's left is a Python call per segment and Qt drawing the lines.
+What's left in each page is mostly Qt and PNG: about 0.2–0.3 s of every photo page is the PNG save; stipple has
+0.2 s of Qt filling and 0.3 s of canvas calls (82,000 dots); engrave 0.65 s of Qt filling its lines and 0.25 s of
+canvas calls; colour by number a dozen numpy passes over the regions (merging, region details, tracing borders),
+each already vectorised. Halftone has no loop worth moving: it's one canvas call per dot and the PNG.
+
+### Which packages ship it
+
+The release (`.github/workflows/release.yml`) builds the module for each package's processor with
+`packaging/build_fast.py`, which checks the wheel is abi3 and, on Linux, needs no newer glibc than the package
+already does. Each package's self-test runs with `INKLINE_EXPECT_FAST=1`, which fails it unless the module loads
+and gives the Python code's answer.
+
+| package | Python | how it's built and installed |
+|---|---|---|
+| Windows installer and portable zip | 3.12 (setup-python) | wheel built on the runner, pip-installed, bundled by PyInstaller |
+| macOS arm64 / Intel | 3.12 (setup-python) | wheel built natively on each runner, bundled by PyInstaller |
+| macOS universal | 3.12 universal2 (python.org) | a universal2 wheel (`--target universal2-apple-darwin`) |
+| .deb amd64 / arm64 | the system's (3.10+) | wheel unpacked into `/usr/lib/inkline/vendor` beside PySide6 (glibc 2.34 / 2.39 at most) |
+| .rpm x86_64 / aarch64 | the system's (3.10+) | the same, built with Fedora's Rust (glibc 2.34 / 2.39 at most) |
+| AppImage x86_64 / aarch64 | 3.12 (uv's standalone) | wheel pip-installed beside numpy |
+| Snap amd64 / arm64 | core24's 3.12 | its own part: Rust from rustup, `cargo build`, the library put in the venv's site-packages |
+| Flatpak | the freedesktop 26.08 SDK's | built offline with the SDK's Rust extension from the crates in Cargo.lock, listed in the manifest by `packaging/flatpak/cargo_sources.py` |
+
+Not shipped, and why:
+
+- **The `.run` installer and the Arch package** run on the system's own Python and numpy, which differ from machine
+  to machine, and they carry no compiled code at all (the .run works on any processor). They use the Python code:
+  the same pages, slower photos. (An Arch user can still `pip install` the module from `rust/inkline_fast`.)
+- **Android** isn't done yet: it needs the module cross-compiled for arm64-v8a (and x86_64 for the emulator) with
+  the NDK, as a python-for-android recipe like `packaging/android/pyjnius_recipe.py`, and the 16 KB page-size check
+  (`packaging/android/check_16kb.py`) run on it. The Python code is used there until then.
+- **Running from source** uses it if it's installed (`packaging/build_fast.py --install`).
 
 ## Recommendation for 8.0
 
 - **Don't rewrite the engine in Rust.** Patterns are already fast in Python; where they're slow, the time is in Qt's
   painting and PNG encoding, which Rust in the engine wouldn't touch. A rewrite would also lose the line-for-line
   match with the recordings the tests check against.
-- **Do move a few pixel loops to Rust, behind the same optional import.** The dithers gain 3.6–5× on a whole page for
-  60 lines of Rust. Next in line, from the numbers above: stipple's dot placement (`stipple_sites`, 1 s), engraving's
-  line building (1.5 s), and colour by number's blur and distance passes. Each can keep its Python fallback and a
-  test that both give the same output.
-- **Look at Qt painting for stipple, engrave and truchet.** 2.2 s of stipple is Qt filling paths; fewer, simpler
-  paths (or drawing dots as a pre-rendered image at print resolution) may gain more than any Rust.
-- **Shipping the module** means a wheel per platform in the packages (Linux x86-64 and ARM64, Windows, both Macs,
-  Android). `benchmark.yml`'s rust job shows the build is simple on Linux; do the others before relying on it.
-- **Start-up** (about 1 s building the window) is worth a profile of its own; it's Qt widgets, not the engine.
+- **Do move a few pixel loops to Rust, behind the same optional import.** Done for the dithers, stipple, engrave,
+  line drawing and colour by number's blur and distances (above); each keeps its Python fallback and a test that
+  both give the same output. What's left in the photo pages is mostly Qt painting and PNG encoding.
+- **Look at Qt painting for engrave and truchet.** Stipple's 2.2 s of path filling is now 0.2 s (above); engrave's
+  0.65 s and truchet's 0.44 s are still one `fillPath`/`drawPath` each.
+- **Shipping the module** is done for every package with its own Python (above); Android is the step left.
+- **Start-up**: profiled and roughly halved (Start-up, above). What's left is Qt polishing about a thousand widgets.

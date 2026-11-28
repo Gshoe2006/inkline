@@ -1,45 +1,61 @@
-name: Translation fix
-description: A word or sentence in Inkline's Spanish or French that's wrong, unclear or could be said better
+name: Suggest a better translation
+description: A word or sentence in one of Inkline's languages that's wrong, unclear or could be said more naturally
 title: "Translation: "
 labels: ["translation"]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you! Inkline's translations were written without a native speaker, so suggestions from people who
+        speak the language are the best way to improve them. The guide, with a page listing every string, is
+        [docs/translating.md](https://github.com/Gshoe2006/inkline/blob/main/docs/translating.md).
+        Fill in either one suggestion (the boxes below) or paste several rows at the end, or both.
   - type: dropdown
     id: language
     attributes:
       label: Language
+      description: Choose more than one if your rows below cover several.
+      multiple: true
       options:
         - Español (Spanish)
         - Français (French)
+        - Português (Brazilian Portuguese)
+        - Deutsch (German)
+        - Italiano (Italian)
+        - Nederlands (Dutch)
     validations:
       required: true
   - type: input
     id: where
     attributes:
-      label: Where you saw it
-      description: The menu, sidebar section or printed page, e.g. "Paper → Copies" or "the answer pages of a crossword".
-    validations:
-      required: true
+      label: Where it appears
+      description: The screen, menu, sidebar section, pattern or printed page, e.g. "Help menu", "Paper → Copies" or "the answer pages of a crossword".
   - type: textarea
     id: now
     attributes:
       label: What it says now
-      description: Copy the text exactly, or attach a screenshot.
-    validations:
-      required: true
+      description: Copy the text exactly (or the English it translates), or attach a screenshot.
   - type: textarea
     id: better
     attributes:
       label: What it should say
-      description: Keep anything in {curly brackets} as it is (Inkline fills in a number or name there).
-    validations:
-      required: true
+      description: Keep anything in {curly brackets} as it is (Inkline puts a number or name there), and keep one & in a menu item (it marks the keyboard letter).
   - type: textarea
     id: why
     attributes:
       label: Why (optional)
-      description: For example, "a teacher in Mexico would say …", or the word is the wrong one for this puzzle.
+      description: For example, "a teacher in Mexico would say …", "too long for the button", or "children wouldn't know this word".
+  - type: textarea
+    id: rows
+    attributes:
+      label: Several suggestions (optional)
+      description: |
+        Paste what "Copy my suggestions" gives on the review page, or rows from the review sheet, one per line:
+        key,language,new_text (for example: Copies,fr,Exemplaires). Or attach the filled-in sheet.
+      render: csv
   - type: markdown
     attributes:
       value: |
-        Checking a whole translation? `python3 packaging/translation_sheet.py es` (or `fr`) writes every string as a
-        spreadsheet with a column for better wording. Attach the filled-in sheet to an issue.
+        Making the review page yourself: `python3 packaging/translation_sheet.py all review.html` (every language, with
+        search and a box for better wording), or `python3 packaging/translation_sheet.py fr --needs-review` for a
+        spreadsheet of what nobody has checked yet.

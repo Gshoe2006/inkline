@@ -13,6 +13,7 @@ from ..rng import pick
 from .words import word_pool
 
 MAX_OWN = 20
+KINDS = {"mixed": "Mixed-up letters", "missing": "Missing letters"}
 
 
 def shuffle_letters(rnd, word, avoid=()):
@@ -42,8 +43,66 @@ def make_sheet(rnd, c, theme="animals", own=""):
     return [(w, shuffle_letters(rnd, w, set(words))) for w in words]
 
 
+def missing_count(c, n):
+    """How many of an n-letter word's letters are left out at complexity c: at least one, never all."""
+    want = 1 if c <= 3 else round(n / 3) if c <= 7 else round(n / 2)
+    return max(1, min(n - 1, want))
+
+
+def make_missing(rnd, c, theme="animals", own=""):
+    """[(word, gaps)] for a missing letters sheet: gaps, the places of the letters left out, in order."""
+    pool = word_pool(rnd, c, theme, own)
+    words = pool[:MAX_OWN] if theme == "custom" and own.strip() else pool[:5 + c]
+    out = []
+    for w in (w for w in words if len(w) >= 2):
+        places = list(range(len(w)))
+        for i in range(len(places) - 1, 0, -1):
+            j = pick(rnd, i + 1)
+            places[i], places[j] = places[j], places[i]
+        out.append((w, sorted(places[:missing_count(c, len(w))])))
+    return out
+
+
+def _draw_missing(ctx, box, items, lw, dpi, solve):
+    cols = 1 if len(items) <= 10 else 2
+    rows = math.ceil(len(items) / cols)
+    cw, rh = box.w / cols, box.h / max(rows, 6)
+    longest = max(len(w) for w, _g in items)
+    cell = min(rh * 0.6, cw * 0.94 / (longest * 1.12 + 1.6), dpi * 0.5)
+    ctx.save()
+    ctx.fill_style = ctx.stroke_style = "#000"
+    ctx.text_baseline = "middle"
+    for k, (word, gaps) in enumerate(items):
+        col, row = k // rows, k % rows
+        x = box.x + col * cw + cw * 0.03
+        y = box.y + row * rh + rh * 0.5
+        ctx.set_font(cell * 0.5, 400)
+        ctx.fill_style = "#666"
+        ctx.text_align = "left"
+        ctx.fill_text(f"{k + 1}.", x, y)
+        x += cell * 1.5
+        ctx.line_width = max(1.0, lw * 0.7)
+        ctx.text_align = "center"
+        for i, ch in enumerate(word):
+            bx = x + i * cell * 1.12
+            ctx.stroke_rect(bx, y - cell / 2, cell, cell)
+            if i not in gaps:
+                ctx.fill_style = "#000"
+                ctx.set_font(cell * 0.62, 600)
+                ctx.fill_text(ch, bx + cell / 2, y + cell * 0.04)
+            elif solve:
+                ctx.fill_style = "#666"
+                ctx.set_font(cell * 0.62, 600)
+                ctx.fill_text(ch, bx + cell / 2, y + cell * 0.04)
+    ctx.restore()
+    return {"words": items, "kind": "missing"}
+
+
 def draw(ctx, box, rnd, c, settings=None, lw=1.0, dpi=300, solve=False, **_opts):
     """The scrambled words (or, with solve=True, each word written on its line)."""
+    if getattr(settings, "scramble_kind", "mixed") == "missing":
+        items = make_missing(rnd, c, getattr(settings, "ws_theme", "animals"), getattr(settings, "ws_words", ""))
+        return _draw_missing(ctx, box, items, lw, dpi, solve) if items else None
     items = make_sheet(rnd, c, getattr(settings, "ws_theme", "animals"), getattr(settings, "ws_words", ""))
     if not items:
         return None

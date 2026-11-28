@@ -14,7 +14,7 @@ from PySide6.QtPrintSupport import QPrinter
 
 from inkengine import book, output, poster
 from inkengine.canvas import QtCanvas
-from inkengine.page import PANELS, PageSpec, draw_page, geometry, has_answer, panel_specs, single_page
+from inkengine.page import PANELS, PageSpec, backs_page, draw_page, geometry, has_answer, panel_specs, single_page
 from inkengine.testpage import draw_test_page
 from inkengine.i18n import tr
 
@@ -36,6 +36,8 @@ class Job:
     duplex: bool = False   # fold-and-staple: double-sided, flipping on the short edge
     answers: int = 0       # copies: answer pages after them; booklets: the answer book's pages (counted in count)
     copies: int = 0        # booklets: how many booklets the pages make up
+    backs: bool = False    # memory cards with their backs: each page of cards followed by its backs, double-sided,
+                           # flipping on the long edge
 
     @property
     def unit(self):
@@ -43,6 +45,10 @@ class Job:
 
     def amount(self):
         """ "14-page booklet", "2 sheets (both sides)": what the job prints, for the status line."""
+        if self.backs:   # memory cards: each sheet of cards and its backs
+            n = (self.count - self.answers) // 2
+            return (tr("1 sheet of cards with their backs (both sides)") if n == 1 else
+                    tr("{n} sheets of cards with their backs (both sides)")).format(n=n)
         books = (tr("1 booklet") if self.copies == 1 else tr("{n} booklets")).format(n=self.copies)
         if self.duplex:   # a fold-and-staple book: two printed sides per sheet
             n = self.count // 2
@@ -186,7 +192,12 @@ def job(state, only="", copies=1, vary=False, answers=False, names=(), answer_bo
     g, spec = geometry(s), single_page(s, state.photo)
     names = list(names)[:MAX_COPIES] if s.name_line else []
     copies = len(names) if names else max(1, min(MAX_COPIES, int(copies or 1)))
+    backs = card_backs(s)
     if copies == 1 and not names:
+        if backs:   # the cards, then their backs for the other side of the sheet
+            pages = [spec, backs_page(spec)]
+            return Job(base_name(state) + "-with-backs", "page", 2, s.orient, g,
+                       lambda ctx, i: draw_page(ctx, g, pages[i], s), backs=True)
         return Job(base_name(state), "page", 1, s.orient, g, lambda ctx, i: draw_page(ctx, g, spec, s))
     vary = (vary or always_vary(s)) and copies_vary(s)[0]   # a photo has one look, a plain name page one design: their copies are alike
     name = f"{base_name(state)}-{copies}{'-designs' if vary else '-copies'}{'-named' if names else ''}"
@@ -196,6 +207,10 @@ def job(state, only="", copies=1, vary=False, answers=False, names=(), answer_bo
     def copy_spec(i):
         si = replace(spec, seed=copy_seed(s.seed, i)) if vary else spec
         return replace(si, filled_name=names[i]) if names else si
+    if backs:   # each copy's cards, then their backs (memory cards have nothing to solve)
+        return Job(name + "-with-backs", "copies", 2 * copies, s.orient, g,
+                   lambda ctx, i: draw_page(ctx, g, copy_spec(i // 2) if i % 2 == 0 else backs_page(copy_spec(i // 2)), s),
+                   backs=True)
     if not answers:
         return Job(name, "copies", copies, s.orient, g, lambda ctx, i: draw_page(ctx, g, copy_spec(i), s))
     # each answer is called by its copy's name, or "Copy 7", which unnamed copies carry under them (in the
@@ -213,6 +228,13 @@ def job(state, only="", copies=1, vary=False, answers=False, names=(), answer_bo
     pages = designs + keys
     return Job(name + "-with-answers", "copies", len(pages), s.orient, g,
                lambda ctx, i: draw_page(ctx, g, pages[i], s), answers=len(keys))
+
+
+def card_backs(s):
+    """Whether a single page prints with a page of card backs after it: memory cards with Card backs on, one design
+    on the sheet."""
+    return (s.mode == "make" and s.gen == "memory" and bool(getattr(s, "memory_backs", False))
+            and PANELS.get(s.sheet, 1) == 1 and not s.booklet and not s.poster and not s.testpage)
 
 
 def _booklets(state, only, copies, vary, names, answer_book=False):

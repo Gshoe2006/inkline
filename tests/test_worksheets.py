@@ -243,7 +243,7 @@ def _set(w, **kw):
 
 def test_the_sidebar_offers_each_worksheets_options(win):
     sb = win.sidebar
-    assert [v for v, _t in __import__("inkapp.sidebar", fromlist=["x"]).GEN_OPTIONS][-17:] == ["maths", "trace", "crossword", "clock",
+    assert [v for v, _t in __import__("inkapp.sidebar", fromlist=["x"]).GEN_OPTIONS][-22:-5] == ["maths", "trace", "crossword", "clock",
                                                                                             "scramble", "spelltest", "fractions", "symmetry",
                                                                                             "ruled", "reward", "reading", "bingo", "early",
                                                                                             "logic", "cryptogram", "ladder", "calendar"]

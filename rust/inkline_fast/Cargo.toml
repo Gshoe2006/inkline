@@ -3,7 +3,7 @@ name = "inkline_fast"
 version = "0.1.0"
 edition = "2021"
 description = "Optional Rust versions of two of Inkline's inner loops (a trial: see docs/performance.md)"
-license = "GPL-3.0-only"
+license = "GPL-3.0-or-later"
 publish = false
 
 [lib]
@@ -11,7 +11,7 @@ name = "inkline_fast"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = "0.23", features = ["extension-module"] }
+pyo3 = { version = "0.23", features = ["extension-module", "abi3-py39"] }
 numpy = "0.23"
 
 [profile.release]

@@ -6,8 +6,9 @@ how hard the puzzles are):
 - on a theme (animals, food, space, ocean, weather, sports): a maths drill, a handwriting sheet, a crossword, a
   word search and a maze, the crossword and word search on the theme, and an older child's handwriting sheet
   tracing the theme's words;
-- on this week's spelling words, or a week of sight words (a pick from the list for the stage): the words four ways (traced, in a crossword whose clues are the words'
-  letters mixed up, in a word search, and to unscramble), then Friday's spelling test.
+- on this week's spelling words, or a week of sight words (a pick from the list for the stage): Monday's look, say,
+  cover, write, check sheet, Tuesday's word search, Wednesday's missing letters, Thursday's crossword (its clues the
+  words' letters mixed up), then Friday's spelling test, with its answers.
 
 It's an ordinary booklet afterwards: a cover with a name line, page numbers and answer pages at the end, and
 any page can be changed, swapped or removed in the page list. With Paper → Copies and Names it makes a pack
@@ -21,10 +22,11 @@ from .patterns import crossword, scramble, words
 from .rng import mulberry32
 
 DAYS = ("maths", "trace", "crossword", "words", "maze")
-SPELLING_DAYS = ("trace", "crossword", "words", "scramble", "spelltest")
+SPELLING_DAYS = ("lscwc", "words", "scramble", "crossword", "spelltest")   # Wednesday's unscramble: missing letters
 # what a day can be, when the teacher chooses the week's sheets (Booklet → Worksheet pack → the days)
-DAY_CHOICES = ("maths", "early", "trace", "crossword", "words", "maze", "clock", "scramble", "spelltest", "fractions",
-               "symmetry", "reading", "bingo", "logic", "cryptogram", "ladder", "dots", "sudoku", "kakuro")
+DAY_CHOICES = ("maths", "early", "trace", "crossword", "words", "maze", "clock", "scramble", "spelltest", "lscwc", "speed",
+               "fractions", "symmetry", "reading", "drawread", "coords", "bingo", "logic", "cryptogram", "ladder", "dots",
+               "sudoku", "kakuro")
 THEMES = tuple(t for t in crossword.THEME_NAMES if t != "custom")   # themes the crossword and word search share
 SIGHT = ("sight1", "sight2", "sight3")   # sight words: a week of them, picked from the word search's lists
 THEME_NAMES = {**{t: crossword.THEME_NAMES[t] for t in THEMES}, **{t: words.THEME_NAMES[t] for t in SIGHT},
@@ -50,6 +52,12 @@ def spelling_list(text):
         if w and words.clean_word(w) and w.lower() not in (x.lower() for x in out):
             out.append(w)
     return out[:MAX_WORDS]
+
+
+def day_name(gen, spelling):
+    """What a day's sheet is called (English, for tr): a spelling week's unscramble is its missing letters."""
+    from .page import pattern_name
+    return pattern_name(gen, None, {"scramble_kind": "missing" if spelling else "mixed"})
 
 
 def chosen_days(text):
@@ -91,10 +99,10 @@ def week(s, seeds, theme=None, age=None, spelling=None):
         listed = ", ".join(spelling)
         clues = scramble.crossword_clues(mulberry32(seeds[1] ^ 0x5EED), [words.clean_word(w) for w in spelling])
         base.update(ws_theme="custom", ws_words=listed, cross_theme="custom", cross_words=clues,
-                    trace_source="words", trace_text=listed)
+                    trace_source="words", trace_text=listed, scramble_kind="missing")
     else:
         days = days_for(s, False)
-        base.update(ws_theme=theme, cross_theme=theme)
+        base.update(ws_theme=theme, cross_theme=theme, scramble_kind="mixed")
         if extras["trace_source"] == "words":
             base["trace_text"] = ", ".join(theme_words(theme))
     pages = [{**base, "gen": gen, "seed": seed, "complexity": ages.COMPLEXITY[gen][age]}

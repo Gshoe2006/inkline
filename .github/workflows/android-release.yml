@@ -78,6 +78,7 @@ jobs:
       - name: Install build tools, PySide6 and the Android SDK parts
         if: env.HAVE_KEY == 'true'
         run: |
+          sudo grep -ls packages.microsoft.com /etc/apt/sources.list.d/* | xargs -r sudo rm -f || true   # its apt source returns 403 at times; nothing here needs it
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends git zip unzip autoconf automake libtool pkg-config \
             zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev build-essential lld ccache libltdl-dev libtool-bin \

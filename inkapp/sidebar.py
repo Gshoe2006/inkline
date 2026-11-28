@@ -13,9 +13,9 @@ from PySide6.QtWidgets import (QStackedWidget, QAbstractItemView, QFrame, QHBoxL
 
 from inkengine import ages, book, cbn, pack, photo
 from inkengine.i18n import tr
-from inkengine.page import PAGE_KEYS, PANELS, SHEETS, has_answer, sheet_gens
-from inkengine.patterns import (NAMES, bingo, clock, early, crossword, cryptogram, fractions, ladder, planner, reward, ruled, maths, maze,
-                                money, name, spot, trace, words)
+from inkengine.page import PAGE_KEYS, PANELS, SHEETS, has_answer, pattern_name, sheet_gens
+from inkengine.patterns import (NAMES, bingo, clock, coords, drawread, early, crossword, cryptogram, fractions, ladder, lscwc, memory, planner,
+                                reward, ruled, maths, maze, money, name, scramble, speed, spot, trace, words)
 
 from . import jobs, theme, thumbs
 from .jobs import MAX_COPIES
@@ -41,7 +41,12 @@ GEN_OPTIONS = [("mandala", "Mandala (colouring page)"), ("maze", "Maze"), ("truc
                ("logic", "Logic puzzle (clues and a grid: who has what)"),
                ("cryptogram", "Cryptogram (a saying in secret code to crack)"),
                ("ladder", "Word ladder (change one letter at a time)"),
-               ("calendar", "Calendar or weekly planner")]
+               ("calendar", "Calendar or weekly planner"),
+               ("lscwc", "Look, say, cover, write, check (learning spelling words)"),
+               ("speed", "Times-table speed test (against the clock)"),
+               ("drawread", "Draw what you read (a sentence and a box to draw in)"),
+               ("coords", "Coordinate grid (plot the points, or Battleships)"),
+               ("memory", "Memory cards to cut out (find the pairs)")]
 GRID_OPTIONS = [("2x2", "2 × 2"), ("3x3", "3 × 3"), ("4x4", "4 × 4"), ("2x1", "2 across × 1"), ("3x2", "3 across × 2"),
                 ("1x2", "1 across × 2"), ("2x3", "2 across × 3")]
 CBN_PATTERN_NOTE = "Repeated spaces share a number, and spaces side by side get different colours."
@@ -337,8 +342,7 @@ class Sidebar(QFrame):
         self.recent_gens = [gen] + [g for g in self.recent_gens if g != gen]
 
     def _fill_gallery(self, s):
-        from dataclasses import replace as _replace
-        from inkengine.page import Settings, single_page
+        from inkengine.page import Settings
         from inkengine.patterns import GENERATORS
         gens = recent_patterns(self.recent_gens, GENERATORS)
         if s.gen in self.gallery.gens and set(self.gallery.gens) == set(gens):
@@ -350,7 +354,7 @@ class Sidebar(QFrame):
         base = Settings(seed=20261117)
         specs = []
         for g in gens:
-            spec = single_page(_replace(base, gen=g))
+            spec = thumbs.gallery_spec(base, g)
             k = thumbs.key(base, spec)
             self._gallery_keys[k] = g
             img = self.gallery_thumbs.get(k)
@@ -373,9 +377,12 @@ class Sidebar(QFrame):
         return s.pack_theme == "spelling" or s.pack_theme in pack.SIGHT
 
     def _show_pack_days(self, s):
-        days = pack.days_for(s, self._pack_spelling(s))
+        spelling = self._pack_spelling(s)
+        days = pack.days_for(s, spelling)
+        at = pack.DAY_CHOICES.index("scramble")
         for c, g in zip(self.pack_day_combos, days):
             c.blockSignals(True)
+            c.setItemText(at, tr(pack.day_name("scramble", spelling)))   # a spelling week's: missing letters
             c.set_value(g)
             c.blockSignals(False)
         self.pack_days_reset.setEnabled(pack.chosen_days(s.pack_days) is not None)
@@ -538,6 +545,55 @@ class Sidebar(QFrame):
         self.cal_art = self._combo("cal_art", list(planner.BACKGROUNDS.items()))
         self.cal_opts.add(OptionRow("Picture", self.cal_art))
         self.cal_opts.add(Hint("Complexity sets how detailed the picture is."))
+        self.scramble_opts = SubOptions()
+        self.scramble_kind = self._combo("scramble_kind", list(scramble.KINDS.items()))
+        self.scramble_opts.add(OptionRow("Sheet", self.scramble_kind))
+        self.lscwc_opts = SubOptions()
+        self.lscwc_note = self.lscwc_opts.add(Hint())
+        self.lscwc_opts.add(Hint("Fold the sheet along the dashed line to cover the words. Complexity sets how many "
+                                 "words from a theme; your own list is used, up to 20 words."))
+        self.speed_opts = SubOptions()
+        self.speed_count = self._combo("speed_count", speed.COUNTS)
+        self.speed_op = self._combo("speed_op", list(speed.OPS.items()))
+        self.speed_opts.add(Pair(OptionRow("How many facts", self.speed_count), OptionRow("Times or sharing", self.speed_op)))
+        self.speed_tables = self._text("speed_tables", "e.g. 3, 4, 8", speed.MAX_TABLES)
+        self.speed_opts.add(OptionRow("Tables", self.speed_tables))
+        self.speed_order = self._combo("speed_order", list(speed.ORDERS.items()))
+        self.speed_opts.add(OptionRow("Order", self.speed_order))
+        self.speed_opts.add(self._check("speed_chart", "A progress chart to fill in after each try"))
+        self.speed_note = self.speed_opts.add(Hint())
+        self.speed_opts.add(Hint("With no tables typed, Complexity chooses them: the 2, 5 and 10 times tables at 1, "
+                                 "up to the 12 at 9."))
+        self.draw_opts = SubOptions()
+        self.draw_source = self._combo("draw_source", list(drawread.SOURCES.items()))
+        self.draw_opts.add(OptionRow("Sentences", self.draw_source))
+        self.draw_text = self._text("draw_text", "e.g. A red car; A dog in the rain", drawread.MAX_TEXT)
+        self.draw_text_row = self.draw_opts.add(OptionRow("Your sentences", self.draw_text))
+        self.draw_note = self.draw_opts.add(Hint())
+        self.draw_hint = self.draw_opts.add(Hint("Complexity sets the sentences: a few words, then a sentence, then two."))
+        self.coord_opts = SubOptions()
+        self.coord_kind = self._combo("coord_kind", list(coords.KINDS.items()))
+        self.coord_opts.add(OptionRow("Make", self.coord_kind))
+        self.coord_answer_check = self.coord_opts.add(self._check("coord_answer", "Draw the picture joined up (to show "
+                                                                                  "what the points make)"))
+        self.coord_plot_hint = self.coord_opts.add(Hint("Complexity sets the picture: fewer points, then more, then four "
+                                                        "quadrants with negative numbers."))
+        self.coord_battle_hint = self.coord_opts.add(Hint("Complexity sets the grids: 6 × 6, 8 × 8 or 10 × 10, and the "
+                                                          "ships. Print one for each player."))
+        self.memory_opts = SubOptions()
+        self.memory_kind = self._combo("memory_kind", list(memory.KINDS.items()))
+        self.memory_opts.add(OptionRow("Cards", self.memory_kind))
+        self.memory_words = self._text("memory_words", "e.g. cat: chat; dog: chien", memory.MAX_TEXT)
+        self.memory_words_row = self.memory_opts.add(OptionRow("Your pairs", self.memory_words))
+        self.memory_note = self.memory_opts.add(Hint())
+        self.memory_backs_check = self.memory_opts.add(self._check("memory_backs", "Card backs (a second page, to "
+                                                                                    "print on the back)"))
+        self.memory_backs_hint = self.memory_opts.add(Hint("Print double-sided, flipping on the long edge, so each "
+                                                           "back lands behind its card."))
+        self.memory_no_backs_hint = self.memory_opts.add(Hint(MEMORY_NO_BACKS))
+        self.memory_hint = self.memory_opts.add(Hint("Complexity sets how many cards: 8 at 1, up to 24 at 10."))
+        self.memory_own_hint = self.memory_opts.add(Hint("Your pairs set how many cards: up to 12 pairs on a page, the "
+                                                         "cards as big as they fit."))
         self.clock_opts = SubOptions()
         self.clock_task = self._combo("clock_task", list(clock.TASKS.items()))
         self.clock_opts.add(OptionRow("Clocks", self.clock_task))
@@ -561,7 +617,8 @@ class Sidebar(QFrame):
         self.cross_note = self.cross_opts.add(Hint())
         sec.add(self.words_opts, self.maze_opts, self.name_opts, self.spot_opts, self.maths_opts, self.frac_opts, self.ruled_opts,
                 self.reward_opts, self.bingo_opts, self.early_opts, self.logic_opts, self.crypto_opts, self.ladder_opts,
-                self.cal_opts, self.clock_opts,
+                self.cal_opts, self.scramble_opts, self.lscwc_opts, self.speed_opts, self.draw_opts, self.coord_opts,
+                self.memory_opts, self.clock_opts,
                 self.trace_opts, self.cross_opts)
         sec.add(self._slider("complexity", "Complexity", 1, 10, lambda v: f"{v} / 10"))
         sec.add(self._slider("weight", "Line weight", 1, 10, lambda v: f"{v / 150 * 25.4:.2f} mm"))
@@ -1112,12 +1169,13 @@ class Sidebar(QFrame):
         for i, p in enumerate(pl):
             gen = p.get("gen") if p.get("gen") in NAMES else st.settings.gen
             detail = _page_detail(gen, p)
-            text = f"{i + 1}. {tr(NAMES[gen])}{f' · {detail}' if detail else ''} · {p.get('complexity', cx)}/10"
+            name = pattern_name(gen, st.settings, p)
+            text = f"{i + 1}. {tr(name)}{f' · {detail}' if detail else ''} · {p.get('complexity', cx)}/10"
             if p.get("answer", True) is False and st.settings.key and has_answer(gen, _own_settings(st.settings, p)):
                 text += " · " + tr("no answer")
             item = QListWidgetItem()
             item.setToolTip(text + ("\n" + tr("Words: {words}").format(words=p["ws_words"])
-                                    if gen in ("words", "scramble", "spelltest") and p.get("ws_theme") == "custom" and p.get("ws_words") else ""))
+                                    if gen in WORD_GENS and p.get("ws_theme") == "custom" and p.get("ws_words") else ""))
             item.setData(Qt.ItemDataRole.AccessibleTextRole, tr("Page {text}").format(text=text))
             item.setSizeHint(QSize(0, row_h))
             lst.addItem(item)
@@ -1269,7 +1327,7 @@ class Sidebar(QFrame):
             else:   # no page to change any more (back to a quick booklet, a photo): Create's controls go home
                 self.back_to_pages()
         mix_book = s.booklet and s.mix and not listing
-        self.words_opts.setVisible(s.gen in ("words", "scramble", "spelltest"))   # unscramble takes its words from the same place
+        self.words_opts.setVisible(s.gen in WORD_GENS)   # unscramble, spelling tests and look-say-cover take their words from here
         self.age_hint.setVisible(s.age != "any")
         sheet_ok = make and not s.booklet and not s.poster and not s.testpage   # single designs only
         self.sheet_row.setVisible(sheet_ok)
@@ -1311,19 +1369,47 @@ class Sidebar(QFrame):
                 self.cal_year.addItem(tr(text), value)
             self.cal_year.set_value(s.cal_year)
             self._loading = was
+        self.scramble_opts.setVisible(s.gen == "scramble")
+        self.lscwc_opts.setVisible(s.gen == "lscwc")
+        self.lscwc_note.setText(lscwc.note(s) if s.gen == "lscwc" else "")
+        self.lscwc_note.setVisible(bool(self.lscwc_note.text()))
+        self.speed_opts.setVisible(s.gen == "speed")
+        self.speed_note.setText(speed.note(s) if s.gen == "speed" else "")
+        self.speed_note.setVisible(bool(self.speed_note.text()))
+        self.draw_opts.setVisible(s.gen == "drawread")
+        self.draw_text_row.setVisible(s.draw_source == "custom")
+        self.draw_hint.setVisible(s.draw_source != "custom")
+        self.draw_note.setText(drawread.note(s) if s.gen == "drawread" else "")
+        self.draw_note.setVisible(bool(self.draw_note.text()))
+        self.coord_opts.setVisible(s.gen == "coords")
+        self.coord_plot_hint.setVisible(s.coord_kind != "battle")
+        self.coord_answer_check.setVisible(s.coord_kind != "battle")
+        self.coord_battle_hint.setVisible(s.coord_kind == "battle")
+        self.memory_opts.setVisible(s.gen == "memory")
+        self.memory_words_row.setVisible(s.memory_kind == "custom")
+        backs_ok = not s.booklet and not s.poster and PANELS.get(s.sheet, 1) == 1   # as jobs.card_backs
+        self.memory_backs_check.setEnabled(backs_ok)   # backs print with a single page or copies only
+        self.memory_backs_check.setToolTip("" if backs_ok else tr(MEMORY_NO_BACKS))
+        self.memory_backs_hint.setVisible(s.memory_backs and backs_ok)
+        self.memory_no_backs_hint.setVisible(not backs_ok)
+        self.memory_hint.setVisible(s.memory_kind != "custom")
+        self.memory_own_hint.setVisible(s.memory_kind == "custom")
+        self.memory_note.setText(memory.note(s) if s.gen == "memory" else "")
+        self.memory_note.setVisible(bool(self.memory_note.text()))
         self.money_row.setVisible(s.maths_kind == "money")
         self.pack_words_row.setVisible(s.pack_theme == "spelling")
         spelling = s.pack_theme == "spelling"
-        what = (tr("Handwriting, a crossword, a word search and an unscramble sheet of your words, then a spelling test, for {age}.")
+        what = (tr("Look, say, cover, write, check, a word search, missing letters and a crossword of your words, then "
+                   "a spelling test, for {age}.")
                 if spelling else
-                tr("Twelve of these sight words traced, in a crossword, a word search and an unscramble sheet, then a "
-                   "spelling test, for {age}.") if s.pack_theme in pack.SIGHT else
+                tr("Twelve of these sight words to look, say, cover, write and check, in a word search, with missing "
+                   "letters and in a crossword, then a spelling test, for {age}.") if s.pack_theme in pack.SIGHT else
                 tr("Maths, handwriting, a crossword, a word search and a maze, for {age}."))
         ready = not spelling or bool(pack.spelling_list(s.pack_words))
         self._show_pack_days(s)
         if pack.chosen_days(s.pack_days):   # the teacher's own week: say which sheets, in order
             what = tr("This week: {days}, for {age}.").replace("{days}", ", ".join(
-                tr(NAMES[g]) for g in pack.chosen_days(s.pack_days)))   # as written (German nouns keep capitals)
+                tr(pack.day_name(g, self._pack_spelling(s))) for g in pack.chosen_days(s.pack_days)))   # as written (German nouns keep capitals)
         self.pack_hint.setText(what.format(age=tr(ages.AGES[s.age if s.age in ages.EXTRAS else pack.DEFAULT_AGE]).lower())
                                if ready else tr("Type this week's spelling words to make the pack."))
         self.pack_btn.setEnabled(ready)
@@ -1546,8 +1632,18 @@ def _own_settings(s, p):
 def _page_detail(gen, p):
     """What tells a page apart from others of its pattern, for its row, in the person's language: a word search's
     theme, a word maze's word or a name page's name (those as typed, never translated)."""
-    if gen in ("words", "scramble", "spelltest"):
-        return tr("Your words") if p.get("ws_theme") == "custom" else tr(words.THEME_NAMES.get(p.get("ws_theme"), ""))
+    if gen in WORD_GENS:
+        theme = tr("Your words") if p.get("ws_theme") == "custom" else tr(words.THEME_NAMES.get(p.get("ws_theme"), ""))
+        return theme
+    if gen == "speed":
+        typed = speed.typed_tables(p.get("speed_tables", ""))
+        return ", ".join(map(str, typed)) if typed else tr(speed.OPS.get(p.get("speed_op", "times"), ""))
+    if gen == "drawread":
+        return tr("Your sentences") if p.get("draw_source") == "custom" else ""
+    if gen == "coords":
+        return tr(coords.KINDS.get(p.get("coord_kind", "plot"), ""))
+    if gen == "memory":
+        return tr(memory.KINDS.get(p.get("memory_kind", "pictures"), ""))
     if gen == "maze" and p.get("maze_shape") == "word":
         return p.get("maze_word", "").strip()
     if gen == "name":
@@ -1628,6 +1724,8 @@ class _Elided(QLabel):
         return QSize(0, super().minimumSizeHint().height())
 
 
+MEMORY_NO_BACKS = "Card backs print with a single page or copies, not in a booklet, a poster or a sheet of several designs."
+WORD_GENS = ("words", "scramble", "spelltest", "lscwc")   # the patterns whose words come from Words from
 DAY_NAMES = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
 SPELLING_USUAL = pack.SPELLING_DAYS
 

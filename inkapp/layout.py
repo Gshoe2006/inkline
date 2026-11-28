@@ -359,12 +359,17 @@ GROUP_NAMES = {"art": "Colouring and art", "puzzles": "Puzzles", "maths": "Maths
 GROUPS = [("art", ["mandala", "truchet", "contour", "flow", "name", "symmetry"]),
           ("puzzles", ["maze", "dots", "words", "crossword", "sudoku", "kakuro", "nonogram", "spot", "scramble", "logic",
                        "cryptogram"]),
-          ("maths", ["maths", "early", "clock", "fractions"]),
-          ("literacy", ["trace", "spelltest", "reading", "ladder"]),
-          ("classroom", ["bingo", "reward", "ruled", "calendar"])]
+          ("maths", ["maths", "speed", "early", "clock", "fractions", "coords"]),
+          ("literacy", ["trace", "spelltest", "lscwc", "reading", "drawread", "ladder"]),
+          ("classroom", ["bingo", "memory", "reward", "ruled", "calendar"])]
 # more words a search finds a pattern by, besides its name and description (in this language or in English)
 KEYWORDS = {"logic": "Einstein, reasoning, deduction, clues", "cryptogram": "Secret code, cipher, decode, quote, proverb",
-            "ladder": "Words, spelling, letters, doublets", "calendar": "Month, week, planner, diary, schedule, dates"}
+            "ladder": "Words, spelling, letters, doublets", "calendar": "Month, week, planner, diary, schedule, dates",
+            "lscwc": "Spelling words, learn, practise, fold, copy",
+            "speed": "Times tables, multiplication, division, timed, quick, facts, test, minute",
+            "drawread": "Reading, drawing, sentences, comprehension, picture, understanding",
+            "coords": "Coordinates, plot, points, axes, graph, Battleships, ships, game, quadrants",
+            "memory": "Pairs, matching, concentration, pelmanism, cards, game, cut out, numbers, dots"}
 
 
 def _plain(text):
@@ -389,8 +394,7 @@ class AllPatterns(QWidget):
 
     def __init__(self, names, descriptions, current=None):
         from PySide6.QtWidgets import QLabel, QLineEdit, QScrollArea
-        from dataclasses import replace
-        from inkengine.page import Settings, single_page
+        from inkengine.page import Settings
         from . import thumbs
         super().__init__()
         self.names, self.descriptions = names, descriptions
@@ -437,7 +441,7 @@ class AllPatterns(QWidget):
                 b.clicked.connect(lambda _c=False, g=gen: self.picked.emit(g))
                 grid.addWidget(b, i // 4, i % 4)
                 self.buttons[gen] = b
-                spec = single_page(replace(base, gen=gen))
+                spec = thumbs.gallery_spec(base, gen)
                 self._keys[thumbs.key(base, spec)] = gen
                 specs.append(spec)
             lay.addWidget(grid_w)
