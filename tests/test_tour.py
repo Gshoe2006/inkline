@@ -80,3 +80,34 @@ def test_touch_mode_describes_its_own_toolbar():
     from inkapp import tour
     assert "PNG" in tour.step_text("toolbar") and "PNG" not in tour.step_text("toolbar", touch=True)
     assert "Menu" in tour.step_text("menu", touch=True) and tour.step_text("rail", touch=True) == tour.step_text("rail")
+
+
+def test_the_card_has_its_own_background_with_the_desktops_style(make_win):
+    """With View → Use my desktop's style there's no stylesheet: the card still draws an opaque background in the
+    desktop's colours (it was see-through, its text on top of the gallery) and the outline its border."""
+    from PySide6.QtGui import QColor, QPalette
+    app = QApplication.instance()
+    sheet, pal = app.styleSheet(), QPalette(app.palette())
+    w = make_win()
+    try:
+        app.setStyleSheet("")
+        dark = QPalette(pal)
+        dark.setColor(QPalette.ColorRole.Window, QColor(30, 33, 38))
+        dark.setColor(QPalette.ColorRole.Highlight, QColor(61, 174, 233))
+        app.setPalette(dark)
+        item = next(a for a in next(a.menu() for a in w.menuBar().actions() if a.text() == "&Help").actions()
+                    if a.text() == "T&our of the window")
+        item.trigger()
+        QApplication.processEvents()
+        card = w._tour
+        img = w.grab(card.geometry()).toImage()   # what's on screen there: the card over the gallery
+        inside = [img.pixelColor(x, y) for x in (12, card.width() // 2, card.width() - 12) for y in (card.height() - 8,)]
+        assert all(c == QColor(30, 33, 38) for c in inside), [c.name() for c in inside]
+        edge = img.pixelColor(card.width() // 2, 0)
+        assert edge.blue() > 150 and edge.red() < 120, edge.name()   # the highlight border
+        out = w._tour.outline.grab().toImage()
+        assert out.pixelColor(w._tour.outline.width() // 2, 1).blue() > 150
+        w._tour.skip.click()
+    finally:
+        app.setPalette(pal)
+        app.setStyleSheet(sheet)

@@ -4,7 +4,7 @@ Escape skips. Once finished or skipped it isn't shown again (preferences.json "t
 """
 
 from PySide6.QtCore import QPoint, QRect, Qt
-from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout
+from PySide6.QtWidgets import QApplication, QFrame, QHBoxLayout, QLabel, QVBoxLayout
 
 from inkengine.i18n import tr
 
@@ -43,8 +43,43 @@ def target(window, name):
     return {"rail": rail, "gallery": sb.gallery, "toolbar": sb.toolbar, "sidebar": sb, "menu": menus}[name]
 
 
+def _own_look():
+    """True when Inkline's stylesheet is off (View → Use my desktop's style): the card and outline then draw their
+    own background and border in the desktop's colours, or the card's text would sit straight on the window."""
+    return not QApplication.instance().styleSheet()
+
+
+def _paint_frame(widget, fill):
+    from PySide6.QtGui import QPainter, QPalette, QPen
+    pal = widget.palette()
+    p = QPainter(widget)
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    width = 1.5 if fill else 3.0
+    p.setPen(QPen(pal.color(QPalette.ColorRole.Highlight), width))
+    p.setBrush(pal.color(QPalette.ColorRole.Window) if fill else Qt.BrushStyle.NoBrush)
+    half = width / 2
+    p.drawRoundedRect(widget.rect().toRectF().adjusted(half, half, -half, -half), 10, 10)
+    p.end()
+
+
+class Outline(QFrame):
+    """The outline round the part of the window the tour is pointing at."""
+
+    def paintEvent(self, ev):
+        if _own_look():
+            _paint_frame(self, fill=False)
+        else:
+            super().paintEvent(ev)
+
+
 class Tour(QFrame):
     """The tour's card and the outline round what it points at; both are children of the window."""
+
+    def paintEvent(self, ev):
+        if _own_look():
+            _paint_frame(self, fill=True)
+        else:
+            super().paintEvent(ev)
 
     def __init__(self, window, done=None):
         super().__init__(window)
@@ -57,6 +92,10 @@ class Tour(QFrame):
         self.count = label("", "legend")
         self.title = QLabel()
         self.title.setObjectName("tourTitle")
+        f = self.title.font()   # bold and larger with the desktop's style too (the stylesheet says so otherwise)
+        f.setBold(True)
+        f.setPointSizeF(f.pointSizeF() * 1.2)
+        self.title.setFont(f)
         self.title.setWordWrap(True)
         self.text = label("", "hint")
         self.text.setWordWrap(True)
@@ -76,7 +115,7 @@ class Tour(QFrame):
         row.addWidget(self.back)
         row.addWidget(self.next)
         lay.addLayout(row)
-        self.outline = QFrame(window)
+        self.outline = Outline(window)
         self.outline.setObjectName("tourOutline")
         self.outline.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         window.installEventFilter(self)
