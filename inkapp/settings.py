@@ -1,7 +1,8 @@
 """Edit → Settings…: what Inkline starts with, in one place. Changes apply at once, as the menus' do.
 
 - Printing: the printer Print starts with (its margins show on the preview), and the paper size, orientation,
-  margin and resolution new projects start with ("Use for this design" puts them on the one open now).
+  margin and resolution new projects start with ("Use for this design" puts them on the one open now; Print → Paper
+  is the paper of the design open now).
 - Saving: what Ctrl+E saves, PDF (as before), PNG or SVG.
 - Updates: when Inkline checks (as Help → Check for updates automatically), and a button to check now.
 - Language: as View → Language, from the next start.
@@ -85,7 +86,8 @@ class SettingsDialog(QDialog):
         self.dpi = combo(DPIS, start["dpi"])
         printing.add(Pair(OptionRow("Size", self.paper), OptionRow("Orientation", self.orient)))
         printing.add(Pair(OptionRow("Margin", self.margin), OptionRow("Resolution", self.dpi)))
-        printing.add(Hint("New projects start with these. The design open now keeps its own until you use them for it."))
+        # the defaults; Print → Paper is the paper of the design open now
+        printing.add(Hint("New projects start with this paper. Print → Paper changes only the design open now."))
         self.use_now = button("Use for this design", tip="Put this size, orientation, margin and resolution on the "
                                                          "design open now (Undo takes it back)")
         self.use_now.setAutoDefault(False)   # Enter closes the dialog; it doesn't press these
@@ -117,7 +119,7 @@ class SettingsDialog(QDialog):
         saving = Section("Saving")
         self.format = combo(list(FORMATS.items()), save_format(prefs))
         saving.add(OptionRow("Ctrl+E saves as", self.format))
-        saving.add(Hint("The other formats are still in the File menu and under the preview."))
+        saving.add(Hint("The other formats are still in the File menu and in the toolbar above the preview."))
         right.addWidget(saving)
 
         updates = Section("Updates")
@@ -170,6 +172,11 @@ class SettingsDialog(QDialog):
                 c.setEnabled(False)
         self.setMinimumWidth(640)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+
+    def showEvent(self, ev):
+        # opened at its full size: below its size hint the lists were squashed (the Theme list to 19 px)
+        self.resize(self.size().expandedTo(self.sizeHint()))
+        super().showEvent(ev)
 
     def _fill_themes(self):
         """The Theme list: following the system, light, dark, and the extras turned on, the one in use chosen."""

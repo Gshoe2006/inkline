@@ -135,7 +135,8 @@ def test_new_design_changes_the_selected_page_only(win):
     pl = win.state.settings.page_list
     assert pl[1]["seed"] != pl0[1]["seed"] and pl[0] == pl0[0] and pl[2:] == pl0[2:]
     assert win.state.settings.seed == seed0   # the cover art keeps its design
-    assert win.sidebar.seed.text() == f"seed {pl[1]['seed']}"
+    assert win.sidebar.design_number == pl[1]["seed"]          # the page's number: in New design's tooltip
+    assert f"Design number {pl[1]['seed']}." in win.sidebar.new_design.toolTip()
     assert win.history.undoText() == "New design"
 
 

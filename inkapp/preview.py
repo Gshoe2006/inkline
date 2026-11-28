@@ -22,7 +22,7 @@ from inkengine.i18n import tr
 from inkengine.poster import row_name, sheet_rect
 
 from . import theme
-from .widgets import label_as
+from .widgets import label_as, own_look, paint_frame
 
 
 MAX_VIEW_ZOOM = 4.0   # the view's zoom: up to 4× the fitted page (the preview is drawn at 150 dpi: sharp to about 3×)
@@ -351,6 +351,23 @@ class Page(QWidget):
         self._cursor()
 
 
+class Busy(QLabel):
+    """The "rendering…" pill over the light table. With the desktop's style (no stylesheet) it draws its own background
+    and border, as the tour's card does, so it never sits see-through on the page."""
+
+    PAD = (10, 4, 10, 4)   # px: as the stylesheet's padding, when there's no stylesheet to pad it
+
+    def fit(self):
+        """Its size for its text, padded by the stylesheet or (the desktop's style) by itself."""
+        self.setContentsMargins(*(self.PAD if own_look() else (0, 0, 0, 0)))
+        self.adjustSize()
+
+    def paintEvent(self, ev):
+        if own_look():
+            paint_frame(self, fill=True, radius=self.height() / 2, width=1.0)
+        super().paintEvent(ev)
+
+
 class Preview(QWidget):
     def __init__(self):
         super().__init__()
@@ -373,14 +390,19 @@ class Preview(QWidget):
         self.page = Page()
         sl.addWidget(self.page)
         lay.addWidget(stage, 1)
-        self.busy = QLabel(tr("rendering…"), stage)
+        self.busy = Busy(tr("rendering…"), stage)
         self.busy.setObjectName("busy")
         self.busy.hide()
         self._stage = stage
 
     def resizeEvent(self, e):
         super().resizeEvent(e)
-        self.busy.adjustSize()
+        self._place_busy()
+        self._fit_info()
+
+    def _place_busy(self):
+        """The "rendering…" pill at the light table's top right."""
+        self.busy.fit()
         self.busy.move(self._stage.width() - self.busy.width() - 34, 34)
 
     def set_pad(self, px):
@@ -394,8 +416,7 @@ class Preview(QWidget):
         self.busy.setVisible(bool(text))
         if text:
             self.busy.setText(text)
-            self.busy.adjustSize()
-            self.busy.move(self._stage.width() - self.busy.width() - 34, 34)
+            self._place_busy()
             self.busy.raise_()
 
     def set_info(self, groups):
@@ -422,10 +443,6 @@ class Preview(QWidget):
             need = box.sizeHint().width()
             box.setVisible(need <= room)
             room -= need + self._bar.spacing() if need <= room else room + 1
-
-    def resizeEvent(self, ev):
-        super().resizeEvent(ev)
-        self._fit_info()
 
     def set_drop(self, over):
         """A dashed outline round the light table while a file is dragged over the window (2.x's .stage.over)."""

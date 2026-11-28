@@ -78,7 +78,7 @@ class Options(QDialog):
             b.setIcon(QIcon())
             b.setText(tr("Drawing…"))   # until its picture arrives (colour by number takes a moment)
             b.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
-            b.setToolTip(tr("seed {n}").format(n=seed))
+            b.setToolTip(tr("Design number {n}").format(n=seed))
         self._settings = s
         self.thumbs.request(s, specs)
 

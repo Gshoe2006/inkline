@@ -22,20 +22,21 @@ class Tokens:
     accent_ink: str    # text on the accent
     table: str         # the "light table" the page sits on
     field: str         # inputs and plain buttons
+    off: str           # a disabled control's text and marks: plainly fainter than muted (High contrast's line is black)
 
 
 LIGHT = Tokens(bg="#eceff2", panel="#ffffff", ink="#16181d", muted="#5b626e", line="#d3d8de",
-               accent="#0b7ea6", accent_ink="#ffffff", table="#d9dee4", field="#f5f7f9")
+               accent="#0b7ea6", accent_ink="#ffffff", table="#d9dee4", field="#f5f7f9", off="#a3aab4")
 DARK = Tokens(bg="#121418", panel="#1a1d22", ink="#e7e9ed", muted="#9aa2ad", line="#2d323a",
-              accent="#4dc2e6", accent_ink="#06222c", table="#0b0d10", field="#22262c")
+              accent="#4dc2e6", accent_ink="#06222c", table="#0b0d10", field="#22262c", off="#5a616b")
 # more looks, under Edit → Settings → Appearance (each turned on there to be offered); every text colour on its
 # background is at least 4.5:1 (WCAG AA), High contrast's at least 10:1
 CONTRAST = Tokens(bg="#ffffff", panel="#ffffff", ink="#000000", muted="#2b2b2b", line="#000000",
-                  accent="#003f8a", accent_ink="#ffffff", table="#c8c8c8", field="#ededed")
+                  accent="#003f8a", accent_ink="#ffffff", table="#c8c8c8", field="#ededed", off="#8a8a8a")
 WARM = Tokens(bg="#efe7da", panel="#fbf7f0", ink="#2b2219", muted="#62564a", line="#d8cbb6",
-              accent="#9a4a12", accent_ink="#ffffff", table="#e2d6c3", field="#f6efe4")
+              accent="#9a4a12", accent_ink="#ffffff", table="#e2d6c3", field="#f6efe4", off="#ab9d89")
 SLATE = Tokens(bg="#18202b", panel="#202a37", ink="#e6ebf2", muted="#a3afbf", line="#364357",
-               accent="#7db3ff", accent_ink="#0a1830", table="#111821", field="#283444")
+               accent="#7db3ff", accent_ink="#0a1830", table="#111821", field="#283444", off="#5f6d82")
 THEMES = {"light": LIGHT, "dark": DARK, "contrast": CONTRAST, "warm": WARM, "slate": SLATE}
 THEME_NAMES = {"system": "Follow the system", "light": "Light", "dark": "Dark", "contrast": "High contrast",
                "warm": "Warm paper", "slate": "Slate"}
@@ -122,8 +123,8 @@ def palette(t):
                         (QPalette.ColorRole.ToolTipText, t.ink), (QPalette.ColorRole.PlaceholderText, t.muted),
                         (QPalette.ColorRole.Mid, t.line), (QPalette.ColorRole.Link, t.accent)):
         p.setColor(role, c(value))
-    p.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text, c(t.muted))
-    p.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, c(t.muted))
+    for role in (QPalette.ColorRole.Text, QPalette.ColorRole.ButtonText, QPalette.ColorRole.WindowText):
+        p.setColor(QPalette.ColorGroup.Disabled, role, c(t.off))
     return p
 
 
@@ -132,24 +133,44 @@ _ARROW_DIR = None
 
 def _arrow(colour):
     """A small down-pointing triangle in the given colour, as an image file the stylesheet can use (Qt
-    stylesheets can't draw one from borders, as 2.x's CSS could). Drawn fresh into this run's own
-    temporary folder, so a stale or someone else's file is never picked up."""
-    import os
-    import tempfile
+    stylesheets can't draw one from borders, as 2.x's CSS could)."""
     from PySide6.QtCore import QPointF
-    from PySide6.QtGui import QImage, QPainter, QPolygonF
-    global _ARROW_DIR
-    if _ARROW_DIR is None:
-        _ARROW_DIR = tempfile.mkdtemp(prefix="inkline-")
-    path = os.path.join(_ARROW_DIR, f"arrow-{colour.lstrip('#')}.png")
-    if not os.path.exists(path):
-        img = QImage(20, 12, QImage.Format.Format_ARGB32)
-        img.fill(0)
-        p = QPainter(img)
-        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    from PySide6.QtGui import QPolygonF
+
+    def draw(p):
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(QColor(colour))
         p.drawPolygon(QPolygonF([QPointF(1, 1), QPointF(19, 1), QPointF(10, 11)]))
+    return _icon(f"arrow-{colour.lstrip('#')}", 20, 12, draw)
+
+
+def _tick(colour):
+    """A check mark in the given colour, for a ticked checkbox's box."""
+    from PySide6.QtCore import QPointF
+    from PySide6.QtGui import QPen
+
+    def draw(p):
+        p.setPen(QPen(QColor(colour), 2.2, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+        p.drawPolyline([QPointF(2, 6.5), QPointF(5, 9.5), QPointF(10.5, 2.5)])
+    return _icon(f"tick-{colour.lstrip('#')}", 12, 12, draw)
+
+
+def _icon(name, w, h, draw):
+    """An image file drawn by draw(painter), for the stylesheet. Drawn fresh into this run's own temporary folder, so
+    a stale or someone else's file is never picked up."""
+    import os
+    import tempfile
+    from PySide6.QtGui import QImage, QPainter
+    global _ARROW_DIR
+    if _ARROW_DIR is None:
+        _ARROW_DIR = tempfile.mkdtemp(prefix="inkline-")
+    path = os.path.join(_ARROW_DIR, f"{name}.png")
+    if not os.path.exists(path):
+        img = QImage(w, h, QImage.Format.Format_ARGB32)
+        img.fill(0)
+        p = QPainter(img)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        draw(p)
         p.end()
         img.save(path, "PNG")
     return path.replace("\\", "/")
@@ -194,7 +215,7 @@ QToolButton#bottomButton {{ background: transparent; border: 0; border-top: 3px 
 QToolButton#bottomButton:checked {{ border-top-color: {t.accent}; color: {t.accent}; }}
 QToolButton#bottomButton:hover {{ color: {t.ink}; }}
 QToolButton#bottomButton:focus {{ border: 2px solid {t.ink}; border-top-width: 3px; padding: 0 2px; }}
-QToolButton#bottomButton:disabled {{ color: {t.line}; }}
+QToolButton#bottomButton:disabled {{ color: {t.off}; }}
 QFrame#bottomBar {{ background: {t.panel}; border-top: 1px solid {t.line}; }}
 QCheckBox::indicator {{ width: 22px; height: 22px; }}
 QSlider {{ min-height: {h}px; }}
@@ -225,9 +246,11 @@ QFrame#railLine {{ background: {t.line}; border: 0; }}
 QToolButton#railButton {{ background: transparent; border: 1px solid transparent; border-radius: 8px; color: {t.muted};
   font-size: 12px; font-weight: 600; padding: 4px; }}
 QToolButton#railButton:hover {{ border-color: {t.line}; color: {t.ink}; }}
-QToolButton#railButton:checked {{ background: {t.field}; border-color: {t.accent}; color: {t.accent}; }}
+QToolButton#railButton:checked {{ background: {t.field}; border-color: {t.field}; border-left: 4px solid {t.accent};
+  color: {t.accent}; padding-left: 1px; }}
 QToolButton#railButton:focus {{ border: 2px solid {t.ink}; padding: 3px; }}
-QToolButton#railButton:disabled {{ color: {t.muted}; }}
+QToolButton#railButton:checked:focus {{ border: 2px solid {t.ink}; border-left: 4px solid {t.accent}; padding: 3px 3px 3px 1px; }}
+QToolButton#railButton:disabled {{ color: {t.off}; }}
 QToolButton#galleryItem {{ background: {t.field}; border: 1px solid {t.line}; border-radius: 8px; font-size: 11px;
   padding: 4px; }}
 QToolButton#galleryItem:hover {{ border-color: {t.accent}; }}
@@ -246,6 +269,7 @@ QToolButton#toolbarMenu {{ font-size: 13px; font-weight: 600; background: {t.fie
 QToolButton#toolbarMenu:hover {{ border-color: {t.accent}; }}
 QToolButton#toolbarMenu:focus {{ border: 2px solid {t.accent}; padding: 6px 8px; }}
 QToolButton#toolbarMenu::menu-indicator {{ image: none; width: 0; }}   /* its text ends in ▾, as Presets' does */
+QToolButton#toolbarMenu:disabled {{ color: {t.off}; background: {t.panel}; }}
 QLabel#brandTag {{ color: {t.muted}; font-size: 12px; }}
 QLabel#brandVersion {{ color: {t.muted}; font-family: {mono}; font-size: 11px; }}
 
@@ -264,11 +288,20 @@ QPushButton {{ font-weight: 600; }}
 QPushButton:hover, QComboBox:hover {{ border-color: {t.accent}; }}
 QPushButton:focus, QComboBox:focus, QLineEdit:focus {{ border: 2px solid {t.accent}; padding: 6px 8px; }}
 QCheckBox:focus {{ border: 2px solid {t.accent}; border-radius: 4px; }}
+QCheckBox::indicator {{ width: 14px; height: 14px; border: 1px solid {t.muted}; border-radius: 4px; background: {t.field}; }}
+QCheckBox::indicator:hover {{ border-color: {t.accent}; }}
+QCheckBox::indicator:checked {{ background: {t.accent}; border-color: {t.accent}; image: url("{_tick(t.accent_ink)}"); }}
+QCheckBox::indicator:disabled {{ background: {t.panel}; border-color: {t.off}; }}
+QCheckBox::indicator:checked:disabled {{ background: {t.off}; border-color: {t.off}; image: url("{_tick(t.panel)}"); }}
 QSlider::handle:horizontal:focus {{ border: 2px solid {t.ink}; }}
 QComboBox::drop-down {{ border: 0; width: 22px; }}
 QComboBox::down-arrow {{ image: url("{_arrow(t.muted)}"); width: 10px; height: 6px; margin-right: 8px; }}
-QPushButton:disabled {{ color: {t.muted}; border-color: {t.line}; }}
 QPushButton[role="primary"] {{ background: {t.accent}; color: {t.accent_ink}; border-color: {t.accent}; }}
+QPushButton:disabled, QPushButton[role="primary"]:disabled {{ background: {t.panel}; color: {t.off}; border-color: {t.line}; }}
+QComboBox:disabled, QLineEdit:disabled {{ background: {t.panel}; color: {t.off}; border-color: {t.line}; }}
+QComboBox::down-arrow:disabled {{ image: url("{_arrow(t.off)}"); }}
+QLabel[role="label"]:disabled, QCheckBox:disabled, QLabel[role="value"]:disabled {{ color: {t.off}; }}
+QSlider::sub-page:horizontal:disabled, QSlider::handle:horizontal:disabled {{ background: {t.off}; }}
 QPushButton[role="mini"] {{ font-size: 12px; padding: 3px 8px; }}
 QPushButton[role="mini"]:focus {{ padding: 2px 7px; }}
 QPushButton#newDesign {{ padding: 7px 14px; }}

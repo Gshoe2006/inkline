@@ -11,12 +11,18 @@ Start Inkline from the package you're testing, not from the source checkout, unl
       Next goes through five steps, each outline round the part it's about; Escape closes it; a second start doesn't
       show it. Help → Tour of the window shows it again.
 - [ ] **Rail:** Create, Photo, Booklet, Poster and Print each show their page with no scroll bar at your usual
-      window size. Ctrl+1 to Ctrl+5 do the same. The arrow keys on the rail don't change the mode.
+      window size; the one chosen has an accent bar on its left, and the keyboard's focus ring (Tab) looks
+      different from it. Ctrl+1 to Ctrl+5 do the same. The arrow keys on the rail don't change the mode.
 - [ ] **Gallery:** the six pictures appear within a few seconds; clicking one changes the pattern and the picture
       stays where it is. All patterns… shows every pattern; typing "maze" or "colouring" narrows it.
 - [ ] **Presets:** Presets ▾ opens a panel; Tab reaches the list, Delete, the name field and Save; Escape closes it.
-- [ ] **Booklet built page by page:** double-click a page: its design opens on the Booklet page; ‹ All pages goes
-      back; Create also brings the controls back.
+- [ ] **Booklet built page by page:** double-click a page: its design opens on the Booklet page; ‹ Back to page list
+      goes back; Create also brings the controls back.
+- [ ] **Desktop style:** View → Use my desktop's style (the Arch package or the .run installer): the preview's
+      "rendering…" pill and the tour's card each have their own background, never see-through.
+- [ ] **Keyboard shortcuts:** Help → Keyboard shortcuts lists every menu's shortcuts and the window's own; the
+      footer shows three on one line. Ctrl+N makes a new design, Ctrl+Shift+N a new project, Ctrl+Shift+M More
+      designs.
 - [ ] **HiDPI:** at 150% or 200% scaling nothing is cut off (rail labels, toolbar buttons, the tour card).
 
 - [ ] **Zoom:** Ctrl+wheel over the preview zooms where the pointer is; dragging moves round the zoomed page;

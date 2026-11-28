@@ -98,7 +98,7 @@ def test_the_button_and_menu_open_it(win, monkeypatch):
     win.sidebar.more_btn.click()
     acts = {a.text().replace("&", ""): a for m in win.menuBar().actions() for a in m.menu().actions()}
     acts["More designs…"].trigger()
-    assert len(opened) == 2 and acts["More designs…"].shortcut().toString() == "Ctrl+Shift+N"
+    assert len(opened) == 2 and acts["More designs…"].shortcut().toString() == "Ctrl+Shift+M"   # Ctrl+Shift+N: New project
 
 
 def test_enter_chooses_the_design_with_the_focus(win):
