@@ -116,6 +116,7 @@ if Recipe is not None:
             lib = built_library(target_dir, target)
             align = check_alignment(lib)
             dest = os.path.join(self.ctx.get_python_install_dir(arch.arch), "inkline_fast.abi3.so")
+            os.makedirs(os.path.dirname(dest), exist_ok=True)   # made by the first package installed; may be us
             shutil.copyfile(lib, dest)
             info(f"Inkline: inkline_fast.abi3.so ({os.path.getsize(dest) // 1024} KB, {align // 1024} KB pages) "
                  f"in {os.path.dirname(dest)}")
